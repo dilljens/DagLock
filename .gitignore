@@ -25,3 +25,11 @@ pkg/
 # OS
 .DS_Store
 Thumbs.db
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Pi lens cache
+.pi-lens/
