@@ -4,11 +4,14 @@
 //! For now, escrows are registered manually via the POST /v1/escrows endpoint.
 
 mod api;
+mod auth;
 mod config;
 mod db;
 mod listener;
 mod types;
+mod verification;
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use clap::Parser;
@@ -35,6 +38,10 @@ async fn main() {
 
     info!("Database ready: {}", args.database_url);
 
+    // Initialize verifier — use MockVerifier for now
+    // TODO: Replace with WrpcVerifier when wRPC client is fully implemented
+    let verifier: Arc<dyn crate::verification::EscrowVerifier> = Arc::new(crate::verification::MockVerifier);
+
     let state = AppState {
         db: pool,
         started_at: Instant::now(),
@@ -42,6 +49,7 @@ async fn main() {
         wrpc_url: args.wrpc_url.clone(),
         daglock_kas_template: args.daglock_kas_template.clone(),
         daglock_krc20_template: args.daglock_krc20_template.clone(),
+        verifier,
     };
 
     if let Some(wrpc_url) = state.wrpc_url.clone() {

@@ -10,6 +10,8 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
+use std::sync::Arc;
+use crate::verification::EscrowVerifier;
 
 /// Shared application state.
 #[derive(Clone)]
@@ -20,6 +22,9 @@ pub struct AppState {
     pub wrpc_url: Option<String>,
     pub daglock_kas_template: Option<String>,
     pub daglock_krc20_template: Option<String>,
+    /// On-chain verification service.
+    /// Uses MockVerifier for now; replace with WrpcVerifier when wRPC is ready.
+    pub verifier: Arc<dyn EscrowVerifier>,
 }
 
 /// Build the Axum router with all API routes.

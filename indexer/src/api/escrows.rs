@@ -10,6 +10,8 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
+use crate::auth::{AuthContext, verify_settle_authorization, verify_refund_authorization};
+use crate::verification::{verify_escrow_settleable, verify_escrow_refundable};
 use crate::db::queries;
 use crate::types::*;
 
@@ -158,9 +160,15 @@ pub async fn stats(State(state): State<AppState>) -> Json<Value> {
 }
 
 /// POST /v1/escrows/{id}/settle
+///
+/// Requires authentication headers:
+/// - X-Daglock-Address: Signer's Kaspa address
+/// - X-Daglock-Signature: Hex-encoded signature
+/// - X-Daglock-Message: Signed message (format: "settle:{escrow_id}")
 pub async fn settle(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
         (
@@ -188,7 +196,31 @@ pub async fn settle(
                 ))),
             ))
         }
-        Some(_) => {
+        Some(current) => {
+            // Verify caller is authorized (buyer or seller with valid signature)
+            let auth = AuthContext::from_headers(&headers).map_err(|e| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!(ApiError::new("unauthorized", e.to_string()))),
+                )
+            })?;
+            // TODO: Replace MockSignatureVerifier with real verifier when key management is implemented
+            let sig_verifier = crate::auth::MockSignatureVerifier;
+            verify_settle_authorization(&current, &auth, &sig_verifier).map_err(|e| {
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new("forbidden", e.to_string()))),
+                )
+            })?;
+
+            // Verify escrow can be settled (UTXO exists on-chain)
+            verify_escrow_settleable(&current, state.verifier.as_ref()).map_err(|e| {
+                (
+                    StatusCode::CONFLICT,
+                    Json(json!(ApiError::new("verification_failed", e.to_string()))),
+                )
+            })?;
+
             queries::update_escrow_status(&state.db, &id, EscrowStatus::Settled)
                 .await
                 .map_err(|e| {
@@ -221,9 +253,15 @@ pub async fn settle(
 }
 
 /// POST /v1/escrows/{id}/refund
+///
+/// Requires authentication headers:
+/// - X-Daglock-Address: Buyer's Kaspa address
+/// - X-Daglock-Signature: Hex-encoded signature
+/// - X-Daglock-Message: Signed message (format: "refund:{escrow_id}")
 pub async fn refund(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
         (
@@ -251,7 +289,31 @@ pub async fn refund(
                 ))),
             ))
         }
-        Some(_) => {
+        Some(current) => {
+            // Verify caller is authorized (buyer only with valid signature)
+            let auth = AuthContext::from_headers(&headers).map_err(|e| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!(ApiError::new("unauthorized", e.to_string()))),
+                )
+            })?;
+            // TODO: Replace MockSignatureVerifier with real verifier when key management is implemented
+            let sig_verifier = crate::auth::MockSignatureVerifier;
+            verify_refund_authorization(&current, &auth, &sig_verifier).map_err(|e| {
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new("forbidden", e.to_string()))),
+                )
+            })?;
+
+            // Verify escrow can be refunded (UTXO exists on-chain)
+            verify_escrow_refundable(&current, state.verifier.as_ref()).map_err(|e| {
+                (
+                    StatusCode::CONFLICT,
+                    Json(json!(ApiError::new("verification_failed", e.to_string()))),
+                )
+            })?;
+
             queries::update_escrow_status(&state.db, &id, EscrowStatus::Refunded)
                 .await
                 .map_err(|e| {
