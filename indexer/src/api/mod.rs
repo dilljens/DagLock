@@ -6,12 +6,12 @@ pub mod offers;
 pub mod receipts;
 pub mod reputation;
 
+use crate::verification::EscrowVerifier;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
-use crate::verification::EscrowVerifier;
 
 /// Shared application state.
 #[derive(Clone)]

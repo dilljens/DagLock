@@ -57,7 +57,7 @@ async fn test_insert_and_query_escrow() {
     sqlx::query(
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, seller_address, amount_sompi, fee_sompi, template_hash, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
     )
     .bind("esc_test1")
     .bind("tx123")
@@ -75,13 +75,12 @@ async fn test_insert_and_query_escrow() {
     .expect("Failed to insert escrow");
 
     // Query escrow
-    let row: (String, String, i64) = sqlx::query_as(
-        "SELECT id, buyer_address, amount_sompi FROM escrows WHERE id = ?1"
-    )
-    .bind("esc_test1")
-    .fetch_one(&pool)
-    .await
-    .expect("Failed to query escrow");
+    let row: (String, String, i64) =
+        sqlx::query_as("SELECT id, buyer_address, amount_sompi FROM escrows WHERE id = ?1")
+            .bind("esc_test1")
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to query escrow");
 
     assert_eq!(row.0, "esc_test1");
     assert_eq!(row.1, "kaspa:buyer1");
@@ -96,7 +95,7 @@ async fn test_escrow_lifecycle_transitions() {
     sqlx::query(
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, amount_sompi, fee_sompi, template_hash, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
     )
     .bind("esc_lifecycle")
     .bind("tx456")
@@ -139,7 +138,7 @@ async fn test_reputation_calculation() {
         sqlx::query(
             "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
              buyer_address, amount_sompi, fee_sompi, template_hash, created_at, settled_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         )
         .bind(format!("esc_rep_{}", i))
         .bind(format!("tx{}", i))
@@ -159,7 +158,7 @@ async fn test_reputation_calculation() {
 
     // Query trade count
     let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE buyer_address = ?1 AND status = 'settled'"
+        "SELECT COUNT(*) FROM escrows WHERE buyer_address = ?1 AND status = 'settled'",
     )
     .bind("kaspa:active_buyer")
     .fetch_one(&pool)
@@ -175,8 +174,8 @@ async fn test_fee_calculation() {
 
     // Test various amounts
     let test_cases = vec![
-        (100_000_000i64, 500_000i64),    // 1 KAS -> 0.005 KAS fee
-        (1_000_000_000i64, 5_000_000i64), // 10 KAS -> 0.05 KAS fee
+        (100_000_000i64, 500_000i64),       // 1 KAS -> 0.005 KAS fee
+        (1_000_000_000i64, 5_000_000i64),   // 10 KAS -> 0.05 KAS fee
         (10_000_000_000i64, 50_000_000i64), // 100 KAS -> 0.5 KAS fee
     ];
 

@@ -10,10 +10,10 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
-use crate::auth::{AuthContext, verify_settle_authorization, verify_refund_authorization};
-use crate::verification::{verify_escrow_settleable, verify_escrow_refundable};
+use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
 use crate::db::queries;
 use crate::types::*;
+use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
 
 /// List escrows query parameters.
 #[derive(Deserialize)]

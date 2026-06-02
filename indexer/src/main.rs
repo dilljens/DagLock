@@ -40,7 +40,8 @@ async fn main() {
 
     // Initialize verifier — use MockVerifier for now
     // TODO: Replace with WrpcVerifier when wRPC client is fully implemented
-    let verifier: Arc<dyn crate::verification::EscrowVerifier> = Arc::new(crate::verification::MockVerifier);
+    let verifier: Arc<dyn crate::verification::EscrowVerifier> =
+        Arc::new(crate::verification::MockVerifier);
 
     let state = AppState {
         db: pool,

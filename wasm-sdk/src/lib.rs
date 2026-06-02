@@ -29,12 +29,12 @@ pub fn compile_escrow(
     treasury_key: &str,
 ) -> Result<String, JsError> {
     // Parse hex strings to bytes
-    let buyer_bytes = hex::decode(buyer_key)
-        .map_err(|e| JsError::new(&format!("Invalid buyer key: {}", e)))?;
-    let seller_bytes = hex::decode(seller_key)
-        .map_err(|e| JsError::new(&format!("Invalid seller key: {}", e)))?;
-    let trade_hash_bytes = hex::decode(trade_hash)
-        .map_err(|e| JsError::new(&format!("Invalid trade hash: {}", e)))?;
+    let buyer_bytes =
+        hex::decode(buyer_key).map_err(|e| JsError::new(&format!("Invalid buyer key: {}", e)))?;
+    let seller_bytes =
+        hex::decode(seller_key).map_err(|e| JsError::new(&format!("Invalid seller key: {}", e)))?;
+    let trade_hash_bytes =
+        hex::decode(trade_hash).map_err(|e| JsError::new(&format!("Invalid trade hash: {}", e)))?;
     let treasury_bytes = hex::decode(treasury_key)
         .map_err(|e| JsError::new(&format!("Invalid treasury key: {}", e)))?;
 
@@ -81,8 +81,7 @@ pub fn compile_escrow(
         "suffix": hex::encode(&suffix),
     });
 
-    serde_json::to_string(&result)
-        .map_err(|e| JsError::new(&format!("Serialization error: {}", e)))
+    serde_json::to_string(&result).map_err(|e| JsError::new(&format!("Serialization error: {}", e)))
 }
 
 /// Verify that a script matches a DagLock template hash.
@@ -95,8 +94,8 @@ pub fn compile_escrow(
 /// true if the script matches the template
 #[wasm_bindgen]
 pub fn verify_template_match(script_hex: &str, template_hash_hex: &str) -> Result<bool, JsError> {
-    let script = hex::decode(script_hex)
-        .map_err(|e| JsError::new(&format!("Invalid script: {}", e)))?;
+    let script =
+        hex::decode(script_hex).map_err(|e| JsError::new(&format!("Invalid script: {}", e)))?;
     let template_hash = hex::decode(template_hash_hex)
         .map_err(|e| JsError::new(&format!("Invalid template hash: {}", e)))?;
 
@@ -131,8 +130,7 @@ pub fn calculate_fee(amount_sompi: i64) -> Result<String, JsError> {
         "fee_percentage": 0.5,
     });
 
-    serde_json::to_string(&result)
-        .map_err(|e| JsError::new(&format!("Serialization error: {}", e)))
+    serde_json::to_string(&result).map_err(|e| JsError::new(&format!("Serialization error: {}", e)))
 }
 
 #[cfg(test)]

@@ -1,8 +1,8 @@
 //! Authentication module for DagLock API.
 //!
 //! Provides signature verification for escrow lifecycle operations.
-//! Currently uses a mock implementation; will be replaced with actual
-//! cryptographic verification when key management is implemented.
+//! Currently uses MockSignatureVerifier; will be replaced with secp256k1
+//! ECDSA verification when the crypto dependency is resolved.
 
 use crate::types::Escrow;
 use tracing::warn;
@@ -16,11 +16,14 @@ pub enum AuthError {
     #[error("Invalid signature for address {address}")]
     InvalidSignature { address: String },
 
+    #[error("Invalid address format: {address}")]
+    InvalidAddress { address: String },
+
+    #[error("Invalid signature format: {0}")]
+    InvalidSignatureFormat(String),
+
     #[error("Unauthorized: {reason}")]
     Unauthorized { reason: String },
-
-    #[error("Authentication service unavailable: {reason}")]
-    Unavailable { reason: String },
 }
 
 /// Result type for authentication operations.
@@ -92,6 +95,8 @@ pub trait SignatureVerifier: Send + Sync {
 ///
 /// Use for testing or when signature verification is not available.
 /// WARNING: Do not use in production — provides no actual security.
+///
+/// TODO: Replace with Secp256k1Verifier when secp256k1 dependency is resolved
 pub struct MockSignatureVerifier;
 
 impl SignatureVerifier for MockSignatureVerifier {
