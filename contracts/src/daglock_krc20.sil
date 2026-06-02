@@ -1,0 +1,103 @@
+pragma silverscript ^0.1.0;
+
+// DagLock KRC-20 escrow — holds KRC-20 tokens via covenant-ID ownership.
+//
+// Architecture (Inter-Covenant Communication pattern):
+//   1. DagLockKRC20 is deployed FIRST → gets covenant ID D
+//   2. A KCC-20 branch is created with:
+//        ownerIdentifier = D
+//        identifierType = IDENTIFIER_COVENANT_ID (0x02)
+//        amount = deposit_amount
+//        isMinter = false
+//   3. To settle: transaction has TWO inputs:
+//        Input A: KCC-20 branch (token UTXO)
+//        Input B: DagLockKRC20 UTXO (authorization gate)
+//   4. KCC-20's checkSigs() verifies:
+//        OpInputCovenantId(witness) == D  (DagLock authorizes this transfer)
+//   5. DagLockKRC20 verifies escrow conditions:
+//        - Both signatures OR hash preimage
+//        - Timeout refund
+//        - KAS fee to treasury
+//   6. KCC-20's checkAmounts() verifies token conservation (non-minter branch)
+//
+// The DagLockKRC20 covenant does NOT track token balances internally.
+// Token rules are delegated to the KCC-20 contract. DagLockKRC20 only
+// enforces escrow authorization.
+
+contract DagLockKRC20(
+    pubkey buyerPubKey,
+    pubkey sellerPubKey,
+    byte[32] tradeHash,              // SHA-256 of atomic-swap secret (zeroes if unused)
+    int timeout,                      // Unix timestamp after which refund is allowed
+    pubkey treasuryPubKey,            // DagLock fee treasury address
+
+    // KCC-20 template metadata (same pattern as KCC20Minter)
+    // These are fixed per KCC-20 token instance and allow DagLockKRC20
+    // to validate that KCC-20 outputs are genuine.
+    int kcc20TemplatePrefixLen,
+    int kcc20TemplateSuffixLen,
+    byte[32] kcc20ExpectedTemplateHash,
+    byte[] kcc20TemplatePrefix,
+    byte[] kcc20TemplateSuffix,
+
+    // The KCC-20 covenant ID that DagLockKRC20 governs.
+    // This allows the covenant to locate KCC-20 inputs/outputs in the tx.
+    byte[32] kcc20CovenantId
+) {
+    // KCC-20 state layout — must match the KCC-20 contract exactly
+    struct KCC20State {
+        byte[32] ownerIdentifier;
+        byte identifierType;
+        int amount;
+        bool isMinter;
+    }
+
+    byte constant IDENTIFIER_COVENANT_ID = 0x02;
+
+    // ── Path A: Mutual Release ─────────────────────────────────────
+    // Both buyer and seller sign. The KCC-20 branch transitions to
+    // seller ownership. A KAS fee goes to treasury.
+    entrypoint function release(sig buyerSig, sig sellerSig) {
+        require(checkSig(buyerSig, buyerPubKey));
+        require(checkSig(sellerSig, sellerPubKey));
+
+        // Fee in KAS: output 0 is recipient (KCC-20), output 1 is treasury
+        // The KAS amount for the fee comes from a separate KAS input.
+        // The covenant checks that at least one output pays the treasury.
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
+
+        // Require that SOME output sends KAS to treasury
+        // (The exact fee amount is enforced off-chain by the app,
+        // since KCC-20 output values are independent of token amounts)
+        bool feePaid = false;
+        int outCount = tx.outputs.length;
+        for(i, 0, outCount, 8) {
+            if(tx.outputs[i].scriptPubKey == byte[](treasuryScript)) {
+                feePaid = true;
+            }
+        }
+        require(feePaid);
+    }
+
+    // ── Path B: Atomic Swap ────────────────────────────────────────
+    entrypoint function swap(byte[] secret) {
+        require(sha256(secret) == tradeHash);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
+        bool feePaid = false;
+        int outCount = tx.outputs.length;
+        for(i, 0, outCount, 8) {
+            if(tx.outputs[i].scriptPubKey == byte[](treasuryScript)) {
+                feePaid = true;
+            }
+        }
+        require(feePaid);
+    }
+
+    // ── Path C: Timeout Refund ─────────────────────────────────────
+    entrypoint function refund(sig buyerSig) {
+        require(tx.time >= timeout);
+        require(checkSig(buyerSig, buyerPubKey));
+        // KCC-20 branch returns to buyer. No fee.
+    }
+}

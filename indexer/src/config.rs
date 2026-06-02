@@ -1,0 +1,35 @@
+use clap::Parser;
+
+#[derive(Parser, Debug, Clone)]
+#[command(name = "daglock-indexer", version = "0.1.0")]
+pub struct Args {
+    #[arg(long, default_value = "0.0.0.0")]
+    pub host: String,
+
+    #[arg(long, default_value_t = 8443)]
+    pub port: u16,
+
+    #[arg(long)]
+    pub wrpc_url: Option<String>,
+
+    #[arg(long, default_value = "testnet-12")]
+    pub network: String,
+
+    #[arg(long, default_value = "sqlite:daglock.db")]
+    pub database_url: String,
+
+    #[arg(long)]
+    pub daglock_kas_template: Option<String>,
+
+    #[arg(long)]
+    pub daglock_krc20_template: Option<String>,
+
+    #[arg(long, default_value = "info")]
+    pub log_level: String,
+}
+
+impl Args {
+    pub fn wrpc_url_or_resolver(&self) -> Option<String> {
+        self.wrpc_url.clone()
+    }
+}

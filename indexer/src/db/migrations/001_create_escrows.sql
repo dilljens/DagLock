@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS escrows (
+    id TEXT PRIMARY KEY NOT NULL,
+    lock_tx_id TEXT NOT NULL,
+    lock_tx_output_index INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending_confirmation',
+    asset_type TEXT NOT NULL DEFAULT 'KAS',
+    buyer_address TEXT NOT NULL,
+    seller_address TEXT,
+    amount_sompi INTEGER NOT NULL,
+    fee_sompi INTEGER NOT NULL DEFAULT 0,
+    template_hash BLOB NOT NULL,
+    expiration_daa_score INTEGER,
+    disputed_at INTEGER,
+    dispute_reason TEXT,
+    cancelled_at INTEGER,
+    expired_at INTEGER,
+    created_at INTEGER NOT NULL,
+    settled_at INTEGER,
+    refunded_at INTEGER
+);

@@ -1,0 +1,230 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0b1020;
+  color: #e6ebff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top, rgba(83, 109, 255, 0.2), transparent 30%),
+    linear-gradient(180deg, #0b1020 0%, #090d18 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app {
+  width: min(1160px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 32px 0 56px;
+}
+
+.hero,
+.panel,
+.card,
+.offer {
+  border: 1px solid rgba(160, 180, 255, 0.14);
+  background: rgba(13, 20, 38, 0.78);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 50px rgba(0, 0, 0, 0.24);
+}
+
+.hero {
+  border-radius: 28px;
+  padding: 28px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: end;
+}
+
+.brand {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #8aa0ff;
+  margin-bottom: 8px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 4vw, 4.4rem);
+  line-height: 0.96;
+  max-width: 10ch;
+}
+
+.hero p {
+  max-width: 58ch;
+  color: #aeb8de;
+}
+
+.hero-actions,
+.form,
+.stack,
+.offers,
+.grid {
+  display: grid;
+  gap: 16px;
+}
+
+.hero-actions {
+  justify-items: end;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(160, 180, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: #eef2ff;
+  padding: 12px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button.primary {
+  background: linear-gradient(135deg, #6477ff, #8b5cf6);
+  border-color: transparent;
+}
+
+.cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 20px 0;
+}
+
+.card {
+  border-radius: 20px;
+  padding: 18px;
+}
+
+.card span,
+.panel p,
+.muted,
+.offer p {
+  color: #9aa5cd;
+}
+
+.card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 1.6rem;
+}
+
+.two-up,
+.lookup-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.panel {
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-title h2,
+.panel h3 {
+  margin: 0;
+}
+
+.section-title p {
+  margin-top: 6px;
+  color: #9aa5cd;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(160, 180, 255, 0.12);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.offers {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.offer {
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.offer-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.form {
+  grid-template-columns: 1fr auto;
+  margin-bottom: 14px;
+}
+
+input {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(160, 180, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: #eef2ff;
+  padding: 12px 14px;
+  outline: none;
+}
+
+code {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #c8d2ff;
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .two-up,
+  .lookup-grid,
+  .cards,
+  .offers {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    display: grid;
+    align-items: start;
+  }
+
+  .hero-actions {
+    justify-items: start;
+  }
+
+  .form {
+    grid-template-columns: 1fr;
+  }
+}

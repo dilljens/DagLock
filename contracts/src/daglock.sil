@@ -1,0 +1,60 @@
+pragma silverscript ^0.1.0;
+
+// DagLock — Trustless escrow & atomic swaps on Kaspa L1
+//
+// Three spending paths:
+//   release(buyerSig, sellerSig)  — both parties sign to settle
+//   swap(secret)                   — hash preimage reveals for atomic swap
+//   refund(buyerSig)               — depositor reclaims after timeout
+//
+// Constructor parameters use byte[32] (not pubkey) to work around
+// the SilverScript compiler's strict type checking for constructor args.
+// Casts to pubkey happen within the function bodies.
+
+contract DagLock(
+    byte[32] buyerKey,
+    byte[32] sellerKey,
+    byte[32] tradeHash,       // SHA-256 of atomic-swap secret (zeroes if unused)
+    int timeout,               // Unix timestamp after which refund is allowed
+    byte[32] treasuryKey       // DagLock fee treasury public key
+) {
+    // ── Path A: Mutual Release ──────────────────────────────────
+    entrypoint function release(sig buyerSig, sig sellerSig) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(checkSig(sellerSig, pubkey(sellerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path B: Atomic Swap ─────────────────────────────────────
+    entrypoint function swap(byte[] secret) {
+        require(sha256(secret) == tradeHash);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path C: Timeout Refund ──────────────────────────────────
+    entrypoint function refund(sig buyerSig) {
+        require(tx.time >= timeout);
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
+    }
+}

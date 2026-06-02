@@ -1,0 +1,43 @@
+[package]
+name = "daglock-indexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tokio.workspace = true
+axum.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+clap.workspace = true
+prometheus.workspace = true
+blake2b_simd.workspace = true
+
+sqlx = { version = "0.7", features = [
+  "sqlite",
+  "runtime-tokio-native-tls",
+  "migrate",
+] }
+
+kaspa-wrpc-client = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+kaspa-rpc-core = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+kaspa-hashes = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+kaspa-txscript = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+
+daglock-contracts = { path = "../contracts" }
+futures = "0.3"
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
+hex = "0.4"
+
+kaspa-notify = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+axum-test = "16"
