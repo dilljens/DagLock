@@ -4,7 +4,7 @@
 //
 // Run: BOT_TOKEN=xxx node src/index.js
 
-import { Bot, Keyboard, InlineKeyboard } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import { ApiClient } from './lib/api.js';
 
 const token = process.env.BOT_TOKEN;
@@ -22,12 +22,14 @@ const bot = new Bot(token);
 bot.api.setMyCommands([
   { command: 'start', description: 'Start the bot or claim an escrow' },
   { command: 'create', description: 'Create a new escrow' },
+  { command: 'claim', description: 'Claim an escrow by ID' },
+  { command: 'list', description: 'List your escrows' },
   { command: 'offers', description: 'Browse open offers' },
-  { command: 'reputation', description: 'Check counterparty reputation <address>' },
-  { command: 'status', description: 'Check escrow status <id>' },
-  { command: 'receipt', description: 'Fetch a settlement receipt <id>' },
-  { command: 'dispute', description: 'Dispute an escrow <id> <reason>' },
-  { command: 'cancel', description: 'Cancel an escrow <id>' },
+  { command: 'reputation', description: 'Check counterparty reputation' },
+  { command: 'status', description: 'Check escrow status' },
+  { command: 'receipt', description: 'Fetch a settlement receipt' },
+  { command: 'dispute', description: 'Dispute an escrow' },
+  { command: 'cancel', description: 'Cancel an escrow' },
   { command: 'help', description: 'Show help' },
 ]);
 
@@ -41,8 +43,10 @@ bot.command('start', async (ctx) => {
     '🔒 *DagLock — Trustless Escrow on Kaspa*\n\n' +
     'I help you create and manage trustless escrows using Kaspa smart contracts.\n\n' +
     '_No one can steal your funds — not even me._\n\n' +
-    'Commands:\n' +
+    '*Commands:*\n' +
     '/create — Create an escrow\n' +
+    '/claim <id> — Claim an escrow\n' +
+    '/list — List your escrows\n' +
     '/offers — Browse offers\n' +
     '/status <id> — Check escrow\n' +
     '/receipt <id> — Fetch receipt\n' +
@@ -54,11 +58,32 @@ bot.command('start', async (ctx) => {
 });
 
 bot.command('create', async (ctx) => {
+  const keyboard = new InlineKeyboard()
+    .url('🌐 Open Web Dashboard', 'https://daglock.com/create');
+
   await ctx.reply(
     '📝 *Create Escrow*\n\n' +
-    'To create an escrow, use the CLI:\n' +
+    '*Option 1: CLI*\n' +
     '```\ndaglock-cli create --amount 5000 --counterparty <address>\n```\n\n' +
-    'Or visit: https://daglock.com/create',
+    '*Option 2: Web Interface*\n' +
+    'Click the button below to open the dashboard:',
+    { parse_mode: 'Markdown', reply_markup: keyboard }
+  );
+});
+
+bot.command('claim', async (ctx) => {
+  const id = ctx.match?.trim();
+  if (!id) return await ctx.reply('Usage: /claim <escrow-id>');
+  return handleClaim(ctx, id);
+});
+
+bot.command('list', async (ctx) => {
+  // For now, show instructions since we don't track user addresses
+  await ctx.reply(
+    '📋 *Your Escrows*\n\n' +
+    'To list your escrows, use the CLI:\n' +
+    '```\ndaglock-cli status --address <your-address>\n```\n\n' +
+    'Or visit the web dashboard to see all your active escrows.',
     { parse_mode: 'Markdown' }
   );
 });
@@ -78,7 +103,8 @@ bot.command('offers', async (ctx) => {
       msg += `• *${o.side.toUpperCase()}* ${amount} ${o.base_asset} for ${o.quote_asset}\n`;
       msg += `  ID: \`${o.id}\`\n\n`;
     }
-    if (offers.length > 5) msg += `_...and ${offers.length - 5} more_`;
+    if (offers.length > 5) msg += `_...and ${offers.length - 5} more_\n`;
+    msg += '💡 Use /status <id> for details';
 
     await ctx.reply(msg, { parse_mode: 'Markdown' });
   } catch (err) {
@@ -93,19 +119,32 @@ bot.command('status', async (ctx) => {
   try {
     const data = await api.getEscrow(id);
     const amount = (data.amount_sompi / 1e8).toFixed(2);
+    const fee = (data.fee_sompi / 1e8).toFixed(4);
     const created = new Date(data.created_at * 1000).toISOString().slice(0, 19).replace('T', ' ');
 
+    const statusEmoji = {
+      pending_confirmation: '⏳',
+      active: '✅',
+      settled: '🎉',
+      refunded: '↩️',
+      disputed: '⚠️',
+      cancelled: '🛑',
+      expired: '⏰',
+    };
+
     await ctx.reply(
-      `📋 *Escrow: ${id}*\n\n` +
-      `Status: \`${data.status}\`\n` +
+      `*Escrow: ${id}*\n\n` +
+      `Status: ${statusEmoji[data.status] || '❓'} \`${data.status}\`\n` +
       `Amount: ${amount} KAS\n` +
-      `Buyer: \`${data.buyer_address.slice(0, 16)}...\`\n` +
+      `Fee: ${fee} KAS (0.5%)\n` +
+      `Buyer: \`${data.buyer_address?.slice(0, 16) || 'N/A'}...\`\n` +
       `Created: ${created} UTC` +
+      (data.seller_address ? `\nSeller: \`${data.seller_address.slice(0, 16)}...\`` : '') +
       (data.dispute_reason ? `\nReason: ${data.dispute_reason}` : ''),
       { parse_mode: 'Markdown' }
     );
   } catch (err) {
-    await ctx.reply('❌ Escrow not found or API error: ' + err.message);
+    await ctx.reply('❌ Escrow not found: ' + err.message);
   }
 });
 
@@ -117,15 +156,17 @@ bot.command('receipt', async (ctx) => {
     const receipt = await api.getReceipt(id);
     await ctx.reply(
       `🧾 *Receipt*\n\n` +
-      `ID: \`${receipt.receipt_id}\`\n` +
+      `Receipt ID: \`${receipt.receipt_id}\`\n` +
+      `Escrow: \`${receipt.escrow_id}\`\n` +
       `Status: \`${receipt.status}\`\n` +
       `Asset: ${receipt.asset}\n` +
-      `Amount: ${receipt.amount_sompi} units` +
+      `Amount: ${receipt.amount_sompi} units\n` +
+      `Fee: ${receipt.fee_sompi} units` +
       (receipt.dispute_reason ? `\nReason: ${receipt.dispute_reason}` : ''),
       { parse_mode: 'Markdown' }
     );
   } catch (err) {
-    await ctx.reply('❌ Receipt not found or API error: ' + err.message);
+    await ctx.reply('❌ Receipt not found: ' + err.message);
   }
 });
 
@@ -136,9 +177,14 @@ bot.command('dispute', async (ctx) => {
 
   try {
     const result = await api.disputeEscrow(id, reason);
-    await ctx.reply(`⚠️ Escrow disputed: ${result.escrow_id}\nReason: ${reason}`);
+    await ctx.reply(
+      `⚠️ *Escrow Disputed*\n\n` +
+      `ID: \`${result.escrow_id}\`\n` +
+      `Reason: ${reason}`,
+      { parse_mode: 'Markdown' }
+    );
   } catch (err) {
-    await ctx.reply('❌ Could not dispute escrow: ' + err.message);
+    await ctx.reply('❌ Could not dispute: ' + err.message);
   }
 });
 
@@ -148,9 +194,13 @@ bot.command('cancel', async (ctx) => {
 
   try {
     const result = await api.cancelEscrow(id);
-    await ctx.reply(`🛑 Escrow cancelled: ${result.escrow_id}`);
+    await ctx.reply(
+      `🛑 *Escrow Cancelled*\n\n` +
+      `ID: \`${result.escrow_id}\``,
+      { parse_mode: 'Markdown' }
+    );
   } catch (err) {
-    await ctx.reply('❌ Could not cancel escrow: ' + err.message);
+    await ctx.reply('❌ Could not cancel: ' + err.message);
   }
 });
 
@@ -161,17 +211,18 @@ bot.command('reputation', async (ctx) => {
   try {
     const rep = await api.getReputation(address);
     const volume = (rep.total_volume_sompi / 1e8).toFixed(2);
+    const shield = '🛡️'.repeat(Math.min(5, Math.ceil(rep.score)));
 
     await ctx.reply(
       `📊 *Reputation*\n\n` +
-      `Address: \`${address.slice(0, 16)}...\`\n` +
+      `Address: \`${address.slice(0, 20)}...\`\n` +
+      `Score: ${shield} ${rep.score.toFixed(2)}/5\n\n` +
+      `*Stats:*\n` +
       `Trades: ${rep.trade_count}\n` +
       `Settled: ${rep.settled_count}\n` +
       `Refunded: ${rep.refunded_count}\n` +
       `Disputed: ${rep.disputed_count}\n` +
       `Dispute Rate: ${(rep.dispute_rate * 100).toFixed(1)}%\n` +
-      `Refund Rate: ${(rep.refund_rate * 100).toFixed(1)}%\n` +
-      `Score: ${rep.score.toFixed(2)}/5\n` +
       `Volume: ${volume} KAS`,
       { parse_mode: 'Markdown' }
     );
@@ -183,15 +234,19 @@ bot.command('reputation', async (ctx) => {
 bot.command('help', async (ctx) => {
   await ctx.reply(
     '🔒 *DagLock Bot Help*\n\n' +
+    '*Commands:*\n' +
     '/create — Create escrow (opens web interface)\n' +
+    '/claim <id> — Claim an escrow from a trade link\n' +
+    '/list — List your escrows\n' +
     '/offers — Browse open offers\n' +
     '/status <id> — Check escrow status\n' +
     '/receipt <id> — Fetch receipt\n' +
     '/dispute <id> <reason> — Dispute escrow\n' +
     '/cancel <id> — Cancel escrow\n' +
-    '/reputation <address> — Check reputation\n' +
-    '/start <claim_ID> — Claim an escrow from a link\n' +
-    '/help — This message',
+    '/reputation <address> — Check reputation\n\n' +
+    '*Trade Links:*\n' +
+    'Share a link to let someone claim your escrow:\n' +
+    '`https://t.me/DagLockBot?start=claim_<escrow-id>`',
     { parse_mode: 'Markdown' }
   );
 });
@@ -218,6 +273,12 @@ async function handleClaim(ctx, escrowId) {
     await ctx.reply('❌ Could not load escrow: ' + err.message);
   }
 }
+
+// ── Error handler ────────────────────────────────────────────────────
+
+bot.catch((err) => {
+  console.error('Bot error:', err);
+});
 
 // ── Start the bot ────────────────────────────────────────────────────
 

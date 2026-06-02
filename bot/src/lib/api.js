@@ -18,26 +18,26 @@ export class ApiClient {
     return res.json();
   }
 
+  // ── Escrow endpoints ──────────────────────────────────────────────
+
   getEscrow(id) {
-    return this.request(`/escrows/${id}`);
+    return this.request(`/escrows/${encodeURIComponent(id)}`);
   }
 
-  listEscrows(address, status) {
+  listEscrows(address, { role, status, limit, offset } = {}) {
     let path = `/escrows?address=${encodeURIComponent(address)}`;
+    if (role) path += `&role=${role}`;
     if (status) path += `&status=${status}`;
+    if (limit) path += `&limit=${limit}`;
+    if (offset) path += `&offset=${offset}`;
     return this.request(path);
   }
 
-  listOffers() {
-    return this.request('/offers');
-  }
-
-  getReputation(address) {
-    return this.request(`/reputation/${encodeURIComponent(address)}`);
-  }
-
-  getReceipt(id) {
-    return this.request(`/receipts/${encodeURIComponent(id)}`);
+  createEscrow(data) {
+    return this.request('/escrows', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   settleEscrow(id) {
@@ -57,5 +57,55 @@ export class ApiClient {
 
   cancelEscrow(id) {
     return this.request(`/escrows/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+  }
+
+  // ── Offer endpoints ───────────────────────────────────────────────
+
+  listOffers({ asset, side, status } = {}) {
+    let path = '/offers?';
+    if (asset) path += `asset=${asset}&`;
+    if (side) path += `side=${side}&`;
+    if (status) path += `status=${status}&`;
+    return this.request(path);
+  }
+
+  createOffer(data) {
+    return this.request('/offers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  acceptOffer(id, counterpartyAddress) {
+    return this.request(`/offers/${encodeURIComponent(id)}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({ counterparty_address: counterpartyAddress }),
+    });
+  }
+
+  cancelOffer(id) {
+    return this.request(`/offers/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+  }
+
+  // ── Reputation ────────────────────────────────────────────────────
+
+  getReputation(address) {
+    return this.request(`/reputation/${encodeURIComponent(address)}`);
+  }
+
+  // ── Receipts ──────────────────────────────────────────────────────
+
+  getReceipt(id) {
+    return this.request(`/receipts/${encodeURIComponent(id)}`);
+  }
+
+  // ── Stats & Health ────────────────────────────────────────────────
+
+  getStats() {
+    return this.request('/stats');
+  }
+
+  getHealth() {
+    return this.request('/health');
   }
 }
