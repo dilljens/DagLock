@@ -11,8 +11,7 @@
   "dependencies": {
     "react": "^18.3",
     "react-dom": "^18.3",
-    "react-router-dom": "^6.26",
-    "@daglock/wasm-sdk": "file:../wasm-sdk/pkg"
+    "react-router-dom": "^6.26"
   },
   "devDependencies": {
     "@types/react": "^18.3",
