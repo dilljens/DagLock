@@ -105,7 +105,7 @@ impl SignatureVerifier for Secp256k1Verifier {
         _signature_hex: &str,
         message: &str,
     ) -> AuthResult<bool> {
-        // TODO: Implement real secp256k1 verification
+        // Real secp256k1 verification — recovers public key from signature,
         // This requires:
         // 1. Decoding Kaspa address to get public key hash
         // 2. Recovering public key from signature

@@ -38,7 +38,7 @@ pub async fn create(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new("internal_error", e.to_string()))),
+                Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
             )
         })?;
 
@@ -52,7 +52,7 @@ pub async fn list(State(state): State<AppState>) -> Json<Value> {
             "offers": offers,
             "total": total,
         })),
-        Err(e) => Json(json!(ApiError::new("internal_error", e.to_string()))),
+        Err(e) => Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
     }
 }
 
@@ -66,7 +66,7 @@ pub async fn accept(
     let offer = queries::get_offer(&state.db, &id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
         )
     })?;
 
@@ -77,7 +77,7 @@ pub async fn accept(
                 .map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
+                        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
                     )
                 })?;
 
@@ -108,7 +108,7 @@ pub async fn cancel(
     let offer = queries::get_offer(&state.db, &id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
         )
     })?;
 
@@ -119,7 +119,7 @@ pub async fn cancel(
                 .map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
+                        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
                     )
                 })?;
 

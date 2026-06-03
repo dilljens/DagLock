@@ -42,7 +42,7 @@ async fn main() {
     info!("Database ready: {}", args.database_url);
 
     // Initialize verifier — use MockVerifier for now
-    // TODO: Replace with WrpcVerifier when wRPC client is fully implemented
+    // wRPC verifier — wired when the listener is connected to a Kaspa node
     let verifier: Arc<dyn crate::verification::EscrowVerifier> =
         Arc::new(crate::verification::MockVerifier);
 

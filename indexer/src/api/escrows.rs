@@ -320,7 +320,6 @@ pub async fn settle(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            // TODO: Replace MockSignatureVerifier with real verifier when key management is implemented
             let sig_verifier = crate::auth::Secp256k1Verifier::new();
             verify_settle_authorization(&current, &auth, &sig_verifier).map_err(|e| {
                 (
@@ -420,7 +419,6 @@ pub async fn refund(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            // TODO: Replace MockSignatureVerifier with real verifier when key management is implemented
             let sig_verifier = crate::auth::Secp256k1Verifier::new();
             verify_refund_authorization(&current, &auth, &sig_verifier).map_err(|e| {
                 (

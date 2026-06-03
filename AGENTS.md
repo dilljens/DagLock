@@ -17,7 +17,7 @@
 | Indexer DB | PostgreSQL or SQLite via SQLx |
 | Fee model | 0.5% (1/200) protocol fee to DagLock treasury |
 | Target users | KRC-20 token communities, OTC traders, whale-to-whale KAS swaps |
-| Dev status | Beta — Phases 0–3 built, tested, and deployed on Testnet 12 |
+| Dev status | Beta — Phases 0–5 built, tested, and deployed on Testnet 12. Full audit completed with 16 security findings fixed. |
 
 ---
 

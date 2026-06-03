@@ -24,7 +24,7 @@ pub type VerificationResult<T> = Result<T, VerificationError>;
 ///
 /// # Implementors
 /// - `MockVerifier`: Always returns success (for testing)
-/// - `WrpcVerifier`: Uses wRPC client to verify on-chain (TODO)
+/// - `WrpcVerifier`: Uses wRPC client to verify on-chain (not yet implemented)
 pub trait EscrowVerifier: Send + Sync {
     /// Verify that the escrow UTXO exists on-chain.
     fn verify_utxo_exists(&self, escrow: &Escrow) -> VerificationResult<bool>;
