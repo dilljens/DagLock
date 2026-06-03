@@ -13,6 +13,8 @@
 | Indexer entry | `indexer/src/main.rs` |
 | REST API routes | `indexer/src/api/mod.rs` |
 | DB schema + migrations | `indexer/src/db/schema.rs` |
+| Authentication | `indexer/src/auth.rs` |
+| Verification | `indexer/src/verification.rs` |
 | CLI entry | `cli/src/main.rs` |
 | WASM SDK | `wasm-sdk/src/lib.rs` |
 | Web UI entry | `web/src/App.tsx` |
@@ -32,7 +34,7 @@
 | Domain | Doc |
 |--------|-----|
 | contracts | `features/contracts.md` — SilverScript covenants + compilation |
-| indexer | `features/indexer.md` — Rust backend: REST API, DB, wRPC listener |
+| indexer | `features/indexer.md` — Rust backend: REST API, DB, auth, verification |
 | cli | `features/cli.md` — Command-line power-user tool |
 | wasm-sdk | `features/wasm-sdk.md` — Browser/JS SDK for tx assembly |
 | web | `features/web.md` — React + Vite dashboard |
@@ -76,18 +78,21 @@ DagLock/
 │
 ├── indexer/            (Rust backend)
 │   ├── src/main.rs            ──▶ api, db, config, listener
-│   ├── src/api/mod.rs         ──▶ axum, sqlx, escrows/offers/reputation/receipts
+│   ├── src/api/mod.rs         ──▶ axum, cors, rate limit
+│   ├── src/api/escrows.rs     ──▶ CRUD + lifecycle + auth
+│   ├── src/auth.rs            ──▶ signature verification
+│   ├── src/verification.rs    ──▶ UTXO verification
 │   ├── src/db/schema.rs       ──▶ sqlx, migrations/*.sql
-│   ├── src/listener.rs        ──▶ db::queries (reconciliation)
+│   ├── src/listener.rs        ──▶ wRPC listener (stub)
 │   └── src/types.rs           ──▶ serde (shared types)
 │
 ├── cli/                (CLI tool)
 │   ├── src/main.rs            ──▶ clap, commands/*
-│   ├── src/tx.rs              ──▶ (transaction assembly)
+│   ├── src/tx.rs              ──▶ kas_to_sompi, tx assembly
 │   └── src/commands/*.rs      ──▶ indexer REST API (HTTP)
 │
 ├── wasm-sdk/           (Browser SDK)
-│   └── src/lib.rs             ──▶ wasm-bindgen, js-sys, contracts
+│   └── src/lib.rs             ──▶ wasm-bindgen, compile_escrow
 │
 ├── web/                (React dashboard)
 │   └── src/App.tsx            ──▶ api.ts (indexer REST)
@@ -109,12 +114,14 @@ DagLock/
 | Add bot command | `bot/src/index.js` (command handler) |
 | Change fee percentage | `contracts/src/daglock.sil` (hardcoded `inputValue / 200`) |
 | Change template hash logic | `contracts/src/lib.rs` (`template_parts_and_hash()`) |
+| Add authentication | `indexer/src/auth.rs` (SignatureVerifier trait) |
+| Add UTXO verification | `indexer/src/verification.rs` (EscrowVerifier trait) |
 
 ## Domain registry
 | Domain | Doc | Files | Purpose |
 |--------|-----|-------|---------|
 | contracts | `features/contracts.md` | 4 | SilverScript covenants + compilation + tests |
-| indexer | `features/indexer.md` | 10 | REST API, DB, wRPC listener, types |
+| indexer | `features/indexer.md` | 12 | REST API, DB, auth, verification, listener |
 | cli | `features/cli.md` | 7 | Command-line power-user tool |
 | wasm-sdk | `features/wasm-sdk.md` | 1 | Browser/JS SDK for tx assembly |
 | web | `features/web.md` | 4 | React + Vite dashboard |
