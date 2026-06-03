@@ -451,14 +451,16 @@ pub async fn get_identity_handle(
     address: &str,
     platform: &str,
 ) -> Result<Option<String>, sqlx::Error> {
-    let rows = sqlx::query(
-        "SELECT handle FROM verified_identities WHERE address = ?1 AND platform = ?2",
-    )
-    .bind(address)
-    .bind(platform)
-    .fetch_all(pool)
-    .await?;
-    Ok(rows.into_iter().filter_map(|r| r.try_get::<String, _>("handle").ok()).next())
+    let rows =
+        sqlx::query("SELECT handle FROM verified_identities WHERE address = ?1 AND platform = ?2")
+            .bind(address)
+            .bind(platform)
+            .fetch_all(pool)
+            .await?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|r| r.try_get::<String, _>("handle").ok())
+        .next())
 }
 
 // ── Offer Queries

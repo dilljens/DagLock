@@ -58,7 +58,10 @@ pub async fn create_identity(
     let auth = AuthContext::from_headers(&headers).map_err(|_e| {
         (
             StatusCode::UNAUTHORIZED,
-            Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))),
+            Json(json!(ApiError::new(
+                "unauthorized",
+                "X-Daglock-* headers required"
+            ))),
         )
     })?;
 
@@ -90,7 +93,10 @@ pub async fn create_identity(
     .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+            Json(json!(ApiError::new(
+                "internal_error",
+                "An internal error occurred."
+            ))),
         )
     })?;
 

@@ -561,18 +561,31 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 	const [address, setAddress] = useState("");
 	const [telegramHandle, setTelegramHandle] = useState("");
 	const [signature, setSignature] = useState("");
-	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+		"idle",
+	);
 	const [error, setError] = useState("");
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		if (!address.startsWith("kaspa:") || !telegramHandle.startsWith("@") || !signature) return;
+		if (
+			!address.startsWith("kaspa:") ||
+			!telegramHandle.startsWith("@") ||
+			!signature
+		)
+			return;
 		setStatus("loading");
 		setError("");
 		try {
 			const message = `daglock.io:verify:telegram:${telegramHandle}`;
 			const auth: AuthHeaders = { address, signature, message };
-			await api.createIdentity("telegram", telegramHandle, message, signature, auth);
+			await api.createIdentity(
+				"telegram",
+				telegramHandle,
+				message,
+				signature,
+				auth,
+			);
 			setStatus("done");
 			onDone();
 		} catch (err) {
@@ -592,16 +605,32 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 			</p>
 			<code>daglock.io:verify:telegram:YOUR_HANDLE</code>
 			<FormField label="Your address">
-				<input value={address} onChange={e => setAddress(e.target.value)} placeholder="kaspa:..." />
+				<input
+					value={address}
+					onChange={(e) => setAddress(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Telegram handle">
-				<input value={telegramHandle} onChange={e => setTelegramHandle(e.target.value)} placeholder="@yourhandle" />
+				<input
+					value={telegramHandle}
+					onChange={(e) => setTelegramHandle(e.target.value)}
+					placeholder="@yourhandle"
+				/>
 			</FormField>
 			<FormField label="Signature (hex)">
-				<input value={signature} onChange={e => setSignature(e.target.value)} placeholder="hex signature from wallet" />
+				<input
+					value={signature}
+					onChange={(e) => setSignature(e.target.value)}
+					placeholder="hex signature from wallet"
+				/>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
-			<button className="button primary" type="submit" disabled={status === "loading"}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+			>
 				{status === "loading" ? "Verifying…" : "Link Telegram"}
 			</button>
 		</form>
@@ -834,17 +863,17 @@ function ReputationLookup() {
 							<span>Dispute rate</span>
 							<strong>{(data.dispute_rate * 100).toFixed(1)}%</strong>
 						</div>
-					<div className="row">
-						<span>Score</span>
-						<strong>{data.score.toFixed(2)}/5</strong>
-					</div>
-					{data.telegram_handle && (
 						<div className="row">
-							<span>Telegram</span>
-							<strong>{data.telegram_handle}</strong>
+							<span>Score</span>
+							<strong>{data.score.toFixed(2)}/5</strong>
 						</div>
-					)}
-				</div>
+						{data.telegram_handle && (
+							<div className="row">
+								<span>Telegram</span>
+								<strong>{data.telegram_handle}</strong>
+							</div>
+						)}
+					</div>
 				)}
 			/>
 		</Panel>

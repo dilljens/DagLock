@@ -246,9 +246,19 @@ export const api = {
 		signatureHex: string,
 		auth: AuthHeaders,
 	) =>
-		postJson<{ status: string; address: string; platform: string; handle: string }>(
+		postJson<{
+			status: string;
+			address: string;
+			platform: string;
+			handle: string;
+		}>(
 			"/v1/identity",
-			{ platform, handle, signed_message: signedMessage, signature_hex: signatureHex },
+			{
+				platform,
+				handle,
+				signed_message: signedMessage,
+				signature_hex: signatureHex,
+			},
 			auth,
 		),
 	reputation: (address: string) =>
