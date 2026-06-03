@@ -44,6 +44,7 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_mediator_key_column(pool).await?;
     ensure_dispute_outcome_columns(pool).await?;
+    ensure_lock_tx_id_index(pool).await?;
 
     Ok(())
 }
@@ -96,6 +97,19 @@ pub async fn ensure_mediator_key_column(pool: &Pool<Sqlite>) -> Result<(), sqlx:
             .await?;
     }
 
+    Ok(())
+}
+
+pub async fn ensure_lock_tx_id_index(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    // Add unique index on lock_tx_id + lock_tx_output_index to prevent
+    // duplicate escrows for the same UTXO
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_escrows_lock_tx
+         ON escrows(lock_tx_id, lock_tx_output_index)"
+    )
+    .execute(pool)
+    .await
+    .ok();
     Ok(())
 }
 

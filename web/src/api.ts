@@ -102,6 +102,7 @@ export type Reputation = {
 	vouches_given: number;
 	vouch_score?: number | null;
 	mediator_stats?: MediatorStats | null;
+	trading_concentration: number;
 	settled_count: number;
 	refunded_count: number;
 	disputed_count: number;

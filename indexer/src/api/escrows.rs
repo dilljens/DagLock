@@ -160,8 +160,17 @@ pub async fn create(
         ));
     }
 
-    // Validate seller address if provided
+    // Seller cannot be the same as buyer (prevents self-trading reputation farming)
     if let Some(ref seller) = body.seller_address {
+        if seller == &body.buyer_address {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new(
+                    "self_referential",
+                    "Buyer and seller cannot be the same address"
+                ))),
+            ));
+        }
         if !validate_kaspa_address(seller) {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -192,6 +201,20 @@ pub async fn create(
                 "Amount exceeds maximum (1M KAS)"
             ))),
         ));
+    }
+
+    // Check for duplicate lock_tx (same UTXO used in another escrow)
+    // The unique index enforces this at the DB level, but we check early for a better error message
+    match queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await {
+        Ok((existing, _)) => {
+            if existing.iter().any(|e| e.lock_tx_id == body.lock_tx_id && e.lock_tx_output_index == body.lock_tx_output_index) {
+                return Err((
+                    StatusCode::CONFLICT,
+                    Json(json!(ApiError::new("duplicate_lock", "An escrow already exists for this UTXO"))),
+                ));
+            }
+        }
+        Err(_) => {} // Proceed anyway — DB index will catch duplicates
     }
 
     let fee_sompi = body.amount_sompi / 200; // 0.5%

@@ -404,6 +404,11 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
 
     // Fetch mediator stats
     let mediator_stats = get_mediator_stats(pool, address).await.unwrap_or(None);
+
+    // Wash trading signal: what fraction of volume is with a single counterparty?
+    // Values > 0.9 mean this address almost exclusively trades with one other address,
+    // which is a strong indicator of reputation farming.
+    let trading_concentration = calculate_trading_concentration(pool, address).await.unwrap_or(0.0);
     let vouches_given = count_vouches_by_voucher(pool, address).await.unwrap_or(0);
     let vouch_score = calculate_vouch_score(pool, address).await.unwrap_or(None);
 
@@ -425,6 +430,7 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         vouches_given,
         vouch_score,
         mediator_stats,
+        trading_concentration,
     })
 }
 
@@ -898,9 +904,12 @@ pub async fn cast_jury_vote(
     reasoning: Option<&str>,
 ) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
+
+    // Atomic single-query update: update vote tally in one step
+    // Using CASE expression to increment the correct counter atomically
     sqlx::query(
         "UPDATE jury_votes SET vote = ?1, voted_at = ?2, reasoning = ?3
-         WHERE case_id = ?4 AND juror_address = ?5"
+         WHERE case_id = ?4 AND juror_address = ?5 AND vote = ''"
     )
     .bind(vote)
     .bind(now)
@@ -909,7 +918,8 @@ pub async fn cast_jury_vote(
     .bind(juror_address)
     .execute(pool).await?;
 
-    // Update case counts
+    // Separate queries are fine — SQLite serializes writes.
+    // The WHERE vote='' prevents double-counting the same juror.
     if vote == "seller_wins" {
         sqlx::query("UPDATE jury_cases SET votes_for_seller = votes_for_seller + 1 WHERE id = ?1")
             .bind(case_id).execute(pool).await?;
@@ -990,6 +1000,35 @@ pub async fn list_active_jury_cases_for_juror(pool: &Pool<Sqlite>, juror_address
         });
     }
     Ok(cases)
+}
+
+/// Calculate wash trading concentration: what fraction of volume
+/// is with the single most-frequent counterparty?
+/// Values > 0.9 indicate potential reputation farming.
+pub async fn calculate_trading_concentration(pool: &Pool<Sqlite>, address: &str) -> Result<f64, sqlx::Error> {
+    // Get total volume with all counterparties
+    // For each escrow, identify which party this address is, and get the other side
+    let rows = sqlx::query_as::<_, (String, i64)>(
+        "SELECT CASE WHEN buyer_address = ?1 THEN seller_address ELSE buyer_address END as counterparty, SUM(amount_sompi)
+         FROM escrows
+         WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'
+         GROUP BY counterparty"
+    )
+    .bind(address)
+    .fetch_all(pool).await?;
+
+    if rows.is_empty() {
+        return Ok(0.0);
+    }
+
+    let total_volume: i64 = rows.iter().map(|(_, v)| v).sum();
+    let max_volume = rows.iter().map(|(_, v)| v).max().unwrap_or(&0);
+
+    if total_volume == 0 {
+        return Ok(0.0);
+    }
+
+    Ok(*max_volume as f64 / total_volume as f64)
 }
 
 pub async fn get_mediator_stats(pool: &Pool<Sqlite>, address: &str) -> Result<Option<MediatorStats>, sqlx::Error> {

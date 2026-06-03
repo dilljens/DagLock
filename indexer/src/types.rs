@@ -156,6 +156,7 @@ pub struct Reputation {
     pub vouches_given: i64,
     pub vouch_score: Option<f64>,
     pub mediator_stats: Option<MediatorStats>,
+    pub trading_concentration: f64,
 }
 
 /// Verified social identity linked to a Kaspa address.

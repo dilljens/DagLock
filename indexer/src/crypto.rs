@@ -47,10 +47,18 @@ fn load_key() -> [u8; 32] {
     match load_key_optional() {
         Some(k) => k,
         None => {
-            warn!("DAGLOCK_MESSAGE_KEY not set — generating ephemeral key. Messages lost on restart!");
-            let mut key = [0u8; 32];
-            rand::thread_rng().fill_bytes(&mut key);
-            key
+            // Generate a deterministic dev key (hashed from a known string)
+            // This prevents message loss on restart during development.
+            // In production, always set DAGLOCK_MESSAGE_KEY env var.
+            warn!("DAGLOCK_MESSAGE_KEY not set — using deterministic dev key. Set DAGLOCK_MESSAGE_KEY=64_hex_chars for production!");
+            let key = blake2b_simd::Params::new()
+                .hash_length(32)
+                .to_state()
+                .update(b"daglock-dev-message-key-2026")
+                .finalize();
+            let mut k = [0u8; 32];
+            k.copy_from_slice(key.as_bytes());
+            k
         }
     }
 }
