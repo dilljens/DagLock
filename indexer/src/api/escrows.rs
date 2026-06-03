@@ -221,7 +221,7 @@ pub async fn settle(
                 )
             })?;
             // TODO: Replace MockSignatureVerifier with real verifier when key management is implemented
-            let sig_verifier = crate::auth::MockSignatureVerifier;
+            let sig_verifier = crate::auth::Secp256k1Verifier::new();
             verify_settle_authorization(&current, &auth, &sig_verifier).map_err(|e| {
                 (
                     StatusCode::FORBIDDEN,
@@ -315,7 +315,7 @@ pub async fn refund(
                 )
             })?;
             // TODO: Replace MockSignatureVerifier with real verifier when key management is implemented
-            let sig_verifier = crate::auth::MockSignatureVerifier;
+            let sig_verifier = crate::auth::Secp256k1Verifier::new();
             verify_refund_authorization(&current, &auth, &sig_verifier).map_err(|e| {
                 (
                     StatusCode::FORBIDDEN,

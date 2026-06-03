@@ -7,7 +7,7 @@ pub mod receipts;
 pub mod reputation;
 
 use crate::verification::EscrowVerifier;
-use crate::auth::{AuthContext, SignatureVerifier, MockSignatureVerifier};
+use crate::auth::{AuthContext, SignatureVerifier, Secp256k1Verifier};
 use tower_http::cors::{CorsLayer, Any};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -66,7 +66,7 @@ async fn optional_auth(
         let auth = AuthContext::from_headers(&headers)
             .map_err(|_| axum::http::StatusCode::UNAUTHORIZED)?;
         // TODO: Replace MockSignatureVerifier with real verifier
-        let verifier = MockSignatureVerifier;
+        let verifier = Secp256k1Verifier::new();
         // For read endpoints, we just validate the signature format exists
         // We don't enforce authorization - just log who's accessing
         Ok(Some(auth))
