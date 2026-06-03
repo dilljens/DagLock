@@ -108,3 +108,27 @@ Detected conventions. Match these so new code fits in.
 ### Contract source
 **Pattern**: `pragma silverscript ^0.1.0` + constructor params as `byte[32]`/`int`  **Example**: `contracts/src/daglock.sil`
 **Rule**: Constructor uses `byte[32]` (not `pubkey`) to work around compiler strict typing. Cast to `pubkey()` inside function bodies.
+
+### Message encryption
+**Pattern**: `AES-256-GCM` via `indexer/src/crypto.rs`  **Example**: `indexer/src/api/messages.rs`, `indexer/src/crypto.rs`
+**Rule**: Messages encrypted on write, decrypted on read. Key from `DAGLOCK_MESSAGE_KEY` env var (64 hex chars). Dev fallback is deterministic blake2b hash.
+
+### Jury system
+**Pattern**: Score-gated registration (10+ trades, 3.0+ score) + randomized selection  **Example**: `indexer/src/api/jury.rs`
+**Rule**: Top N*2 by reliability score -> random N from pool. Threshold varies by escrow value: 2/3 (<10K KAS), 3/5 (10K-100K), 5/9 (>100K). 72h timeout defaults to seller_wins.
+
+### Vouch scoring (EigenTrust-lite)
+**Pattern**: Weighted average of voucher reputations  **Example**: `indexer/src/db/queries.rs` `calculate_vouch_score()`
+**Rule**: Each vouch contributes `voucher_score / 5.0` weight. Vouchers with 0 trades get score=1.0, weight=0.2. Vouches expire after 6 months.
+
+### Route definition
+**Pattern**: `axum 0.7` uses `:id` not `{id}` for path params  **Example**: `indexer/src/api/mod.rs`
+**Rule**: Axum 0.7 uses `:id` syntax. Axum 0.8+ uses `{id}`. This project pins axum 0.7.9.
+
+### Message format for auth
+**Pattern**: Auth messages are `{action}:{escrow_id}`  **Example**: `indexer/src/auth.rs`
+**Rule**: settle:`id`, refund:`id`, dispute:`id`, cancel:`id`, evidence:`id`, vote:`id`, vouch:`addr`, messages:`id`
+
+### Error handling
+**Pattern**: Internal errors use generic messages, not e.to_string()  **Example**: `indexer/src/api/escrows.rs`
+**Rule**: All `internal_error` responses use static strings. `e.to_string()` only used in auth/verification contexts where the caller needs to know why a sig was rejected.
