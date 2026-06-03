@@ -849,23 +849,35 @@ function ReputationLookup() {
 					Check
 				</button>
 			</form>
-			<LookupResult
+				<LookupResult
 				loading={state.loading}
 				error={state.error}
 				data={state.data}
 				render={(data) => (
 					<div className="stack">
 						<div className="row">
+							<span>Score</span>
+							<strong>{data.score.toFixed(2)}/5</strong>
+						</div>
+						<div className="row">
 							<span>Trades</span>
-							<strong>{data.trade_count}</strong>
+							<strong>{data.trade_count} ({data.recent_trade_count} in last 90d)</strong>
+						</div>
+						<div className="row">
+							<span>Volume</span>
+							<strong>{money(data.total_volume_sompi)}</strong>
+						</div>
+						<div className="row">
+							<span>Refund rate</span>
+							<strong>{(data.refund_rate * 100).toFixed(1)}%</strong>
 						</div>
 						<div className="row">
 							<span>Dispute rate</span>
 							<strong>{(data.dispute_rate * 100).toFixed(1)}%</strong>
 						</div>
 						<div className="row">
-							<span>Score</span>
-							<strong>{data.score.toFixed(2)}/5</strong>
+							<span>Age</span>
+							<strong>{data.age_days} days</strong>
 						</div>
 						{data.telegram_handle && (
 							<div className="row">

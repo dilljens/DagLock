@@ -96,6 +96,7 @@ export type AuthHeaders = {
 export type Reputation = {
 	address: string;
 	trade_count: number;
+	recent_trade_count: number;
 	total_volume_sompi: number;
 	settled_count: number;
 	refunded_count: number;

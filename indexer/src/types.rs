@@ -141,6 +141,7 @@ pub struct AcceptOfferRequest {
 pub struct Reputation {
     pub address: Address,
     pub trade_count: i64,
+    pub recent_trade_count: i64,
     pub total_volume_sompi: i64,
     pub settled_count: i64,
     pub refunded_count: i64,

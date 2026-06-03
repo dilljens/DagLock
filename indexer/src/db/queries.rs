@@ -24,48 +24,55 @@ use crate::types::*;
 /// - A single bad trade can't be offset by volume — only by more good trades
 pub fn calculate_reputation_score(
     trade_count: i64,
+    recent_trade_count: i64,
     total_volume_sompi: i64,
     age_days: i64,
     refunded_count: i64,
+    recent_refunded_count: i64,
 ) -> f64 {
-    // Beta reputation (Josang 2002): (alpha + 1) / (alpha + beta + 2)
+    // Beta reputation (Josang 2002) with recency weighting.
     //
-    // alpha = successes = settled_count (trades that completed successfully)
-    // beta  = failures  = refunded_count (trades where this address was refunded)
-    // disputed_count is NOT used here to avoid double-counting with settled/refunded.
-    // A dispute that ends in settlement is a success; one that ends in refund is a failure.
-    // Dispute outcome info is available in the response for display but the terminal
-    // state (settled vs refunded) tells the real story for scoring.
+    // Recent trades (last 90 days) are weighted 2x compared to old trades.
+    // This prevents the "build trust for a year, then scam" attack vector.
     //
-    // Laplace smoothing (+1/+2) prevents 0/0 and provides natural confidence intervals.
-    // More trades = tighter bounds = more confident score.
+    // alpha = successes = effective_trades - effective_refunds
+    // beta  = failures  = effective_refunds
+    // effective_X = recent_trades * 2.0 + old_trades * 1.0
+    //
+    // Laplace smoothing (+1/+2) prevents 0/0.
 
-    let total = trade_count.max(0) as f64;
-    if total < 1.0 {
+    let all_time_total = trade_count.max(0) as f64;
+    let recent_total = recent_trade_count.max(0) as f64;
+    let old_total = (all_time_total - recent_total).max(0.0);
+
+    let recent_refunds = recent_refunded_count.max(0) as f64;
+    let old_refunds = (refunded_count.max(0) as f64 - recent_refunds).max(0.0);
+
+    // Effective totals with recency weighting (2x for recent)
+    let recent_weight: f64 = 2.0;
+    let effective_total = recent_total * recent_weight + old_total;
+    let effective_refunds = recent_refunds * recent_weight + old_refunds;
+    let effective_successes = (effective_total - effective_refunds).max(0.0);
+
+    if all_time_total < 1.0 {
         return 1.0;
     }
 
-    let successes = trade_count.max(0).saturating_sub(refunded_count.max(0)).max(0) as f64;
-
-    // Beta core: (alpha + 1) / (alpha + beta + 2)
-    // Range: [0.5, ~1.0) — 0.5 when all trades failed, ~1.0 when all succeed
-    let alpha = successes;
-    let beta = refunded_count.max(0) as f64;
+    // Beta core with Laplace smoothing
+    let alpha = effective_successes;
+    let beta = effective_refunds;
     let beta_raw = (alpha + 1.0) / (alpha + beta + 2.0);
-
-    // Center: [0.5, 1.0) -> [0.0, 1.0)
     let centered = (beta_raw - 0.5) * 2.0;
 
-    // Volume bonus: ln(volume_kas / 1000 + 1) * 0.12
-    // Gives ~0.07 for 10K KAS, ~0.23 for 1M KAS, ~0.46 for 100M KAS
+    // Volume bonus
     let volume_kas = (total_volume_sompi.max(0) as f64) / 100_000_000.0;
     let volume_bonus = (volume_kas / 1000.0 + 1.0).ln() * 0.12;
 
-    // Age bonus: gentle, max +0.1 after 2 years
+    // Age bonus
     let age_days = age_days.max(0) as f64;
     let age_bonus = (age_days / 365.0).min(2.0) * 0.05;
 
-    // Map [0.0, 1.0] -> [1.0, 5.0]: 1.0 + centered * 4.0 + bonuses
+    // Map [0.0, 1.0] -> [1.0, 5.0]
     let raw_score = 1.0 + (centered * 4.0) + volume_bonus + age_bonus;
     raw_score.clamp(1.0, 5.0)
 }
@@ -322,6 +329,17 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded'"
     ).bind(address).fetch_one(pool).await?;
 
+    // Recent trades (last 90 days) — weighted 2x in score formula
+    // to prevent "build trust then scam" attacks.
+    let ninety_days_ago = chrono::Utc::now().timestamp() - 90 * 86_400;
+    let (recent_trade_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND created_at >= ?2"
+    ).bind(address).bind(ninety_days_ago).fetch_one(pool).await?;
+
+    let (recent_refunded_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded' AND created_at >= ?2"
+    ).bind(address).bind(ninety_days_ago).fetch_one(pool).await?;
+
     // Dispute info for display purposes (does not affect Beta score calculation).
     // The terminal state (settled vs refunded) determines success/failure; dispute
     // flags can double-count with terminal states.
@@ -369,9 +387,11 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
     };
     let score = calculate_reputation_score(
         trade_count,
+        recent_trade_count,
         total_volume,
         age_days,
         refunded_count,
+        recent_refunded_count,
     );
 
     // Fetch optional telegram handle
@@ -382,6 +402,7 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
     Ok(Reputation {
         address: address.to_string(),
         trade_count,
+        recent_trade_count,
         total_volume_sompi: total_volume,
         settled_count,
         refunded_count,
@@ -862,15 +883,15 @@ mod tests {
 
     #[test]
     fn reputation_score_rises_with_trade_history() {
-        let low = calculate_reputation_score(1, 50_000_000, 1, 0);
-        let high = calculate_reputation_score(10, 10_000_000_000, 180, 0);
+        let low = calculate_reputation_score(1, 0, 50_000_000, 1, 0, 0);
+        let high = calculate_reputation_score(10, 10, 10_000_000_000, 180, 0, 0);
         assert!(high > low);
     }
 
     #[test]
     fn reputation_score_falls_with_disputes() {
-        let clean = calculate_reputation_score(10, 10_000_000_000, 180, 0);
-        let disputed = calculate_reputation_score(10, 10_000_000_000, 180, 2);
+        let clean = calculate_reputation_score(10, 10, 10_000_000_000, 180, 0, 0);
+        let disputed = calculate_reputation_score(10, 10, 10_000_000_000, 180, 2, 2);
         assert!(disputed < clean);
     }
 

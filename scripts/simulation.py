@@ -34,18 +34,21 @@ def sompi(kas): return int(kas * 100_000_000)
 
 # ── Reputation formula (mirrors calculate_reputation_score in queries.rs) ──
 # Beta reputation system (Josang 2002): (successes + 1) / (total + 2)
-MIN_TRADES = 5
-
-def expected_score(trades, volume_sompi, age_days, refunds):
-    # Beta reputation (Josang 2002): (alpha + 1) / (alpha + beta + 2)
-    # alpha = successes = trades - refunds (terminal state determines success/failure)
-    # beta  = failures  = refunds (dispute count is informational, not scored)
+def expected_score(trades, recent_trades, volume_sompi, age_days, refunds, recent_refunds):
+    # Beta reputation (Josang 2002) with recency weighting
+    # Recent trades (last 90d) weighted 2x vs old trades
     total = max(trades, 0)
     if total < 1:
         return 1.0
-    successes = max(total - max(refunds, 0), 0)
-    alpha = float(successes)
-    beta_f = float(max(refunds, 0))
+    recent = max(recent_trades, 0)
+    old_trades = max(total - recent, 0)
+    recent_r = max(recent_refunds, 0)
+    old_r = max(max(refunds, 0) - recent_r, 0)
+    w = 2.0  # recency weight
+    eff_total = recent * w + old_trades
+    eff_refunds = recent_r * w + old_r
+    alpha = max(eff_total - eff_refunds, 0)
+    beta_f = eff_refunds
     beta_raw = (alpha + 1.0) / (alpha + beta_f + 2.0)
     centered = (beta_raw - 0.5) * 2.0
     volume_kas = max(volume_sompi, 0) / 100_000_000.0
@@ -157,7 +160,7 @@ def run_batch(api, db_path, buyer, seller, count, settled_pct=0.8, disputed_pct=
     return created, settled, refunded, disputed
 
 
-def check_reputation(api, addr, expected_trades, expected_volume, expected_age_days, expected_refunds):
+def check_reputation(api, addr, expected_trades, expected_recent, expected_volume, expected_age_days, expected_refunds, expected_recent_refunds):
     """Fetch reputation and compare with expected score."""
     rep = api.reputation(addr)
     if "_error" in rep:
@@ -285,7 +288,7 @@ def main():
         b_volume = (r["settled"] + r["refunded"]) * 5000 * 100_000_000  # rough avg
         b_age = 30  # simulated 30 days
 
-        exp_b = expected_score(b_trades, b_volume, b_age, b_refunds)
+        exp_b = expected_score(b_trades, b_trades, b_volume, b_age, b_refunds, b_refunds)
         info(f"  Expected score: ~{exp_b:.4f}")
         info(f"  Actual score:   {rep.get('score', 0):.4f}")
         info(f"  Trade count:    {rep.get('trade_count', 0)}")
