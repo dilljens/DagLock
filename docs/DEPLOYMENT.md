@@ -1,13 +1,42 @@
-# DagLock Testnet Deployment Guide
+# DagLock Deployment Guide
 
-## Prerequisites
+## Latest: Docker (Production)
 
-- Linux VPS (Ubuntu 22.04+ recommended)
-- Rust toolchain (stable)
-- Node.js 18+ (for bot)
-- 4GB+ RAM recommended
+```bash
+# 1. Generate a message encryption key
+DAGLOCK_MESSAGE_KEY=$(openssl rand -hex 32)
+export DAGLOCK_MESSAGE_KEY
 
-## 1. Build the Indexer
+# 2. Deploy with Docker
+./scripts/deploy-mainnet.sh
+
+# Or custom settings:
+CORS_ORIGIN=https://daglock.io DAGLOCK_MESSAGE_KEY=$KEY ./scripts/deploy-mainnet.sh
+```
+
+## Configuration Reference
+
+| Env / Flag | Required | Default | Description |
+|------------|----------|---------|-------------|
+| DAGLOCK_MESSAGE_KEY | YES | (ephemeral dev key) | 64 hex chars for AES-256-GCM |
+| --wrpc-url | Yes* | — | Kaspa node wRPC URL (ws://host:port) |
+| --network | Yes | testnet-12 | mainnet/testnet-N/simnet/devnet |
+| --allow-mainnet | No | false | Must set for mainnet (safety) |
+| --cors-origin | No | * | CORS origin (set to domain in prod) |
+| --db-type | No | sqlite | sqlite or postgres |
+| --log-level | No | info | debug/info/warn/error |
+
+*Required for live UTXO detection. Without it, runs in offline reconciliation mode.
+
+## Quick Start (Dev)
+
+```bash
+# Prerequisites
+# - Rust toolchain (stable)
+# - Node.js 18+ (for bot/web)
+# - 4GB+ RAM recommended
+
+# 1. Build the Indexer
 
 ```bash
 # Clone the repo
