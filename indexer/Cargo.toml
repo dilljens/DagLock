@@ -35,6 +35,8 @@ futures = "0.3"
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
 hex = "0.4"
+aes-gcm = "0.10"
+rand = "0.8"
 
 kaspa-notify = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
 

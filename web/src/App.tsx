@@ -5,6 +5,7 @@ import {
 	type CreateEscrowRequest,
 	type CreateOfferRequest,
 	type DisputeEvidence,
+	type EscrowMessage,
 	type Escrow,
 	type Health,
 	type JuryCase,
@@ -726,6 +727,11 @@ function EscrowLookup() {
 	const [evidence, setEvidence] = useState<LoadState<DisputeEvidence[]>>({
 		loading: false,
 	});
+	const [messages, setMessages] = useState<LoadState<EscrowMessage[]>>({ loading: false });
+	const [msgText, setMsgText] = useState("");
+	const [chatAddr, setChatAddr] = useState("");
+	const [chatSig, setChatSig] = useState("");
+	const [msgStatus, setMsgStatus] = useState("");
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -734,6 +740,13 @@ function EscrowLookup() {
 		try {
 			const data = await api.escrow(id.trim());
 			setState({ data, loading: false });
+			// Also fetch messages (requires auth)
+			if (chatAddr && chatSig) {
+				const cauth: AuthHeaders = { address: chatAddr, signature: chatSig, message: "messages" };
+				api.listMessages(id.trim(), cauth)
+					.then(r => setMessages({ data: r.messages, loading: false }))
+					.catch(() => setMessages({ loading: false }));
+			}
 			// Also fetch evidence if disputed
 			if (data.status === "disputed") {
 				setEvidence({ loading: true });
@@ -761,6 +774,14 @@ function EscrowLookup() {
 					Fetch
 				</button>
 			</form>
+			<div className="form form-stacked" style={{ marginTop: 8 }}>
+				<FormField label="Address (for chat)">
+					<input value={chatAddr} onChange={e => setChatAddr(e.target.value)} placeholder="kaspa:..." />
+				</FormField>
+				<FormField label="Signature">
+					<input value={chatSig} onChange={e => setChatSig(e.target.value)} placeholder="hex" />
+				</FormField>
+			</div>
 			<LookupResult
 				loading={state.loading}
 				error={state.error}
@@ -817,12 +838,60 @@ function EscrowLookup() {
 								))}
 							</div>
 						)}
+						{messages.data && (
+							<div className="evidence-log">
+								<h4>Messages ({messages.data.length})</h4>
+								{messages.data.map((m, i) => (
+									<div key={i} className="evidence-item">
+										<div className="row">
+											<span className="addr">{m.sender_address.slice(0, 20)}…</span>
+											<small>{time(m.created_at)}</small>
+										</div>
+										<p className="evidence-content">{m.content}</p>
+									</div>
+								))}
+							</div>
+						)}
 					</div>
 				)}
 			/>
+			{messages.data != null && (
+				<div className="form form-stacked" style={{ marginTop: 12 }}>
+					<div className="form">
+						<input value={msgText} onChange={e => setMsgText(e.target.value)} placeholder="Type a message..." />
+						<button className="button primary" onClick={async () => {
+							if (!msgText || !id) return;
+							if (!chatAddr || !chatSig) { setMsgStatus("Auth required"); return; }
+							try {
+								const cauth: AuthHeaders = { address: chatAddr, signature: chatSig, message: "messages" };
+								await api.sendMessage(id, msgText, cauth);
+								setMsgText("");
+								setMsgStatus("Sent");
+								const r = await api.listMessages(id, cauth);
+								setMessages({ data: r.messages, loading: false });
+							} catch (err) { setMsgStatus((err as Error).message); }
+						}}>Send</button>
+					</div>
+					{msgStatus && <p className="muted">{msgStatus}</p>}
+				</div>
+			)}
 		</Panel>
 	);
+
+	/* ─── Auth for chat ─── */
+	const chatAuthSection = (
+		<div className="form form-stacked" style={{ marginTop: 8 }}>
+			<FormField label="Address (for chat)">
+				<input value={chatAddr} onChange={e => setChatAddr(e.target.value)} placeholder="kaspa:..." />
+			</FormField>
+			<FormField label="Signature">
+				<input value={chatSig} onChange={e => setChatSig(e.target.value)} placeholder="hex" />
+			</FormField>
+		</div>
+	);
 }
+
+/* ─── Receipt lookup ─── */
 
 function ReputationLookup() {
 	const [address, setAddress] = useState("");

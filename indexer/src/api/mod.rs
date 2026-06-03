@@ -4,6 +4,7 @@ pub mod escrows;
 pub mod evidence;
 pub mod identity;
 pub mod jury;
+pub mod messages;
 pub mod network;
 pub mod offers;
 pub mod receipts;

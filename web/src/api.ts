@@ -176,6 +176,18 @@ export type MediatorStats = {
 	score: number;
 };
 
+export type EscrowMessage = {
+	id: string;
+	escrow_id: string;
+	sender_address: string;
+	content: string;
+	created_at: number;
+};
+
+export type SendMessageRequest = {
+	content: string;
+};
+
 export type Vouch = {
 	id: string;
 	voucher_address: string;
@@ -354,6 +366,19 @@ export const api = {
 		),
 	juryCandidates: () =>
 		loadJson<{ candidates: JurorRegistration[]; total: number }>("/v1/jury/candidates"),
+
+	// Messages
+	sendMessage: (escrowId: string, content: string, auth: AuthHeaders) =>
+		postJson<{ status: string; message: EscrowMessage }>(
+			`/v1/escrows/${encodeURIComponent(escrowId)}/messages`,
+			{ content },
+			auth,
+		),
+	listMessages: (escrowId: string, auth: AuthHeaders) =>
+		loadAuthJson<{ messages: EscrowMessage[]; total: number; escrow_id: string }>(
+			`/v1/escrows/${encodeURIComponent(escrowId)}/messages`,
+			auth,
+		),
 
 	// Identity
 	createIdentity: (

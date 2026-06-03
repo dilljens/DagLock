@@ -326,6 +326,29 @@ pub struct MediatorStats {
     pub score: f64,
 }
 
+
+/// Escrow message record (encrypted at rest).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EscrowMessage {
+    pub id: String,
+    pub escrow_id: EscrowId,
+    pub sender_address: Address,
+    pub content: String,  // decrypted plaintext
+    pub created_at: i64,
+}
+
+/// Send message request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SendMessageRequest {
+    pub content: String,
+}
+
+/// Message list response.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MessageListResponse {
+    pub messages: Vec<EscrowMessage>,
+    pub total: i64,
+}
 /// API error response.
 #[derive(Debug, Serialize)]
 pub struct ApiError {
