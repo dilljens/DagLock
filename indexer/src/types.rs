@@ -150,6 +150,25 @@ pub struct Reputation {
     pub dispute_rate: f64,
     pub refund_rate: f64,
     pub score: f64,
+    pub telegram_handle: Option<String>,
+}
+
+/// Verified social identity linked to a Kaspa address.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifiedIdentity {
+    pub address: Address,
+    pub platform: String,
+    pub handle: String,
+    pub verified_at: i64,
+}
+
+/// Create identity request (from POST endpoint).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateIdentityRequest {
+    pub platform: String,
+    pub handle: String,
+    pub signed_message: String,
+    pub signature_hex: String,
 }
 
 /// Receipt returned after settlement or refund.

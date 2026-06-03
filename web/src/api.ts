@@ -105,6 +105,7 @@ export type Reputation = {
 	dispute_rate: number;
 	refund_rate: number;
 	score: number;
+	telegram_handle?: string | null;
 };
 
 export type Receipt = {
@@ -237,14 +238,31 @@ export const api = {
 			`/v1/offers/${encodeURIComponent(id)}/cancel`,
 		),
 
-	// Lookups
+	// Identity
+	createIdentity: (
+		platform: string,
+		handle: string,
+		signedMessage: string,
+		signatureHex: string,
+		auth: AuthHeaders,
+	) =>
+		postJson<{ status: string; address: string; platform: string; handle: string }>(
+			"/v1/identity",
+			{ platform, handle, signed_message: signedMessage, signature_hex: signatureHex },
+			auth,
+		),
 	reputation: (address: string) =>
 		loadJson<Reputation>(`/v1/reputation/${encodeURIComponent(address)}`),
 	receipt: (id: string) =>
 		loadJson<Receipt>(`/v1/receipts/${encodeURIComponent(id)}`),
 
 	// Evidence
-	submitEvidence: (escrowId: string, content: string, signedMessage?: string, auth?: AuthHeaders) =>
+	submitEvidence: (
+		escrowId: string,
+		content: string,
+		signedMessage?: string,
+		auth?: AuthHeaders,
+	) =>
 		postJson<DisputeEvidence>(
 			`/v1/escrows/${encodeURIComponent(escrowId)}/evidence`,
 			{ content, signed_message: signedMessage },
@@ -254,7 +272,12 @@ export const api = {
 		loadJson<{ evidence: DisputeEvidence[]; escrow_id: string }>(
 			`/v1/escrows/${encodeURIComponent(escrowId)}/evidence`,
 		),
-	resolveDispute: (escrowId: string, outcome: string, resolved_by: string, auth?: AuthHeaders) =>
+	resolveDispute: (
+		escrowId: string,
+		outcome: string,
+		resolved_by: string,
+		auth?: AuthHeaders,
+	) =>
 		postJson<{ status: string; escrow_id: string; outcome: string }>(
 			`/v1/escrows/${encodeURIComponent(escrowId)}/resolve-dispute`,
 			{ outcome, resolved_by },

@@ -23,6 +23,10 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
+    sqlx::query(include_str!("migrations/005_create_verified_identities.sql"))
+        .execute(pool)
+        .await?;
+
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_mediator_key_column(pool).await?;
     ensure_dispute_outcome_columns(pool).await?;

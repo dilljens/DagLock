@@ -2,6 +2,7 @@
 
 pub mod escrows;
 pub mod evidence;
+pub mod identity;
 pub mod network;
 pub mod offers;
 pub mod receipts;
@@ -59,6 +60,7 @@ pub fn build_router(state: AppState) -> Router {
             post(evidence::resolve_dispute),
         )
         .route("/v1/stats", get(escrows::stats))
+        .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))
         .route("/v1/offers/{id}/accept", post(offers::accept))
         .route("/v1/offers/{id}/cancel", post(offers::cancel))

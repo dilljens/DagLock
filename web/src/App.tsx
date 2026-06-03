@@ -343,7 +343,9 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 	const [evidenceContent, setEvidenceContent] = useState("");
 	const [authAddress, setAuthAddress] = useState("");
 	const [authSig, setAuthSig] = useState("");
-	const [status, setStatus] = useState<"idle" | "loading" | "disputed" | "error">("idle");
+	const [status, setStatus] = useState<
+		"idle" | "loading" | "disputed" | "error"
+	>("idle");
 	const [error, setError] = useState("");
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -381,27 +383,47 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
 			<FormField label="Escrow ID">
-				<input value={escrowId} onChange={e => setEscrowId(e.target.value)} placeholder="esc_..." />
+				<input
+					value={escrowId}
+					onChange={(e) => setEscrowId(e.target.value)}
+					placeholder="esc_..."
+				/>
 			</FormField>
 			<FormField label="Reason">
-				<input value={reason} onChange={e => setReason(e.target.value)} placeholder="Why are you disputing?" />
+				<input
+					value={reason}
+					onChange={(e) => setReason(e.target.value)}
+					placeholder="Why are you disputing?"
+				/>
 			</FormField>
 			<FormField label="Evidence (optional)">
 				<textarea
 					value={evidenceContent}
-					onChange={e => setEvidenceContent(e.target.value)}
+					onChange={(e) => setEvidenceContent(e.target.value)}
 					placeholder="Describe what happened, attach links, etc."
 					className="evidence-input"
 				/>
 			</FormField>
 			<FormField label="Your address">
-				<input value={authAddress} onChange={e => setAuthAddress(e.target.value)} placeholder="kaspa:..." />
+				<input
+					value={authAddress}
+					onChange={(e) => setAuthAddress(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Signature (hex)">
-				<input value={authSig} onChange={e => setAuthSig(e.target.value)} placeholder="hex signature from wallet" />
+				<input
+					value={authSig}
+					onChange={(e) => setAuthSig(e.target.value)}
+					placeholder="hex signature from wallet"
+				/>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
-			<button className="button primary" type="submit" disabled={status === "loading"}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+			>
 				{status === "loading" ? "Submitting…" : "Submit dispute"}
 			</button>
 		</form>
@@ -534,6 +556,58 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 	);
 }
 
+/* ─── Verify Telegram identity ─── */
+function LinkTelegramForm({ onDone }: { onDone: () => void }) {
+	const [address, setAddress] = useState("");
+	const [telegramHandle, setTelegramHandle] = useState("");
+	const [signature, setSignature] = useState("");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [error, setError] = useState("");
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!address.startsWith("kaspa:") || !telegramHandle.startsWith("@") || !signature) return;
+		setStatus("loading");
+		setError("");
+		try {
+			const message = `daglock.io:verify:telegram:${telegramHandle}`;
+			const auth: AuthHeaders = { address, signature, message };
+			await api.createIdentity("telegram", telegramHandle, message, signature, auth);
+			setStatus("done");
+			onDone();
+		} catch (err) {
+			setStatus("error");
+			setError((err as Error).message);
+		}
+	}
+
+	if (status === "done") {
+		return <p className="muted success-text">Telegram linked!</p>;
+	}
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<p className="muted">
+				Sign a message with your Kaspa wallet. The format is:
+			</p>
+			<code>daglock.io:verify:telegram:YOUR_HANDLE</code>
+			<FormField label="Your address">
+				<input value={address} onChange={e => setAddress(e.target.value)} placeholder="kaspa:..." />
+			</FormField>
+			<FormField label="Telegram handle">
+				<input value={telegramHandle} onChange={e => setTelegramHandle(e.target.value)} placeholder="@yourhandle" />
+			</FormField>
+			<FormField label="Signature (hex)">
+				<input value={signature} onChange={e => setSignature(e.target.value)} placeholder="hex signature from wallet" />
+			</FormField>
+			{error && <p className="muted error-text">{error}</p>}
+			<button className="button primary" type="submit" disabled={status === "loading"}>
+				{status === "loading" ? "Verifying…" : "Link Telegram"}
+			</button>
+		</form>
+	);
+}
+
 /* ─── Offer item with accept/cancel inline ─── */
 function OfferCard({
 	offer,
@@ -618,7 +692,9 @@ function OfferCard({
 function EscrowLookup() {
 	const [id, setId] = useState("");
 	const [state, setState] = useState<LoadState<Escrow>>({ loading: false });
-	const [evidence, setEvidence] = useState<LoadState<DisputeEvidence[]>>({ loading: false });
+	const [evidence, setEvidence] = useState<LoadState<DisputeEvidence[]>>({
+		loading: false,
+	});
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -630,11 +706,10 @@ function EscrowLookup() {
 			// Also fetch evidence if disputed
 			if (data.status === "disputed") {
 				setEvidence({ loading: true });
-				api.listEvidence(id.trim()).then(r =>
-					setEvidence({ data: r.evidence, loading: false })
-				).catch(() =>
-					setEvidence({ loading: false })
-				);
+				api
+					.listEvidence(id.trim())
+					.then((r) => setEvidence({ data: r.evidence, loading: false }))
+					.catch(() => setEvidence({ loading: false }));
 			} else {
 				setEvidence({ loading: false });
 			}
@@ -700,7 +775,7 @@ function EscrowLookup() {
 						{evidence.data && evidence.data.length > 0 && (
 							<div className="evidence-log">
 								<h4>Evidence ({evidence.data.length})</h4>
-								{evidence.data.map(ev => (
+								{evidence.data.map((ev) => (
 									<div key={ev.id} className="evidence-item">
 										<div className="row">
 											<span className="addr">{ev.submitted_by}</span>
@@ -759,11 +834,17 @@ function ReputationLookup() {
 							<span>Dispute rate</span>
 							<strong>{(data.dispute_rate * 100).toFixed(1)}%</strong>
 						</div>
-						<div className="row">
-							<span>Score</span>
-							<strong>{data.score.toFixed(2)}/5</strong>
-						</div>
+					<div className="row">
+						<span>Score</span>
+						<strong>{data.score.toFixed(2)}/5</strong>
 					</div>
+					{data.telegram_handle && (
+						<div className="row">
+							<span>Telegram</span>
+							<strong>{data.telegram_handle}</strong>
+						</div>
+					)}
+				</div>
 				)}
 			/>
 		</Panel>
@@ -837,6 +918,7 @@ export default function App() {
 		| "refund"
 		| "dispute"
 		| "cancel"
+		| "link-telegram"
 		| null
 	>(null);
 
@@ -881,7 +963,7 @@ export default function App() {
 		setActiveTab(null);
 	}
 
-		const tabPanels: Record<string, { title: string; content: React.ReactNode }> =
+	const tabPanels: Record<string, { title: string; content: React.ReactNode }> =
 		{
 			"create-offer": {
 				title: "Create offer",
@@ -906,6 +988,10 @@ export default function App() {
 			cancel: {
 				title: "Cancel escrow",
 				content: <EscrowActionForm action="cancel" />,
+			},
+			"link-telegram": {
+				title: "Link Telegram",
+				content: <LinkTelegramForm onDone={closeTab} />,
 			},
 		};
 
@@ -1023,6 +1109,7 @@ export default function App() {
 							["Refund", "refund"],
 							["Dispute", "dispute"],
 							["Cancel", "cancel"],
+							["Link Telegram", "link-telegram"],
 						] as const
 					).map(([label, key]) => (
 						<button
