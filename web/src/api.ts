@@ -42,6 +42,16 @@ export type Offer = {
   created_at: number;
 };
 
+export type CreateOfferRequest = {
+  creator_address: string;
+  side: string;
+  base_asset: string;
+  quote_asset: string;
+  amount_sompi: number;
+  counterparty_address?: string;
+  expires_at?: number;
+};
+
 export type Escrow = {
   id: string;
   lock_tx_id: string;
@@ -61,6 +71,22 @@ export type Escrow = {
   created_at: number;
   settled_at?: number | null;
   refunded_at?: number | null;
+};
+
+export type CreateEscrowRequest = {
+  lock_tx_id: string;
+  lock_tx_output_index: number;
+  buyer_address: string;
+  seller_address?: string;
+  amount_sompi: number;
+  expiration_daa_score?: number;
+  asset_type?: string;
+};
+
+export type AuthHeaders = {
+  address: string;
+  signature: string;
+  message: string;
 };
 
 export type Reputation = {
@@ -100,7 +126,45 @@ export type Receipt = {
 async function loadJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
   if (!response.ok) {
-    throw new Error(await response.text());
+    const body = await response.text();
+    throw new Error(body);
+  }
+  return response.json() as Promise<T>;
+}
+
+async function postJson<T>(path: string, body: unknown, auth?: AuthHeaders): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (auth) {
+    headers['X-Daglock-Address'] = auth.address;
+    headers['X-Daglock-Signature'] = auth.signature;
+    headers['X-Daglock-Message'] = auth.message;
+  }
+  const response = await fetch(path, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text);
+  }
+  return response.json() as Promise<T>;
+}
+
+async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (auth) {
+    headers['X-Daglock-Address'] = auth.address;
+    headers['X-Daglock-Signature'] = auth.signature;
+    headers['X-Daglock-Message'] = auth.message;
+  }
+  const response = await fetch(path, {
+    method: 'POST',
+    headers,
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text);
   }
   return response.json() as Promise<T>;
 }
@@ -109,8 +173,32 @@ export const api = {
   health: () => loadJson<Health>('/v1/health'),
   network: () => loadJson<NetworkInfo>('/v1/network'),
   stats: () => loadJson<Stats>('/v1/stats'),
-  offers: () => loadJson<{ offers: Offer[]; total: number }>('/v1/offers?status=proposed'),
+
+  // Escrows
+  escrows: (address: string) =>
+    loadJson<{ escrows: Escrow[]; total: number }>(`/v1/escrows?address=${encodeURIComponent(address)}`),
   escrow: (id: string) => loadJson<Escrow>(`/v1/escrows/${encodeURIComponent(id)}`),
+  createEscrow: (req: CreateEscrowRequest) =>
+    postJson<Escrow>('/v1/escrows', req),
+  settleEscrow: (id: string, auth: AuthHeaders) =>
+    postEmpty<{ status: string; escrow_id: string }>(`/v1/escrows/${encodeURIComponent(id)}/settle`, auth),
+  refundEscrow: (id: string, auth: AuthHeaders) =>
+    postEmpty<{ status: string; escrow_id: string }>(`/v1/escrows/${encodeURIComponent(id)}/refund`, auth),
+  disputeEscrow: (id: string, reason: string) =>
+    postJson<{ status: string; escrow_id: string }>(`/v1/escrows/${encodeURIComponent(id)}/dispute`, { reason }),
+  cancelEscrow: (id: string) =>
+    postEmpty<{ status: string; escrow_id: string }>(`/v1/escrows/${encodeURIComponent(id)}/cancel`),
+
+  // Offers
+  offers: () => loadJson<{ offers: Offer[]; total: number }>('/v1/offers?status=proposed'),
+  createOffer: (req: CreateOfferRequest) =>
+    postJson<Offer>('/v1/offers', req),
+  acceptOffer: (id: string, counterparty_address: string) =>
+    postJson<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/accept`, { counterparty_address }),
+  cancelOffer: (id: string) =>
+    postEmpty<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/cancel`),
+
+  // Lookups
   reputation: (address: string) => loadJson<Reputation>(`/v1/reputation/${encodeURIComponent(address)}`),
   receipt: (id: string) => loadJson<Receipt>(`/v1/receipts/${encodeURIComponent(id)}`),
 };

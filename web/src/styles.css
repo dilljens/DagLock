@@ -206,6 +206,101 @@ code {
   color: #c8d2ff;
 }
 
+/* ─── Action tabs ─── */
+.actions-section {
+  margin: 32px 0;
+}
+
+.action-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.action-panel {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Stacked forms ─── */
+.form-stacked {
+  grid-template-columns: 1fr;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #9aa5cd;
+}
+
+.field select {
+  border-radius: 14px;
+  border: 1px solid rgba(160, 180, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: #eef2ff;
+  padding: 12px 14px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.field select option {
+  background: #0b1020;
+  color: #eef2ff;
+}
+
+.error-text {
+  color: #ff7b7b !important;
+}
+
+.success-text {
+  color: #6fcf97 !important;
+}
+
+/* ─── Offer inline actions ─── */
+.offer-actions {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.offer-input {
+  font-size: 0.8rem;
+  padding: 8px 10px;
+}
+
+.offer .button {
+  font-size: 0.8rem;
+  padding: 8px 14px;
+}
+
+/* ─── Lookup section ─── */
+.lookup-section {
+  margin-top: 32px;
+}
+
+.result {
+  margin-top: 8px;
+}
+
+.addr {
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .offer-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .hero,
   .two-up,

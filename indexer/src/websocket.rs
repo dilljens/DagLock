@@ -60,7 +60,10 @@ pub async fn handle_socket(
         event: "connected".to_string(),
         data: json!({ "message": "Connected to DagLock real-time updates" }),
     };
-    if let Err(e) = socket.send(Message::Text(serde_json::to_string(&msg).unwrap())).await {
+    if let Err(e) = socket
+        .send(Message::Text(serde_json::to_string(&msg).unwrap()))
+        .await
+    {
         warn!("Failed to send connection message: {}", e);
         return;
     }
