@@ -8,7 +8,7 @@ use daglock_contracts::compile_daglock;
 pub struct CreateEscrowResult {
     pub escrow_id: String,
     pub unsigned_tx_hex: String,
-    pub template_hash: Vec<u8>,
+    pub _template_hash: Vec<u8>,
     pub amount_sompi: i64,
     pub fee_sompi: i64,
 }
@@ -57,7 +57,7 @@ pub fn assemble_create_escrow(
     Ok(CreateEscrowResult {
         escrow_id,
         unsigned_tx_hex: hex::encode(&compiled.script),
-        template_hash: tpl_hash,
+        _template_hash: tpl_hash,
         amount_sompi,
         fee_sompi,
     })

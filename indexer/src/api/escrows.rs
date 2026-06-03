@@ -129,6 +129,24 @@ pub async fn create(
         ));
     }
 
+    // Validate buyer address
+    if !validate_kaspa_address(&body.buyer_address) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new("invalid_address", "Invalid buyer Kaspa address"))),
+        ));
+    }
+
+    // Validate seller address if provided
+    if let Some(ref seller) = body.seller_address {
+        if !validate_kaspa_address(seller) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new("invalid_address", "Invalid seller Kaspa address"))),
+            ));
+        }
+    }
+
     let fee_sompi = body.amount_sompi / 200; // 0.5%
 
     let escrow = Escrow {
