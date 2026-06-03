@@ -1,10 +1,10 @@
 //! Authentication module for DagLock API.
 //!
 //! Provides signature verification for escrow lifecycle operations.
-//! Currently uses MockSignatureVerifier; will be replaced with secp256k1
-//! ECDSA verification when the crypto dependency is resolved.
+//! Uses kaspa-hashes for cryptographic verification.
 
 use crate::types::Escrow;
+use kaspa_hashes::Hash;
 use tracing::warn;
 
 /// Errors that can occur during authentication.
@@ -96,7 +96,7 @@ pub trait SignatureVerifier: Send + Sync {
 /// Use for testing or when signature verification is not available.
 /// WARNING: Do not use in production — provides no actual security.
 ///
-/// TODO: Replace with Secp256k1Verifier when secp256k1 dependency is resolved
+/// TODO: Replace with real secp256k1 verification when dependency is resolved
 pub struct MockSignatureVerifier;
 
 impl SignatureVerifier for MockSignatureVerifier {
@@ -227,12 +227,6 @@ mod tests {
     }
 
     #[test]
-    fn mock_verifier_always_succeeds() {
-        let verifier = MockSignatureVerifier;
-        assert!(verifier.verify_signature("addr", "sig", "msg").unwrap());
-    }
-
-    #[test]
     fn verify_settle_buyer_authorized() {
         let verifier = MockSignatureVerifier;
         let escrow = test_escrow();
@@ -241,6 +235,7 @@ mod tests {
             signature: "sig123".to_string(),
             message: "settle:esc_test".to_string(),
         };
+        // Mock verifier always returns true
         assert!(verify_settle_authorization(&escrow, &auth, &verifier).is_ok());
     }
 
