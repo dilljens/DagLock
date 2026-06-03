@@ -317,7 +317,32 @@ mod tests {
         assert_ne!(h1, h2, "arbiter template hash must differ from standard");
     }
 
-    #[test]
+    
+
+#[test]
+fn print_template_hashes() {
+    let zero = [0u8; 32];
+    let zero_hash = [0u8; 32];
+    
+    let std = compile_daglock(&zero, &zero, &zero_hash, 1_700_000_000, &zero);
+    let (_, _, kas_hash) = template_parts_and_hash(&std);
+    let kas_hex: String = kas_hash.iter().map(|b| format!("{:02x}", b)).collect();
+    println!("daglock_kas_template_hash={}", kas_hex);
+    
+    let arb = compile_daglock_arbiter(&zero, &zero, &zero_hash, 1_700_000_000, &zero, &zero);
+    let (_, _, arb_hash) = template_parts_and_hash(&arb);
+    let arb_hex: String = arb_hash.iter().map(|b| format!("{:02x}", b)).collect();
+    println!("daglock_arbiter_template_hash={}", arb_hex);
+    
+    let krc20 = compile_daglock_krc20(
+        &zero, &zero, &zero_hash, 1_700_000_000, &zero,
+        0, 0, &zero_hash, &[], &[], &zero,
+    );
+    let (_, _, krc20_hash) = template_parts_and_hash(&krc20);
+    let krc20_hex: String = krc20_hash.iter().map(|b| format!("{:02x}", b)).collect();
+    println!("daglock_krc20_template_hash={}", krc20_hex);
+}
+#[test]
     fn arbiter_zero_key_and_nonzero_key_produce_different_scripts() {
         let zero = [0u8; 32];
         let one = [1u8; 32];
