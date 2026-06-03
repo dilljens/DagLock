@@ -7,10 +7,10 @@
 use sqlx::{Pool, Sqlite};
 use tokio::time::interval;
 use std::time::Duration;
-use tracing::{info, warn, debug};
+use tracing::{info, warn};
 
 use crate::db::queries;
-use crate::types::{Escrow, EscrowStatus};
+
 
 /// Spawn the wRPC block listener background task.
 ///

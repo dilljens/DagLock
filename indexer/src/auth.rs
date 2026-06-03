@@ -16,9 +16,6 @@ pub enum AuthError {
     #[error("Invalid signature for address {address}")]
     InvalidSignature { address: String },
 
-    #[error("Invalid address format: {address}")]
-    InvalidAddress { address: String },
-
     #[error("Invalid signature format: {0}")]
     InvalidSignatureFormat(String),
 

@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
-use kaspa_addresses::Address;
+
 use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
 use crate::db::queries;
 use crate::types::*;
@@ -96,6 +96,21 @@ pub async fn get_by_id(
             ))),
         )),
     }
+}
+
+/// Validate a Kaspa address format.
+pub fn validate_kaspa_address(address: &str) -> bool {
+    // Basic validation: must start with "kaspa:" and be non-empty after prefix
+    if !address.starts_with("kaspa:") {
+        return false;
+    }
+    let prefix_len = "kaspa:".len();
+    if address.len() <= prefix_len {
+        return false;
+    }
+    // The rest should be bech32 characters (qpzry9x8gf2tvdw0s3jn54khce6mua7l)
+    let bech32_chars = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+    address[prefix_len..].chars().all(|c| bech32_chars.contains(c))
 }
 
 /// POST /v1/escrows

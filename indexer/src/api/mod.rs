@@ -7,6 +7,7 @@ pub mod receipts;
 pub mod reputation;
 
 use crate::verification::EscrowVerifier;
+use crate::auth::{AuthContext, SignatureVerifier, MockSignatureVerifier};
 use tower_http::cors::{CorsLayer, Any};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -54,6 +55,24 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/receipts/{id}", get(receipts::get))
         .layer(cors)
         .with_state(state)
+}
+
+/// Optional authentication middleware for read endpoints.
+/// If auth headers are present, validates them. If not, allows the request through.
+async fn optional_auth(
+    headers: axum::http::HeaderMap,
+) -> Result<Option<AuthContext>, axum::http::StatusCode> {
+    if headers.contains_key("x-daglock-address") {
+        let auth = AuthContext::from_headers(&headers)
+            .map_err(|_| axum::http::StatusCode::UNAUTHORIZED)?;
+        // TODO: Replace MockSignatureVerifier with real verifier
+        let verifier = MockSignatureVerifier;
+        // For read endpoints, we just validate the signature format exists
+        // We don't enforce authorization - just log who's accessing
+        Ok(Some(auth))
+    } else {
+        Ok(None)
+    }
 }
 
 async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> Json<Value> {

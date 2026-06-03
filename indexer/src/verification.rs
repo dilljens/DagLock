@@ -13,11 +13,7 @@ pub enum VerificationError {
     #[error("UTXO not found on-chain: {tx_id}:{output_index}")]
     UtxoNotFound { tx_id: String, output_index: u32 },
 
-    #[error("Invalid signature for {address}")]
-    InvalidSignature { address: String },
 
-    #[error("Verification service unavailable: {reason}")]
-    Unavailable { reason: String },
 
     #[error("Verification failed: {0}")]
     Other(String),
@@ -33,23 +29,9 @@ pub type VerificationResult<T> = Result<T, VerificationError>;
 /// - `WrpcVerifier`: Uses wRPC client to verify on-chain (TODO)
 pub trait EscrowVerifier: Send + Sync {
     /// Verify that the escrow UTXO exists on-chain.
-    ///
-    /// # Arguments
-    /// * `escrow` - The escrow record to verify
-    ///
-    /// # Returns
-    /// Ok(true) if UTXO exists, Ok(false) if not found, Err on verification failure
     fn verify_utxo_exists(&self, escrow: &Escrow) -> VerificationResult<bool>;
 
     /// Verify that a signature is valid for the given address.
-    ///
-    /// # Arguments
-    /// * `address` - The address to verify against
-    /// * `signature` - The signature bytes
-    /// * `message` - The message that was signed
-    ///
-    /// # Returns
-    /// Ok(true) if signature is valid, Ok(false) if invalid, Err on verification failure
     fn verify_signature(
         &self,
         address: &str,

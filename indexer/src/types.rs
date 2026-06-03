@@ -59,69 +59,7 @@ impl EscrowStatus {
     }
 }
 
-/// Offer lifecycle.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OfferStatus {
-    /// Created, waiting for counterparty.
-    Proposed,
-    /// Counterparty accepted, awaiting lock tx.
-    Accepted,
-    /// Lock tx confirmed on-chain.
-    Locked,
-    /// Escrow settled.
-    Settled,
-    /// Offer expired or cancelled.
-    Cancelled,
-}
 
-impl OfferStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            OfferStatus::Proposed => "proposed",
-            OfferStatus::Accepted => "accepted",
-            OfferStatus::Locked => "locked",
-            OfferStatus::Settled => "settled",
-            OfferStatus::Cancelled => "cancelled",
-        }
-    }
-
-    pub fn parse_status(s: &str) -> Option<Self> {
-        match s {
-            "proposed" => Some(Self::Proposed),
-            "accepted" => Some(Self::Accepted),
-            "locked" => Some(Self::Locked),
-            "settled" => Some(Self::Settled),
-            "cancelled" => Some(Self::Cancelled),
-            _ => None,
-        }
-    }
-}
-
-/// Trade side.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Side {
-    Buy,
-    Sell,
-}
-
-/// Asset type supported by DagLock.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AssetType {
-    Kas,
-    Krc20(String),
-}
-
-impl std::fmt::Display for AssetType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AssetType::Kas => write!(f, "KAS"),
-            AssetType::Krc20(ticker) => write!(f, "KRC20:{}", ticker),
-        }
-    }
-}
 
 /// Core escrow record stored in the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,14 +100,7 @@ pub struct CreateEscrowRequest {
     pub template_hash: Option<Vec<u8>>,
 }
 
-/// Escrow listing response.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EscrowListResponse {
-    pub escrows: Vec<Escrow>,
-    pub total: i64,
-    pub limit: i64,
-    pub offset: i64,
-}
+
 
 /// Offer record stored in the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -204,12 +135,7 @@ pub struct AcceptOfferRequest {
     pub counterparty_address: Address,
 }
 
-/// Offer listing response.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OfferListResponse {
-    pub offers: Vec<Offer>,
-    pub total: i64,
-}
+
 
 /// Reputation stats for an address.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -277,15 +203,7 @@ pub struct FeeEstimate {
     pub miner_fee_budget: String,
 }
 
-/// Health check response.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct HealthResponse {
-    pub status: String,
-    pub version: String,
-    pub node_synced: bool,
-    pub node_daa_score: u64,
-    pub uptime_seconds: u64,
-}
+
 
 /// Stats response.
 #[derive(Debug, Serialize, Deserialize)]
