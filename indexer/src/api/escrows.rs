@@ -29,7 +29,7 @@ pub struct ListQuery {
 #[derive(Deserialize)]
 pub struct DisputeRequest {
     pub reason: String,
-    pub mode: Option<String>,  // "standard" or "jury" — defaults to standard
+    pub mode: Option<String>, // "standard" or "jury" — defaults to standard
 }
 
 /// GET /v1/escrows
@@ -500,51 +500,56 @@ pub async fn dispute(
 
             if is_jury {
                 // Create a jury case with juror selection
-                let (juror_count, threshold) = crate::api::jury::juror_count_and_threshold(current.amount_sompi);
+                let (juror_count, threshold) =
+                    crate::api::jury::juror_count_and_threshold(current.amount_sompi);
 
                 // Fetch eligible jurors
-                let eligible = queries::list_eligible_jurors_simple(&state.db).await.map_err(|_e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new(
-                            "internal_error",
-                            "An internal error occurred. Please try again later."
-                        ))),
-                    )
-                })?;
+                let eligible = queries::list_eligible_jurors_simple(&state.db)
+                    .await
+                    .map_err(|_e| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!(ApiError::new(
+                                "internal_error",
+                                "An internal error occurred. Please try again later."
+                            ))),
+                        )
+                    })?;
 
                 if eligible.len() < juror_count as usize {
                     return Err((
                         StatusCode::CONFLICT,
                         Json(json!(ApiError::new(
                             "insufficient_jurors",
-                            format!("Need {} jurors but only {} registered", juror_count, eligible.len())
+                            format!(
+                                "Need {} jurors but only {} registered",
+                                juror_count,
+                                eligible.len()
+                            )
                         ))),
                     ));
                 }
 
                 // Score-weighted random selection: take top N by reliability_score
                 // For now, pick the top N jurors (simple approach — can be randomized later)
-                let selected: Vec<String> = eligible.iter()
+                let selected: Vec<String> = eligible
+                    .iter()
                     .take(juror_count as usize)
                     .map(|j| j.address.clone())
                     .collect();
 
-                let case_id = queries::create_jury_case(
-                    &state.db,
-                    &id,
-                    juror_count,
-                    threshold,
-                    &selected,
-                ).await.map_err(|_e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new(
-                            "internal_error",
-                            "An internal error occurred. Please try again later."
-                        ))),
-                    )
-                })?;
+                let case_id =
+                    queries::create_jury_case(&state.db, &id, juror_count, threshold, &selected)
+                        .await
+                        .map_err(|_e| {
+                            (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(json!(ApiError::new(
+                                    "internal_error",
+                                    "An internal error occurred. Please try again later."
+                                ))),
+                            )
+                        })?;
 
                 Ok(Json(json!({
                     "status": "disputed",

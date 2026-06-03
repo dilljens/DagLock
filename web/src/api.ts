@@ -196,6 +196,21 @@ export type DisputeEvidence = {
 	created_at: number;
 };
 
+async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
+	const response = await fetch(path, {
+		headers: {
+			"X-Daglock-Address": auth.address,
+			"X-Daglock-Signature": auth.signature,
+			"X-Daglock-Message": auth.message,
+		},
+	});
+	if (!response.ok) {
+		const body = await response.text();
+		throw new Error(body);
+	}
+	return response.json() as Promise<T>;
+}
+
 async function loadJson<T>(path: string): Promise<T> {
 	const response = await fetch(path);
 	if (!response.ok) {
@@ -272,10 +287,10 @@ export const api = {
 			`/v1/escrows/${encodeURIComponent(id)}/refund`,
 			auth,
 		),
-	disputeEscrow: (id: string, reason: string) =>
-		postJson<{ status: string; escrow_id: string }>(
+	disputeEscrow: (id: string, reason: string, mode?: string) =>
+		postJson<{ status: string; escrow_id: string; jury_case_id?: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/dispute`,
-			{ reason },
+			{ reason, mode },
 		),
 	cancelEscrow: (id: string) =>
 		postEmpty<{ status: string; escrow_id: string }>(
@@ -328,7 +343,7 @@ export const api = {
 	juryUnregister: (auth: AuthHeaders) =>
 		postJson<{ status: string; address: string }>("/v1/jury/unregister", {}, auth),
 	juryCases: (auth: AuthHeaders) =>
-		postJson<{ cases: JuryCase[]; total: number }>("/v1/jury/cases", {}, auth),
+		loadAuthJson<{ cases: JuryCase[]; total: number }>("/v1/jury/cases", auth),
 	juryCase: (caseId: string) =>
 		loadJson<JuryCase>(`/v1/jury/cases/${encodeURIComponent(caseId)}`),
 	juryVote: (caseId: string, vote: string, reasoning?: string, auth?: AuthHeaders) =>

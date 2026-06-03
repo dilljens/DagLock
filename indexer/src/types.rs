@@ -267,7 +267,6 @@ pub struct ResolveDisputeRequest {
     pub resolved_by: Address,
 }
 
-
 /// Juror registration record.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JurorRegistration {

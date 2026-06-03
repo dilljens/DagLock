@@ -393,3 +393,12 @@ code {
 		grid-template-columns: 1fr;
 	}
 }
+
+/* ─── Jury panel ─── */
+.offer {
+	cursor: pointer;
+}
+
+.offer:hover {
+	border-color: rgba(100, 119, 255, 0.35);
+}

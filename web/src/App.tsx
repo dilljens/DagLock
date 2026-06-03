@@ -342,6 +342,7 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 	const [escrowId, setEscrowId] = useState("");
 	const [reason, setReason] = useState("");
 	const [evidenceContent, setEvidenceContent] = useState("");
+	const [mode, setMode] = useState("standard");
 	const [authAddress, setAuthAddress] = useState("");
 	const [authSig, setAuthSig] = useState("");
 	const [status, setStatus] = useState<
@@ -368,7 +369,7 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 			if (evidenceContent) {
 				await api.submitEvidence(escrowId, evidenceContent, undefined, auth);
 			}
-			await api.disputeEscrow(escrowId, reason);
+			await api.disputeEscrow(escrowId, reason, mode === "jury" ? "jury" : undefined);
 			setStatus("disputed");
 			onDone();
 		} catch (err) {
@@ -903,7 +904,10 @@ function ReputationLookup() {
 						{data.mediator_stats && (
 							<div className="row">
 								<span>Mediator</span>
-								<strong>{data.mediator_stats.score.toFixed(2)}/5 ({data.mediator_stats.disputes_mediated} cases)</strong>
+								<strong>
+									{data.mediator_stats.score.toFixed(2)}/5 (
+									{data.mediator_stats.disputes_mediated} cases)
+								</strong>
 							</div>
 						)}
 					</div>
@@ -967,7 +971,9 @@ function ReceiptLookup() {
 
 /* ─── Jury Panel ─── */
 function JuryPanel() {
-	const [regStatus, setRegStatus] = useState<"idle" | "loading" | "registered" | "error">("idle");
+	const [regStatus, setRegStatus] = useState<
+		"idle" | "loading" | "registered" | "error"
+	>("idle");
 	const [regError, setRegError] = useState("");
 	const [authAddr, setAuthAddr] = useState("");
 	const [authSig, setAuthSig] = useState("");
@@ -979,7 +985,11 @@ function JuryPanel() {
 
 	function makeAuth() {
 		if (!authAddr || !authSig) return undefined;
-		return { address: authAddr, signature: authSig, message: "jury:auth" } as AuthHeaders;
+		return {
+			address: authAddr,
+			signature: authSig,
+			message: "jury:auth",
+		} as AuthHeaders;
 	}
 
 	async function handleRegister() {
@@ -1025,8 +1035,15 @@ function JuryPanel() {
 		const a = makeAuth();
 		if (!a) return;
 		try {
-			const r = await api.juryVote(selectedCase.id, vote, reasoning || undefined, a);
-			setVoteResult(r.verdict ? `Verdict: ${r.vote} (case decided)` : `Voted: ${r.vote}`);
+			const r = await api.juryVote(
+				selectedCase.id,
+				vote,
+				reasoning || undefined,
+				a,
+			);
+			setVoteResult(
+				r.verdict ? `Verdict: ${r.vote} (case decided)` : `Voted: ${r.vote}`,
+			);
 			loadCases();
 		} catch (err) {
 			setVoteResult(`Error: ${(err as Error).message}`);
@@ -1036,31 +1053,59 @@ function JuryPanel() {
 	return (
 		<div className="stack">
 			<FormField label="Your address">
-				<input value={authAddr} onChange={e => setAuthAddr(e.target.value)} placeholder="kaspa:..." />
+				<input
+					value={authAddr}
+					onChange={(e) => setAuthAddr(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Signature (hex)">
-				<input value={authSig} onChange={e => setAuthSig(e.target.value)} placeholder="hex signature" />
+				<input
+					value={authSig}
+					onChange={(e) => setAuthSig(e.target.value)}
+					placeholder="hex signature"
+				/>
 			</FormField>
 			<div className="action-tabs">
-				<button className="button primary" onClick={handleRegister} disabled={regStatus === "loading"}>
+				<button
+					className="button primary"
+					onClick={handleRegister}
+					disabled={regStatus === "loading"}
+				>
 					{regStatus === "loading" ? "Registering…" : "Register as juror"}
 				</button>
-				<button className="button" onClick={handleUnregister}>Unregister</button>
-				<button className="button" onClick={loadCases}>Load my cases</button>
+				<button className="button" onClick={handleUnregister}>
+					Unregister
+				</button>
+				<button className="button" onClick={loadCases}>
+					Load my cases
+				</button>
 			</div>
-			{regStatus === "registered" && <p className="muted success-text">Registered as juror!</p>}
+			{regStatus === "registered" && (
+				<p className="muted success-text">Registered as juror!</p>
+			)}
 			{regError && <p className="muted error-text">{regError}</p>}
 			{voteResult && <p className="muted">{voteResult}</p>}
 
 			{cases.loading && <p className="muted">Loading cases…</p>}
-			{cases.data && cases.data.length === 0 && <p className="muted">No active cases assigned to you.</p>}
-			{cases.data?.map(c => (
-				<article key={c.id} className="offer" onClick={() => setSelectedCase(c)}>
+			{cases.data && cases.data.length === 0 && (
+				<p className="muted">No active cases assigned to you.</p>
+			)}
+			{cases.data?.map((c) => (
+				<article
+					key={c.id}
+					className="offer"
+					onClick={() => setSelectedCase(c)}
+				>
 					<div className="offer-top">
 						<strong>Case: {c.id.slice(0, 16)}…</strong>
 						<span className={badge(c.status)}>{c.status}</span>
 					</div>
-					<p>Escrow: {c.escrow_id} | Votes: {c.votes_for_seller + c.votes_for_buyer}/{c.juror_count} | Threshold: {c.threshold}</p>
+					<p>
+						Escrow: {c.escrow_id} | Votes:{" "}
+						{c.votes_for_seller + c.votes_for_buyer}/{c.juror_count} |
+						Threshold: {c.threshold}
+					</p>
 				</article>
 			))}
 
@@ -1068,16 +1113,22 @@ function JuryPanel() {
 				<div className="panel">
 					<h4>Cast vote for {selectedCase.id.slice(0, 16)}…</h4>
 					<FormField label="Vote">
-						<select value={vote} onChange={e => setVote(e.target.value)}>
+						<select value={vote} onChange={(e) => setVote(e.target.value)}>
 							<option value="">— select —</option>
 							<option value="seller_wins">Seller wins</option>
 							<option value="buyer_wins">Buyer wins</option>
 						</select>
 					</FormField>
 					<FormField label="Reasoning (optional)">
-						<input value={reasoning} onChange={e => setReasoning(e.target.value)} placeholder="Why?" />
+						<input
+							value={reasoning}
+							onChange={(e) => setReasoning(e.target.value)}
+							placeholder="Why?"
+						/>
 					</FormField>
-					<button className="button primary" onClick={handleVote}>Submit vote</button>
+					<button className="button primary" onClick={handleVote}>
+						Submit vote
+					</button>
 				</div>
 			)}
 		</div>
