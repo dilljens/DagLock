@@ -885,6 +885,16 @@ function ReputationLookup() {
 								<strong>{data.telegram_handle}</strong>
 							</div>
 						)}
+						<div className="row">
+							<span>Vouches</span>
+							<strong>{data.vouches_received} received / {data.vouches_given} given</strong>
+						</div>
+						{data.vouch_score != null && (
+							<div className="row">
+								<span>Vouch score</span>
+								<strong>{data.vouch_score.toFixed(2)}/5</strong>
+							</div>
+						)}
 					</div>
 				)}
 			/>

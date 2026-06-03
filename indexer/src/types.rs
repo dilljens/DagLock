@@ -152,6 +152,9 @@ pub struct Reputation {
     pub refund_rate: f64,
     pub score: f64,
     pub telegram_handle: Option<String>,
+    pub vouches_received: i64,
+    pub vouches_given: i64,
+    pub vouch_score: Option<f64>,
 }
 
 /// Verified social identity linked to a Kaspa address.
@@ -284,4 +287,28 @@ impl ApiError {
             },
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Vouch {
+    pub id: String,
+    pub voucher_address: Address,
+    pub subject_address: Address,
+    pub escrow_id: Option<String>,
+    pub note: Option<String>,
+    pub created_at: i64,
+    pub expires_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateVouchRequest {
+    pub subject_address: Address,
+    pub escrow_id: Option<String>,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct VouchListResponse {
+    pub vouches: Vec<Vouch>,
+    pub total: i64,
 }

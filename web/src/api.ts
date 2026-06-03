@@ -98,6 +98,9 @@ export type Reputation = {
 	trade_count: number;
 	recent_trade_count: number;
 	total_volume_sompi: number;
+	vouches_received: number;
+	vouches_given: number;
+	vouch_score?: number | null;
 	settled_count: number;
 	refunded_count: number;
 	disputed_count: number;
@@ -127,6 +130,16 @@ export type Receipt = {
 	expired_at?: number | null;
 	settled_at?: number | null;
 	refunded_at?: number | null;
+};
+
+export type Vouch = {
+	id: string;
+	voucher_address: string;
+	subject_address: string;
+	escrow_id?: string | null;
+	note?: string | null;
+	created_at: number;
+	expires_at: number;
 };
 
 export type DisputeEvidence = {
@@ -238,6 +251,23 @@ export const api = {
 		postEmpty<{ status: string; offer_id: string }>(
 			`/v1/offers/${encodeURIComponent(id)}/cancel`,
 		),
+
+	// Vouching
+	vouch: (subjectAddress: string, auth: AuthHeaders, escrowId?: string, note?: string) =>
+		postJson<{ status: string; vouch: Vouch }>(
+			"/v1/vouches",
+			{ subject_address: subjectAddress, escrow_id: escrowId, note },
+			auth,
+		),
+	unvouch: (vouchId: string, auth: AuthHeaders) =>
+		postEmpty<{ status: string; vouch_id: string }>(
+			`/v1/vouches/${encodeURIComponent(vouchId)}`,
+			auth,
+		),
+	listVouchesBySubject: (address: string) =>
+		loadJson<{ vouches: Vouch[]; total: number }>(`/v1/vouches?subject=${encodeURIComponent(address)}`),
+	listVouchesByVoucher: (address: string) =>
+		loadJson<{ vouches: Vouch[]; total: number }>(`/v1/vouches?voucher=${encodeURIComponent(address)}`),
 
 	// Identity
 	createIdentity: (

@@ -7,6 +7,7 @@ pub mod network;
 pub mod offers;
 pub mod receipts;
 pub mod reputation;
+pub mod vouches;
 
 use crate::verification::EscrowVerifier;
 use crate::websocket;
@@ -66,6 +67,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/offers/:id/cancel", post(offers::cancel))
         .route("/v1/reputation/:address", get(reputation::get))
         .route("/v1/receipts/:id", get(receipts::get))
+        .route("/v1/vouches", post(vouches::create).get(vouches::list))
+        .route("/v1/vouches/:id", post(vouches::delete))
         .route("/v1/ws", get(websocket_handler))
         .layer(cors)
         .with_state(state)
