@@ -20,6 +20,7 @@ blake2b_simd.workspace = true
 
 sqlx = { version = "0.7", features = [
   "sqlite",
+  "postgres",
   "runtime-tokio-native-tls",
   "migrate",
 ] }

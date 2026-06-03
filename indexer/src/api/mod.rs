@@ -18,7 +18,7 @@ use axum::{Json, Router};
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{Any, CorsLayer, AllowOrigin};
 
 /// Shared application state.
 #[derive(Clone)]
@@ -37,12 +37,20 @@ pub struct AppState {
 }
 
 /// Build the Axum router with all API routes.
-pub fn build_router(state: AppState) -> Router {
+pub fn build_router(state: AppState, cors_origin: &str) -> Router {
     // Configure CORS for browser access
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = if cors_origin == "*" {
+        CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any)
+    } else {
+        let origin = cors_origin.parse::<axum::http::HeaderValue>().expect("Invalid CORS origin");
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::predicate(move |o, _| o == &origin))
+            .allow_methods(Any)
+            .allow_headers(Any)
+    };
 
     Router::new()
         .route("/v1/health", get(health))

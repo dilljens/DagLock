@@ -26,6 +26,18 @@ pub struct Args {
 
     #[arg(long, default_value = "info")]
     pub log_level: String,
+
+    /// Allowed CORS origin. Set to a specific domain in production, * for dev.
+    #[arg(long, default_value = "*")]
+    pub cors_origin: String,
+
+    /// Block mainnet if this flag isn't explicitly set (production safety).
+    #[arg(long)]
+    pub allow_mainnet: bool,
+
+    /// Database type: sqlite or postgres.
+    #[arg(long, default_value = "sqlite")]
+    pub db_type: String,
 }
 
 impl Args {

@@ -3,6 +3,8 @@
 //! Manages SQLite (dev) or PostgreSQL (prod) connections and migrations.
 //! Provides query functions for escrows, offers, and reputation.
 
+#[cfg(feature = "postgres")]
+pub mod postgres;
 pub mod queries;
 pub mod schema;
 

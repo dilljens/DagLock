@@ -35,6 +35,11 @@ async fn main() {
 
     info!("Starting DagLock Indexer v{}", env!("CARGO_PKG_VERSION"));
 
+    // Production safety: refuse mainnet without explicit --allow-mainnet flag
+    if args.network == "mainnet" && !args.allow_mainnet {
+        panic!("DagLock refuses to start on mainnet without --allow-mainnet flag. Set --allow-mainnet to acknowledge production risk.");
+    }
+
     let pool = init_pool(&args.database_url)
         .await
         .expect("Failed to initialize database");
@@ -70,7 +75,7 @@ async fn main() {
         );
     }
 
-    let app = build_router(state);
+    let app = build_router(state, &args.cors_origin);
 
     let addr = format!("{}:{}", args.host, args.port);
     info!("REST API listening on http://{addr}");
@@ -80,6 +85,34 @@ async fn main() {
         .expect("Failed to bind TCP listener");
 
     axum::serve(listener_tcp, app)
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Failed to start HTTP server");
+}
+
+/// Handle graceful shutdown on SIGTERM/SIGINT.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    info!("Shutting down gracefully...");
 }
