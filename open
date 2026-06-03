@@ -2,7 +2,7 @@
 # DagLock Development Script - Open services
 # Usage: ./open
 
-set -e
+set -euo pipefail
 
 echo "=== Starting DagLock Development Environment ==="
 
@@ -21,7 +21,7 @@ if lsof -i :5173 -t > /dev/null 2>&1; then
     echo "✓ Web UI already running on port 5173"
 else
     echo "Starting web UI..."
-    cd web && npm run dev &
+    (cd web && npm run dev) &
     sleep 3
     echo "✓ Web UI started on http://localhost:5173"
 fi
@@ -31,4 +31,7 @@ echo "=== Services Running ==="
 echo "  Indexer API:  http://localhost:8443"
 echo "  Web UI:       http://localhost:5173"
 echo ""
-echo "Press Ctrl+C to stop all services"
+
+# Open the web UI in the default browser
+echo "Opening web UI in browser..."
+xdg-open http://localhost:5173 2>/dev/null || open http://localhost:5173 2>/dev/null || echo "  (open browser manually: http://localhost:5173)"

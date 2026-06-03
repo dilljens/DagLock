@@ -4,7 +4,6 @@
 //! escrow lifecycle events.
 
 use axum::extract::ws::{Message, WebSocket};
-use futures::{SinkExt, StreamExt};
 use serde_json::json;
 use sqlx::{Pool, Sqlite};
 use tokio::sync::broadcast;
@@ -17,6 +16,7 @@ pub struct WsEvent {
     pub data: serde_json::Value,
 }
 
+#[allow(dead_code)]
 impl WsEvent {
     pub fn escrow_created(escrow_id: &str) -> Self {
         Self {
@@ -60,7 +60,7 @@ pub async fn handle_socket(
         event: "connected".to_string(),
         data: json!({ "message": "Connected to DagLock real-time updates" }),
     };
-    if let Err(e) = socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await {
+    if let Err(e) = socket.send(Message::Text(serde_json::to_string(&msg).unwrap())).await {
         warn!("Failed to send connection message: {}", e);
         return;
     }
@@ -68,7 +68,7 @@ pub async fn handle_socket(
     // Forward broadcast events to WebSocket client
     while let Ok(event) = rx.recv().await {
         let json = serde_json::to_string(&event).unwrap();
-        if let Err(e) = socket.send(Message::Text(json.into())).await {
+        if let Err(e) = socket.send(Message::Text(json)).await {
             warn!("WebSocket send error: {}", e);
             break;
         }
@@ -78,12 +78,14 @@ pub async fn handle_socket(
 }
 
 /// Create a broadcast channel for WebSocket events.
+#[allow(dead_code)]
 pub fn create_event_channel() -> broadcast::Sender<WsEvent> {
     let (tx, _) = broadcast::channel(100);
     tx
 }
 
 /// Broadcast an event to all connected WebSocket clients.
+#[allow(dead_code)]
 pub fn broadcast_event(tx: &broadcast::Sender<WsEvent>, event: WsEvent) {
     // Ignore broadcast errors (no receivers is fine)
     let _ = tx.send(event);

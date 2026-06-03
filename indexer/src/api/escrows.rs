@@ -59,7 +59,7 @@ pub async fn list(
         offset,
     )
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -79,7 +79,7 @@ pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
+    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -197,7 +197,7 @@ pub async fn create(
 
     queries::insert_escrow(&state.db, &escrow)
         .await
-        .map_err(|e| {
+        .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -211,7 +211,7 @@ pub async fn create(
 pub async fn stats(State(state): State<AppState>) -> Json<Value> {
     match queries::get_stats(&state.db).await {
         Ok(s) => Json(json!(s)),
-        Err(e) => Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
+        Err(_e) => Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
     }
 }
 
@@ -226,7 +226,7 @@ pub async fn settle(
     Path(id): Path<String>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
+    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -280,7 +280,7 @@ pub async fn settle(
             // Atomic update: status + settled_at in one query, only if still active
             let settled = queries::settle_escrow_atomic(&state.db, &id)
                 .await
-                .map_err(|e| {
+                .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -320,7 +320,7 @@ pub async fn refund(
     Path(id): Path<String>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
+    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -374,7 +374,7 @@ pub async fn refund(
             // Atomic update: status + refunded_at in one query, only if still active
             let refunded = queries::refund_escrow_atomic(&state.db, &id)
                 .await
-                .map_err(|e| {
+                .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -409,7 +409,7 @@ pub async fn dispute(
     Path(id): Path<String>,
     Json(body): Json<DisputeRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
+    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -438,7 +438,7 @@ pub async fn dispute(
         Some(_) => {
             queries::mark_escrow_disputed(&state.db, &id, body.reason.as_str())
                 .await
-                .map_err(|e| {
+                .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -461,7 +461,7 @@ pub async fn cancel(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
+    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
@@ -489,7 +489,7 @@ pub async fn cancel(
         Some(_) => {
             queries::mark_escrow_cancelled(&state.db, &id)
                 .await
-                .map_err(|e| {
+                .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
