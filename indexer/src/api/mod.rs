@@ -46,26 +46,26 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/network", get(network::get))
         .route("/v1/fees/estimate", get(network::fees_estimate))
         .route("/v1/escrows", get(escrows::list).post(escrows::create))
-        .route("/v1/escrows/{id}", get(escrows::get_by_id))
-        .route("/v1/escrows/{id}/settle", post(escrows::settle))
-        .route("/v1/escrows/{id}/refund", post(escrows::refund))
-        .route("/v1/escrows/{id}/dispute", post(escrows::dispute))
-        .route("/v1/escrows/{id}/cancel", post(escrows::cancel))
+        .route("/v1/escrows/:id", get(escrows::get_by_id))
+        .route("/v1/escrows/:id/settle", post(escrows::settle))
+        .route("/v1/escrows/:id/refund", post(escrows::refund))
+        .route("/v1/escrows/:id/dispute", post(escrows::dispute))
+        .route("/v1/escrows/:id/cancel", post(escrows::cancel))
         .route(
-            "/v1/escrows/{id}/evidence",
+            "/v1/escrows/:id/evidence",
             post(evidence::submit_evidence).get(evidence::list_evidence),
         )
         .route(
-            "/v1/escrows/{id}/resolve-dispute",
+            "/v1/escrows/:id/resolve-dispute",
             post(evidence::resolve_dispute),
         )
         .route("/v1/stats", get(escrows::stats))
         .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))
-        .route("/v1/offers/{id}/accept", post(offers::accept))
-        .route("/v1/offers/{id}/cancel", post(offers::cancel))
-        .route("/v1/reputation/{address}", get(reputation::get))
-        .route("/v1/receipts/{id}", get(receipts::get))
+        .route("/v1/offers/:id/accept", post(offers::accept))
+        .route("/v1/offers/:id/cancel", post(offers::cancel))
+        .route("/v1/reputation/:address", get(reputation::get))
+        .route("/v1/receipts/:id", get(receipts::get))
         .route("/v1/ws", get(websocket_handler))
         .layer(cors)
         .with_state(state)
