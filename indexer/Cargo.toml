@@ -41,3 +41,5 @@ kaspa-notify = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51a
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 axum-test = "16"
+tokio-tungstenite = "0.21"
+futures-util = "0.3"

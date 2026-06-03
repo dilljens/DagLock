@@ -21,7 +21,7 @@ kaspa-rpc-core = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c5
 
 # Indexer deps
 tokio = { version = "1", features = ["full"] }
-axum = "0.7"
+axum = { version = "0.7", features = ["ws"] }
 sqlx = { version = "0.7", features = [
   "postgres",
   "runtime-tokio-native-tls",

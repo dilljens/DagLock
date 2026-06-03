@@ -7,6 +7,7 @@ pub mod receipts;
 pub mod reputation;
 
 use crate::verification::EscrowVerifier;
+use crate::websocket;
 use tower_http::cors::{CorsLayer, Any};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -26,6 +27,8 @@ pub struct AppState {
     /// On-chain verification service.
     /// Uses MockVerifier for now; replace with WrpcVerifier when wRPC is ready.
     pub verifier: Arc<dyn EscrowVerifier>,
+    /// WebSocket broadcast channel.
+    pub ws_tx: tokio::sync::broadcast::Sender<crate::websocket::WsEvent>,
 }
 
 /// Build the Axum router with all API routes.
@@ -52,12 +55,22 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/offers/{id}/cancel", post(offers::cancel))
         .route("/v1/reputation/{address}", get(reputation::get))
         .route("/v1/receipts/{id}", get(receipts::get))
+        .route("/v1/ws", get(websocket_handler))
         .layer(cors)
         .with_state(state)
 }
 
 /// Optional authentication middleware for read endpoints.
 /// If auth headers are present, validates them. If not, allows the request through.
+
+/// WebSocket upgrade handler.
+async fn websocket_handler(
+    ws: axum::extract::WebSocketUpgrade,
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> axum::response::Response {
+    let rx = state.ws_tx.subscribe();
+    ws.on_upgrade(move |socket| websocket::handle_socket(socket, state.db, rx))
+}
 
 async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> Json<Value> {
     let uptime = state.started_at.elapsed().as_secs();

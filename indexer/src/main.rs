@@ -10,8 +10,10 @@ mod db;
 mod listener;
 mod types;
 mod verification;
+mod websocket;
 
 use std::sync::Arc;
+use tokio::sync::broadcast;
 use std::time::Instant;
 
 use clap::Parser;
@@ -43,6 +45,9 @@ async fn main() {
     let verifier: Arc<dyn crate::verification::EscrowVerifier> =
         Arc::new(crate::verification::MockVerifier);
 
+    // Create WebSocket event channel
+    let (ws_tx, _) = broadcast::channel(100);
+
     let state = AppState {
         db: pool,
         started_at: Instant::now(),
@@ -51,6 +56,7 @@ async fn main() {
         daglock_kas_template: args.daglock_kas_template.clone(),
         daglock_krc20_template: args.daglock_krc20_template.clone(),
         verifier,
+        ws_tx,
     };
 
     if let Some(wrpc_url) = state.wrpc_url.clone() {

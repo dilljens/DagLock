@@ -10,3 +10,4 @@ pub mod db;
 pub mod listener;
 pub mod types;
 pub mod verification;
+pub mod websocket;
