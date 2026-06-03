@@ -7,9 +7,6 @@ use sqlx::{Pool, Row, Sqlite};
 
 use crate::types::*;
 
-/// Minimum trades before reputation is considered stable (Beta confidence ramp).
-const MIN_TRADES_FOR_FULL_REPUTATION: i64 = 5;
-
 /// Calculate reputation score using the Beta reputation system (Josang 2002).
 ///
 /// Core formula: (successes + 1) / (total + 2)  — Laplace-smoothed Beta expectation
@@ -29,44 +26,47 @@ pub fn calculate_reputation_score(
     trade_count: i64,
     total_volume_sompi: i64,
     age_days: i64,
-    disputed_count: i64,
     refunded_count: i64,
 ) -> f64 {
-    let total = trade_count.max(0) as f64;
-    let failures = (disputed_count.max(0) + refunded_count.max(0)) as f64;
-    let successes = (total - failures).max(0.0);
+    // Beta reputation (Josang 2002): (alpha + 1) / (alpha + beta + 2)
+    //
+    // alpha = successes = settled_count (trades that completed successfully)
+    // beta  = failures  = refunded_count (trades where this address was refunded)
+    // disputed_count is NOT used here to avoid double-counting with settled/refunded.
+    // A dispute that ends in settlement is a success; one that ends in refund is a failure.
+    // Dispute outcome info is available in the response for display but the terminal
+    // state (settled vs refunded) tells the real story for scoring.
+    //
+    // Laplace smoothing (+1/+2) prevents 0/0 and provides natural confidence intervals.
+    // More trades = tighter bounds = more confident score.
 
+    let total = trade_count.max(0) as f64;
     if total < 1.0 {
-        return 1.0; // No activity = neutral baseline
+        return 1.0;
     }
 
-    // Beta core: (successes + 1) / (total + 2) = (α+1)/(α+β+2)
-    // Laplace smoothing gives proper confidence intervals.
-    // Range: [0.5, ~1.0) — 0.5 when all trades failed, ~1.0 when all succeed
-    let beta_raw = (successes + 1.0) / (total + 2.0);
+    let successes = trade_count.max(0).saturating_sub(refunded_count.max(0)).max(0) as f64;
 
-    // Scale beta [0.5, 1.0) -> [0.0, 1.0) centered for multiplication
+    // Beta core: (alpha + 1) / (alpha + beta + 2)
+    // Range: [0.5, ~1.0) — 0.5 when all trades failed, ~1.0 when all succeed
+    let alpha = successes;
+    let beta = refunded_count.max(0) as f64;
+    let beta_raw = (alpha + 1.0) / (alpha + beta + 2.0);
+
+    // Center: [0.5, 1.0) -> [0.0, 1.0)
     let centered = (beta_raw - 0.5) * 2.0;
 
-    // Minimum trade threshold: confidence ramp over first MIN_TRADES trades
-    // Prevents a single small trade from giving high reputation
-    let confidence = if total < MIN_TRADES_FOR_FULL_REPUTATION as f64 {
-        total / MIN_TRADES_FOR_FULL_REPUTATION as f64
-    } else {
-        1.0
-    };
-
     // Volume bonus: ln(volume_kas / 1000 + 1) * 0.12
-    // Gives approx 0.07 bonus for 10K KAS, 0.23 for 1M KAS, 0.46 for 100M KAS
+    // Gives ~0.07 for 10K KAS, ~0.23 for 1M KAS, ~0.46 for 100M KAS
     let volume_kas = (total_volume_sompi.max(0) as f64) / 100_000_000.0;
     let volume_bonus = (volume_kas / 1000.0 + 1.0).ln() * 0.12;
 
-    // Age bonus: capped gentle slope, max +0.1 after 2 years
+    // Age bonus: gentle, max +0.1 after 2 years
     let age_days = age_days.max(0) as f64;
     let age_bonus = (age_days / 365.0).min(2.0) * 0.05;
 
-    // Combine: beta * confidence ramp + bonuses, map [0, ~1.0] -> [1.0, 5.0]
-    let raw_score = 1.0 + (centered * confidence * 3.5) + volume_bonus + age_bonus;
+    // Map [0.0, 1.0] -> [1.0, 5.0]: 1.0 + centered * 4.0 + bonuses
+    let raw_score = 1.0 + (centered * 4.0) + volume_bonus + age_bonus;
     raw_score.clamp(1.0, 5.0)
 }
 
@@ -322,24 +322,22 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded'"
     ).bind(address).fetch_one(pool).await?;
 
-    // Count upheld disputes where this address was the defendant (the one found at fault)
-    // An upheld dispute means the dispute was valid — the defendant harmed the other party.
-    // We count escrows where the outcome is 'upheld' and this address is one of the parties.
-    let (upheld_against,): (i64,) = sqlx::query_as(
+    // Dispute info for display purposes (does not affect Beta score calculation).
+    // The terminal state (settled vs refunded) determines success/failure; dispute
+    // flags can double-count with terminal states.
+    let (disputed_count_raw,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND disputed_at IS NOT NULL"
+    ).bind(address).fetch_one(pool).await?;
+
+    // Count upheld disputes (dispute was valid, this address was the at-fault party).
+    // Uses dispute_outcome='uphold' which means the dispute filer was correct.
+    let (_upheld_count,): (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1)
-         AND dispute_outcome = 'expunge'",
+         AND dispute_outcome = 'uphold'",
     )
     .bind(address)
     .fetch_one(pool)
     .await?;
-
-    // Count expunged disputes (false disputes) where this address filed
-    // An expunged dispute means the filer was wrong — they get a penalty.
-    // We approximate by counting disputes with outcome='uphold' where this
-    // address was any party (they were the wronged party, beneficiary).
-    let (disputed_count_raw,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND disputed_at IS NOT NULL"
-    ).bind(address).fetch_one(pool).await?;
 
     let (volume,): (Option<i64>,) = sqlx::query_as(
         "SELECT SUM(amount_sompi) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'"
@@ -357,16 +355,15 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         .unwrap_or(0);
     let total_volume = volume.unwrap_or(0);
 
-    // Adjust dispute count: upheld-against (expunged) disputes are subtracted from
-    // the raw count because they were false disputes filed against this address.
-    let effective_disputed_count = (disputed_count_raw - upheld_against).max(0);
+    // Scoring uses refunded_count as Beta failures (mutually exclusive with settled).
+    // Dispute rates are informational only — the terminal state tells the real story.
     let refund_rate = if trade_count > 0 {
         refunded_count as f64 / trade_count as f64
     } else {
         0.0
     };
     let dispute_rate = if trade_count > 0 {
-        effective_disputed_count as f64 / trade_count as f64
+        disputed_count_raw as f64 / trade_count as f64
     } else {
         0.0
     };
@@ -374,7 +371,6 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         trade_count,
         total_volume,
         age_days,
-        effective_disputed_count,
         refunded_count,
     );
 
@@ -389,7 +385,7 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         total_volume_sompi: total_volume,
         settled_count,
         refunded_count,
-        disputed_count: effective_disputed_count,
+        disputed_count: disputed_count_raw,
         first_trade_at,
         age_days,
         dispute_rate,
@@ -866,15 +862,15 @@ mod tests {
 
     #[test]
     fn reputation_score_rises_with_trade_history() {
-        let low = calculate_reputation_score(1, 50_000_000, 1, 0, 0);
-        let high = calculate_reputation_score(10, 10_000_000_000, 180, 0, 0);
+        let low = calculate_reputation_score(1, 50_000_000, 1, 0);
+        let high = calculate_reputation_score(10, 10_000_000_000, 180, 0);
         assert!(high > low);
     }
 
     #[test]
     fn reputation_score_falls_with_disputes() {
-        let clean = calculate_reputation_score(10, 10_000_000_000, 180, 0, 0);
-        let disputed = calculate_reputation_score(10, 10_000_000_000, 180, 3, 2);
+        let clean = calculate_reputation_score(10, 10_000_000_000, 180, 0);
+        let disputed = calculate_reputation_score(10, 10_000_000_000, 180, 2);
         assert!(disputed < clean);
     }
 
