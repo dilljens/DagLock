@@ -10,6 +10,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
+use kaspa_addresses::Address;
 use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
 use crate::db::queries;
 use crate::types::*;
@@ -221,7 +222,8 @@ pub async fn settle(
                 )
             })?;
 
-            queries::update_escrow_status(&state.db, &id, EscrowStatus::Settled)
+            // Atomic update: status + settled_at in one query, only if still active
+            let settled = queries::settle_escrow_atomic(&state.db, &id)
                 .await
                 .map_err(|e| {
                     (
@@ -229,17 +231,17 @@ pub async fn settle(
                         Json(json!(ApiError::new("internal_error", e.to_string()))),
                     )
                 })?;
-            sqlx::query("UPDATE escrows SET settled_at = ?1, refunded_at = NULL WHERE id = ?2")
-                .bind(chrono::Utc::now().timestamp())
-                .bind(&id)
-                .execute(&state.db)
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
-                    )
-                })?;
+            
+            if !settled {
+                return Err((
+                    StatusCode::CONFLICT,
+                    Json(json!(ApiError::new(
+                        "escrow_already_finalized",
+                        "Escrow was already settled or is no longer active"
+                    ))),
+                ));
+            }
+            
             Ok(Json(json!({ "status": "settled", "escrow_id": id })))
         }
         None => Err((
@@ -314,7 +316,8 @@ pub async fn refund(
                 )
             })?;
 
-            queries::update_escrow_status(&state.db, &id, EscrowStatus::Refunded)
+            // Atomic update: status + refunded_at in one query, only if still active
+            let refunded = queries::refund_escrow_atomic(&state.db, &id)
                 .await
                 .map_err(|e| {
                     (
@@ -322,17 +325,17 @@ pub async fn refund(
                         Json(json!(ApiError::new("internal_error", e.to_string()))),
                     )
                 })?;
-            sqlx::query("UPDATE escrows SET refunded_at = ?1, settled_at = NULL WHERE id = ?2")
-                .bind(chrono::Utc::now().timestamp())
-                .bind(&id)
-                .execute(&state.db)
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
-                    )
-                })?;
+            
+            if !refunded {
+                return Err((
+                    StatusCode::CONFLICT,
+                    Json(json!(ApiError::new(
+                        "escrow_already_finalized",
+                        "Escrow was already refunded or is no longer active"
+                    ))),
+                ));
+            }
+            
             Ok(Json(json!({ "status": "refunded", "escrow_id": id })))
         }
         None => Err((

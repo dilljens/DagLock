@@ -116,6 +116,36 @@ pub async fn update_escrow_status(
     Ok(())
 }
 
+/// Atomically settle an escrow: update status + settled_at in one query.
+/// Returns true if the update succeeded (escrow was in active state).
+pub async fn settle_escrow_atomic(pool: &Pool<Sqlite>, id: &str) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE escrows 
+         SET status = 'settled', settled_at = ?1, refunded_at = NULL 
+         WHERE id = ?2 AND status = 'active'"
+    )
+    .bind(chrono::Utc::now().timestamp())
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Atomically refund an escrow: update status + refunded_at in one query.
+/// Returns true if the update succeeded (escrow was in active state).
+pub async fn refund_escrow_atomic(pool: &Pool<Sqlite>, id: &str) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE escrows 
+         SET status = 'refunded', refunded_at = ?1, settled_at = NULL 
+         WHERE id = ?2 AND status = 'active'"
+    )
+    .bind(chrono::Utc::now().timestamp())
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn mark_escrow_disputed(
     pool: &Pool<Sqlite>,
     id: &str,
@@ -613,7 +643,7 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
         id,
         lock_tx_id,
         lock_tx_output_index: lock_tx_output_index as u32,
-        status: EscrowStatus::from_str(&status_str).unwrap_or(EscrowStatus::PendingConfirmation),
+        status: EscrowStatus::parse_status(&status_str).unwrap_or(EscrowStatus::PendingConfirmation),
         asset_type,
         buyer_address,
         seller_address,

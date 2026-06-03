@@ -45,7 +45,7 @@ impl EscrowStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_status(s: &str) -> Option<Self> {
         match s {
             "pending_confirmation" => Some(Self::PendingConfirmation),
             "active" => Some(Self::Active),
@@ -86,7 +86,7 @@ impl OfferStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_status(s: &str) -> Option<Self> {
         match s {
             "proposed" => Some(Self::Proposed),
             "accepted" => Some(Self::Accepted),

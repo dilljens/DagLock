@@ -7,6 +7,7 @@ pub mod receipts;
 pub mod reputation;
 
 use crate::verification::EscrowVerifier;
+use tower_http::cors::{CorsLayer, Any};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
@@ -29,6 +30,12 @@ pub struct AppState {
 
 /// Build the Axum router with all API routes.
 pub fn build_router(state: AppState) -> Router {
+    // Configure CORS for browser access
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     Router::new()
         .route("/v1/health", get(health))
         .route("/v1/network", get(network::get))
@@ -45,6 +52,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/offers/{id}/cancel", post(offers::cancel))
         .route("/v1/reputation/{address}", get(reputation::get))
         .route("/v1/receipts/{id}", get(receipts::get))
+        .layer(cors)
         .with_state(state)
 }
 
