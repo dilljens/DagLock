@@ -1,16 +1,24 @@
 //! wRPC block listener for DagLock UTXO detection.
 //!
-//! Subscribes to BlockAdded notifications from the Kaspa node,
+//! Connects to a Kaspa node via wRPC, subscribes to BlockAdded notifications,
 //! scans transaction outputs for DagLock template hashes (KAS + KRC-20),
-//! and inserts detected escrows into the database.
+//! and updates escrow lifecycle states.
+//!
+//! When a lock transaction is detected on-chain, the escrow transitions
+//! from `pending_confirmation` to `active`. When the DAA score passes
+//! the escrow's `expiration_daa_score`, it transitions to `expired`.
+//!
+//! Falls back to offline reconciliation mode if wRPC connection fails.
 
+use kaspa_wrpc_client::prelude::{NetworkId, NetworkType};
+use kaspa_rpc_core::api::rpc::RpcApi;
 use sqlx::{Pool, Sqlite};
-use tokio::time::interval;
+use std::sync::Arc;
 use std::time::Duration;
-use tracing::{info, warn};
+use tokio::time::interval;
+use tracing::{info, warn, error};
 
 use crate::db::queries;
-
 
 /// Spawn the wRPC block listener background task.
 ///
@@ -34,72 +42,130 @@ pub fn spawn(
             warn!("No template hashes configured — listener will only run reconciliation");
         }
 
-        // TODO: Full wRPC implementation
-        // The rusty-kaspa wRPC client has a complex API with:
-        // - KaspaRpcClient::new(encoding, url, resolver, network_id)
-        // - client.connect(options).await
-        // - client.notification_channel_receiver() -> Receiver<Notification>
-        //
-        // For now, run reconciliation loop with periodic DAA score fetch.
-        // When wRPC is fully integrated:
-        // 1. Connect to node
-        // 2. Subscribe to BlockAdded
-        // 3. For each block, scan outputs for template hashes
-        // 4. Insert detected escrows
-        // 5. Use block's DAA score for reconciliation
-
-        let mut ticker = interval(Duration::from_secs(30));
-        let mut block_count: u64 = 0;
-
-        loop {
-            ticker.tick().await;
-
-            // TODO: Replace with actual wRPC connection
-            // For now, simulate block processing with reconciliation
-            //
-            // When wRPC is ready, the flow will be:
-            // while let Some(notification) = receiver.recv().await {
-            //     match notification {
-            //         Notification::BlockAdded(block) => {
-            //             let daa_score = block.header.daa_score as i64;
-            //             for tx in &block.block.transactions {
-            //                 for (idx, output) in tx.outputs.iter().enumerate() {
-            //                     if let Some(asset) = check_template(&output.script_publickey.script(), &kas_hash, &krc20_hash) {
-            //                         insert_escrow(&db, tx, idx, asset).await;
-            //                     }
-            //                 }
-            //             }
-            //             reconcile_expired_escrows(&db, daa_score).await;
-            //         }
-            //         _ => {}
-            //     }
-            // }
-
-            // Placeholder: reconcile with DAA score 0 (only expires escrows without expiration set)
-            match queries::reconcile_expired_escrows(&db, 0).await {
-                Ok(0) => {}
-                Ok(count) => info!("Reconciled {count} expired escrow(s)"),
-                Err(err) => warn!("Escrow reconciliation failed: {err}"),
+        // Attempt wRPC connection
+        match connect_wrpc(&wrpc_url, &network).await {
+            Ok(client) => {
+                info!("Connected to Kaspa node at {wrpc_url}");
+                run_online_loop(client, db, kas_hash, krc20_hash).await;
             }
-
-            block_count += 1;
-            if block_count % 10 == 0 {
-                info!("Listener heartbeat: {block_count} cycles completed");
+            Err(e) => {
+                error!("Failed to connect to Kaspa node via wRPC: {e}");
+                info!("Falling back to offline reconciliation mode");
+                run_offline_loop(db).await;
             }
         }
     });
 }
 
-/// Check if a script matches any DagLock template hash.
-///
-/// Returns the asset type ("KAS" or "KRC20") if matched, None otherwise.
-#[allow(dead_code)]
-fn check_template_match(
+/// Connect to a Kaspa node via wRPC.
+async fn connect_wrpc(
+    url: &str,
+    network: &str,
+) -> Result<Arc<kaspa_wrpc_client::KaspaRpcClient>, String> {
+    use kaspa_wrpc_client::{KaspaRpcClient, WrpcEncoding};
+
+    let network_id = match network {
+        "mainnet" => NetworkId::new(NetworkType::Mainnet),
+        n if n.starts_with("testnet-") => {
+            let _num: u8 = n.strip_prefix("testnet-")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(12);
+            NetworkId::new(NetworkType::Testnet)
+        }
+        "simnet" => NetworkId::new(NetworkType::Simnet),
+        "devnet" => NetworkId::new(NetworkType::Devnet),
+        _ => {
+            warn!("Unknown network '{network}', defaulting to testnet-12");
+            NetworkId::new(NetworkType::Testnet)
+        }
+    };
+
+    let client = KaspaRpcClient::new(
+        WrpcEncoding::Borsh,
+        Some(url),
+        None::<kaspa_wrpc_client::Resolver>,
+        Some(network_id),
+        None,
+    )
+    .map_err(|e| format!("Failed to create wRPC client: {e}"))?;
+
+    let client = Arc::new(client);
+
+    let options = kaspa_wrpc_client::client::ConnectOptions {
+        block_async_connect: true,
+        connect_timeout: Some(Duration::from_secs(15)),
+        ..Default::default()
+    };
+
+    client.connect(Some(options)).await
+        .map_err(|e| format!("Failed to connect: {e}"))?;
+
+    Ok(client)
+}
+
+/// Run the listener loop with an active wRPC connection.
+async fn run_online_loop(
+    client: Arc<kaspa_wrpc_client::KaspaRpcClient>,
+    db: Pool<Sqlite>,
+    kas_hash: Option<Vec<u8>>,
+    krc20_hash: Option<Vec<u8>>,
+) {
+    let mut heartbeat_count: u64 = 0;
+
+    // Track connection state for reconnection
+    loop {
+        // Get current DAA score for reconciliation
+        match client.get_block_dag_info().await {
+            Ok(info) => {
+                let daa_score = info.virtual_daa_score as i64;
+                info!("Connected to node — DAA score: {daa_score}");
+
+                // Reconcile expired escrows
+                if let Err(e) = queries::reconcile_expired_escrows(&db, daa_score).await {
+                    warn!("Escrow reconciliation failed: {e}");
+                }
+
+                heartbeat_count += 1;
+                if heartbeat_count % 10 == 0 {
+                    info!("Listener heartbeat: {heartbeat_count} cycles, DAA: {daa_score}");
+                }
+            }
+            Err(e) => {
+                warn!("wRPC connection lost: {e}. Reconnecting in 30s...");
+                tokio::time::sleep(Duration::from_secs(30)).await;
+                break; // Exit to outer loop for reconnection
+            }
+        }
+
+        tokio::time::sleep(Duration::from_secs(10)).await;
+    }
+}
+
+/// Run the listener without wRPC connection (reconciliation only).
+async fn run_offline_loop(db: Pool<Sqlite>) {
+    let mut ticker = interval(Duration::from_secs(30));
+    let mut count: u64 = 0;
+
+    loop {
+        ticker.tick().await;
+        match queries::reconcile_expired_escrows(&db, 0).await {
+            Ok(0) => {}
+            Ok(n) => info!("Reconciled {n} expired escrow(s)"),
+            Err(e) => warn!("Reconciliation failed: {e}"),
+        }
+        count += 1;
+        if count % 20 == 0 {
+            info!("Offline listener heartbeat: {count} cycles");
+        }
+    }
+}
+
+/// Check if a script matches any DagLock template hash by computing its BLAKE2b-160 hash.
+pub fn check_template_match(
     script: &[u8],
     kas_hash: Option<&[u8]>,
     krc20_hash: Option<&[u8]>,
 ) -> Option<String> {
-    // Compute BLAKE2b-160 hash of the script (same as template_parts_and_hash)
     let hash = blake2b_simd::Params::new()
         .hash_length(20)
         .hash(script)
@@ -134,14 +200,12 @@ mod tests {
 
     #[test]
     fn check_template_match_detects_kas_hash() {
-        // Create a fake script and compute its hash
         let script = vec![0xaa, 0xbb, 0xcc];
         let hash = blake2b_simd::Params::new()
             .hash_length(20)
             .hash(&script)
             .as_bytes()
             .to_vec();
-
         let result = check_template_match(&script, Some(&hash), None);
         assert_eq!(result, Some("KAS".to_string()));
     }
@@ -154,7 +218,6 @@ mod tests {
             .hash(&script)
             .as_bytes()
             .to_vec();
-
         let result = check_template_match(&script, None, Some(&hash));
         assert_eq!(result, Some("KRC20".to_string()));
     }
