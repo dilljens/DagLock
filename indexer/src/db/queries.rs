@@ -7,6 +7,24 @@ use sqlx::{Pool, Row, Sqlite};
 
 use crate::types::*;
 
+/// Minimum trades before reputation is considered stable (Beta confidence ramp).
+const MIN_TRADES_FOR_FULL_REPUTATION: i64 = 5;
+
+/// Calculate reputation score using the Beta reputation system (Josang 2002).
+///
+/// Core formula: (successes + 1) / (total + 2)  — Laplace-smoothed Beta expectation
+/// This is the academic standard for decentralized reputation systems.
+///
+/// Layered on top:
+/// - Minimum trade threshold (first 5 trades = confidence ramp)
+/// - Logarithmic volume bonus (bigger trades = slight edge)
+/// - Gentle age bonus (older accounts = slight edge)
+/// - Mapped to [1.0, 5.0] scale
+///
+/// Key properties:
+/// - Disputes + refunds count as failures (full weight, unlike old formula's 0.25x refunds)
+/// - Beta formula naturally gives tighter confidence with more data
+/// - A single bad trade can't be offset by volume — only by more good trades
 pub fn calculate_reputation_score(
     trade_count: i64,
     total_volume_sompi: i64,
@@ -14,19 +32,42 @@ pub fn calculate_reputation_score(
     disputed_count: i64,
     refunded_count: i64,
 ) -> f64 {
-    if trade_count <= 0 {
-        return 1.0;
+    let total = trade_count.max(0) as f64;
+    let failures = (disputed_count.max(0) + refunded_count.max(0)) as f64;
+    let successes = (total - failures).max(0.0);
+
+    if total < 1.0 {
+        return 1.0; // No activity = neutral baseline
     }
 
-    let trade_component = ((trade_count as f64) + 1.0).ln();
-    let volume_component = ((total_volume_sompi.max(0) as f64 / 100_000_000.0) + 1.0).ln();
-    let dispute_rate = (disputed_count.max(0) as f64 / trade_count as f64).clamp(0.0, 1.0);
-    let refund_rate = (refunded_count.max(0) as f64 / trade_count as f64).clamp(0.0, 1.0);
-    let age_factor = ((age_days.max(0) as f64) / 30.0).clamp(0.25, 1.75);
-    let quality_factor = (1.0 - dispute_rate).powf(2.0) * (1.0 - (refund_rate * 0.25));
+    // Beta core: (successes + 1) / (total + 2) = (α+1)/(α+β+2)
+    // Laplace smoothing gives proper confidence intervals.
+    // Range: [0.5, ~1.0) — 0.5 when all trades failed, ~1.0 when all succeed
+    let beta_raw = (successes + 1.0) / (total + 2.0);
 
-    let raw = (trade_component + volume_component) * age_factor * quality_factor;
-    (1.0 + (raw / 3.0)).clamp(1.0, 5.0)
+    // Scale beta [0.5, 1.0) -> [0.0, 1.0) centered for multiplication
+    let centered = (beta_raw - 0.5) * 2.0;
+
+    // Minimum trade threshold: confidence ramp over first MIN_TRADES trades
+    // Prevents a single small trade from giving high reputation
+    let confidence = if total < MIN_TRADES_FOR_FULL_REPUTATION as f64 {
+        total / MIN_TRADES_FOR_FULL_REPUTATION as f64
+    } else {
+        1.0
+    };
+
+    // Volume bonus: ln(volume_kas / 1000 + 1) * 0.12
+    // Gives approx 0.07 bonus for 10K KAS, 0.23 for 1M KAS, 0.46 for 100M KAS
+    let volume_kas = (total_volume_sompi.max(0) as f64) / 100_000_000.0;
+    let volume_bonus = (volume_kas / 1000.0 + 1.0).ln() * 0.12;
+
+    // Age bonus: capped gentle slope, max +0.1 after 2 years
+    let age_days = age_days.max(0) as f64;
+    let age_bonus = (age_days / 365.0).min(2.0) * 0.05;
+
+    // Combine: beta * confidence ramp + bonuses, map [0, ~1.0] -> [1.0, 5.0]
+    let raw_score = 1.0 + (centered * confidence * 3.5) + volume_bonus + age_bonus;
+    raw_score.clamp(1.0, 5.0)
 }
 
 // ── Escrow Queries

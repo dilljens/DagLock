@@ -33,17 +33,23 @@ def random_id(): return str(uuid.uuid4()).split("-")[0]
 def sompi(kas): return int(kas * 100_000_000)
 
 # ── Reputation formula (mirrors calculate_reputation_score in queries.rs) ──
+# Beta reputation system (Josang 2002): (successes + 1) / (total + 2)
+MIN_TRADES = 5
+
 def expected_score(trades, volume_sompi, age_days, disputes, refunds):
-    if trades <= 0:
+    total = max(trades, 0)
+    if total < 1:
         return 1.0
-    trade_c = math.log(trades + 1)
-    volume_c = math.log(max(volume_sompi, 0) / 100_000_000.0 + 1.0)
-    dispute_rate = max(0, disputes) / trades
-    refund_rate = max(0, refunds) / trades
-    age_factor = min(max(age_days / 30.0, 0.25), 1.75)
-    quality = (1.0 - dispute_rate) ** 2.0 * (1.0 - refund_rate * 0.25)
-    raw = (trade_c + volume_c) * age_factor * quality
-    return min(max(1.0 + raw / 3.0, 1.0), 5.0)
+    failures = max(disputes, 0) + max(refunds, 0)
+    successes = max(total - failures, 0)
+    beta_raw = (successes + 1.0) / (total + 2.0)
+    centered = (beta_raw - 0.5) * 2.0
+    confidence = total / MIN_TRADES if total < MIN_TRADES else 1.0
+    volume_kas = max(volume_sompi, 0) / 100_000_000.0
+    volume_bonus = math.log(volume_kas / 1000.0 + 1.0) * 0.12
+    age_bonus = min(age_days / 365.0, 2.0) * 0.05
+    raw = 1.0 + (centered * confidence * 3.5) + volume_bonus + age_bonus
+    return min(max(raw, 1.0), 5.0)
 
 
 class API:
