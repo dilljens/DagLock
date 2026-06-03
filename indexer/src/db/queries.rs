@@ -401,6 +401,9 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
 
     // Fetch vouch stats
     let vouches_received = count_vouches_for_subject(pool, address).await.unwrap_or(0);
+
+    // Fetch mediator stats
+    let mediator_stats = get_mediator_stats(pool, address).await.unwrap_or(None);
     let vouches_given = count_vouches_by_voucher(pool, address).await.unwrap_or(0);
     let vouch_score = calculate_vouch_score(pool, address).await.unwrap_or(None);
 
@@ -421,6 +424,7 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         vouches_received,
         vouches_given,
         vouch_score,
+        mediator_stats,
     })
 }
 
@@ -529,7 +533,6 @@ pub async fn get_identity_handle(
         .next())
 }
 
-
 // ── Vouch Queries
 
 pub async fn insert_vouch(pool: &Pool<Sqlite>, vouch: &Vouch) -> Result<(), sqlx::Error> {
@@ -548,15 +551,23 @@ pub async fn insert_vouch(pool: &Pool<Sqlite>, vouch: &Vouch) -> Result<(), sqlx
     Ok(())
 }
 
-pub async fn delete_vouch(pool: &Pool<Sqlite>, id: &str, voucher: &str) -> Result<bool, sqlx::Error> {
+pub async fn delete_vouch(
+    pool: &Pool<Sqlite>,
+    id: &str,
+    voucher: &str,
+) -> Result<bool, sqlx::Error> {
     let result = sqlx::query("DELETE FROM vouches WHERE id = ?1 AND voucher_address = ?2")
         .bind(id)
         .bind(voucher)
-        .execute(pool).await?;
+        .execute(pool)
+        .await?;
     Ok(result.rows_affected() > 0)
 }
 
-pub async fn list_vouches_for_subject(pool: &Pool<Sqlite>, subject: &str) -> Result<Vec<Vouch>, sqlx::Error> {
+pub async fn list_vouches_for_subject(
+    pool: &Pool<Sqlite>,
+    subject: &str,
+) -> Result<Vec<Vouch>, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let rows = sqlx::query(
         "SELECT * FROM vouches WHERE subject_address = ?1 AND expires_at > ?2 ORDER BY created_at DESC"
@@ -567,7 +578,10 @@ pub async fn list_vouches_for_subject(pool: &Pool<Sqlite>, subject: &str) -> Res
     Ok(rows.into_iter().map(row_to_vouch).collect())
 }
 
-pub async fn list_vouches_by_voucher(pool: &Pool<Sqlite>, voucher: &str) -> Result<Vec<Vouch>, sqlx::Error> {
+pub async fn list_vouches_by_voucher(
+    pool: &Pool<Sqlite>,
+    voucher: &str,
+) -> Result<Vec<Vouch>, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let rows = sqlx::query(
         "SELECT * FROM vouches WHERE voucher_address = ?1 AND expires_at > ?2 ORDER BY created_at DESC"
@@ -578,38 +592,50 @@ pub async fn list_vouches_by_voucher(pool: &Pool<Sqlite>, voucher: &str) -> Resu
     Ok(rows.into_iter().map(row_to_vouch).collect())
 }
 
-pub async fn count_vouches_for_subject(pool: &Pool<Sqlite>, subject: &str) -> Result<i64, sqlx::Error> {
+pub async fn count_vouches_for_subject(
+    pool: &Pool<Sqlite>,
+    subject: &str,
+) -> Result<i64, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM vouches WHERE subject_address = ?1 AND expires_at > ?2"
+        "SELECT COUNT(*) FROM vouches WHERE subject_address = ?1 AND expires_at > ?2",
     )
     .bind(subject)
     .bind(now)
-    .fetch_one(pool).await?;
+    .fetch_one(pool)
+    .await?;
     Ok(count)
 }
 
-pub async fn count_vouches_by_voucher(pool: &Pool<Sqlite>, voucher: &str) -> Result<i64, sqlx::Error> {
+pub async fn count_vouches_by_voucher(
+    pool: &Pool<Sqlite>,
+    voucher: &str,
+) -> Result<i64, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM vouches WHERE voucher_address = ?1 AND expires_at > ?2"
+        "SELECT COUNT(*) FROM vouches WHERE voucher_address = ?1 AND expires_at > ?2",
     )
     .bind(voucher)
     .bind(now)
-    .fetch_one(pool).await?;
+    .fetch_one(pool)
+    .await?;
     Ok(count)
 }
 
 /// Calculate weighted vouch score: weighted average of voucher reputations.
 /// Vouchers with higher own reputation contribute more weight.
-pub async fn calculate_vouch_score(pool: &Pool<Sqlite>, subject: &str) -> Result<Option<f64>, sqlx::Error> {
+pub async fn calculate_vouch_score(
+    pool: &Pool<Sqlite>,
+    subject: &str,
+) -> Result<Option<f64>, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let rows = sqlx::query_as::<_, (String,)>(
-        "SELECT voucher_address FROM vouches WHERE subject_address = ?1 AND expires_at > ?2"
+        "SELECT voucher_address FROM vouches WHERE subject_address = ?1 AND expires_at > ?2",
     )
     .bind(subject)
     .bind(now)
-    .fetch_all(pool).await?;
+    .fetch_all(pool)
+    .await?;
 
     if rows.is_empty() {
         return Ok(None);
@@ -628,8 +654,12 @@ pub async fn calculate_vouch_score(pool: &Pool<Sqlite>, subject: &str) -> Result
     for (voucher_addr,) in &rows {
         // Direct trade stats for this voucher (no vouch recursion)
         let (trade_c,): (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1"
-        ).bind(voucher_addr).fetch_one(pool).await.unwrap_or((0,));
+            "SELECT COUNT(*) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1",
+        )
+        .bind(voucher_addr)
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
         let (refund_c,): (i64,) = sqlx::query_as(
             "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded'"
         ).bind(voucher_addr).fetch_one(pool).await.unwrap_or((0,));
@@ -637,10 +667,16 @@ pub async fn calculate_vouch_score(pool: &Pool<Sqlite>, subject: &str) -> Result
             "SELECT SUM(amount_sompi) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'"
         ).bind(voucher_addr).fetch_one(pool).await.unwrap_or((None,));
         let (first,): (Option<i64>,) = sqlx::query_as(
-            "SELECT MIN(created_at) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1"
-        ).bind(voucher_addr).fetch_one(pool).await.unwrap_or((None,));
+            "SELECT MIN(created_at) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1",
+        )
+        .bind(voucher_addr)
+        .fetch_one(pool)
+        .await
+        .unwrap_or((None,));
 
-        let age_days = first.map(|ts| ((chrono::Utc::now().timestamp() - ts).max(0) / 86_400).max(0)).unwrap_or(0);
+        let age_days = first
+            .map(|ts| ((chrono::Utc::now().timestamp() - ts).max(0) / 86_400).max(0))
+            .unwrap_or(0);
         let volume = vol.unwrap_or(0);
 
         // Quick score (no recency — small approximation for vouch weighting)
@@ -684,6 +720,321 @@ fn row_to_vouch(row: sqlx::sqlite::SqliteRow) -> Vouch {
     }
 }
 
+
+
+// ── Jury Queries
+
+pub async fn register_juror(pool: &Pool<Sqlite>, address: &str) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    sqlx::query(
+        "INSERT OR REPLACE INTO juror_registrations (address, registered_at, total_cases_assigned, total_cases_voted, reliability_score)
+         VALUES (?1, ?2, 0, 0, 1.0)"
+    )
+    .bind(address)
+    .bind(now)
+    .execute(pool).await?;
+    Ok(())
+}
+
+pub async fn unregister_juror(pool: &Pool<Sqlite>, address: &str) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("DELETE FROM juror_registrations WHERE address = ?1")
+        .bind(address)
+        .execute(pool).await?;
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn get_juror(pool: &Pool<Sqlite>, address: &str) -> Result<Option<JurorRegistration>, sqlx::Error> {
+    let rows = sqlx::query("SELECT * FROM juror_registrations WHERE address = ?1")
+        .bind(address)
+        .fetch_all(pool).await?;
+    Ok(rows.into_iter().map(|row| JurorRegistration {
+        address: row.try_get("address").unwrap_or_default(),
+        registered_at: row.try_get("registered_at").unwrap_or(0),
+        total_cases_assigned: row.try_get("total_cases_assigned").unwrap_or(0),
+        total_cases_voted: row.try_get("total_cases_voted").unwrap_or(0),
+        reliability_score: row.try_get("reliability_score").unwrap_or(1.0),
+    }).next())
+}
+
+pub async fn list_eligible_jurors(pool: &Pool<Sqlite>, min_score: f64) -> Result<Vec<JurorRegistration>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT * FROM juror_registrations WHERE reliability_score >= ?1 ORDER BY reliability_score DESC"
+    )
+    .bind((min_score * 100.0) as i64) // store as integer in SQLite
+    .fetch_all(pool).await?;
+    // Actually reliability_score is REAL, not stored as int
+    Ok(rows.into_iter().map(|row| JurorRegistration {
+        address: row.try_get("address").unwrap_or_default(),
+        registered_at: row.try_get("registered_at").unwrap_or(0),
+        total_cases_assigned: row.try_get("total_cases_assigned").unwrap_or(0),
+        total_cases_voted: row.try_get("total_cases_voted").unwrap_or(0),
+        reliability_score: row.try_get("reliability_score").unwrap_or(1.0),
+    }).collect())
+}
+
+pub async fn list_eligible_jurors_simple(pool: &Pool<Sqlite>) -> Result<Vec<JurorRegistration>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT * FROM juror_registrations ORDER BY reliability_score DESC"
+    )
+    .fetch_all(pool).await?;
+    Ok(rows.into_iter().map(|row| JurorRegistration {
+        address: row.try_get("address").unwrap_or_default(),
+        registered_at: row.try_get("registered_at").unwrap_or(0),
+        total_cases_assigned: row.try_get("total_cases_assigned").unwrap_or(0),
+        total_cases_voted: row.try_get("total_cases_voted").unwrap_or(0),
+        reliability_score: row.try_get("reliability_score").unwrap_or(1.0),
+    }).collect())
+}
+
+pub async fn create_jury_case(
+    pool: &Pool<Sqlite>,
+    escrow_id: &str,
+    juror_count: i64,
+    threshold: i64,
+    juror_addresses: &[String],
+) -> Result<String, sqlx::Error> {
+    use uuid::Uuid;
+    let case_id = format!("jr_{}", Uuid::new_v4().to_string().split('-').next().unwrap());
+    let now = chrono::Utc::now().timestamp();
+
+    // Insert case
+    sqlx::query(
+        "INSERT INTO jury_cases (id, escrow_id, status, juror_count, threshold, votes_for_seller, votes_for_buyer, created_at)
+         VALUES (?1, ?2, 'voting', ?3, ?4, 0, 0, ?5)"
+    )
+    .bind(&case_id)
+    .bind(escrow_id)
+    .bind(juror_count)
+    .bind(threshold)
+    .bind(now)
+    .execute(pool).await?;
+
+    // Insert jury_votes rows for each juror (pre-assigned, votes NULL)
+    for addr in juror_addresses {
+        // Store assigned jurors — we use jury_votes with vote=NULL to indicate assignment
+        sqlx::query(
+            "INSERT INTO jury_votes (case_id, juror_address, vote, voted_at)
+             VALUES (?1, ?2, '', 0)"
+        )
+        .bind(&case_id)
+        .bind(addr)
+        .execute(pool).await?;
+    }
+
+    Ok(case_id)
+}
+
+pub async fn get_jury_case(pool: &Pool<Sqlite>, case_id: &str) -> Result<Option<JuryCase>, sqlx::Error> {
+    let rows = sqlx::query("SELECT * FROM jury_cases WHERE id = ?1")
+        .bind(case_id)
+        .fetch_all(pool).await?;
+
+    if rows.is_empty() {
+        return Ok(None);
+    }
+    let row = &rows[0];
+    let cid: String = row.try_get("id").unwrap_or_default();
+
+    // Fetch assigned jurors
+    let juror_rows = sqlx::query(
+        "SELECT juror_address FROM jury_votes WHERE case_id = ?1"
+    )
+    .bind(&cid)
+    .fetch_all(pool).await?;
+    let jurors: Vec<String> = juror_rows.into_iter()
+        .filter_map(|r| r.try_get::<String, _>("juror_address").ok())
+        .collect();
+
+    Ok(Some(JuryCase {
+        id: cid,
+        escrow_id: row.try_get("escrow_id").unwrap_or_default(),
+        status: row.try_get("status").unwrap_or_default(),
+        juror_count: row.try_get("juror_count").unwrap_or(0),
+        threshold: row.try_get("threshold").unwrap_or(0),
+        votes_for_seller: row.try_get("votes_for_seller").unwrap_or(0),
+        votes_for_buyer: row.try_get("votes_for_buyer").unwrap_or(0),
+        created_at: row.try_get("created_at").unwrap_or(0),
+        decided_at: row.try_get("decided_at").unwrap_or(None),
+        outcome: row.try_get("outcome").unwrap_or(None),
+        jurors,
+    }))
+}
+
+pub async fn get_jury_case_by_escrow(pool: &Pool<Sqlite>, escrow_id: &str) -> Result<Option<JuryCase>, sqlx::Error> {
+    let rows = sqlx::query("SELECT * FROM jury_cases WHERE escrow_id = ?1 ORDER BY created_at DESC LIMIT 1")
+        .bind(escrow_id)
+        .fetch_all(pool).await?;
+    if rows.is_empty() {
+        return Ok(None);
+    }
+    let row = &rows[0];
+    let cid: String = row.try_get("id").unwrap_or_default();
+
+    let juror_rows = sqlx::query("SELECT juror_address FROM jury_votes WHERE case_id = ?1")
+        .bind(&cid).fetch_all(pool).await?;
+    let jurors: Vec<String> = juror_rows.into_iter()
+        .filter_map(|r| r.try_get::<String, _>("juror_address").ok()).collect();
+
+    Ok(Some(JuryCase {
+        id: cid,
+        escrow_id: row.try_get("escrow_id").unwrap_or_default(),
+        status: row.try_get("status").unwrap_or_default(),
+        juror_count: row.try_get("juror_count").unwrap_or(0),
+        threshold: row.try_get("threshold").unwrap_or(0),
+        votes_for_seller: row.try_get("votes_for_seller").unwrap_or(0),
+        votes_for_buyer: row.try_get("votes_for_buyer").unwrap_or(0),
+        created_at: row.try_get("created_at").unwrap_or(0),
+        decided_at: row.try_get("decided_at").unwrap_or(None),
+        outcome: row.try_get("outcome").unwrap_or(None),
+        jurors,
+    }))
+}
+
+pub async fn cast_jury_vote(
+    pool: &Pool<Sqlite>,
+    case_id: &str,
+    juror_address: &str,
+    vote: &str,
+    reasoning: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    sqlx::query(
+        "UPDATE jury_votes SET vote = ?1, voted_at = ?2, reasoning = ?3
+         WHERE case_id = ?4 AND juror_address = ?5"
+    )
+    .bind(vote)
+    .bind(now)
+    .bind(reasoning)
+    .bind(case_id)
+    .bind(juror_address)
+    .execute(pool).await?;
+
+    // Update case counts
+    if vote == "seller_wins" {
+        sqlx::query("UPDATE jury_cases SET votes_for_seller = votes_for_seller + 1 WHERE id = ?1")
+            .bind(case_id).execute(pool).await?;
+    } else if vote == "buyer_wins" {
+        sqlx::query("UPDATE jury_cases SET votes_for_buyer = votes_for_buyer + 1 WHERE id = ?1")
+            .bind(case_id).execute(pool).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn check_jury_verdict(pool: &Pool<Sqlite>, case_id: &str) -> Result<Option<String>, sqlx::Error> {
+    let case = get_jury_case(pool, case_id).await?;
+    match case {
+        Some(c) if c.status == "voting" || c.status == "selecting" => {
+            if c.votes_for_seller >= c.threshold {
+                let now = chrono::Utc::now().timestamp();
+                sqlx::query(
+                    "UPDATE jury_cases SET status = 'decided', outcome = 'seller_wins', decided_at = ?1 WHERE id = ?2"
+                ).bind(now).bind(case_id).execute(pool).await?;
+                Ok(Some("seller_wins".to_string()))
+            } else if c.votes_for_buyer >= c.threshold {
+                let now = chrono::Utc::now().timestamp();
+                sqlx::query(
+                    "UPDATE jury_cases SET status = 'decided', outcome = 'buyer_wins', decided_at = ?1 WHERE id = ?2"
+                ).bind(now).bind(case_id).execute(pool).await?;
+                Ok(Some("buyer_wins".to_string()))
+            } else {
+                Ok(None) // No verdict yet
+            }
+        }
+        Some(c) => Ok(c.outcome.clone()),
+        None => Ok(None),
+    }
+}
+
+pub async fn expire_stale_jury_cases(pool: &Pool<Sqlite>) -> Result<u64, sqlx::Error> {
+    let deadline = chrono::Utc::now().timestamp() - 72 * 3600;
+    let result = sqlx::query(
+        "UPDATE jury_cases SET status = 'decided', outcome = 'seller_wins', decided_at = ?1
+         WHERE status = 'voting' AND created_at < ?2"
+    )
+    .bind(chrono::Utc::now().timestamp())
+    .bind(deadline)
+    .execute(pool).await?;
+    Ok(result.rows_affected())
+}
+
+pub async fn list_active_jury_cases_for_juror(pool: &Pool<Sqlite>, juror_address: &str) -> Result<Vec<JuryCase>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT jc.* FROM jury_cases jc
+         INNER JOIN jury_votes jv ON jv.case_id = jc.id
+         WHERE jv.juror_address = ?1 AND jc.status IN ('selecting', 'voting')
+         ORDER BY jc.created_at DESC"
+    )
+    .bind(juror_address)
+    .fetch_all(pool).await?;
+
+    let mut cases = Vec::new();
+    for row in &rows {
+        let cid: String = row.try_get("id").unwrap_or_default();
+        let juror_rows = sqlx::query("SELECT juror_address FROM jury_votes WHERE case_id = ?1")
+            .bind(&cid).fetch_all(pool).await?;
+        let jurors: Vec<String> = juror_rows.into_iter()
+            .filter_map(|r| r.try_get::<String, _>("juror_address").ok()).collect();
+        cases.push(JuryCase {
+            id: cid,
+            escrow_id: row.try_get("escrow_id").unwrap_or_default(),
+            status: row.try_get("status").unwrap_or_default(),
+            juror_count: row.try_get("juror_count").unwrap_or(0),
+            threshold: row.try_get("threshold").unwrap_or(0),
+            votes_for_seller: row.try_get("votes_for_seller").unwrap_or(0),
+            votes_for_buyer: row.try_get("votes_for_buyer").unwrap_or(0),
+            created_at: row.try_get("created_at").unwrap_or(0),
+            decided_at: row.try_get("decided_at").unwrap_or(None),
+            outcome: row.try_get("outcome").unwrap_or(None),
+            jurors,
+        });
+    }
+    Ok(cases)
+}
+
+pub async fn get_mediator_stats(pool: &Pool<Sqlite>, address: &str) -> Result<Option<MediatorStats>, sqlx::Error> {
+    // Count escrows where this address was the mediator
+    let (cases_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM escrows WHERE mediator_key = ?1 AND status != 'pending_confirmation'"
+    ).bind(address).fetch_one(pool).await?;
+
+    if cases_count == 0 {
+        return Ok(None);
+    }
+
+    // Count resolved (settled or refunded) — the ruling was accepted by both parties
+    let (resolved_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM escrows WHERE mediator_key = ?1 AND status IN ('settled', 'refunded')"
+    ).bind(address).fetch_one(pool).await?;
+
+    let (first_case_at,): (Option<i64>,) = sqlx::query_as(
+        "SELECT MIN(created_at) FROM escrows WHERE mediator_key = ?1"
+    ).bind(address).fetch_one(pool).await?;
+
+    let years_active = first_case_at
+        .map(|ts| ((chrono::Utc::now().timestamp() - ts).max(0) as f64) / 86_400.0 / 365.0)
+        .unwrap_or(0.0);
+
+    let acceptance_rate = if cases_count > 0 {
+        resolved_count as f64 / cases_count as f64
+    } else {
+        1.0
+    };
+
+    // Calculate mediator score
+    let base = (cases_count as f64 / 10.0).min(1.0) * 5.0;
+    let bonus = acceptance_rate * 1.0;
+    let age_bonus = (years_active / 2.0).min(1.0) * 0.5;
+    let score = (base + bonus + age_bonus).clamp(1.0, 5.0);
+
+    Ok(Some(MediatorStats {
+        disputes_mediated: cases_count,
+        rulings_accepted: resolved_count,
+        acceptance_rate,
+        years_active,
+        score,
+    }))
+}
 // ── Offer Queries
 
 pub async fn insert_offer(pool: &Pool<Sqlite>, offer: &Offer) -> Result<(), sqlx::Error> {

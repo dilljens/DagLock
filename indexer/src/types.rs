@@ -155,6 +155,7 @@ pub struct Reputation {
     pub vouches_received: i64,
     pub vouches_given: i64,
     pub vouch_score: Option<f64>,
+    pub mediator_stats: Option<MediatorStats>,
 }
 
 /// Verified social identity linked to a Kaspa address.
@@ -264,6 +265,66 @@ pub struct CreateEvidenceRequest {
 pub struct ResolveDisputeRequest {
     pub outcome: String, // "expunge" or "uphold"
     pub resolved_by: Address,
+}
+
+
+/// Juror registration record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JurorRegistration {
+    pub address: Address,
+    pub registered_at: i64,
+    pub total_cases_assigned: i64,
+    pub total_cases_voted: i64,
+    pub reliability_score: f64,
+}
+
+/// Request to register as a juror.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JuryRegisterRequest {
+    pub address: Address,
+}
+
+/// Jury case record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JuryCase {
+    pub id: String,
+    pub escrow_id: EscrowId,
+    pub status: String,
+    pub juror_count: i64,
+    pub threshold: i64,
+    pub votes_for_seller: i64,
+    pub votes_for_buyer: i64,
+    pub created_at: i64,
+    pub decided_at: Option<i64>,
+    pub outcome: Option<String>,
+    pub jurors: Vec<String>,
+}
+
+/// Jury vote record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JuryVote {
+    pub case_id: String,
+    pub juror_address: Address,
+    pub vote: String,
+    pub voted_at: i64,
+    pub reasoning: Option<String>,
+}
+
+/// Cast vote request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CastVoteRequest {
+    pub vote: String,
+    pub reasoning: Option<String>,
+}
+
+/// Mediator stats for reputation display.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediatorStats {
+    pub disputes_mediated: i64,
+    pub rulings_accepted: i64,
+    pub acceptance_rate: f64,
+    pub years_active: f64,
+    pub score: f64,
 }
 
 /// API error response.

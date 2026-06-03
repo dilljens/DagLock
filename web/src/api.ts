@@ -101,6 +101,7 @@ export type Reputation = {
 	vouches_received: number;
 	vouches_given: number;
 	vouch_score?: number | null;
+	mediator_stats?: MediatorStats | null;
 	settled_count: number;
 	refunded_count: number;
 	disputed_count: number;
@@ -130,6 +131,49 @@ export type Receipt = {
 	expired_at?: number | null;
 	settled_at?: number | null;
 	refunded_at?: number | null;
+};
+
+export type JurorRegistration = {
+	address: string;
+	registered_at: number;
+	total_cases_assigned: number;
+	total_cases_voted: number;
+	reliability_score: number;
+};
+
+export type JuryCase = {
+	id: string;
+	escrow_id: string;
+	status: string;
+	juror_count: number;
+	threshold: number;
+	votes_for_seller: number;
+	votes_for_buyer: number;
+	created_at: number;
+	decided_at?: number | null;
+	outcome?: string | null;
+	jurors: string[];
+};
+
+export type JuryVote = {
+	case_id: string;
+	juror_address: string;
+	vote: string;
+	voted_at: number;
+	reasoning?: string | null;
+};
+
+export type CastVoteRequest = {
+	vote: string;
+	reasoning?: string;
+};
+
+export type MediatorStats = {
+	disputes_mediated: number;
+	rulings_accepted: number;
+	acceptance_rate: number;
+	years_active: number;
+	score: number;
 };
 
 export type Vouch = {
@@ -253,7 +297,12 @@ export const api = {
 		),
 
 	// Vouching
-	vouch: (subjectAddress: string, auth: AuthHeaders, escrowId?: string, note?: string) =>
+	vouch: (
+		subjectAddress: string,
+		auth: AuthHeaders,
+		escrowId?: string,
+		note?: string,
+	) =>
 		postJson<{ status: string; vouch: Vouch }>(
 			"/v1/vouches",
 			{ subject_address: subjectAddress, escrow_id: escrowId, note },
@@ -265,9 +314,31 @@ export const api = {
 			auth,
 		),
 	listVouchesBySubject: (address: string) =>
-		loadJson<{ vouches: Vouch[]; total: number }>(`/v1/vouches?subject=${encodeURIComponent(address)}`),
+		loadJson<{ vouches: Vouch[]; total: number }>(
+			`/v1/vouches?subject=${encodeURIComponent(address)}`,
+		),
 	listVouchesByVoucher: (address: string) =>
-		loadJson<{ vouches: Vouch[]; total: number }>(`/v1/vouches?voucher=${encodeURIComponent(address)}`),
+		loadJson<{ vouches: Vouch[]; total: number }>(
+			`/v1/vouches?voucher=${encodeURIComponent(address)}`,
+		),
+
+	// Jury
+	juryRegister: (auth: AuthHeaders) =>
+		postJson<{ status: string; address: string }>("/v1/jury/register", {}, auth),
+	juryUnregister: (auth: AuthHeaders) =>
+		postJson<{ status: string; address: string }>("/v1/jury/unregister", {}, auth),
+	juryCases: (auth: AuthHeaders) =>
+		postJson<{ cases: JuryCase[]; total: number }>("/v1/jury/cases", {}, auth),
+	juryCase: (caseId: string) =>
+		loadJson<JuryCase>(`/v1/jury/cases/${encodeURIComponent(caseId)}`),
+	juryVote: (caseId: string, vote: string, reasoning?: string, auth?: AuthHeaders) =>
+		postJson<{ status: string; vote: string; verdict?: string | null }>(
+			`/v1/jury/cases/${encodeURIComponent(caseId)}/vote`,
+			{ vote, reasoning },
+			auth,
+		),
+	juryCandidates: () =>
+		loadJson<{ candidates: JurorRegistration[]; total: number }>("/v1/jury/candidates"),
 
 	// Identity
 	createIdentity: (

@@ -7,6 +7,7 @@ import {
 	type DisputeEvidence,
 	type Escrow,
 	type Health,
+	type JuryCase,
 	type NetworkInfo,
 	type Offer,
 	type Receipt,
@@ -849,7 +850,7 @@ function ReputationLookup() {
 					Check
 				</button>
 			</form>
-				<LookupResult
+			<LookupResult
 				loading={state.loading}
 				error={state.error}
 				data={state.data}
@@ -861,7 +862,9 @@ function ReputationLookup() {
 						</div>
 						<div className="row">
 							<span>Trades</span>
-							<strong>{data.trade_count} ({data.recent_trade_count} in last 90d)</strong>
+							<strong>
+								{data.trade_count} ({data.recent_trade_count} in last 90d)
+							</strong>
 						</div>
 						<div className="row">
 							<span>Volume</span>
@@ -887,12 +890,20 @@ function ReputationLookup() {
 						)}
 						<div className="row">
 							<span>Vouches</span>
-							<strong>{data.vouches_received} received / {data.vouches_given} given</strong>
+							<strong>
+								{data.vouches_received} received / {data.vouches_given} given
+							</strong>
 						</div>
 						{data.vouch_score != null && (
 							<div className="row">
 								<span>Vouch score</span>
 								<strong>{data.vouch_score.toFixed(2)}/5</strong>
+							</div>
+						)}
+						{data.mediator_stats && (
+							<div className="row">
+								<span>Mediator</span>
+								<strong>{data.mediator_stats.score.toFixed(2)}/5 ({data.mediator_stats.disputes_mediated} cases)</strong>
 							</div>
 						)}
 					</div>
@@ -954,6 +965,125 @@ function ReceiptLookup() {
 	);
 }
 
+/* ─── Jury Panel ─── */
+function JuryPanel() {
+	const [regStatus, setRegStatus] = useState<"idle" | "loading" | "registered" | "error">("idle");
+	const [regError, setRegError] = useState("");
+	const [authAddr, setAuthAddr] = useState("");
+	const [authSig, setAuthSig] = useState("");
+	const [cases, setCases] = useState<LoadState<JuryCase[]>>({ loading: false });
+	const [selectedCase, setSelectedCase] = useState<JuryCase | null>(null);
+	const [vote, setVote] = useState("");
+	const [reasoning, setReasoning] = useState("");
+	const [voteResult, setVoteResult] = useState("");
+
+	function makeAuth() {
+		if (!authAddr || !authSig) return undefined;
+		return { address: authAddr, signature: authSig, message: "jury:auth" } as AuthHeaders;
+	}
+
+	async function handleRegister() {
+		const a = makeAuth();
+		if (!a) return;
+		setRegStatus("loading");
+		try {
+			await api.juryRegister(a);
+			setRegStatus("registered");
+		} catch (err) {
+			setRegStatus("error");
+			setRegError((err as Error).message);
+		}
+	}
+
+	async function handleUnregister() {
+		const a = makeAuth();
+		if (!a) return;
+		setRegStatus("loading");
+		try {
+			await api.juryUnregister(a);
+			setRegStatus("idle");
+		} catch (err) {
+			setRegStatus("error");
+			setRegError((err as Error).message);
+		}
+	}
+
+	async function loadCases() {
+		const a = makeAuth();
+		if (!a) return;
+		setCases({ loading: true });
+		try {
+			const r = await api.juryCases(a);
+			setCases({ data: r.cases, loading: false });
+		} catch (err) {
+			setCases({ error: (err as Error).message, loading: false });
+		}
+	}
+
+	async function handleVote() {
+		if (!selectedCase || !vote) return;
+		const a = makeAuth();
+		if (!a) return;
+		try {
+			const r = await api.juryVote(selectedCase.id, vote, reasoning || undefined, a);
+			setVoteResult(r.verdict ? `Verdict: ${r.vote} (case decided)` : `Voted: ${r.vote}`);
+			loadCases();
+		} catch (err) {
+			setVoteResult(`Error: ${(err as Error).message}`);
+		}
+	}
+
+	return (
+		<div className="stack">
+			<FormField label="Your address">
+				<input value={authAddr} onChange={e => setAuthAddr(e.target.value)} placeholder="kaspa:..." />
+			</FormField>
+			<FormField label="Signature (hex)">
+				<input value={authSig} onChange={e => setAuthSig(e.target.value)} placeholder="hex signature" />
+			</FormField>
+			<div className="action-tabs">
+				<button className="button primary" onClick={handleRegister} disabled={regStatus === "loading"}>
+					{regStatus === "loading" ? "Registering…" : "Register as juror"}
+				</button>
+				<button className="button" onClick={handleUnregister}>Unregister</button>
+				<button className="button" onClick={loadCases}>Load my cases</button>
+			</div>
+			{regStatus === "registered" && <p className="muted success-text">Registered as juror!</p>}
+			{regError && <p className="muted error-text">{regError}</p>}
+			{voteResult && <p className="muted">{voteResult}</p>}
+
+			{cases.loading && <p className="muted">Loading cases…</p>}
+			{cases.data && cases.data.length === 0 && <p className="muted">No active cases assigned to you.</p>}
+			{cases.data?.map(c => (
+				<article key={c.id} className="offer" onClick={() => setSelectedCase(c)}>
+					<div className="offer-top">
+						<strong>Case: {c.id.slice(0, 16)}…</strong>
+						<span className={badge(c.status)}>{c.status}</span>
+					</div>
+					<p>Escrow: {c.escrow_id} | Votes: {c.votes_for_seller + c.votes_for_buyer}/{c.juror_count} | Threshold: {c.threshold}</p>
+				</article>
+			))}
+
+			{selectedCase && selectedCase.status === "voting" && (
+				<div className="panel">
+					<h4>Cast vote for {selectedCase.id.slice(0, 16)}…</h4>
+					<FormField label="Vote">
+						<select value={vote} onChange={e => setVote(e.target.value)}>
+							<option value="">— select —</option>
+							<option value="seller_wins">Seller wins</option>
+							<option value="buyer_wins">Buyer wins</option>
+						</select>
+					</FormField>
+					<FormField label="Reasoning (optional)">
+						<input value={reasoning} onChange={e => setReasoning(e.target.value)} placeholder="Why?" />
+					</FormField>
+					<button className="button primary" onClick={handleVote}>Submit vote</button>
+				</div>
+			)}
+		</div>
+	);
+}
+
 /* ─── Main App ─── */
 export default function App() {
 	const [health, setHealth] = useState<LoadState<Health>>({ loading: true });
@@ -970,6 +1100,7 @@ export default function App() {
 		| "dispute"
 		| "cancel"
 		| "link-telegram"
+		| "jury"
 		| null
 	>(null);
 
@@ -1043,6 +1174,10 @@ export default function App() {
 			"link-telegram": {
 				title: "Link Telegram",
 				content: <LinkTelegramForm onDone={closeTab} />,
+			},
+			jury: {
+				title: "Jury panel",
+				content: <JuryPanel />,
 			},
 		};
 
@@ -1161,6 +1296,7 @@ export default function App() {
 							["Dispute", "dispute"],
 							["Cancel", "cancel"],
 							["Link Telegram", "link-telegram"],
+							["Jury", "jury"],
 						] as const
 					).map(([label, key]) => (
 						<button

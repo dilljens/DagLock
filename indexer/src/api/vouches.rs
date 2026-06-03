@@ -32,7 +32,10 @@ pub async fn create(
     let auth = AuthContext::from_headers(&headers).map_err(|_e| {
         (
             StatusCode::UNAUTHORIZED,
-            Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))),
+            Json(json!(ApiError::new(
+                "unauthorized",
+                "X-Daglock-* headers required"
+            ))),
         )
     })?;
 
@@ -53,7 +56,10 @@ pub async fn create(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
             )
         })?;
     if own_rep.trade_count < 3 || own_rep.settled_count < 1 {
@@ -79,7 +85,10 @@ pub async fn create(
 
     let now = chrono::Utc::now().timestamp();
     let vouch = Vouch {
-        id: format!("vch_{}", Uuid::new_v4().to_string().split('-').next().unwrap()),
+        id: format!(
+            "vch_{}",
+            Uuid::new_v4().to_string().split('-').next().unwrap()
+        ),
         voucher_address: auth.address,
         subject_address: body.subject_address,
         escrow_id: body.escrow_id,
@@ -93,7 +102,10 @@ pub async fn create(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
             )
         })?;
 
@@ -111,7 +123,10 @@ pub async fn delete(
     let auth = AuthContext::from_headers(&headers).map_err(|_e| {
         (
             StatusCode::UNAUTHORIZED,
-            Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))),
+            Json(json!(ApiError::new(
+                "unauthorized",
+                "X-Daglock-* headers required"
+            ))),
         )
     })?;
 
@@ -120,7 +135,10 @@ pub async fn delete(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
             )
         })?;
 
@@ -151,7 +169,10 @@ pub async fn list(
                 .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                        Json(json!(ApiError::new(
+                            "internal_error",
+                            "An internal error occurred."
+                        ))),
                     )
                 })?;
             let count = v.len() as i64;
@@ -163,7 +184,10 @@ pub async fn list(
                 .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                        Json(json!(ApiError::new(
+                            "internal_error",
+                            "An internal error occurred."
+                        ))),
                     )
                 })?;
             let count = v.len() as i64;

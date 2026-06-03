@@ -1,80 +1,113 @@
-# Plan: Two-Tier Dispute Resolution
+# Plan: Reputation v2 — Phases C (Jury) + D (Mediator Rep)
 
-## Goal
-Add both off-chain dispute evidence/reputation (Tier 1) and on-chain optional arbiter covenant (Tier 2).
-
----
-
-## Architecture
-
-### Tier 1 — Off-chain (no covenant changes)
-- Evidence log: parties submit signed proof to the indexer
-- Outcome-weighted reputation: dispute outcomes affect score
-- Resolve flow: mark disputes as expunged (filer penalty) or upheld (defendant penalty)
-
-### Tier 2 — On-chain (optional arbiter covenant)
-- New `daglock_arbiter.sil` — daglock.sil + `arbiterKey` param
-- 2 new entrypoints: `disputeSellerWins(arbiterSig, sellerSig)` and `disputeBuyerWins(arbiterSig, buyerSig)`
-- Mediator never acts alone — always needs the winning party's signature
-- `arbiterKey = [0u8; 32]` → dispute paths are unreachable
+## Status
+- ✅ Phase A: Recency weighting + UI breakdown — DONE
+- ✅ Phase B: Vouching / Web of Trust — DONE
+- ⏳ Phase C: Jury system — TODO
+- ⏳ Phase D: Mediator reputation — TODO
 
 ---
 
-## Steps
+## Phase C: Jury System (10-12 files)
 
-### 1. Create `contracts/src/daglock_arbiter.sil`
-- Copy of `daglock.sil` with:
-  - Constructor param `byte[32] arbiterKey` appended after `treasuryKey`
-  - Entrypoint `disputeSellerWins(sig arbiterSig, sig sellerSig)`
-  - Entrypoint `disputeBuyerWins(sig arbiterSig, sig buyerSig)`
+### DB Migration `007_create_jury.sql`
+```sql
+CREATE TABLE IF NOT EXISTS juror_registrations (
+    address TEXT PRIMARY KEY,
+    registered_at INTEGER NOT NULL,
+    total_cases_assigned INTEGER DEFAULT 0,
+    total_cases_voted INTEGER DEFAULT 0,
+    reliability_score REAL DEFAULT 1.0
+);
 
-### 2. Update `contracts/src/lib.rs`
-- Add `daglock_arbiter_source()` fn
-- Add `compile_daglock_arbiter(...)` fn (6 constructor args)
-- Add `ARBITRATE_SELLER_WINS` and `ARBITRATE_BUYER_WINS` constants
-- Add tests
+CREATE TABLE IF NOT EXISTS jury_cases (
+    id TEXT PRIMARY KEY,
+    escrow_id TEXT NOT NULL REFERENCES escrows(id),
+    status TEXT NOT NULL,
+    juror_count INTEGER NOT NULL,
+    threshold INTEGER NOT NULL,
+    votes_for_seller INTEGER DEFAULT 0,
+    votes_for_buyer INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    decided_at INTEGER,
+    outcome TEXT
+);
 
-### 3. Create `contracts/tests/daglock_arbiter_tests.rs`
-- All 5 path execution tests + negative cases
+CREATE TABLE IF NOT EXISTS jury_votes (
+    case_id TEXT NOT NULL REFERENCES jury_cases(id),
+    juror_address TEXT NOT NULL,
+    vote TEXT NOT NULL,
+    voted_at INTEGER NOT NULL,
+    reasoning TEXT,
+    PRIMARY KEY (case_id, juror_address)
+);
+```
 
-### 4. DB migration `004_create_dispute_evidence.sql`
-- `dispute_evidence` table
-- `ensure_mediator_key_column()` — `mediator_key TEXT` on escrows
-- `ensure_dispute_outcome_columns()` — `dispute_outcome`, `dispute_resolved_at`
+### Steps
 
-### 5. Update `indexer/src/db/schema.rs` — include migration
+1. Create `indexer/src/db/migrations/007_create_jury.sql`
+2. Wire migration in `indexer/src/db/schema.rs`
+3. Add jury types to `indexer/src/types.rs` (JurorRegistration, JuryCase, JuryVote, JuryRegisterRequest, JuryCaseStatus)
+4. Add jury queries to `indexer/src/db/queries.rs`:
+   - `register_juror()`, `unregister_juror()`, `get_juror()`, `list_eligible_jurors()`
+   - `create_jury_case()`, `get_jury_case()`, `cast_vote()`, `check_jury_verdict()`, `list_active_jury_cases()`
+5. Create `indexer/src/api/jury.rs`:
+   - `POST /v1/jury/register` — opt in (check 10+ trades, 3.0+ score)
+   - `POST /v1/jury/unregister` — opt out
+   - `GET /v1/jury/cases` — list active cases for the caller (auth required)
+   - `POST /v1/jury/cases/:id/vote` — cast vote (auth required, must be assigned juror)
+   - `GET /v1/jury/cases/:id` — get case details with evidence
+6. Wire routes in `indexer/src/api/mod.rs`
+7. Update `indexer/src/api/escrows.rs` — when dispute mode is "jury", trigger jury case creation
+8. Update `web/src/api.ts`: jury types + API methods
+9. Update `web/src/App.tsx`: juror dashboard + vote panel
+10. Update `web/src/styles.css`: jury UI styles
+11. Verify: `cargo test --workspace` + `npm run build`
 
-### 6. Update `indexer/src/db/queries.rs` — evidence CRUD, mediator key, dispute resolve
+### Jury Selection Algorithm
+- When escrow.value < 10K KAS: 3 jurors, threshold 2
+- When 10K-100K KAS: 5 jurors, threshold 3
+- When 100K+ KAS: 9 jurors, threshold 5
+- Selection: score-weighted random from juror_registrations
+- Selection filtering: exclude jurors with active cases on same escrow, prefer higher reliability_score
 
-### 7. Create `indexer/src/api/evidence.rs` — evidence + resolve-dispute endpoints
+### Voting Rules
+- Voting period: 72 hours from case creation
+- Once threshold reached: case marked `decided`, outcome stored
+- If 72h expires without threshold: defaults to `seller_wins` (prevents buyer fraud)
+- Jurors can see evidence via existing GET /v1/escrows/:id/evidence
 
-### 8. Update `indexer/src/api/mod.rs` — wire new routes
-
-### 9. Update `indexer/src/types.rs` — new types
-
-### 10. Update `indexer/src/api/escrows.rs` — mediator_key field
-
-### 11. Update `indexer/src/api/reputation.rs` — outcome-weighted scoring
-
-### 12. Update `web/src/api.ts` — evidence + arbiter endpoints
-
-### 13. Update `web/src/App.tsx` — evidence form, mediator checkbox, resolve button
-
-### 14. Update `web/src/styles.css` — new component styles
-
-### 15. Verify: `cargo test --workspace` + `cd web && npm run build`
+### Arbitration Key
+- Indexer holds a dedicated hot keypair (stored in config/env at startup)
+- When verdict reached, jury module signs a transaction with the arbiterKey
+- The winning party countersigns (needs their signature too — covenant enforces 2-of-2)
 
 ---
 
-## Risks
-- 5 entrypoints in arbiter variant — compiler handles fine
-- Zeroed arbiterKey: dispute paths computationally unreachable
-- Template hash divergence: indexer tracks both hashes
+## Phase D: Mediator Reputation (2-3 files)
 
-## Rollback
-- `git revert <commits>` + `DROP TABLE dispute_evidence`
+### Steps
+1. Add mediator stats to `Reputation` in `indexer/src/types.rs`:
+   - `mediator_stats: Option<MediatorStats>` where MediatorStats has `disputes_mediated`, `rulings_accepted`, `acceptance_rate`, `years_active`
+   - `mediator_score: Option<f64>`
+2. Update `get_reputation()` in `indexer/src/db/queries.rs`:
+   - Query escrows where address == mediator_key and status IN ('disputed', 'settled', 'refunded')
+   - Count disputes where this address was mediator, count resolved ones
+   - Calculate mediator_score: base = min(cases/10, 1)*5 + acceptance_rate*1.0 + min(years/2, 1)*0.5
+3. Update `web/src/api.ts` Reputation type with mediator fields
+4. Update `web/src/App.tsx` ReputationLookup to show mediator stats
+
+---
+
+## Risks (remaining)
+- **Jury apathy** — mitigate with reliability score tracking
+- **Jury selection timing** — cases created at dispute time, may stall if no jurors registered
+- **Mediator data**: we already have mediator_key on escrows, just need to query it
 
 ## Verification
-1. `cargo test --workspace` — all pass
-2. `cd web && npm run build` — clean
-3. Manual: create arbiter escrow → dispute → submit evidence → resolve
+- `cargo test --workspace` — all pass
+- `cd web && npm run build` — clean
+- Manual: register jury → dispute escrow with mode:jury → vote → verify outcome
+
+## Rollback
+- `git revert <commits>` + `DROP TABLE juror_registrations, jury_cases, jury_votes`

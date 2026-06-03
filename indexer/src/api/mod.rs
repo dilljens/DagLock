@@ -3,6 +3,7 @@
 pub mod escrows;
 pub mod evidence;
 pub mod identity;
+pub mod jury;
 pub mod network;
 pub mod offers;
 pub mod receipts;
@@ -69,6 +70,12 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/receipts/:id", get(receipts::get))
         .route("/v1/vouches", post(vouches::create).get(vouches::list))
         .route("/v1/vouches/:id", post(vouches::delete))
+        .route("/v1/jury/register", post(jury::register))
+        .route("/v1/jury/unregister", post(jury::unregister))
+        .route("/v1/jury/cases", get(jury::list_cases))
+        .route("/v1/jury/cases/:id", get(jury::get_case))
+        .route("/v1/jury/cases/:id/vote", post(jury::cast_vote))
+        .route("/v1/jury/candidates", get(jury::list_candidates))
         .route("/v1/ws", get(websocket_handler))
         .layer(cors)
         .with_state(state)
