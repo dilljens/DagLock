@@ -103,18 +103,7 @@ pub async fn list_escrows_by_address(
     Ok((escrows, count))
 }
 
-pub async fn update_escrow_status(
-    pool: &Pool<Sqlite>,
-    id: &str,
-    status: EscrowStatus,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE escrows SET status = ?1 WHERE id = ?2")
-        .bind(status.as_str())
-        .bind(id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
+
 
 /// Atomically settle an escrow: update status + settled_at in one query.
 /// Returns true if the update succeeded (escrow was in active state).
@@ -171,14 +160,7 @@ pub async fn mark_escrow_cancelled(pool: &Pool<Sqlite>, id: &str) -> Result<(), 
     Ok(())
 }
 
-pub async fn mark_escrow_expired(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE escrows SET status = 'expired', expired_at = ?1 WHERE id = ?2")
-        .bind(chrono::Utc::now().timestamp())
-        .bind(id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
+
 
 /// Reconcile expired escrows based on DAA score.
 ///

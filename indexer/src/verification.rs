@@ -31,13 +31,6 @@ pub trait EscrowVerifier: Send + Sync {
     /// Verify that the escrow UTXO exists on-chain.
     fn verify_utxo_exists(&self, escrow: &Escrow) -> VerificationResult<bool>;
 
-    /// Verify that a signature is valid for the given address.
-    fn verify_signature(
-        &self,
-        address: &str,
-        signature: &[u8],
-        message: &[u8],
-    ) -> VerificationResult<bool>;
 }
 
 /// Mock verifier that always returns success.
@@ -53,16 +46,7 @@ impl EscrowVerifier for MockVerifier {
         Ok(true)
     }
 
-    fn verify_signature(
-        &self,
-        _address: &str,
-        _signature: &[u8],
-        _message: &[u8],
-    ) -> VerificationResult<bool> {
-        // Mock always returns true — signature is "valid"
-        warn!("Using MockVerifier — no actual signature verification performed");
-        Ok(true)
-    }
+
 }
 
 /// Verify escrow can be settled.

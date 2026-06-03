@@ -29,7 +29,4 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn wrpc_url_or_resolver(&self) -> Option<String> {
-        self.wrpc_url.clone()
-    }
 }

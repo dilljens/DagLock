@@ -4,7 +4,7 @@
 //! Uses kaspa-hashes for message hashing.
 
 use crate::types::Escrow;
-use kaspa_hashes::Hash;
+
 use tracing::warn;
 
 /// Errors that can occur during authentication.
@@ -16,8 +16,7 @@ pub enum AuthError {
     #[error("Invalid signature for address {address}")]
     InvalidSignature { address: String },
 
-    #[error("Invalid signature format: {0}")]
-    InvalidSignatureFormat(String),
+
 
     #[error("Unauthorized: {reason}")]
     Unauthorized { reason: String },
@@ -110,7 +109,7 @@ impl SignatureVerifier for Secp256k1Verifier {
     fn verify_signature(
         &self,
         address: &str,
-        signature_hex: &str,
+        _signature_hex: &str,
         message: &str,
     ) -> AuthResult<bool> {
         // TODO: Implement real secp256k1 verification
