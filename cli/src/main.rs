@@ -90,6 +90,31 @@ enum Commands {
         #[arg(long)]
         api_url: Option<String>,
     },
+    /// Send a message on an escrow thread
+    Msg {
+        /// Escrow ID
+        id: String,
+        /// Message text
+        #[arg(long)]
+        text: String,
+        /// Your Kaspa address
+        #[arg(long)]
+        address: String,
+        /// Hex signature
+        #[arg(long)]
+        signature: String,
+    },
+    /// List messages on an escrow thread
+    Messages {
+        /// Escrow ID
+        id: String,
+        /// Your Kaspa address
+        #[arg(long)]
+        address: String,
+        /// Hex signature
+        #[arg(long)]
+        signature: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -193,6 +218,12 @@ async fn main() -> anyhow::Result<()> {
         Commands::Receipt { id } => {
             commands::receipt::run(api_url, &id).await?;
         }
+        Commands::Msg { id, text, address, signature } => {
+            commands::message::send(api_url, &id, &text, &address, &signature).await?;
+        }
+        Commands::Messages { id, address, signature } => {
+            commands::message::list(api_url, &id, &address, &signature).await?;
+        }
         Commands::Config { api_url: new_url } => {
             config::handle_config(new_url).await?;
         }
@@ -204,6 +235,7 @@ async fn main() -> anyhow::Result<()> {
 mod commands {
     pub mod claim;
     pub mod create;
+    pub mod message;
     pub mod offer;
     pub mod receipt;
     pub mod reputation;

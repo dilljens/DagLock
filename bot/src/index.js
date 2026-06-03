@@ -52,7 +52,9 @@ bot.command('start', async (ctx) => {
     '/receipt <id> — Fetch receipt\n' +
     '/dispute <id> <reason> — Dispute escrow\n' +
     '/cancel <id> — Cancel escrow\n' +
-    '/reputation <address> — Check reputation',
+    '/reputation <address> — Check reputation\n' +
+    '/msg <id> <text> — Send message on escrow\n' +
+    '/messages <id> — Read message thread',
     { parse_mode: 'Markdown' }
   );
 });
