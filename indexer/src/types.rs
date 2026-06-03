@@ -59,8 +59,6 @@ impl EscrowStatus {
     }
 }
 
-
-
 /// Core escrow record stored in the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Escrow {
@@ -82,6 +80,9 @@ pub struct Escrow {
     pub created_at: i64,
     pub settled_at: Option<i64>,
     pub refunded_at: Option<i64>,
+    pub mediator_key: Option<String>,
+    pub dispute_outcome: Option<String>,
+    pub dispute_resolved_at: Option<i64>,
 }
 
 /// Create escrow request (from POST endpoint).
@@ -98,9 +99,9 @@ pub struct CreateEscrowRequest {
     pub asset_type: Option<String>,
     #[serde(default)]
     pub template_hash: Option<Vec<u8>>,
+    #[serde(default)]
+    pub mediator_key: Option<String>,
 }
-
-
 
 /// Offer record stored in the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,8 +135,6 @@ pub struct CreateOfferRequest {
 pub struct AcceptOfferRequest {
     pub counterparty_address: Address,
 }
-
-
 
 /// Reputation stats for an address.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,8 +202,6 @@ pub struct FeeEstimate {
     pub miner_fee_budget: String,
 }
 
-
-
 /// Stats response.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatsResponse {
@@ -218,6 +215,32 @@ pub struct StatsResponse {
     pub total_fees_collected_kas: String,
     pub unique_buyers: i64,
     pub unique_sellers: i64,
+}
+
+/// Dispute evidence record stored in the database.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DisputeEvidence {
+    pub id: String,
+    pub escrow_id: EscrowId,
+    pub submitted_by: Address,
+    pub content: String,
+    pub content_hash: String,
+    pub signed_message: Option<String>,
+    pub created_at: i64,
+}
+
+/// Create evidence request (from POST endpoint).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateEvidenceRequest {
+    pub content: String,
+    pub signed_message: Option<String>,
+}
+
+/// Resolve dispute request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolveDisputeRequest {
+    pub outcome: String, // "expunge" or "uphold"
+    pub resolved_by: Address,
 }
 
 /// API error response.

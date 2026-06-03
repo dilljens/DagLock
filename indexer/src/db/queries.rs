@@ -35,8 +35,9 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
     sqlx::query(
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, seller_address, amount_sompi, fee_sompi, template_hash,
-         expiration_daa_score, disputed_at, dispute_reason, cancelled_at, expired_at, created_at, settled_at, refunded_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)"
+         expiration_daa_score, disputed_at, dispute_reason, cancelled_at, expired_at,
+         created_at, settled_at, refunded_at, mediator_key, dispute_outcome, dispute_resolved_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)"
     )
     .bind(&escrow.id).bind(&escrow.lock_tx_id)
     .bind(escrow.lock_tx_output_index as i64).bind(escrow.status.as_str())
@@ -47,6 +48,7 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
     .bind(&escrow.dispute_reason).bind(escrow.cancelled_at)
     .bind(escrow.expired_at)
     .bind(escrow.created_at).bind(escrow.settled_at).bind(escrow.refunded_at)
+    .bind(&escrow.mediator_key).bind(&escrow.dispute_outcome).bind(escrow.dispute_resolved_at)
     .execute(pool).await?;
     Ok(())
 }
@@ -103,15 +105,13 @@ pub async fn list_escrows_by_address(
     Ok((escrows, count))
 }
 
-
-
 /// Atomically settle an escrow: update status + settled_at in one query.
 /// Returns true if the update succeeded (escrow was in active state).
 pub async fn settle_escrow_atomic(pool: &Pool<Sqlite>, id: &str) -> Result<bool, sqlx::Error> {
     let result = sqlx::query(
         "UPDATE escrows 
          SET status = 'settled', settled_at = ?1, refunded_at = NULL 
-         WHERE id = ?2 AND status = 'active'"
+         WHERE id = ?2 AND status = 'active'",
     )
     .bind(chrono::Utc::now().timestamp())
     .bind(id)
@@ -126,7 +126,7 @@ pub async fn refund_escrow_atomic(pool: &Pool<Sqlite>, id: &str) -> Result<bool,
     let result = sqlx::query(
         "UPDATE escrows 
          SET status = 'refunded', refunded_at = ?1, settled_at = NULL 
-         WHERE id = ?2 AND status = 'active'"
+         WHERE id = ?2 AND status = 'active'",
     )
     .bind(chrono::Utc::now().timestamp())
     .bind(id)
@@ -159,8 +159,6 @@ pub async fn mark_escrow_cancelled(pool: &Pool<Sqlite>, id: &str) -> Result<(), 
         .await?;
     Ok(())
 }
-
-
 
 /// Reconcile expired escrows based on DAA score.
 ///
@@ -283,7 +281,22 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded'"
     ).bind(address).fetch_one(pool).await?;
 
-    let (disputed_count,): (i64,) = sqlx::query_as(
+    // Count upheld disputes where this address was the defendant (the one found at fault)
+    // An upheld dispute means the dispute was valid — the defendant harmed the other party.
+    // We count escrows where the outcome is 'upheld' and this address is one of the parties.
+    let (upheld_against,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1)
+         AND dispute_outcome = 'expunge'",
+    )
+    .bind(address)
+    .fetch_one(pool)
+    .await?;
+
+    // Count expunged disputes (false disputes) where this address filed
+    // An expunged dispute means the filer was wrong — they get a penalty.
+    // We approximate by counting disputes with outcome='uphold' where this
+    // address was any party (they were the wronged party, beneficiary).
+    let (disputed_count_raw,): (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND disputed_at IS NOT NULL"
     ).bind(address).fetch_one(pool).await?;
 
@@ -302,13 +315,17 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         .map(|ts| ((chrono::Utc::now().timestamp() - ts).max(0) / 86_400).max(0))
         .unwrap_or(0);
     let total_volume = volume.unwrap_or(0);
-    let dispute_rate = if trade_count > 0 {
-        disputed_count as f64 / trade_count as f64
+
+    // Adjust dispute count: upheld-against (expunged) disputes are subtracted from
+    // the raw count because they were false disputes filed against this address.
+    let effective_disputed_count = (disputed_count_raw - upheld_against).max(0);
+    let refund_rate = if trade_count > 0 {
+        refunded_count as f64 / trade_count as f64
     } else {
         0.0
     };
-    let refund_rate = if trade_count > 0 {
-        refunded_count as f64 / trade_count as f64
+    let dispute_rate = if trade_count > 0 {
+        effective_disputed_count as f64 / trade_count as f64
     } else {
         0.0
     };
@@ -316,7 +333,7 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         trade_count,
         total_volume,
         age_days,
-        disputed_count,
+        effective_disputed_count,
         refunded_count,
     );
 
@@ -326,13 +343,76 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         total_volume_sompi: total_volume,
         settled_count,
         refunded_count,
-        disputed_count,
+        disputed_count: effective_disputed_count,
         first_trade_at,
         age_days,
         dispute_rate,
         refund_rate,
         score,
     })
+}
+
+// ── Evidence Queries
+
+pub async fn insert_evidence(
+    pool: &Pool<Sqlite>,
+    evidence: &DisputeEvidence,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO dispute_evidence (id, escrow_id, submitted_by, content, content_hash, signed_message, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+    )
+    .bind(&evidence.id)
+    .bind(&evidence.escrow_id)
+    .bind(&evidence.submitted_by)
+    .bind(&evidence.content)
+    .bind(&evidence.content_hash)
+    .bind(&evidence.signed_message)
+    .bind(evidence.created_at)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn list_evidence(
+    pool: &Pool<Sqlite>,
+    escrow_id: &str,
+) -> Result<Vec<DisputeEvidence>, sqlx::Error> {
+    let rows =
+        sqlx::query("SELECT * FROM dispute_evidence WHERE escrow_id = ?1 ORDER BY created_at ASC")
+            .bind(escrow_id)
+            .fetch_all(pool)
+            .await?;
+    let evidence = rows
+        .into_iter()
+        .map(|row| DisputeEvidence {
+            id: row.try_get("id").unwrap_or_default(),
+            escrow_id: row.try_get("escrow_id").unwrap_or_default(),
+            submitted_by: row.try_get("submitted_by").unwrap_or_default(),
+            content: row.try_get("content").unwrap_or_default(),
+            content_hash: row.try_get("content_hash").unwrap_or_default(),
+            signed_message: row.try_get("signed_message").unwrap_or(None),
+            created_at: row.try_get("created_at").unwrap_or(0),
+        })
+        .collect();
+    Ok(evidence)
+}
+
+pub async fn resolve_dispute(
+    pool: &Pool<Sqlite>,
+    escrow_id: &str,
+    outcome: &str,
+    _resolved_by: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE escrows SET dispute_outcome = ?1, dispute_resolved_at = ?2 WHERE id = ?3 AND status = 'disputed'",
+    )
+    .bind(outcome)
+    .bind(chrono::Utc::now().timestamp())
+    .bind(escrow_id)
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 // ── Offer Queries
@@ -620,12 +700,16 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
     let created_at: i64 = row.try_get("created_at").unwrap_or(0);
     let settled_at: Option<i64> = row.try_get("settled_at").unwrap_or(None);
     let refunded_at: Option<i64> = row.try_get("refunded_at").unwrap_or(None);
+    let mediator_key: Option<String> = row.try_get("mediator_key").unwrap_or(None);
+    let dispute_outcome: Option<String> = row.try_get("dispute_outcome").unwrap_or(None);
+    let dispute_resolved_at: Option<i64> = row.try_get("dispute_resolved_at").unwrap_or(None);
 
     Escrow {
         id,
         lock_tx_id,
         lock_tx_output_index: lock_tx_output_index as u32,
-        status: EscrowStatus::parse_status(&status_str).unwrap_or(EscrowStatus::PendingConfirmation),
+        status: EscrowStatus::parse_status(&status_str)
+            .unwrap_or(EscrowStatus::PendingConfirmation),
         asset_type,
         buyer_address,
         seller_address,
@@ -640,6 +724,9 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
         created_at,
         settled_at,
         refunded_at,
+        mediator_key,
+        dispute_outcome,
+        dispute_resolved_at,
     }
 }
 
@@ -682,6 +769,9 @@ mod tests {
             created_at: 1_700_000_000,
             settled_at: None,
             refunded_at: None,
+            mediator_key: None,
+            dispute_outcome: None,
+            dispute_resolved_at: None,
         }
     }
 

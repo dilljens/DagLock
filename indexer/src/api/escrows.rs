@@ -217,6 +217,9 @@ pub async fn create(
         created_at: chrono::Utc::now().timestamp(),
         settled_at: None,
         refunded_at: None,
+        mediator_key: body.mediator_key,
+        dispute_outcome: None,
+        dispute_resolved_at: None,
     };
 
     queries::insert_escrow(&state.db, &escrow)

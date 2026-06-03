@@ -1,6 +1,7 @@
 //! REST API routes for the DagLock indexer.
 
 pub mod escrows;
+pub mod evidence;
 pub mod network;
 pub mod offers;
 pub mod receipts;
@@ -8,12 +9,12 @@ pub mod reputation;
 
 use crate::verification::EscrowVerifier;
 use crate::websocket;
-use tower_http::cors::{CorsLayer, Any};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
+use tower_http::cors::{Any, CorsLayer};
 
 /// Shared application state.
 #[derive(Clone)]
@@ -49,6 +50,14 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/escrows/{id}/refund", post(escrows::refund))
         .route("/v1/escrows/{id}/dispute", post(escrows::dispute))
         .route("/v1/escrows/{id}/cancel", post(escrows::cancel))
+        .route(
+            "/v1/escrows/{id}/evidence",
+            post(evidence::submit_evidence).get(evidence::list_evidence),
+        )
+        .route(
+            "/v1/escrows/{id}/resolve-dispute",
+            post(evidence::resolve_dispute),
+        )
         .route("/v1/stats", get(escrows::stats))
         .route("/v1/offers", get(offers::list).post(offers::create))
         .route("/v1/offers/{id}/accept", post(offers::accept))

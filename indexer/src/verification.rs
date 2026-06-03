@@ -13,8 +13,6 @@ pub enum VerificationError {
     #[error("UTXO not found on-chain: {tx_id}:{output_index}")]
     UtxoNotFound { tx_id: String, output_index: u32 },
 
-
-
     #[error("Verification failed: {0}")]
     Other(String),
 }
@@ -30,7 +28,6 @@ pub type VerificationResult<T> = Result<T, VerificationError>;
 pub trait EscrowVerifier: Send + Sync {
     /// Verify that the escrow UTXO exists on-chain.
     fn verify_utxo_exists(&self, escrow: &Escrow) -> VerificationResult<bool>;
-
 }
 
 /// Mock verifier that always returns success.
@@ -45,8 +42,6 @@ impl EscrowVerifier for MockVerifier {
         warn!("Using MockVerifier — no actual UTXO verification performed");
         Ok(true)
     }
-
-
 }
 
 /// Verify escrow can be settled.
@@ -132,6 +127,9 @@ mod tests {
             created_at: 1_700_000_000,
             settled_at: None,
             refunded_at: None,
+            mediator_key: None,
+            dispute_outcome: None,
+            dispute_resolved_at: None,
         }
     }
 

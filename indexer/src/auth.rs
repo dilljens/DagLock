@@ -16,8 +16,6 @@ pub enum AuthError {
     #[error("Invalid signature for address {address}")]
     InvalidSignature { address: String },
 
-
-
     #[error("Unauthorized: {reason}")]
     Unauthorized { reason: String },
 }
@@ -79,12 +77,7 @@ impl AuthContext {
 /// Trait for verifying signatures.
 pub trait SignatureVerifier: Send + Sync {
     /// Verify that a signature is valid for the given address and message.
-    fn verify_signature(
-        &self,
-        address: &str,
-        signature: &str,
-        message: &str,
-    ) -> AuthResult<bool>;
+    fn verify_signature(&self, address: &str, signature: &str, message: &str) -> AuthResult<bool>;
 }
 
 /// secp256k1 ECDSA signature verifier.
@@ -124,7 +117,7 @@ impl SignatureVerifier for Secp256k1Verifier {
              Address: {}, Message: {}",
             address, message
         );
-        
+
         // In production, this would:
         // 1. Decode bech32m address to get witness program
         // 2. Parse signature (64 or 65 bytes)
@@ -132,7 +125,7 @@ impl SignatureVerifier for Secp256k1Verifier {
         // 4. Recover public key from signature
         // 5. Verify public key hash matches address
         // 6. Return Ok(true) if valid
-        
+
         Ok(true) // Placeholder
     }
 }
@@ -249,6 +242,9 @@ mod tests {
             created_at: 1_700_000_000,
             settled_at: None,
             refunded_at: None,
+            mediator_key: None,
+            dispute_outcome: None,
+            dispute_resolved_at: None,
         }
     }
 

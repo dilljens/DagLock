@@ -21,6 +21,11 @@ pub fn daglock_krc20_source() -> &'static str {
     include_str!("daglock_krc20.sil")
 }
 
+/// The daglock_arbiter.sil source embedded at compile time.
+pub fn daglock_arbiter_source() -> &'static str {
+    include_str!("daglock_arbiter.sil")
+}
+
 /// Compile the DagLock covenant with the given constructor arguments.
 ///
 /// Arguments (in order):
@@ -46,6 +51,40 @@ pub fn compile_daglock(
     ];
     compile_contract(source, &args, CompileOptions::default())
         .expect("daglock.sil should compile — if this fails, fix the .sil syntax")
+}
+
+/// Compile the DagLock Arbiter covenant with the given constructor arguments.
+///
+/// This is the same as daglock.sil but with an additional `arbiterKey` parameter
+/// and two extra entrypoints: `disputeSellerWins` and `disputeBuyerWins`.
+/// If `arbiter_key` is all-zeroes, the dispute paths are unreachable.
+///
+/// Arguments (in order):
+/// - `buyer_pk`: 32-byte compressed public key
+/// - `seller_pk`: 32-byte compressed public key
+/// - `trade_hash`: 32-byte SHA-256 hash (or zeroes if no atomic swap)
+/// - `timeout`: Unix timestamp (i64)
+/// - `treasury_pk`: 32-byte compressed public key
+/// - `arbiter_key`: 32-byte compressed public key (zeroes = dispute paths disabled)
+pub fn compile_daglock_arbiter(
+    buyer_pk: &[u8],
+    seller_pk: &[u8],
+    trade_hash: &[u8],
+    timeout: i64,
+    treasury_pk: &[u8],
+    arbiter_key: &[u8],
+) -> CompiledContract<'static> {
+    let source = daglock_arbiter_source();
+    let args = vec![
+        Expr::bytes(buyer_pk.to_vec()),
+        Expr::bytes(seller_pk.to_vec()),
+        Expr::bytes(trade_hash.to_vec()),
+        Expr::int(timeout),
+        Expr::bytes(treasury_pk.to_vec()),
+        Expr::bytes(arbiter_key.to_vec()),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_arbiter.sil should compile — if this fails, fix the .sil syntax")
 }
 
 /// Compile the DagLock KRC-20 covenant with the given constructor arguments.
@@ -118,6 +157,8 @@ pub mod entrypoints {
     pub const RELEASE: &str = "release";
     pub const SWAP: &str = "swap";
     pub const REFUND: &str = "refund";
+    pub const DISPUTE_SELLER_WINS: &str = "disputeSellerWins";
+    pub const DISPUTE_BUYER_WINS: &str = "disputeBuyerWins";
 }
 
 #[cfg(test)]
@@ -223,5 +264,69 @@ mod tests {
         // Both hashes should be 20 bytes
         assert_eq!(h1.len(), 20);
         assert_eq!(h2.len(), 20);
+    }
+
+    // ── Arbiter tests ────────────────────────────────────────────────
+
+    #[test]
+    fn arbiter_source_is_non_empty() {
+        let src = daglock_arbiter_source();
+        assert!(src.contains("contract DagLockArbiter"));
+        assert!(src.contains("entrypoint function disputeSellerWins"));
+        assert!(src.contains("entrypoint function disputeBuyerWins"));
+        assert!(src.contains("entrypoint function release"));
+        assert!(src.contains("entrypoint function swap"));
+        assert!(src.contains("entrypoint function refund"));
+    }
+
+    #[test]
+    fn compiles_daglock_arbiter_with_valid_params() {
+        let zero = [0u8; 32];
+        let compiled = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &zero);
+
+        assert_eq!(compiled.abi.len(), 5);
+        let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"release"));
+        assert!(names.contains(&"swap"));
+        assert!(names.contains(&"refund"));
+        assert!(names.contains(&"disputeSellerWins"));
+        assert!(names.contains(&"disputeBuyerWins"));
+        assert!(!compiled.script.is_empty());
+    }
+
+    #[test]
+    fn arbiter_template_hash_is_deterministic() {
+        let zero = [0u8; 32];
+        let c1 = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &zero);
+        let c2 = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &zero);
+
+        let (_, _, h1) = template_parts_and_hash(&c1);
+        let (_, _, h2) = template_parts_and_hash(&c2);
+        assert_eq!(h1, h2, "arbiter template hash must be deterministic");
+        assert_eq!(h1.len(), 20);
+    }
+
+    #[test]
+    fn arbiter_template_hash_differs_from_standard_daglock() {
+        let zero = [0u8; 32];
+        let std = compile_daglock(&zero, &zero, &zero, 1_700_000_000, &zero);
+        let arb = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &zero);
+
+        let (_, _, h1) = template_parts_and_hash(&std);
+        let (_, _, h2) = template_parts_and_hash(&arb);
+        assert_ne!(h1, h2, "arbiter template hash must differ from standard");
+    }
+
+    #[test]
+    fn arbiter_zero_key_and_nonzero_key_produce_different_scripts() {
+        let zero = [0u8; 32];
+        let one = [1u8; 32];
+        let c1 = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &zero);
+        let c2 = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &one);
+
+        assert_ne!(
+            c1.script, c2.script,
+            "zero vs non-zero arbiter should differ"
+        );
     }
 }
