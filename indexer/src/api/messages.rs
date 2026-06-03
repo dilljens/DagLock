@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
-use crate::auth::AuthContext;
+use crate::auth::{AuthContext, SignatureVerifier};
 use crate::crypto;
 use crate::db::queries;
 use crate::types::*;
@@ -73,16 +73,22 @@ pub async fn list(
     let escrow = escrow.ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!(ApiError::new("escrow_not_found", format!("No escrow found with id '{escrow_id}'"))))))?;
 
     // Auth: parties can always read. Jurors can read during a dispute.
-    let allow = match AuthContext::from_headers(&headers) {
-        Ok(auth) => {
+    let auth_res = AuthContext::from_headers(&headers);
+    let allow = match auth_res {
+        Ok(auth_ref) => {
+            let sig_verifier = crate::auth::Secp256k1Verifier::new();
+            if !(&sig_verifier as &dyn SignatureVerifier).verify_signature(&auth_ref.address, &auth_ref.signature, &format!("messages:{}", escrow_id)).unwrap_or(false) {
+                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature for messages")))));
+            }
             // Check if party
-            if auth.address == escrow.buyer_address || escrow.seller_address.as_deref() == Some(&auth.address) {
+            // Check if party
+            if auth_ref.address == escrow.buyer_address || escrow.seller_address.as_deref() == Some(&auth_ref.address) {
                 true
             } else if escrow.status == crate::types::EscrowStatus::Disputed {
                 // Check if juror on this escrow
                 let jury_case = queries::get_jury_case_by_escrow(&state.db, &escrow_id).await.unwrap_or(None);
                 match jury_case {
-                    Some(c) => c.jurors.contains(&auth.address),
+                    Some(c) => c.jurors.contains(&auth_ref.address),
                     None => false,
                 }
             } else {

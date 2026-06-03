@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::api::AppState;
 
-use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
+use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext, SignatureVerifier};
 use crate::db::queries;
 use crate::types::*;
 use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
@@ -603,6 +603,7 @@ pub async fn dispute(
 pub async fn cancel(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
         (
@@ -624,6 +625,16 @@ pub async fn cancel(
                     | EscrowStatus::Expired
             ) =>
         {
+            let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+                (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))))
+            })?;
+            let sig_verifier = crate::auth::Secp256k1Verifier::new();
+            if !(&sig_verifier as &dyn SignatureVerifier).verify_signature(&auth.address, &auth.signature, &format!("cancel:{}", id)).unwrap_or(false) {
+                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature for cancel")))));
+            }
+            if auth.address != current.buyer_address && current.seller_address.as_deref() != Some(&auth.address) {
+                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Only escrow parties can cancel")))));
+            }
             Err((
                 StatusCode::CONFLICT,
                 Json(json!(ApiError::new(
