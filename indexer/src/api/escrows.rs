@@ -62,7 +62,7 @@ pub async fn list(
     .map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
         )
     })?;
 
@@ -82,7 +82,7 @@ pub async fn get_by_id(
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
         )
     })?;
 
@@ -137,6 +137,14 @@ pub async fn create(
         ));
     }
 
+    // Validate buyer address length
+    if body.buyer_address.len() > 100 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new("invalid_address", "Buyer address too long"))),
+        ));
+    }
+
     // Validate seller address if provided
     if let Some(ref seller) = body.seller_address {
         if !validate_kaspa_address(seller) {
@@ -145,6 +153,20 @@ pub async fn create(
                 Json(json!(ApiError::new("invalid_address", "Invalid seller Kaspa address"))),
             ));
         }
+        if seller.len() > 100 {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new("invalid_address", "Seller address too long"))),
+            ));
+        }
+    }
+
+    // Validate amount range
+    if body.amount_sompi > 100_000_000_000_000 { // 1M KAS max
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new("invalid_amount", "Amount exceeds maximum (1M KAS)"))),
+        ));
     }
 
     let fee_sompi = body.amount_sompi / 200; // 0.5%
@@ -178,7 +200,7 @@ pub async fn create(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new("internal_error", e.to_string()))),
+                Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
             )
         })?;
 
@@ -189,7 +211,7 @@ pub async fn create(
 pub async fn stats(State(state): State<AppState>) -> Json<Value> {
     match queries::get_stats(&state.db).await {
         Ok(s) => Json(json!(s)),
-        Err(e) => Json(json!(ApiError::new("internal_error", e.to_string()))),
+        Err(e) => Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
     }
 }
 
@@ -207,7 +229,7 @@ pub async fn settle(
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
         )
     })?;
 
@@ -261,7 +283,7 @@ pub async fn settle(
                 .map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
+                        Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
                     )
                 })?;
             
@@ -301,7 +323,7 @@ pub async fn refund(
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
         )
     })?;
 
@@ -355,7 +377,7 @@ pub async fn refund(
                 .map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
+                        Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
                     )
                 })?;
             
@@ -390,7 +412,7 @@ pub async fn dispute(
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
         )
     })?;
 
@@ -419,7 +441,7 @@ pub async fn dispute(
                 .map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
+                        Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
                     )
                 })?;
             Ok(Json(json!({ "status": "disputed", "escrow_id": id })))
@@ -442,7 +464,7 @@ pub async fn cancel(
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", e.to_string()))),
+            Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
         )
     })?;
 
@@ -470,7 +492,7 @@ pub async fn cancel(
                 .map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", e.to_string()))),
+                        Json(json!(ApiError::new("internal_error", "An internal error occurred. Please try again later."))),
                     )
                 })?;
             Ok(Json(json!({ "status": "cancelled", "escrow_id": id })))

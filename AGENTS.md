@@ -17,7 +17,7 @@
 | Indexer DB | PostgreSQL or SQLite via SQLx |
 | Fee model | 0.5% (1/200) protocol fee to DagLock treasury |
 | Target users | KRC-20 token communities, OTC traders, whale-to-whale KAS swaps |
-| Dev status | Pre-alpha — covenant written, tests passing structure defined |
+| Dev status | Beta — Phases 0–3 built, tested, and deployed on Testnet 12 |
 
 ---
 
@@ -128,7 +128,7 @@ daglock/
 
 ## Current Phase
 
-**Phase 0 — Covenant development.** `daglock.sil` written and compilable. `daglock_krc20.sil` pending. Tests defined. Reference docs ingested from upstream SilverScript.
+**Phase 5 — Mainnet launch imminent.** All code for Phases 0–3 is built, tested, and deployed on Testnet 12. Toccata hard fork opens June 5–20, 2026 (2 days). Remaining: Phase 4 community outreach + Phase 5 mainnet deployment.
 
 ---
 

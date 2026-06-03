@@ -1,0 +1,34 @@
+#!/bin/bash
+# DagLock Development Script - Open services
+# Usage: ./open
+
+set -e
+
+echo "=== Starting DagLock Development Environment ==="
+
+# Check if indexer is already running
+if lsof -i :8443 -t > /dev/null 2>&1; then
+    echo "✓ Indexer already running on port 8443"
+else
+    echo "Starting indexer..."
+    cargo run -p daglock-indexer -- --database-url sqlite:daglock_dev.db --host 127.0.0.1 --port 8443 &
+    sleep 2
+    echo "✓ Indexer started on http://localhost:8443"
+fi
+
+# Check if web UI is already running
+if lsof -i :5173 -t > /dev/null 2>&1; then
+    echo "✓ Web UI already running on port 5173"
+else
+    echo "Starting web UI..."
+    cd web && npm run dev &
+    sleep 3
+    echo "✓ Web UI started on http://localhost:5173"
+fi
+
+echo ""
+echo "=== Services Running ==="
+echo "  Indexer API:  http://localhost:8443"
+echo "  Web UI:       http://localhost:5173"
+echo ""
+echo "Press Ctrl+C to stop all services"

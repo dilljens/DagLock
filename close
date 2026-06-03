@@ -1,0 +1,32 @@
+#!/bin/bash
+# DagLock Development Script - Close services
+# Usage: ./close
+
+echo "=== Stopping DagLock Development Environment ==="
+
+# Stop indexer (port 8443)
+if lsof -i :8443 -t > /dev/null 2>&1; then
+    echo "Stopping indexer..."
+    kill $(lsof -i :8443 -t) 2>/dev/null || true
+    sleep 1
+    echo "✓ Indexer stopped"
+else
+    echo "✓ Indexer not running"
+fi
+
+# Stop web UI (port 5173)
+if lsof -i :5173 -t > /dev/null 2>&1; then
+    echo "Stopping web UI..."
+    kill $(lsof -i :5173 -t) 2>/dev/null || true
+    sleep 1
+    echo "✓ Web UI stopped"
+else
+    echo "✓ Web UI not running"
+fi
+
+# Stop any remaining cargo/node processes
+pkill -f "daglock-indexer" 2>/dev/null || true
+pkill -f "vite" 2>/dev/null || true
+
+echo ""
+echo "=== All services stopped ==="
