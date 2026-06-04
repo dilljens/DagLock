@@ -14,6 +14,9 @@ import {
 	type Receipt,
 	type Reputation,
 	type Stats,
+	type Vault,
+	type VaultType,
+	type VaultStatus,
 } from "./api";
 
 import { money, sompi, time, relativeTime, badge } from "./helpers";
@@ -170,7 +173,9 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 		if (!amountNum || amountNum <= 0) return;
 		const trimmedBuyer = buyerAddress.trim();
 		if (!trimmedBuyer.startsWith("kaspa:")) {
-			setError("Invalid buyer address. Must be a valid Kaspa address starting with 'kaspa:'.");
+			setError(
+				"Invalid buyer address. Must be a valid Kaspa address starting with 'kaspa:'.",
+			);
 			return;
 		}
 		setStatus("loading");
@@ -323,7 +328,9 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 		if (!escrowId || !reason) return;
 		const trimmedDispAddr = authAddress.trim();
 		if (!trimmedDispAddr || !authSig) {
-			setError("Authentication required. Please provide your Kaspa address and signature.");
+			setError(
+				"Authentication required. Please provide your Kaspa address and signature.",
+			);
 			return;
 		}
 		setStatus("loading");
@@ -448,7 +455,9 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 			if (needsAuth) {
 				if (!authAddress || !authSignature) {
 					setStatus("error");
-					setError("Authentication required. Please provide your Kaspa address and signature to proceed.");
+					setError(
+						"Authentication required. Please provide your Kaspa address and signature to proceed.",
+					);
 					return;
 				}
 				auth = {
@@ -478,7 +487,9 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 			if (needsAuth) {
 				if (!authAddress || !authSignature) {
 					setStatus("error");
-					setError("Authentication required. Please provide your Kaspa address and signature.");
+					setError(
+						"Authentication required. Please provide your Kaspa address and signature.",
+					);
 					return;
 				}
 				auth = {
@@ -573,15 +584,21 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 		const trimmedTgAddr = address.trim();
 		const trimmedTgHandle = telegramHandle.trim();
 		if (!trimmedTgAddr.startsWith("kaspa:")) {
-			setError("Invalid address format. Must be a valid Kaspa address starting with 'kaspa:'.");
+			setError(
+				"Invalid address format. Must be a valid Kaspa address starting with 'kaspa:'.",
+			);
 			return;
 		}
 		if (!trimmedTgHandle.startsWith("@")) {
-			setError("Invalid Telegram handle. Must start with '@' (e.g., @username).");
+			setError(
+				"Invalid Telegram handle. Must start with '@' (e.g., @username).",
+			);
 			return;
 		}
 		if (!signature.trim()) {
-			setError("Signature is required for verification. Please sign a message with your Kaspa wallet.");
+			setError(
+				"Signature is required for verification. Please sign a message with your Kaspa wallet.",
+			);
 			return;
 		}
 		setStatus("loading");
@@ -923,7 +940,9 @@ function EscrowLookup() {
 							onClick={async () => {
 								if (!msgText || !id) return;
 								if (!chatAddr || !chatSig) {
-									setMsgStatus("Authentication required. Please provide your address and signature.");
+									setMsgStatus(
+										"Authentication required. Please provide your address and signature.",
+									);
 									return;
 								}
 								try {
@@ -1353,6 +1372,76 @@ function JuryPanel() {
 	);
 }
 
+/* ─── Vault List Panel ─── */
+function VaultListPanel() {
+	const [address, setAddress] = useState("");
+	const [list, setList] = useState<LoadState<Vault[]>>({ loading: false });
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!address.trim()) return;
+		setList({ loading: true });
+		try {
+			const data = await api.vaults(address.trim());
+			setList({ data: data.vaults, loading: false });
+		} catch (err) {
+			setList({ error: (err as Error).message, loading: false });
+		}
+	}
+
+	function formatVaultType(type: VaultType): string {
+		switch (type) {
+			case "time": return "Time-locked";
+			case "beneficiary": return "Beneficiary";
+			case "deadman": return "Deadman switch";
+			case "inheritance": return "Inheritance";
+			case "multisig": return "Multi-sig";
+			default: return type;
+		}
+	}
+
+	function formatVaultStatus(status: VaultStatus): string {
+		switch (status) {
+			case "locked": return "🔒 Locked";
+			case "unlocked": return "🔓 Unlocked";
+			case "expired": return "⏰ Expired";
+			case "transferred": return "↗️ Transferred";
+			default: return status;
+		}
+	}
+
+	return (
+		<div className="stack">
+			<form className="form" onSubmit={handleSubmit}>
+				<input
+					value={address}
+					onChange={(e) => setAddress(e.target.value)}
+					placeholder="your kaspa address"
+				/>
+				<button className="button" type="submit">
+					List my vaults
+				</button>
+			</form>
+			{list.loading && <p className="muted">Loading vaults…</p>}
+			{list.error && <p className="muted error-text">{list.error}</p>}
+			{list.data?.length === 0 && (
+				<p className="muted">No vaults found for this address.</p>
+			)}
+			{list.data?.map((v) => (
+				<article key={v.id} className="offer" style={{ cursor: "default" }}>
+					<div className="offer-top">
+						<strong>{formatVaultType(v.vault_type)}</strong>
+						<span className={`pill pill-${v.status}`}>{formatVaultStatus(v.status)}</span>
+					</div>
+					<p>{money(v.amount_sompi)} KAS</p>
+					<small className="muted">Expires: {time(v.timeout)}</small>
+					<code>{v.id}</code>
+				</article>
+			))}
+		</div>
+	);
+}
+
 /* ─── My Offers Panel ─── */
 function MyOffersPanel() {
 	const [address, setAddress] = useState("");
@@ -1703,7 +1792,17 @@ export default function App() {
 					fontSize: "14px",
 				}}
 			>
-				⚠️ TESTNET — This is a testnet deployment. Do not use real funds. Get testnet KAS from the <a href="https://faucet-tn10.kaspanet.io/" target="_blank" rel="noopener noreferrer" style={{color:'#000',textDecoration:'underline'}}>Kaspa Testnet Faucet</a>.
+				⚠️ TESTNET — This is a testnet deployment. Do not use real funds. Get
+				testnet KAS from the{" "}
+				<a
+					href="https://faucet-tn10.kaspanet.io/"
+					target="_blank"
+					rel="noopener noreferrer"
+					style={{ color: "#000", textDecoration: "underline" }}
+				>
+					Kaspa Testnet Faucet
+				</a>
+				.
 			</div>
 			<header className="hero">
 				<div>
@@ -1893,6 +1992,7 @@ export default function App() {
 			<section className="grid lookup-grid lookup-section">
 				<EscrowLookup />
 				<MyEscrows />
+				<VaultListPanel />
 				<ReputationLookup />
 				<ReceiptLookup />
 			</section>

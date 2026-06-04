@@ -406,3 +406,78 @@ pub struct VouchListResponse {
     pub vouches: Vec<Vouch>,
     pub total: i64,
 }
+
+// ── Vault Types ─────────────────────────────────────────────────
+
+/// Vault type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VaultType {
+    Time,
+    Beneficiary,
+    Deadman,
+    Inheritance,
+    Multisig,
+}
+
+/// Vault status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VaultStatus {
+    Locked,
+    Unlocked,
+    Expired,
+    Transferred,
+}
+
+/// Vault record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Vault {
+    pub id: String,
+    pub owner_address: Address,
+    pub beneficiary_address: Option<Address>,
+    pub vault_type: VaultType,
+    pub status: VaultStatus,
+    pub amount_sompi: i64,
+    pub timeout: i64,
+    pub lock_tx_id: Option<String>,
+    pub lock_tx_output_index: Option<i64>,
+    pub created_at: i64,
+    pub unlocked_at: Option<i64>,
+    pub expires_at: Option<i64>,
+}
+
+/// Create vault request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateVaultRequest {
+    pub owner_address: Address,
+    pub beneficiary_address: Option<Address>,
+    pub vault_type: VaultType,
+    pub amount_sompi: i64,
+    pub timeout: i64,
+    pub lock_tx_id: Option<String>,
+    pub lock_tx_output_index: Option<i64>,
+}
+
+/// Vault list response.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[allow(dead_code)]
+pub struct VaultListResponse {
+    pub vaults: Vec<Vault>,
+    pub total: i64,
+}
+
+/// Withdraw vault request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WithdrawVaultRequest {
+    pub owner_address: Address,
+    pub signature: String,
+}
+
+/// Transfer vault request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransferVaultRequest {
+    pub beneficiary_address: Address,
+    pub owner_address: Address,
+    pub signature: String,
+}

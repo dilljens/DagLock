@@ -41,6 +41,10 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
+    sqlx::query(include_str!("migrations/009_create_vaults.sql"))
+        .execute(pool)
+        .await?;
+
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_price_columns(pool).await?;
     ensure_dispute_mode_column(pool).await?;

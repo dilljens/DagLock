@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || "";
+console.log("[DagLock] API_BASE:", API_BASE);
 
 export type Health = {
 	status: string;
@@ -217,6 +218,37 @@ export type DisputeEvidence = {
 	created_at: number;
 };
 
+// ── Vault Types ─────────────────────────────────────────────────
+
+export type VaultType = "time" | "beneficiary" | "deadman" | "inheritance" | "multisig";
+
+export type VaultStatus = "locked" | "unlocked" | "expired" | "transferred";
+
+export type Vault = {
+	id: string;
+	owner_address: string;
+	beneficiary_address?: string | null;
+	vault_type: VaultType;
+	status: VaultStatus;
+	amount_sompi: number;
+	timeout: number;
+	lock_tx_id?: string | null;
+	lock_tx_output_index?: number | null;
+	created_at: number;
+	unlocked_at?: number | null;
+	expires_at?: number | null;
+};
+
+export type CreateVaultRequest = {
+	owner_address: string;
+	beneficiary_address?: string;
+	vault_type: VaultType;
+	amount_sompi: number;
+	timeout: number;
+	lock_tx_id?: string;
+	lock_tx_output_index?: number;
+};
+
 async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
 	const response = await fetch(API_BASE + path, {
 		headers: {
@@ -287,13 +319,30 @@ async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
 export const api = {
 	health: () => loadJson<Health>("/v1/health"),
 	compile: (template: string, params: Record<string, string>) =>
-		postJson<{ script: string; template_hash: string; abi: { name: string }[] }>(
-			"/v1/compile",
-			{ template, params },
-		),
+		postJson<{
+			script: string;
+			template_hash: string;
+			abi: { name: string }[];
+		}>("/v1/compile", { template, params }),
 	network: () => loadJson<NetworkInfo>("/v1/network"),
-	networkPrice: () => loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
+	networkPrice: () =>
+		loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
 	stats: () => loadJson<Stats>("/v1/stats"),
+
+	// Vaults
+	vaults: (owner?: string) =>
+		loadJson<{ vaults: Vault[]; total: number }>(
+			`/v1/vaults${owner ? `?owner=${encodeURIComponent(owner)}` : ""}`,
+		),
+	vault: (id: string) =>
+		loadJson<Vault>(`/v1/vaults/${encodeURIComponent(id)}`),
+	createVault: (req: CreateVaultRequest) =>
+		postJson<Vault>("/v1/vaults", req),
+	withdrawVault: (id: string, ownerAddress: string, signature: string) =>
+		postJson<{ status: string; vault_id: string }>(
+			`/v1/vaults/${encodeURIComponent(id)}/withdraw`,
+			{ owner_address: ownerAddress, signature },
+		),
 
 	// Escrows
 	escrows: (address: string) =>
@@ -327,7 +376,7 @@ export const api = {
 	// Offers
 	offers: (creator?: string) =>
 		loadJson<{ offers: Offer[]; total: number }>(
-			`/v1/offers?status=proposed${creator ? `&creator=${encodeURIComponent(creator)}` : ""}`
+			`/v1/offers?status=proposed${creator ? `&creator=${encodeURIComponent(creator)}` : ""}`,
 		),
 	createOffer: (req: CreateOfferRequest) => postJson<Offer>("/v1/offers", req),
 	acceptOffer: (id: string, counterparty_address: string) =>
@@ -368,21 +417,36 @@ export const api = {
 
 	// Jury
 	juryRegister: (auth: AuthHeaders) =>
-		postJson<{ status: string; address: string }>("/v1/jury/register", {}, auth),
+		postJson<{ status: string; address: string }>(
+			"/v1/jury/register",
+			{},
+			auth,
+		),
 	juryUnregister: (auth: AuthHeaders) =>
-		postJson<{ status: string; address: string }>("/v1/jury/unregister", {}, auth),
+		postJson<{ status: string; address: string }>(
+			"/v1/jury/unregister",
+			{},
+			auth,
+		),
 	juryCases: (auth: AuthHeaders) =>
 		loadAuthJson<{ cases: JuryCase[]; total: number }>("/v1/jury/cases", auth),
 	juryCase: (caseId: string) =>
 		loadJson<JuryCase>(`/v1/jury/cases/${encodeURIComponent(caseId)}`),
-	juryVote: (caseId: string, vote: string, reasoning?: string, auth?: AuthHeaders) =>
+	juryVote: (
+		caseId: string,
+		vote: string,
+		reasoning?: string,
+		auth?: AuthHeaders,
+	) =>
 		postJson<{ status: string; vote: string; verdict?: string | null }>(
 			`/v1/jury/cases/${encodeURIComponent(caseId)}/vote`,
 			{ vote, reasoning },
 			auth,
 		),
 	juryCandidates: () =>
-		loadJson<{ candidates: JurorRegistration[]; total: number }>("/v1/jury/candidates"),
+		loadJson<{ candidates: JurorRegistration[]; total: number }>(
+			"/v1/jury/candidates",
+		),
 
 	// Messages
 	sendMessage: (escrowId: string, content: string, auth: AuthHeaders) =>
@@ -392,10 +456,11 @@ export const api = {
 			auth,
 		),
 	listMessages: (escrowId: string, auth: AuthHeaders) =>
-		loadAuthJson<{ messages: EscrowMessage[]; total: number; escrow_id: string }>(
-			`/v1/escrows/${encodeURIComponent(escrowId)}/messages`,
-			auth,
-		),
+		loadAuthJson<{
+			messages: EscrowMessage[];
+			total: number;
+			escrow_id: string;
+		}>(`/v1/escrows/${encodeURIComponent(escrowId)}/messages`, auth),
 
 	// Identity
 	createIdentity: (

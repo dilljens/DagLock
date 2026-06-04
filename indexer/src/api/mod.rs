@@ -10,6 +10,7 @@ pub mod network;
 pub mod offers;
 pub mod receipts;
 pub mod reputation;
+pub mod vaults;
 pub mod vouches;
 
 use crate::verification::EscrowVerifier;
@@ -88,6 +89,9 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/receipts/:id", get(receipts::get))
         .route("/v1/vouches", post(vouches::create).get(vouches::list))
         .route("/v1/vouches/:id", post(vouches::delete))
+        .route("/v1/vaults", get(vaults::list).post(vaults::create))
+        .route("/v1/vaults/:id", get(vaults::get_by_id))
+        .route("/v1/vaults/:id/withdraw", post(vaults::withdraw))
         .route("/v1/jury/register", post(jury::register))
         .route("/v1/jury/unregister", post(jury::unregister))
         .route("/v1/jury/cases", get(jury::list_cases))
