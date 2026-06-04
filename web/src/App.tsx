@@ -127,15 +127,16 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 			setError("Amount must be positive");
 			return;
 		}
-		if (!address.startsWith("kaspa:")) {
-			setError("Address must start with kaspa:");
+		const trimmedAddr = address.trim();
+		if (!trimmedAddr.startsWith("kaspa:")) {
+			setError("Address must start with kaspa: (check for leading/trailing spaces)");
 			return;
 		}
 		setStatus("loading");
 		setError("");
 		try {
 			const body: CreateOfferRequest = {
-				creator_address: address,
+				creator_address: trimmedAddr,
 				side,
 				base_asset: baseAsset,
 				quote_asset: quoteAsset,
@@ -230,14 +231,18 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 		e.preventDefault();
 		const amountNum = Number.parseFloat(amount);
 		if (!amountNum || amountNum <= 0) return;
-		if (!buyerAddress.startsWith("kaspa:")) return;
+		const trimmedBuyer = buyerAddress.trim();
+		if (!trimmedBuyer.startsWith("kaspa:")) {
+			setError("Buyer address must start with kaspa: (check for spaces)");
+			return;
+		}
 		setStatus("loading");
 		setError("");
 		try {
 			const body: CreateEscrowRequest = {
 				lock_tx_id: crypto.randomUUID(),
 				lock_tx_output_index: 0,
-				buyer_address: buyerAddress,
+				buyer_address: trimmedBuyer,
 				amount_sompi: sompi(amountNum),
 				asset_type: assetType,
 			};
@@ -360,7 +365,8 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		if (!escrowId || !reason) return;
-		if (!authAddress || !authSig) {
+		const trimmedDispAddr = authAddress.trim();
+		if (!trimmedDispAddr || !authSig) {
 			setError("Address and signature are required.");
 			return;
 		}
@@ -368,7 +374,7 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 		setError("");
 		try {
 			const auth: AuthHeaders = {
-				address: authAddress,
+				address: trimmedDispAddr,
 				signature: authSig,
 				message: `dispute:${escrowId}`,
 			};
@@ -577,22 +583,30 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		if (
-			!address.startsWith("kaspa:") ||
-			!telegramHandle.startsWith("@") ||
-			!signature
-		)
+		const trimmedTgAddr = address.trim();
+		const trimmedTgHandle = telegramHandle.trim();
+		if (!trimmedTgAddr.startsWith("kaspa:")) {
+			setError("Address must start with kaspa:");
 			return;
+		}
+		if (!trimmedTgHandle.startsWith("@")) {
+			setError("Telegram handle must start with @");
+			return;
+		}
+		if (!signature.trim()) {
+			setError("Signature is required");
+			return;
+		}
 		setStatus("loading");
 		setError("");
 		try {
-			const message = `daglock.io:verify:telegram:${telegramHandle}`;
-			const auth: AuthHeaders = { address, signature, message };
+			const message = `daglock.io:verify:telegram:${trimmedTgHandle}`;
+			const auth: AuthHeaders = { address: trimmedTgAddr, signature: signature.trim(), message };
 			await api.createIdentity(
 				"telegram",
-				telegramHandle,
+				trimmedTgHandle,
 				message,
-				signature,
+				signature.trim(),
 				auth,
 			);
 			setStatus("done");
