@@ -60,7 +60,33 @@ See [DEPLOYMENT-RAILWAY.md](docs/DEPLOYMENT-RAILWAY.md) for the full guide.
 | **REST API** | 30+ endpoints for programmatic access. See [API.md](docs/API.md) |
 | **Covenant templates** | Compile and deploy any DagLock covenant from the UI or API — no SilverScript knowledge needed |
 
-Want to compile a custom escrow or vault without running the compiler? The web UI has a **Compile covenant** tab, and the API has `POST /v1/compile`. Fill in the params, get the bytecode + address back. This is how wallets and bots integrate DagLock without installing any toolchain. See the **Covenant template** action tab in the web UI.
+---
+
+## Covenant Templates
+
+DagLock lets you compile and deploy covenants without running the SilverScript compiler yourself. This is the main way wallets, bots, and other applications integrate DagLock.
+
+| Template | What it does | Use case |
+|----------|-------------|----------|
+| **daglock** | KAS escrow: buyer+seller release, timeout refund, atomic swap | Standard OTC trades |
+| **daglock_arbiter** | KAS escrow + optional mediator or jury resolution | High-value trades with dispute protection |
+| **daglock_vault** | Time-locked self-custody vault (withdraw after timeout) | Personal savings, inheritance, cold storage |
+
+**From the web UI:** Open the **Compile covenant** tab in the Actions panel. Pick a template, fill in the params, click Compile. You get the compiled bytecode and deploy address immediately — no terminal needed.
+
+**From the API:**
+```bash
+curl -X POST https://api.daglock.io/v1/compile \
+  -H "Content-Type: application/json" \
+  -d '{"template":"daglock_vault","params":{"owner_key":"<64 hex chars>","timeout":"2000000000"}}'
+```
+Returns the compiled script, template hash, ABI, and prefix/suffix for UTXO detection.
+
+**In your own code:**
+```rust
+use daglock_contracts::compile_daglock_vault;
+let compiled = compile_daglock_vault(&owner_key, timeout);
+```
 
 ---
 
