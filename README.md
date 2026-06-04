@@ -14,7 +14,7 @@ Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptog
 
 - **Web app:** Visit [daglock.com](https://daglock.com) — no installation needed
 - **Telegram bot:** Message [@DagLockBot](https://t.me/DagLockBot) on Telegram — see [BOT-README.md](docs/BOT-README.md) for commands
-- **CLI:** `cargo install --git https://github.com/dilljens/DagLock daglock-cli`
+- **CLI:** `cargo install --git https://github.com/dilljens/DagLock daglock-cli` — see [CLI-README.md](docs/CLI-README.md) for commands
 
 **Create escrows, check reputation, find counterparties, and resolve disputes — all without trusting a middleman.**
 
