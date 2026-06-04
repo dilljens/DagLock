@@ -21,6 +21,8 @@ blake2b_simd.workspace = true
 sqlx = { version = "0.7", features = [
   "sqlite",
   "postgres",
+# The postgres cfg warning is expected — the feature is available but not default.
+# Enable it with --features postgres when using PostgreSQL.
   "runtime-tokio-native-tls",
   "migrate",
 ] }

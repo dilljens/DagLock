@@ -37,7 +37,7 @@ pub async fn create(
 
     queries::insert_offer(&state.db, &offer)
         .await
-        .map_err(|e| {
+        .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
@@ -73,7 +73,7 @@ pub async fn list(
             "offers": offers,
             "total": total,
         })),
-        Err(e) => Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+        Err(_e) => Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
     }
 }
 
@@ -84,7 +84,7 @@ pub async fn accept(
     Json(body): Json<AcceptOfferRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // Check offer exists and is proposed
-    let offer = queries::get_offer(&state.db, &id).await.map_err(|e| {
+    let offer = queries::get_offer(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
@@ -102,7 +102,7 @@ pub async fn accept(
             }
             queries::accept_offer(&state.db, &id, &body.counterparty_address)
                 .await
-                .map_err(|e| {
+                .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
@@ -134,7 +134,7 @@ pub async fn cancel(
     Path(id): Path<String>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let offer = queries::get_offer(&state.db, &id).await.map_err(|e| {
+    let offer = queries::get_offer(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
@@ -155,7 +155,7 @@ pub async fn cancel(
             }
             queries::update_offer_status(&state.db, &id, "cancelled")
                 .await
-                .map_err(|e| {
+                .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(json!(ApiError::new("internal_error", "An internal error occurred."))),

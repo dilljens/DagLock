@@ -167,6 +167,7 @@ pub struct Reputation {
 
 /// Verified social identity linked to a Kaspa address.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct VerifiedIdentity {
     pub address: Address,
     pub platform: String,
@@ -286,6 +287,7 @@ pub struct JurorRegistration {
 
 /// Request to register as a juror.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct JuryRegisterRequest {
     pub address: Address,
 }
@@ -308,6 +310,7 @@ pub struct JuryCase {
 
 /// Jury vote record.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct JuryVote {
     pub case_id: String,
     pub juror_address: Address,
@@ -352,6 +355,7 @@ pub struct SendMessageRequest {
 
 /// Message list response.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[allow(dead_code)]
 pub struct MessageListResponse {
     pub messages: Vec<EscrowMessage>,
     pub total: i64,
@@ -398,6 +402,7 @@ pub struct CreateVouchRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[allow(dead_code)]
 pub struct VouchListResponse {
     pub vouches: Vec<Vouch>,
     pub total: i64,

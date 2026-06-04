@@ -18,7 +18,7 @@ pub async fn get(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let rep = queries::get_reputation(&state.db, &address)
         .await
-        .map_err(|e| {
+        .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!(ApiError::new("internal_error", "An internal error occurred."))),

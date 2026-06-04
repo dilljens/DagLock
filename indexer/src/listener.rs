@@ -161,6 +161,7 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
 }
 
 /// Check if a script matches any DagLock template hash by computing its BLAKE2b-160 hash.
+#[allow(dead_code)]
 pub fn check_template_match(
     script: &[u8],
     kas_hash: Option<&[u8]>,
@@ -192,14 +193,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn check_template_match_returns_none_for_unknown_script() {
+    #[allow(dead_code)]
+fn check_template_match_returns_none_for_unknown_script() {
         let script = vec![0x01, 0x02, 0x03];
         let result = check_template_match(&script, None, None);
         assert!(result.is_none());
     }
 
     #[test]
-    fn check_template_match_detects_kas_hash() {
+    #[allow(dead_code)]
+fn check_template_match_detects_kas_hash() {
         let script = vec![0xaa, 0xbb, 0xcc];
         let hash = blake2b_simd::Params::new()
             .hash_length(20)
@@ -211,7 +214,8 @@ mod tests {
     }
 
     #[test]
-    fn check_template_match_detects_krc20_hash() {
+    #[allow(dead_code)]
+fn check_template_match_detects_krc20_hash() {
         let script = vec![0xdd, 0xee, 0xff];
         let hash = blake2b_simd::Params::new()
             .hash_length(20)

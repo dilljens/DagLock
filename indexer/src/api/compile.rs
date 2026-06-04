@@ -8,7 +8,6 @@ use axum::http::StatusCode;
 use axum::{extract::State, Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use daglock_contracts::silverscript_lang::ast::Expr;
 
 use crate::api::AppState;
 use crate::types::*;

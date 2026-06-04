@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
-use crate::auth::{AuthContext, Secp256k1Verifier, SignatureVerifier};
+use crate::auth::AuthContext;
 use crate::db::queries;
 use crate::types::*;
 

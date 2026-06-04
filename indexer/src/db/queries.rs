@@ -749,6 +749,7 @@ pub async fn unregister_juror(pool: &Pool<Sqlite>, address: &str) -> Result<bool
     Ok(result.rows_affected() > 0)
 }
 
+#[allow(dead_code)]
 pub async fn get_juror(pool: &Pool<Sqlite>, address: &str) -> Result<Option<JurorRegistration>, sqlx::Error> {
     let rows = sqlx::query("SELECT * FROM juror_registrations WHERE address = ?1")
         .bind(address)
@@ -762,6 +763,7 @@ pub async fn get_juror(pool: &Pool<Sqlite>, address: &str) -> Result<Option<Juro
     }).next())
 }
 
+#[allow(dead_code)]
 pub async fn list_eligible_jurors(pool: &Pool<Sqlite>, min_score: f64) -> Result<Vec<JurorRegistration>, sqlx::Error> {
     let rows = sqlx::query(
         "SELECT * FROM juror_registrations WHERE reliability_score >= ?1 ORDER BY reliability_score DESC"
@@ -1107,6 +1109,7 @@ pub async fn list_messages_raw(pool: &Pool<Sqlite>, escrow_id: &str) -> Result<V
     }).collect())
 }
 
+#[allow(dead_code)]
 pub async fn count_messages(pool: &Pool<Sqlite>, escrow_id: &str) -> Result<i64, sqlx::Error> {
     let (count,): (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM escrow_messages WHERE escrow_id = ?1"
@@ -1277,6 +1280,7 @@ pub async fn list_offers_by_creator(
 }
 
 /// Reconcile expired offers: mark as expired if expires_at < now
+#[allow(dead_code)]
 pub async fn reconcile_expired_offers(pool: &Pool<Sqlite>) -> Result<u64, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let result = sqlx::query(

@@ -8,7 +8,7 @@ use axum::{
 use serde_json::{json, Value};
 
 use crate::api::AppState;
-use crate::auth::{AuthContext, SignatureVerifier};
+use crate::auth::AuthContext;
 use crate::db::queries;
 use crate::types::*;
 
