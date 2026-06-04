@@ -1,0 +1,253 @@
+//! Execution tests for DagLock Vault covenant — runs the withdraw path through
+//! the Kaspa script engine (TxScriptEngine) with real Schnorr signatures.
+
+use daglock_contracts::{compile_daglock_vault, entrypoints};
+use kaspa_consensus_core::hashing::sighash::{
+    calc_schnorr_signature_hash, SigHashReusedValuesUnsync,
+};
+use kaspa_consensus_core::hashing::sighash_type::SIG_HASH_ALL;
+use kaspa_consensus_core::tx::{
+    MutableTransaction, ScriptPublicKey, Transaction, TransactionId, TransactionInput,
+    TransactionOutpoint, TransactionOutput, UtxoEntry, VerifiableTransaction,
+};
+use kaspa_txscript::caches::Cache;
+use kaspa_txscript::opcodes::codes::OpCheckSig;
+use kaspa_txscript::script_builder::ScriptBuilder;
+use kaspa_txscript::{EngineCtx, EngineFlags, TxScriptEngine};
+use rand::RngCore;
+use secp256k1::{Keypair, Secp256k1, SecretKey};
+
+fn random_keypair() -> Keypair {
+    let secp = Secp256k1::new();
+    let mut rng = rand::thread_rng();
+    let mut sk_bytes = [0u8; 32];
+    loop {
+        rng.fill_bytes(&mut sk_bytes);
+        if let Ok(sk) = SecretKey::from_slice(&sk_bytes) {
+            return Keypair::from_secret_key(&secp, &sk);
+        }
+    }
+}
+
+fn pubkey_bytes(kp: &Keypair) -> Vec<u8> {
+    kp.x_only_public_key().0.serialize().to_vec()
+}
+
+fn p2pk_script(pubkey: &[u8]) -> ScriptPublicKey {
+    let script = ScriptBuilder::new()
+        .add_data(pubkey)
+        .unwrap()
+        .add_op(OpCheckSig)
+        .unwrap()
+        .drain();
+    ScriptPublicKey::new(0, script.into())
+}
+
+#[test]
+fn vault_withdraw_succeeds_after_timeout() {
+    let owner = random_keypair();
+    let timeout: i64 = 1_600_000_000; // past timestamp
+
+    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout);
+
+    let input_value: u64 = 500_000;
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&owner)),
+    )];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([1u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs.clone(),
+        timeout as u64,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused);
+    let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
+    let sig_raw = owner.sign_schnorr(msg);
+    let mut sig = Vec::with_capacity(65);
+    sig.extend_from_slice(sig_raw.as_ref().as_slice());
+    sig.push(SIG_HASH_ALL.to_u8());
+
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::WITHDRAW,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
+        )
+        .expect("build_sig_script");
+
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(
+        result.is_ok(),
+        "withdraw after timeout failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn vault_withdraw_fails_before_timeout() {
+    let owner = random_keypair();
+    let timeout: i64 = 3_000_000_000; // future timestamp
+
+    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout);
+
+    let input_value: u64 = 500_000;
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&owner)),
+    )];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([2u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs.clone(),
+        0, // current time before timeout
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused);
+    let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
+    let sig_raw = owner.sign_schnorr(msg);
+    let mut sig = Vec::with_capacity(65);
+    sig.extend_from_slice(sig_raw.as_ref().as_slice());
+    sig.push(SIG_HASH_ALL.to_u8());
+
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::WITHDRAW,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
+        )
+        .expect("build_sig_script");
+
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(result.is_err(), "withdraw before timeout should fail");
+}
+
+#[test]
+fn vault_withdraw_fails_wrong_signature() {
+    let owner = random_keypair();
+    let wrong_signer = random_keypair();
+    let timeout: i64 = 1_600_000_000;
+
+    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout);
+
+    let input_value: u64 = 500_000;
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&owner)),
+    )];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([3u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs.clone(),
+        timeout as u64,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused);
+    let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
+    let sig_raw = wrong_signer.sign_schnorr(msg);
+    let mut sig = Vec::with_capacity(65);
+    sig.extend_from_slice(sig_raw.as_ref().as_slice());
+    sig.push(SIG_HASH_ALL.to_u8());
+
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::WITHDRAW,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
+        )
+        .expect("build_sig_script");
+
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(result.is_err(), "withdraw with wrong sig should fail");
+}

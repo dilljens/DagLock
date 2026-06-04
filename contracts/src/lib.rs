@@ -26,6 +26,11 @@ pub fn daglock_arbiter_source() -> &'static str {
     include_str!("daglock_arbiter.sil")
 }
 
+/// The daglock_vault.sil source embedded at compile time.
+pub fn daglock_vault_source() -> &'static str {
+    include_str!("daglock_vault.sil")
+}
+
 /// Compile the DagLock covenant with the given constructor arguments.
 ///
 /// Arguments (in order):
@@ -85,6 +90,24 @@ pub fn compile_daglock_arbiter(
     ];
     compile_contract(source, &args, CompileOptions::default())
         .expect("daglock_arbiter.sil should compile — if this fails, fix the .sil syntax")
+}
+
+/// Compile the DagLock Vault covenant with the given constructor arguments.
+///
+/// Arguments (in order):
+/// - `owner_key`: 32-byte compressed public key
+/// - `timeout`: Unix timestamp (i64)
+pub fn compile_daglock_vault(
+    owner_key: &[u8],
+    timeout: i64,
+) -> CompiledContract<'static> {
+    let source = daglock_vault_source();
+    let args = vec![
+        Expr::bytes(owner_key.to_vec()),
+        Expr::int(timeout),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_vault.sil should compile — if this fails, fix the .sil syntax")
 }
 
 /// Compile the DagLock KRC-20 covenant with the given constructor arguments.
@@ -159,6 +182,7 @@ pub mod entrypoints {
     pub const REFUND: &str = "refund";
     pub const DISPUTE_SELLER_WINS: &str = "disputeSellerWins";
     pub const DISPUTE_BUYER_WINS: &str = "disputeBuyerWins";
+    pub const WITHDRAW: &str = "withdraw";
 }
 
 #[cfg(test)]
@@ -341,6 +365,11 @@ fn print_template_hashes() {
     let (_, _, krc20_hash) = template_parts_and_hash(&krc20);
     let krc20_hex: String = krc20_hash.iter().map(|b| format!("{:02x}", b)).collect();
     println!("daglock_krc20_template_hash={}", krc20_hex);
+
+    let vault = compile_daglock_vault(&zero, 1_700_000_000);
+    let (_, _, vault_hash) = template_parts_and_hash(&vault);
+    let vault_hex: String = vault_hash.iter().map(|b| format!("{:02x}", b)).collect();
+    println!("daglock_vault_template_hash={}", vault_hex);
 }
 #[test]
     fn arbiter_zero_key_and_nonzero_key_produce_different_scripts() {

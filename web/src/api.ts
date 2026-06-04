@@ -284,6 +284,11 @@ async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
 
 export const api = {
 	health: () => loadJson<Health>("/v1/health"),
+	compile: (template: string, params: Record<string, string>) =>
+		postJson<{ script: string; template_hash: string; abi: { name: string }[] }>(
+			"/v1/compile",
+			{ template, params },
+		),
 	network: () => loadJson<NetworkInfo>("/v1/network"),
 	networkPrice: () => loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
 	stats: () => loadJson<Stats>("/v1/stats"),

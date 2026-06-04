@@ -1478,6 +1478,116 @@ function StatusTimeline({ status }: { status: string }) {
 	);
 }
 
+/* ─── Create Vault Form ─── */
+function CreateVaultForm({ onDone }: { onDone: () => void }) {
+	const [ownerKey, setOwnerKey] = useState("");
+	const [timeoutDays, setTimeoutDays] = useState("30");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [error, setError] = useState("");
+	const [result, setResult] = useState<{ script: string; template_hash: string } | null>(null);
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		const trimmedOwner = ownerKey.trim();
+		if (!trimmedOwner || trimmedOwner.length < 64) {
+			setError("Enter a valid 64-char hex public key");
+			return;
+		}
+		const timeoutSec = Math.floor(Date.now() / 1000) + (parseInt(timeoutDays) || 30) * 86400;
+		setStatus("loading");
+		setError("");
+		try {
+			const r = await api.compile("daglock_vault", {
+				owner_key: trimmedOwner,
+				timeout: String(timeoutSec),
+			});
+			setResult(r);
+			setStatus("done");
+			onDone();
+		} catch (err) {
+			setStatus("error");
+			setError((err as Error).message);
+		}
+	}
+
+	if (status === "done" && result) {
+		return (
+			<div className="result stack">
+				<p className="muted success-text">Vault covenant compiled!</p>
+				<div className="row"><span>Template hash</span><code>{result.template_hash}</code></div>
+				<div className="row"><span>Script</span><code style={{ fontSize: "0.7rem" }}>{result.script.slice(0, 80)}…</code></div>
+			</div>
+		);
+	}
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<p className="muted">Create a time-locked KAS vault. Only the owner can withdraw after the timeout.</p>
+			<FormField label="Owner public key (hex)">
+				<input value={ownerKey} onChange={e => setOwnerKey(e.target.value)} placeholder="64 hex chars" />
+			</FormField>
+			<FormField label="Lock duration">
+				<select value={timeoutDays} onChange={e => setTimeoutDays(e.target.value)}>
+					<option value="1">1 day</option>
+					<option value="7">7 days</option>
+					<option value="30">30 days</option>
+					<option value="90">90 days</option>
+					<option value="365">1 year</option>
+				</select>
+			</FormField>
+			{error && <p className="muted error-text">{error}</p>}
+			<button className="button primary" type="submit" disabled={status === "loading"}>
+				{status === "loading" ? "Compiling…" : "Compile vault"}
+			</button>
+		</form>
+	);
+}
+
+/* ─── Compile Covenant Form ─── */
+function CompileCovenantForm({ onDone }: { onDone: () => void }) {
+	const [template, setTemplate] = useState("daglock");
+	const [paramsStr, setParamsStr] = useState("{}");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [error, setError] = useState("");
+	const [result, setResult] = useState<any>(null);
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		let params: Record<string, string>;
+		try { params = JSON.parse(paramsStr); }
+		catch { setError("Params must be valid JSON"); return; }
+		setStatus("loading");
+		setError("");
+		try {
+			const r = await api.compile(template, params);
+			setResult(r);
+			setStatus("done");
+			onDone();
+		} catch (err) {
+			setStatus("error");
+			setError((err as Error).message);
+		}
+	}
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<FormField label="Template">
+				<select value={template} onChange={e => setTemplate(e.target.value)}>
+					<option value="daglock">DagLock (KAS escrow)</option>
+					<option value="daglock_arbiter">DagLock Arbiter (with mediator)</option>
+					<option value="daglock_vault">DagLock Vault (time-locked)</option>
+				</select>
+			</FormField>
+			<FormField label="Params (JSON)">
+				<textarea value={paramsStr} onChange={e => setParamsStr(e.target.value)} className="evidence-input" placeholder='{"buyer_key":"...","seller_key":"...","timeout":"1700000000","treasury_key":"..."}' />
+			</FormField>
+			{error && <p className="muted error-text">{error}</p>}
+			<button className="button primary" type="submit" disabled={status === "loading"}>{status === "loading" ? "Compiling…" : "Compile"}</button>
+			{result && <pre className="muted" style={{ fontSize: "0.7rem", marginTop: 8 }}>{JSON.stringify(result, null, 2)}</pre>}
+		</form>
+	);
+}
+
 /* ─── Main App ─── */
 export default function App() {
 	const [health, setHealth] = useState<LoadState<Health>>({ loading: true });
@@ -1487,6 +1597,8 @@ export default function App() {
 	const [stats, setStats] = useState<LoadState<Stats>>({ loading: true });
 	const [offers, setOffers] = useState<LoadState<Offer[]>>({ loading: true });
 	const [activeTab, setActiveTab] = useState<
+		| "create-vault"
+		| "compile"
 		| "create-offer"
 		| "create-escrow"
 		| "settle"
@@ -1543,7 +1655,15 @@ export default function App() {
 
 	const tabPanels: Record<string, { title: string; content: React.ReactNode }> =
 		{
-			"create-offer": {
+			"create-vault": {
+			title: "Create vault",
+			content: <CreateVaultForm onDone={closeTab} />,
+		},
+		"compile": {
+			title: "Compile covenant",
+			content: <CompileCovenantForm onDone={closeTab} />,
+		},
+		"create-offer": {
 				title: "Create offer",
 				content: <CreateOfferForm onDone={closeTab} />,
 			},
@@ -1685,6 +1805,8 @@ export default function App() {
 				<div className="action-tabs">
 					{(
 						[
+							["Create vault", "create-vault"],
+							["Compile", "compile"],
 							["Create offer", "create-offer"],
 							["Create escrow", "create-escrow"],
 							["Settle", "settle"],
