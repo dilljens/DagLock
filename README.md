@@ -6,16 +6,57 @@ Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptog
 
 ---
 
-## Why DagLock?
+## For Users
 
-Kaspa's Toccata Hard Fork (June 2026) introduced native Layer 1 smart contracts via SilverScript covenants (KIP-17/KIP-20). For the first time, UTXO-native financial primitives are possible on Kaspa — and DagLock is the first to build them.
+**Try it now:**
 
-| Problem | DagLock Solution |
-|---|---|
-| OTC trades require trusted escrow agents | Trustless covenant holds funds; code enforces the terms |
-| Cross-chain swaps need centralized bridges | Atomic swaps via hash preimage — no bridge needed |
-| High-value token trades lack safe infrastructure | Isolated UTXO per trade — no shared pools, no MEV |
-| Escrow fees are opaque and arbitrary | Programmatic 0.5% fee, enforced by the covenant itself |
+- **Web app:** Visit [daglock.com](https://daglock.com) — no installation needed
+- **Telegram bot:** Message [@DagLockBot](https://t.me/DagLockBot) on Telegram
+- **CLI:** `cargo install --git https://github.com/dilljens/DagLock daglock-cli`
+
+**Create escrows, check reputation, find counterparties, and resolve disputes — all without trusting a middleman.**
+
+---
+
+## For Developers
+
+### Quick Start
+
+```bash
+# Prerequisites: Rust 1.85+, Node 22+
+
+# 1. Start the indexer
+cargo run -p daglock-indexer
+
+# 2. Start the web UI (separate terminal)
+cd web && npm install && npm run dev
+
+# 3. Open http://localhost:5173
+
+# 4. Generate test data
+python3 scripts/simulation.py --trades 20 --bots 2
+```
+
+### Deployment
+
+One-click deploy on Railway + Cloudflare Pages:
+
+```bash
+git push origin main  # Railway auto-deploys the indexer
+                      # Cloudflare Pages auto-deploys the web UI
+```
+
+See [DEPLOYMENT-RAILWAY.md](docs/DEPLOYMENT-RAILWAY.md) for the full guide.
+
+### Features
+
+| Surface | What you can do |
+|---------|----------------|
+| **Web dashboard** | Create offers & escrows, check reputation, send messages, vote on jury cases, link Telegram |
+| **Telegram bot** | Same features from chat — `/create`, `/offers`, `/reputation`, `/msg`, `/jury` |
+| **CLI** | Power-user terminal tool — create, claim, status, reputation, message, receipt |
+| **REST API** | 30+ endpoints for programmatic access. See [API.md](docs/API.md) |
+| **Covenant templates** | Deploy your own KAS escrow, arbiter escrow, or time-locked vault via `POST /v1/compile` |
 
 ---
 
@@ -37,26 +78,6 @@ daglock/
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 
----
-
-## Quick Start (Development)
-
-```bash
-# Prerequisites: Rust 1.85+, Node 22+, Docker
-
-# 1. Build and start the indexer
-cargo run -p daglock-indexer
-
-# 2. Start the web UI (separate terminal)
-cd web && npm install && npm run dev
-
-# 3. Open http://localhost:5173
-
-# 4. Run the simulation (optional, generates test data)
-python3 scripts/simulation.py --trades 20 --bots 2
-```
-
----
 
 ## Documentation
 
@@ -66,12 +87,29 @@ python3 scripts/simulation.py --trades 20 --bots 2
 | [PROTOCOL.md](docs/PROTOCOL.md) | Covenant semantics, tx structure, parameter encoding |
 | [API.md](docs/API.md) | Indexer REST API reference |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment + config reference |
+| [DEPLOYMENT-RAILWAY.md](docs/DEPLOYMENT-RAILWAY.md) | Railway + Cloudflare Pages deploy guide |
+| [HANDOFF.md](HANDOFF.md) | Full walkthrough: deploy, test, iterate |
 | [ROADMAP.md](docs/ROADMAP.md) | Phased delivery timeline |
 | [SECURITY.md](docs/SECURITY.md) | Threat model, audit checklist, bug bounty |
 | [KRC20-TESTNET.md](docs/KRC20-TESTNET.md) | KRC-20 testnet deployment guide |
-| [wiki/docs/_index.md](docs/wiki/_index.md) | AI-optimized codebase map |
+| [API.md](docs/API.md) | REST API reference |
+| [PROTOCOL.md](docs/PROTOCOL.md) | Covenant semantics and transaction structure |
+| [WIKI](docs/wiki/_index.md) | AI-optimized codebase map |
 
 ---
+
+## Roadmap
+
+| Phase | Status | What |
+|-------|--------|------|
+| 0 | ✅ | KAS + KRC-20 + Arbiter covenants written, compiled, tested |
+| 1 | ✅ | Indexer with REST API, offers board, reputation system |
+| 2 | ✅ | Telegram bot, CLI tool, encrypted messaging |
+| 3 | ✅ | Web dashboard with full action UI |
+| 4 | ⏳ | KRC-20 community launch (NACHO, KASPY) |
+| 5 | 🔜 | Mainnet deployment (Toccata hard fork: June 5, 2026) |
+
+See [ROADMAP.md](docs/ROADMAP.md) for the full timeline.
 
 ## License
 
