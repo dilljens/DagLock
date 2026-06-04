@@ -207,11 +207,11 @@ pub async fn create(
 
     // Check for duplicate lock_tx (same UTXO used in another escrow)
     // The unique index enforces this at the DB level, but we check early for a better error message
-    if let Ok((existing, _)) = queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await
+    if let Ok((existing, _)) =
+        queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await
     {
         if existing.iter().any(|e| {
-            e.lock_tx_id == body.lock_tx_id
-                && e.lock_tx_output_index == body.lock_tx_output_index
+            e.lock_tx_id == body.lock_tx_id && e.lock_tx_output_index == body.lock_tx_output_index
         }) {
             return Err((
                 StatusCode::CONFLICT,

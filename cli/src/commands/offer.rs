@@ -7,10 +7,7 @@ pub async fn list(api_url: String) -> Result<()> {
     let resp = client.get(format!("{}/v1/offers", api_url)).send().await?;
 
     let data: serde_json::Value = resp.json().await?;
-    let offers = data["offers"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
+    let offers = data["offers"].as_array().cloned().unwrap_or_default();
 
     if offers.is_empty() {
         println!("📭 No open offers");
