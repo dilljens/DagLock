@@ -2,9 +2,10 @@
 
 use axum::http::StatusCode;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     Json,
 };
+use serde::Deserialize;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -46,8 +47,27 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(json!(offer))))
 }
 
+#[derive(Deserialize)]
+pub struct OfferQuery {
+    pub creator: Option<String>,
+    pub asset: Option<String>,
+    pub side: Option<String>,
+    pub status: Option<String>,
+}
+
 /// GET /v1/offers
-pub async fn list(State(state): State<AppState>) -> Json<Value> {
+pub async fn list(
+    State(state): State<AppState>,
+    Query(params): Query<OfferQuery>,
+) -> Json<Value> {
+    if let Some(ref creator) = params.creator {
+        // Filter by creator
+        return match queries::list_offers_by_creator(&state.db, creator).await {
+            Ok((offers, total)) => Json(json!({ "offers": offers, "total": total })),
+            Err(_) => Json(json!({ "offers": [], "total": 0 })),
+        };
+    }
+
     match queries::list_offers(&state.db, None, None, None).await {
         Ok((offers, total)) => Json(json!({
             "offers": offers,

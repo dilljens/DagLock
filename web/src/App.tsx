@@ -164,6 +164,7 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 	const [amount, setAmount] = useState("");
 	const [address, setAddress] = useState("");
 	const [counterparty, setCounterparty] = useState("");
+	const [expireHours, setExpireHours] = useState("72");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
 		"idle",
 	);
@@ -190,6 +191,7 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				base_asset: baseAsset,
 				quote_asset: quoteAsset,
 				amount_sompi: sompi(amountNum),
+				expires_at: Math.floor(Date.now() / 1000) + (parseInt(expireHours) || 72) * 3600,
 			};
 			if (counterparty.startsWith("kaspa:"))
 				body.counterparty_address = counterparty;
@@ -243,6 +245,14 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				placeholder="kaspa:..."
 				validate={kvad}
 			/>
+			<FormField label="Expires in">
+				<select value={expireHours} onChange={e => setExpireHours(e.target.value)}>
+					<option value="24">24 hours</option>
+					<option value="72">3 days</option>
+					<option value="168">7 days</option>
+					<option value="720">30 days</option>
+				</select>
+			</FormField>
 			<FormField label="Counterparty (optional)">
 				<input
 					value={counterparty}
@@ -1340,6 +1350,49 @@ function JuryPanel() {
 	);
 }
 
+/* ─── My Offers Panel ─── */
+function MyOffersPanel() {
+	const [address, setAddress] = useState("");
+	const [list, setList] = useState<LoadState<Offer[]>>({ loading: false });
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!address.trim()) return;
+		setList({ loading: true });
+		try {
+			const data = await api.offers(address.trim());
+			setList({ data: data.offers, loading: false });
+		} catch (err) {
+			setList({ error: (err as Error).message, loading: false });
+		}
+	}
+
+	return (
+		<div className="stack">
+			<form className="form" onSubmit={handleSubmit}>
+				<input value={address} onChange={e => setAddress(e.target.value)} placeholder="your kaspa address" />
+				<button className="button" type="submit">List my offers</button>
+			</form>
+			<LookupResult loading={list.loading} error={list.error} data={list.data} render={(data) => (
+				<div>
+					{data.length === 0 && <p className="muted">No offers found for this address.</p>}
+					{data.map(o => (
+						<article key={o.id} className="offer" style={{ cursor: "default" }}>
+							<div className="offer-top">
+								<strong>{o.side.toUpperCase()} {money(o.amount_sompi)}</strong>
+								<span className={badge(o.status)}>{o.status}</span>
+							</div>
+							<p>{o.base_asset} for {o.quote_asset}</p>
+							<code>{o.id}</code>
+							<small className="muted">{relativeTime(o.created_at)}</small>
+						</article>
+					))}
+				</div>
+			)} />
+		</div>
+	);
+}
+
 /* ─── Confirmation Dialog ─── */
 function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }: {
 	title: string;
@@ -1406,6 +1459,7 @@ export default function App() {
 		| "refund"
 		| "dispute"
 		| "cancel"
+		| "my-offers"
 		| "link-telegram"
 		| "jury"
 		| null
@@ -1603,6 +1657,7 @@ export default function App() {
 							["Refund", "refund"],
 							["Dispute", "dispute"],
 							["Cancel", "cancel"],
+							["My offers", "my-offers"],
 							["Link Telegram", "link-telegram"],
 							["Jury", "jury"],
 						] as const

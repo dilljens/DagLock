@@ -1262,6 +1262,31 @@ pub async fn update_offer_status(
     Ok(())
 }
 
+pub async fn list_offers_by_creator(
+    pool: &Pool<Sqlite>,
+    creator: &str,
+) -> Result<(Vec<Offer>, i64), sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT * FROM offers WHERE creator_address = ?1 ORDER BY created_at DESC"
+    )
+    .bind(creator)
+    .fetch_all(pool).await?;
+    let count = rows.len() as i64;
+    let offers: Vec<Offer> = rows.into_iter().map(row_to_offer).collect();
+    Ok((offers, count))
+}
+
+/// Reconcile expired offers: mark as expired if expires_at < now
+pub async fn reconcile_expired_offers(pool: &Pool<Sqlite>) -> Result<u64, sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    let result = sqlx::query(
+        "UPDATE offers SET status = 'expired' WHERE status = 'proposed' AND expires_at IS NOT NULL AND expires_at < ?1"
+    )
+    .bind(now)
+    .execute(pool).await?;
+    Ok(result.rows_affected())
+}
+
 pub async fn accept_offer(
     pool: &Pool<Sqlite>,
     id: &str,

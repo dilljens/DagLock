@@ -313,8 +313,10 @@ export const api = {
 		),
 
 	// Offers
-	offers: () =>
-		loadJson<{ offers: Offer[]; total: number }>("/v1/offers?status=proposed"),
+	offers: (creator?: string) =>
+		loadJson<{ offers: Offer[]; total: number }>(
+			`/v1/offers?status=proposed${creator ? `&creator=${encodeURIComponent(creator)}` : ""}`
+		),
 	createOffer: (req: CreateOfferRequest) => postJson<Offer>("/v1/offers", req),
 	acceptOffer: (id: string, counterparty_address: string) =>
 		postJson<{ status: string; offer_id: string }>(
