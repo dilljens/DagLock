@@ -128,6 +128,7 @@ mod tests {
             settled_at: None,
             refunded_at: None,
             mediator_key: None,
+            dispute_mode: None,
             dispute_outcome: None,
             dispute_resolved_at: None,
         }

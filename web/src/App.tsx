@@ -268,7 +268,7 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 	const [buyerAddress, setBuyerAddress] = useState("");
 	const [sellerAddress, setSellerAddress] = useState("");
 	const [assetType, setAssetType] = useState("KAS");
-	const [useMediator, setUseMediator] = useState(false);
+	const [disputeMode, setDisputeMode] = useState('standard');
 	const [mediatorKey, setMediatorKey] = useState("");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
 		"idle",
@@ -297,7 +297,8 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 			};
 			if (sellerAddress.startsWith("kaspa:"))
 				body.seller_address = sellerAddress;
-			if (useMediator && mediatorKey.startsWith("kaspa:"))
+			body.dispute_mode = disputeMode;
+			if (disputeMode === "mediator" && mediatorKey.startsWith("kaspa:"))
 				body.mediator_key = mediatorKey;
 			const escrow = await api.createEscrow(body);
 			setResult(escrow);
@@ -365,17 +366,23 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 					placeholder="kaspa:..."
 				/>
 			</FormField>
-			<FormField label="">
-				<label className="checkbox-row">
-					<input
-						type="checkbox"
-						checked={useMediator}
-						onChange={(e) => setUseMediator(e.target.checked)}
-					/>
-					<span>Add mediator (arbiter key)</span>
-				</label>
+			<FormField label="Dispute resolution">
+				<select value={disputeMode} onChange={e => setDisputeMode(e.target.value)}>
+					<option value="standard">Standard (timeout refund)</option>
+					<option value="mediator">Specific mediator</option>
+					<option value="jury">Jury (community vote)</option>
+				</select>
 			</FormField>
-			{useMediator && (
+			{disputeMode === "mediator" && (
+				<FormField label="Mediator address">
+					<input
+						value={mediatorKey}
+						onChange={(e) => setMediatorKey(e.target.value)}
+						placeholder="kaspa:..."
+					/>
+				</FormField>
+			)}
+			{disputeMode === "mediator" && (
 				<FormField label="Mediator address">
 					<input
 						value={mediatorKey}
@@ -759,6 +766,7 @@ function OfferCard({
 			<p>
 				{offer.base_asset} for {offer.quote_asset}
 			</p>
+			<small className="muted addr">by {offer.creator_address.slice(0, 24)}…</small>
 			<code>{offer.id}</code>
 			<small className="muted">{relativeTime(offer.created_at)}</small>
 			{canAct && (
@@ -868,6 +876,16 @@ function EscrowLookup() {
 							<span>Amount</span>
 							<strong>{money(data.amount_sompi)}</strong>
 						</div>
+						<div className="row">
+							<span>Fee (0.5%)</span>
+							<strong>{money(data.fee_sompi)}</strong>
+						</div>
+						{data.dispute_mode && (
+							<div className="row">
+								<span>Dispute mode</span>
+								<strong><span className={badge(data.dispute_mode)}>{data.dispute_mode}</span></strong>
+							</div>
+						)}
 						<div className="row">
 							<span>Buyer</span>
 							<strong className="addr">{data.buyer_address}</strong>
@@ -1058,6 +1076,48 @@ function ReputationLookup() {
 					</div>
 				)}
 			/>
+		</Panel>
+	);
+}
+
+function MyEscrows() {
+	const [address, setAddress] = useState("");
+	const [list, setList] = useState<LoadState<Escrow[]>>({ loading: false });
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!address.trim()) return;
+		setList({ loading: true });
+		try {
+			const data = await api.escrows(address.trim());
+			setList({ data: data.escrows, loading: false });
+		} catch (err) {
+			setList({ error: (err as Error).message, loading: false });
+		}
+	}
+
+	return (
+		<Panel title="My escrows">
+			<form className="form" onSubmit={handleSubmit}>
+				<input value={address} onChange={e => setAddress(e.target.value)} placeholder="your kaspa address" />
+				<button className="button" type="submit">List</button>
+			</form>
+			<LookupResult loading={list.loading} error={list.error} data={list.data} render={(data) => (
+				<div className="stack">
+					{data.length === 0 && <p className="muted">No escrows found for this address.</p>}
+					{data.map(e => (
+						<article key={e.id} className="offer" style={{ cursor: "default" }}>
+							<div className="offer-top">
+								<strong>{money(e.amount_sompi)}</strong>
+								<span className={badge(e.status)}>{e.status}</span>
+							</div>
+							<p>{e.asset_type} escrow</p>
+							<code>{e.id}</code>
+							<small className="muted">{relativeTime(e.created_at)}</small>
+						</article>
+					))}
+				</div>
+			)} />
 		</Panel>
 	);
 }
@@ -1576,6 +1636,7 @@ export default function App() {
 
 			<section className="grid lookup-grid lookup-section">
 				<EscrowLookup />
+				<MyEscrows />
 				<ReputationLookup />
 				<ReceiptLookup />
 			</section>

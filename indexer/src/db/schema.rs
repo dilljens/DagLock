@@ -42,6 +42,7 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .await?;
 
     ensure_escrow_lifecycle_columns(pool).await?;
+    ensure_dispute_mode_column(pool).await?;
     ensure_mediator_key_column(pool).await?;
     ensure_dispute_outcome_columns(pool).await?;
     ensure_lock_tx_id_index(pool).await?;
@@ -79,6 +80,22 @@ async fn ensure_escrow_lifecycle_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx
             .await?;
     }
 
+    Ok(())
+}
+
+pub async fn ensure_dispute_mode_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(escrows)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("dispute_mode") {
+        sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_mode TEXT DEFAULT 'standard'")
+            .execute(pool)
+            .await?;
+    }
     Ok(())
 }
 

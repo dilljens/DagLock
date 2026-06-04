@@ -84,8 +84,8 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, seller_address, amount_sompi, fee_sompi, template_hash,
          expiration_daa_score, disputed_at, dispute_reason, cancelled_at, expired_at,
-         created_at, settled_at, refunded_at, mediator_key, dispute_outcome, dispute_resolved_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)"
+         created_at, settled_at, refunded_at, mediator_key, dispute_mode, dispute_outcome, dispute_resolved_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22)"
     )
     .bind(&escrow.id).bind(&escrow.lock_tx_id)
     .bind(escrow.lock_tx_output_index as i64).bind(escrow.status.as_str())
@@ -96,7 +96,7 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
     .bind(&escrow.dispute_reason).bind(escrow.cancelled_at)
     .bind(escrow.expired_at)
     .bind(escrow.created_at).bind(escrow.settled_at).bind(escrow.refunded_at)
-    .bind(&escrow.mediator_key).bind(&escrow.dispute_outcome).bind(escrow.dispute_resolved_at)
+    .bind(&escrow.mediator_key).bind(&escrow.dispute_mode).bind(&escrow.dispute_outcome).bind(escrow.dispute_resolved_at)
     .execute(pool).await?;
     Ok(())
 }
@@ -1401,6 +1401,7 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
     let settled_at: Option<i64> = row.try_get("settled_at").unwrap_or(None);
     let refunded_at: Option<i64> = row.try_get("refunded_at").unwrap_or(None);
     let mediator_key: Option<String> = row.try_get("mediator_key").unwrap_or(None);
+    let dispute_mode: Option<String> = row.try_get("dispute_mode").unwrap_or(None);
     let dispute_outcome: Option<String> = row.try_get("dispute_outcome").unwrap_or(None);
     let dispute_resolved_at: Option<i64> = row.try_get("dispute_resolved_at").unwrap_or(None);
 
@@ -1425,6 +1426,7 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
         settled_at,
         refunded_at,
         mediator_key,
+        dispute_mode,
         dispute_outcome,
         dispute_resolved_at,
     }
@@ -1470,6 +1472,7 @@ mod tests {
             settled_at: None,
             refunded_at: None,
             mediator_key: None,
+            dispute_mode: None,
             dispute_outcome: None,
             dispute_resolved_at: None,
         }

@@ -241,7 +241,11 @@ pub async fn create(
         created_at: chrono::Utc::now().timestamp(),
         settled_at: None,
         refunded_at: None,
-        mediator_key: body.mediator_key,
+        mediator_key: body.mediator_key.clone(),
+        dispute_mode: body.dispute_mode.or_else(|| {
+            if body.mediator_key.is_some() { Some("mediator".to_string()) }
+            else { None }
+        }),
         dispute_outcome: None,
         dispute_resolved_at: None,
     };

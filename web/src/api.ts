@@ -72,6 +72,7 @@ export type Escrow = {
 	settled_at?: number | null;
 	refunded_at?: number | null;
 	mediator_key?: string | null;
+	dispute_mode?: string | null;
 	dispute_outcome?: string | null;
 	dispute_resolved_at?: number | null;
 };
@@ -85,6 +86,7 @@ export type CreateEscrowRequest = {
 	expiration_daa_score?: number;
 	asset_type?: string;
 	mediator_key?: string;
+	dispute_mode?: string;
 };
 
 export type AuthHeaders = {

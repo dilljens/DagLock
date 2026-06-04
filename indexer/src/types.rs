@@ -81,6 +81,7 @@ pub struct Escrow {
     pub settled_at: Option<i64>,
     pub refunded_at: Option<i64>,
     pub mediator_key: Option<String>,
+    pub dispute_mode: Option<String>,
     pub dispute_outcome: Option<String>,
     pub dispute_resolved_at: Option<i64>,
 }
@@ -101,6 +102,7 @@ pub struct CreateEscrowRequest {
     pub template_hash: Option<Vec<u8>>,
     #[serde(default)]
     pub mediator_key: Option<String>,
+    pub dispute_mode: Option<String>,
 }
 
 /// Offer record stored in the database.
