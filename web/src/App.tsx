@@ -1703,7 +1703,7 @@ export default function App() {
 					fontSize: "14px",
 				}}
 			>
-				⚠️ TESTNET — This is a testnet deployment. Do not use real funds.
+				⚠️ TESTNET — This is a testnet deployment. Do not use real funds. Get testnet KAS from the <a href="https://faucet-tn10.kaspanet.io/" target="_blank" rel="noopener noreferrer" style={{color:'#000',textDecoration:'underline'}}>Kaspa Testnet Faucet</a>.
 			</div>
 			<header className="hero">
 				<div>
