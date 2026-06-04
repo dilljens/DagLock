@@ -8,9 +8,7 @@ use serde_json::{json, Value};
 
 use crate::api::AppState;
 use crate::db::queries;
-use crate::types::{
-    CreateVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest,
-};
+use crate::types::{CreateVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest};
 
 /// GET /v1/vaults?owner=...
 pub async fn list(
@@ -84,7 +82,10 @@ pub async fn create(
         ));
     }
 
-    let vault_id = format!("vault_{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap());
+    let vault_id = format!(
+        "vault_{}",
+        uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+    );
 
     let vault = crate::types::Vault {
         id: vault_id.clone(),
@@ -146,7 +147,9 @@ pub async fn withdraw(
     if vault.status != VaultStatus::Locked {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Vault is already {}", serde_json::to_string(&vault.status).unwrap_or_default())})),
+            Json(
+                json!({"error": "invalid_status", "message": format!("Vault is already {}", serde_json::to_string(&vault.status).unwrap_or_default())}),
+            ),
         ));
     }
 
@@ -155,7 +158,9 @@ pub async fn withdraw(
     if now < vault.timeout {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "timeout_not_reached", "message": "Cannot withdraw before timeout"})),
+            Json(
+                json!({"error": "timeout_not_reached", "message": "Cannot withdraw before timeout"}),
+            ),
         ));
     }
 

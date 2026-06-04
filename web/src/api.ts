@@ -220,7 +220,12 @@ export type DisputeEvidence = {
 
 // ── Vault Types ─────────────────────────────────────────────────
 
-export type VaultType = "time" | "beneficiary" | "deadman" | "inheritance" | "multisig";
+export type VaultType =
+	| "time"
+	| "beneficiary"
+	| "deadman"
+	| "inheritance"
+	| "multisig";
 
 export type VaultStatus = "locked" | "unlocked" | "expired" | "transferred";
 
@@ -336,8 +341,7 @@ export const api = {
 		),
 	vault: (id: string) =>
 		loadJson<Vault>(`/v1/vaults/${encodeURIComponent(id)}`),
-	createVault: (req: CreateVaultRequest) =>
-		postJson<Vault>("/v1/vaults", req),
+	createVault: (req: CreateVaultRequest) => postJson<Vault>("/v1/vaults", req),
 	withdrawVault: (id: string, ownerAddress: string, signature: string) =>
 		postJson<{ status: string; vault_id: string }>(
 			`/v1/vaults/${encodeURIComponent(id)}/withdraw`,

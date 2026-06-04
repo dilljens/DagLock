@@ -1558,10 +1558,7 @@ fn row_to_offer(row: sqlx::sqlite::SqliteRow) -> Offer {
 
 // ── Vault Queries
 
-pub async fn insert_vault(
-    pool: &Pool<Sqlite>,
-    vault: &Vault,
-) -> Result<(), sqlx::Error> {
+pub async fn insert_vault(pool: &Pool<Sqlite>, vault: &Vault) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO vaults (id, owner_address, beneficiary_address, vault_type, status, amount_sompi, timeout, lock_tx_id, lock_tx_output_index, created_at, unlocked_at, expires_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
@@ -1583,10 +1580,7 @@ pub async fn insert_vault(
     Ok(())
 }
 
-pub async fn get_vault(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<Option<Vault>, sqlx::Error> {
+pub async fn get_vault(pool: &Pool<Sqlite>, id: &str) -> Result<Option<Vault>, sqlx::Error> {
     let row = sqlx::query("SELECT * FROM vaults WHERE id = ?1")
         .bind(id)
         .fetch_optional(pool)
@@ -1599,10 +1593,11 @@ pub async fn list_vaults_by_owner(
     pool: &Pool<Sqlite>,
     owner: &str,
 ) -> Result<Vec<Vault>, sqlx::Error> {
-    let rows = sqlx::query("SELECT * FROM vaults WHERE owner_address = ?1 ORDER BY created_at DESC")
-        .bind(owner)
-        .fetch_all(pool)
-        .await?;
+    let rows =
+        sqlx::query("SELECT * FROM vaults WHERE owner_address = ?1 ORDER BY created_at DESC")
+            .bind(owner)
+            .fetch_all(pool)
+            .await?;
 
     Ok(rows.into_iter().map(row_to_vault).collect())
 }
@@ -1625,8 +1620,16 @@ fn row_to_vault(row: sqlx::sqlite::SqliteRow) -> Vault {
         id: row.try_get("id").unwrap_or_default(),
         owner_address: row.try_get("owner_address").unwrap_or_default(),
         beneficiary_address: row.try_get("beneficiary_address").ok().flatten(),
-        vault_type: serde_json::from_str(&row.try_get::<String, _>("vault_type").unwrap_or_else(|_| "\"time\"".to_string())).unwrap_or(VaultType::Time),
-        status: serde_json::from_str(&row.try_get::<String, _>("status").unwrap_or_else(|_| "\"locked\"".to_string())).unwrap_or(VaultStatus::Locked),
+        vault_type: serde_json::from_str(
+            &row.try_get::<String, _>("vault_type")
+                .unwrap_or_else(|_| "\"time\"".to_string()),
+        )
+        .unwrap_or(VaultType::Time),
+        status: serde_json::from_str(
+            &row.try_get::<String, _>("status")
+                .unwrap_or_else(|_| "\"locked\"".to_string()),
+        )
+        .unwrap_or(VaultStatus::Locked),
         amount_sompi: row.try_get("amount_sompi").unwrap_or(0),
         timeout: row.try_get("timeout").unwrap_or(0),
         lock_tx_id: row.try_get("lock_tx_id").ok().flatten(),
