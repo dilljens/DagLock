@@ -39,17 +39,6 @@ cd web && npm install && npm run dev
 python3 scripts/simulation.py --trades 20 --bots 2
 ```
 
-### Deployment
-
-One-click deploy on Railway + Cloudflare Pages:
-
-```bash
-git push origin main  # Railway auto-deploys the indexer
-                      # Cloudflare Pages auto-deploys the web UI
-```
-
-See [DEPLOYMENT-RAILWAY.md](docs/DEPLOYMENT-RAILWAY.md) for the full guide.
-
 ### Features
 
 | Surface | What you can do |
@@ -116,15 +105,22 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, component relationships, data flow |
 | [PROTOCOL.md](docs/PROTOCOL.md) | Covenant semantics, tx structure, parameter encoding |
 | [API.md](docs/API.md) | Indexer REST API reference |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment + config reference |
-| [DEPLOYMENT-RAILWAY.md](docs/DEPLOYMENT-RAILWAY.md) | Railway + Cloudflare Pages deploy guide |
-| [HANDOFF.md](HANDOFF.md) | Full walkthrough: deploy, test, iterate |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, component relationships, data flow |
+| [PROTOCOL.md](docs/PROTOCOL.md) | Covenant semantics, tx structure, parameter encoding |
+| [API.md](docs/API.md) | Indexer REST API reference (30+ endpoints) |
 | [ROADMAP.md](docs/ROADMAP.md) | Phased delivery timeline |
-| [SECURITY.md](docs/SECURITY.md) | Threat model, audit checklist, bug bounty |
+| [SECURITY.md](docs/SECURITY.md) | Threat model, audit checklist |
 | [KRC20-TESTNET.md](docs/KRC20-TESTNET.md) | KRC-20 testnet deployment guide |
-| [API.md](docs/API.md) | REST API reference |
-| [PROTOCOL.md](docs/PROTOCOL.md) | Covenant semantics and transaction structure |
 | [WIKI](docs/wiki/_index.md) | AI-optimized codebase map |
+
+## Integrations
+
+| What | How |
+|------|-----|
+| **KasWare wallet** | Connect via KasWare browser extension — web UI detects it automatically |
+| **Kaspium mobile** | Scan QR codes from the web UI to sign transactions |
+| **Custom wallets** | POST /v1/compile returns bytecode + address. Submit via any Kaspa transaction builder |
+| **KRC-20 tokens** | Deploy KRC-20 escrows following [KRC20-TESTNET.md](docs/KRC20-TESTNET.md) |
 
 ---
 
