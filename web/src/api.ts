@@ -1,3 +1,5 @@
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 export type Health = {
 	status: string;
 	version: string;
@@ -216,7 +218,7 @@ export type DisputeEvidence = {
 };
 
 async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
-	const response = await fetch(path, {
+	const response = await fetch(API_BASE + path, {
 		headers: {
 			"X-Daglock-Address": auth.address,
 			"X-Daglock-Signature": auth.signature,
@@ -231,7 +233,7 @@ async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
 }
 
 async function loadJson<T>(path: string): Promise<T> {
-	const response = await fetch(path);
+	const response = await fetch(API_BASE + path);
 	if (!response.ok) {
 		const body = await response.text();
 		throw new Error(body);
@@ -252,7 +254,7 @@ async function postJson<T>(
 		headers["X-Daglock-Signature"] = auth.signature;
 		headers["X-Daglock-Message"] = auth.message;
 	}
-	const response = await fetch(path, {
+	const response = await fetch(API_BASE + path, {
 		method: "POST",
 		headers,
 		body: JSON.stringify(body),
@@ -271,7 +273,7 @@ async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
 		headers["X-Daglock-Signature"] = auth.signature;
 		headers["X-Daglock-Message"] = auth.message;
 	}
-	const response = await fetch(path, {
+	const response = await fetch(API_BASE + path, {
 		method: "POST",
 		headers,
 	});
