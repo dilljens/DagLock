@@ -524,6 +524,7 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 		status: string;
 		escrow_id: string;
 	} | null>(null);
+	const [showConfirm, setShowConfirm] = useState(false);
 
 	const needsAuth = action === "settle" || action === "refund";
 	const verb =
@@ -539,6 +540,11 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 		e.preventDefault();
 		if (!escrowId) return;
 		if (action === "dispute" && !disputeReason) return;
+
+		if (action === "cancel" || action === "refund" || action === "dispute") {
+			setShowConfirm(true);
+			return;
+		}
 
 		setStatus("loading");
 		setError("");
@@ -559,20 +565,36 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 			}
 
 			let res: { status: string; escrow_id: string };
-			switch (action) {
-				case "settle":
-					res = await api.settleEscrow(escrowId, auth!);
-					break;
-				case "refund":
-					res = await api.refundEscrow(escrowId, auth!);
-					break;
-				case "dispute":
-					res = await api.disputeEscrow(escrowId, disputeReason);
-					break;
-				case "cancel":
-					res = await api.cancelEscrow(escrowId);
-					break;
+			// Only settle reaches here (cancel/refund/dispute show confirm dialog)
+			res = await api.settleEscrow(escrowId, auth!);
+			setResult(res);
+			setStatus("done");
+		} catch (err) {
+			setStatus("error");
+			setError((err as Error).message);
+		}
+	}
+
+	async function confirmAndSubmit() {
+		setShowConfirm(false);
+		setStatus("loading");
+		setError("");
+		try {
+			let auth: AuthHeaders | undefined;
+			if (needsAuth) {
+				if (!authAddress || !authSignature) {
+					setStatus("error");
+					setError("Address and signature are required.");
+					return;
+				}
+				auth = { address: authAddress, signature: authSignature, message: action + ":" + escrowId };
 			}
+			let res: { status: string; escrow_id: string };
+			const act: string = action;
+			if (act === "settle") res = await api.settleEscrow(escrowId, auth!);
+			else if (act === "refund") res = await api.refundEscrow(escrowId, auth!);
+			else if (act === "dispute") res = await api.disputeEscrow(escrowId, disputeReason);
+			else res = await api.cancelEscrow(escrowId);
 			setResult(res);
 			setStatus("done");
 		} catch (err) {
