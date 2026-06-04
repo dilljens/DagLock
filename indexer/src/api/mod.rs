@@ -70,6 +70,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             "/v1/escrows/:id/resolve-dispute",
             post(evidence::resolve_dispute),
         )
+        .route("/v1/escrows/:id/messages", post(messages::send).get(messages::list))
         .route("/v1/stats", get(escrows::stats))
         .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))
