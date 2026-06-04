@@ -1,6 +1,6 @@
 # Bot
 
-**Source**: `bot/src/`  **Updated**: `2026-06-02`  (2 files)
+**Source**: `bot/src/`  **Updated**: `2026-06-04`  (2 files)
 
 ## What it does
 Telegram bot (`@DagLockBot`) for DagLock escrow operations. Meet Kaspa users where they are — Telegram. Uses grammY framework, communicates with indexer REST API.
@@ -21,12 +21,19 @@ index.js (bot entry + command handlers)
 ## Commands
 | Command | Description |
 |---------|-------------|
-| `/create` | Initiate escrow creation wizard |
+| `/start` | Welcome + deep link handling |
+| `/create` | Open web dashboard for creation |
 | `/claim <id>` | Claim a pending escrow |
+| `/list` | List your escrows |
 | `/offers` | Browse open offers with inline keyboard |
 | `/reputation <address>` | Check counterparty stats |
 | `/receipt <id>` | Export settlement receipt |
 | `/status <id>` | Check escrow lifecycle state |
+| `/dispute <id> <reason>` | Dispute an escrow |
+| `/cancel <id>` | Cancel an escrow |
+| `/msg <id> <text>` | Send message on an escrow |
+| `/messages <id>` | Read escrow thread |
+| `/help` | All commands |
 
 ## Data flow
 1. User sends command to `@DagLockBot`

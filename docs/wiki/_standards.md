@@ -132,3 +132,15 @@ Detected conventions. Match these so new code fits in.
 ### Error handling
 **Pattern**: Internal errors use generic messages, not e.to_string()  **Example**: `indexer/src/api/escrows.rs`
 **Rule**: All `internal_error` responses use static strings. `e.to_string()` only used in auth/verification contexts where the caller needs to know why a sig was rejected.
+
+### UX: User-facing validation
+**Pattern**: Inline validation with trim(), onBlur feedback, and confirmation dialogs  **Example**: `web/src/App.tsx` `ValidatedInput`, `ConfirmDialog`
+**Rule**: All address inputs must be trimmed, validated on blur with green/red feedback. Destructive actions (cancel, refund, dispute) require a confirmation dialog.
+
+### Offer expiry
+**Pattern**: `expires_at` timestamp on offers, auto-expired by reconciliation loop  **Example**: `indexer/src/db/queries.rs` `reconcile_expired_offers()`
+**Rule**: Offer creation form includes an expiry dropdown (24h/3d/7d/30d). The background listener marks expired offers automatically.
+
+### Dispute mode
+**Pattern**: `dispute_mode` field on escrow (standard/mediator/jury)  **Example**: `indexer/src/types.rs`, create escrow form
+**Rule**: When creating an escrow, the creator selects how disputes are resolved. `standard` = timeout refund only, `mediator` = specific mediator address, `jury` = community vote.

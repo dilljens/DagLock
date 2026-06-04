@@ -23,7 +23,9 @@ Project-specific terms and acronyms.
 | **Vouching** | Web of Trust: vouch for an address's reliability | `indexer/src/api/vouches.rs` |
 | **Jury** | Community dispute resolution via randomly selected jurors | `indexer/src/api/jury.rs` |
 | **Evidence** | Signed proof submitted during a dispute | `indexer/src/api/evidence.rs` |
+| **Dispute mode** | How an escrow handles disputes: standard/mediator/jury | `indexer/src/types.rs`, create escrow form |
 | **Escrow messaging** | Encrypted chat thread tied to an escrow (AES-256-GCM) | `indexer/src/api/messages.rs` |
+| **Wash trading** | trading_concentration metric: fraction of volume with a single counterparty | Reputation response, `queries.rs` |
 | **Mediator** | Optional third-party dispute resolver (single person) | `contracts/src/daglock_arbiter.sil` |
 | **Toccata** | Kaspa mainnet hard fork (June 5-20, 2026) | `docs/ROADMAP.md` |
 | **KasWare** | Kaspa web extension wallet | Browser signing integration |
