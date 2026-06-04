@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
+use crate::auth::AuthContext;
 use crate::db::queries;
 use crate::types::*;
 
@@ -72,6 +73,13 @@ pub async fn accept(
 
     match offer {
         Some(o) if o.status == "proposed" => {
+            // Cannot accept your own offer
+            if body.counterparty_address == o.creator_address {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!(ApiError::new("self_accept", "You cannot accept your own offer"))),
+                ));
+            }
             queries::accept_offer(&state.db, &id, &body.counterparty_address)
                 .await
                 .map_err(|e| {
@@ -104,6 +112,7 @@ pub async fn accept(
 pub async fn cancel(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let offer = queries::get_offer(&state.db, &id).await.map_err(|e| {
         (
@@ -114,6 +123,16 @@ pub async fn cancel(
 
     match offer {
         Some(o) if o.status == "proposed" || o.status == "accepted" => {
+            // Auth: only the creator can cancel
+            let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+                (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))))
+            })?;
+            if auth.address != o.creator_address {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new("forbidden", "Only the creator can cancel this offer"))),
+                ));
+            }
             queries::update_offer_status(&state.db, &id, "cancelled")
                 .await
                 .map_err(|e| {
