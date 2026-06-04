@@ -1263,6 +1263,7 @@ export default function App() {
 
 	function closeTab() {
 		setActiveTab(null);
+		loadAll();
 	}
 
 	const tabPanels: Record<string, { title: string; content: React.ReactNode }> =
