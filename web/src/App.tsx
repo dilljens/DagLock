@@ -1515,13 +1515,15 @@ export default function App() {
 
 	return (
 		<main className="app">
+			<div style={{background:'#ff9800',color:'#000',textAlign:'center',padding:'8px',fontWeight:'bold',fontSize:'14px'}}>
+				⚠️ TESTNET — This is a testnet deployment. Do not use real funds.
+			</div>
 			<header className="hero">
 				<div>
-					<div className="brand">DagLock</div>
+					<div className="brand">Kaspa Escrow</div>
 					<h1>Trustless escrow and atomic swaps on Kaspa.</h1>
 					<p>
-						The public front door for offers, escrows, reputation, and receipts
-						on <strong>daglock.com</strong>.
+						The public front door for offers, escrows, reputation, and receipts.
 					</p>
 				</div>
 				<div className="hero-actions">
