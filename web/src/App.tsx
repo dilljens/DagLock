@@ -123,8 +123,14 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		const amountNum = Number.parseFloat(amount);
-		if (!amountNum || amountNum <= 0) return;
-		if (!address.startsWith("kaspa:")) return;
+		if (!amountNum || amountNum <= 0) {
+			setError("Amount must be positive");
+			return;
+		}
+		if (!address.startsWith("kaspa:")) {
+			setError("Address must start with kaspa:");
+			return;
+		}
 		setStatus("loading");
 		setError("");
 		try {

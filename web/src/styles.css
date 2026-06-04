@@ -2,8 +2,8 @@
 	color-scheme: dark;
 	font-family:
 		Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	background: #0b1020;
-	color: #e6ebff;
+	background: #0a1a0a;
+	color: #e0f0e0;
 }
 
 * {
@@ -14,8 +14,8 @@ body {
 	margin: 0;
 	min-width: 320px;
 	background:
-		radial-gradient(circle at top, rgba(83, 109, 255, 0.2), transparent 30%),
-		linear-gradient(180deg, #0b1020 0%, #090d18 100%);
+		radial-gradient(circle at top, rgba(83, 215, 105, 0.12), transparent 30%),
+		linear-gradient(180deg, #0a1a0a 0%, #071007 100%);
 }
 
 a {
@@ -33,8 +33,8 @@ a {
 .panel,
 .card,
 .offer {
-	border: 1px solid rgba(160, 180, 255, 0.14);
-	background: rgba(13, 20, 38, 0.78);
+	border: 1px solid rgba(83, 215, 105, 0.14);
+	background: rgba(10, 30, 15, 0.80);
 	backdrop-filter: blur(12px);
 	box-shadow: 0 14px 50px rgba(0, 0, 0, 0.24);
 }
@@ -52,7 +52,7 @@ a {
 	font-size: 0.85rem;
 	text-transform: uppercase;
 	letter-spacing: 0.16em;
-	color: #8aa0ff;
+	color: #6fcf97;
 	margin-bottom: 8px;
 }
 
@@ -65,7 +65,7 @@ a {
 
 .hero p {
 	max-width: 58ch;
-	color: #aeb8de;
+	color: #9ddeaa;
 }
 
 .hero-actions,
@@ -87,16 +87,16 @@ a {
 	justify-content: center;
 	gap: 8px;
 	border-radius: 999px;
-	border: 1px solid rgba(160, 180, 255, 0.2);
-	background: rgba(255, 255, 255, 0.04);
-	color: #eef2ff;
+	border: 1px solid rgba(83, 215, 105, 0.2);
+	background: rgba(83, 215, 105, 0.06);
+	color: #e0f0e0;
 	padding: 12px 18px;
 	font-weight: 600;
 	cursor: pointer;
 }
 
 .button.primary {
-	background: linear-gradient(135deg, #6477ff, #8b5cf6);
+	background: linear-gradient(135deg, #53d769, #2ecc40);
 	border-color: transparent;
 }
 
@@ -114,7 +114,7 @@ a {
 .panel p,
 .muted,
 .offer p {
-	color: #9aa5cd;
+	color: #88b888;
 }
 
 .card strong {
@@ -148,7 +148,7 @@ a {
 
 .section-title p {
 	margin-top: 6px;
-	color: #9aa5cd;
+	color: #88b888;
 }
 
 .row {
@@ -156,7 +156,7 @@ a {
 	justify-content: space-between;
 	gap: 16px;
 	padding: 10px 0;
-	border-bottom: 1px solid rgba(160, 180, 255, 0.12);
+	border-bottom: 1px solid rgba(83, 215, 105, 0.12);
 }
 
 .row:last-child {
@@ -183,7 +183,7 @@ a {
 	border-radius: 999px;
 	padding: 4px 10px;
 	font-size: 0.8rem;
-	background: rgba(255, 255, 255, 0.08);
+	background: rgba(83, 215, 105, 0.10);
 }
 
 .form {
@@ -194,9 +194,9 @@ a {
 input {
 	width: 100%;
 	border-radius: 14px;
-	border: 1px solid rgba(160, 180, 255, 0.18);
-	background: rgba(255, 255, 255, 0.03);
-	color: #eef2ff;
+	border: 1px solid rgba(83, 215, 105, 0.18);
+	background: rgba(83, 215, 105, 0.04);
+	color: #e0f0e0;
 	padding: 12px 14px;
 	outline: none;
 }
@@ -204,7 +204,7 @@ input {
 code {
 	display: block;
 	overflow-wrap: anywhere;
-	color: #c8d2ff;
+	color: #a0dcb0;
 }
 
 /* ─── Action tabs ─── */
@@ -243,14 +243,14 @@ code {
 	display: grid;
 	gap: 6px;
 	font-size: 0.85rem;
-	color: #9aa5cd;
+	color: #88b888;
 }
 
 .field select {
 	border-radius: 14px;
-	border: 1px solid rgba(160, 180, 255, 0.18);
-	background: rgba(255, 255, 255, 0.03);
-	color: #eef2ff;
+	border: 1px solid rgba(83, 215, 105, 0.18);
+	background: rgba(83, 215, 105, 0.04);
+	color: #e0f0e0;
 	padding: 12px 14px;
 	outline: none;
 	appearance: none;
@@ -259,7 +259,7 @@ code {
 
 .field select option {
 	background: #0b1020;
-	color: #eef2ff;
+	color: #e0f0e0;
 }
 
 .error-text {
@@ -306,18 +306,18 @@ code {
 .evidence-log {
 	margin-top: 12px;
 	padding-top: 12px;
-	border-top: 1px solid rgba(160, 180, 255, 0.12);
+	border-top: 1px solid rgba(83, 215, 105, 0.12);
 }
 
 .evidence-log h4 {
 	margin: 0 0 8px;
 	font-size: 0.85rem;
-	color: #9aa5cd;
+	color: #88b888;
 }
 
 .evidence-item {
 	padding: 8px 0;
-	border-bottom: 1px solid rgba(160, 180, 255, 0.06);
+	border-bottom: 1px solid rgba(83, 215, 105, 0.06);
 }
 
 .evidence-item:last-child {
@@ -325,7 +325,7 @@ code {
 }
 
 .evidence-item small {
-	color: #6e7aa8;
+	color: #5a9a6a;
 	font-size: 0.75rem;
 }
 
@@ -333,16 +333,16 @@ code {
 	margin: 4px 0 0;
 	font-size: 0.85rem;
 	white-space: pre-wrap;
-	color: #c8d2ff;
+	color: #a0dcb0;
 }
 
 .evidence-input {
 	width: 100%;
 	min-height: 80px;
 	border-radius: 14px;
-	border: 1px solid rgba(160, 180, 255, 0.18);
-	background: rgba(255, 255, 255, 0.03);
-	color: #eef2ff;
+	border: 1px solid rgba(83, 215, 105, 0.18);
+	background: rgba(83, 215, 105, 0.04);
+	color: #e0f0e0;
 	padding: 12px 14px;
 	outline: none;
 	resize: vertical;
@@ -400,5 +400,5 @@ code {
 }
 
 .offer:hover {
-	border-color: rgba(100, 119, 255, 0.35);
+	border-color: rgba(83, 215, 105, 0.40);
 }
