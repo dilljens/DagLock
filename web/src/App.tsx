@@ -17,7 +17,16 @@ import {
 } from "./api";
 
 import { money, sompi, time, relativeTime, badge } from "./helpers";
-import { SectionTitle, Panel, LookupResult, FormField, ValidatedInput, kvad, ConfirmDialog, StatusTimeline } from "./ui";
+import {
+	SectionTitle,
+	Panel,
+	LookupResult,
+	FormField,
+	ValidatedInput,
+	kvad,
+	ConfirmDialog,
+	StatusTimeline,
+} from "./ui";
 import type { LoadState } from "./helpers";
 
 function CreateOfferForm({ onDone }: { onDone: () => void }) {
@@ -42,7 +51,9 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 		}
 		const trimmedAddr = address.trim();
 		if (!trimmedAddr.startsWith("kaspa:")) {
-			setError("Address must start with kaspa: (check for leading/trailing spaces)");
+			setError(
+				"Address must start with kaspa: (check for leading/trailing spaces)",
+			);
 			return;
 		}
 		setStatus("loading");
@@ -54,7 +65,8 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				base_asset: baseAsset,
 				quote_asset: quoteAsset,
 				amount_sompi: sompi(amountNum),
-				expires_at: Math.floor(Date.now() / 1000) + (parseInt(expireHours) || 72) * 3600,
+				expires_at:
+					Math.floor(Date.now() / 1000) + (parseInt(expireHours) || 72) * 3600,
 			};
 			if (counterparty.startsWith("kaspa:"))
 				body.counterparty_address = counterparty;
@@ -109,7 +121,10 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				validate={kvad}
 			/>
 			<FormField label="Expires in">
-				<select value={expireHours} onChange={e => setExpireHours(e.target.value)}>
+				<select
+					value={expireHours}
+					onChange={(e) => setExpireHours(e.target.value)}
+				>
 					<option value="24">24 hours</option>
 					<option value="72">3 days</option>
 					<option value="168">7 days</option>
@@ -141,7 +156,7 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 	const [buyerAddress, setBuyerAddress] = useState("");
 	const [sellerAddress, setSellerAddress] = useState("");
 	const [assetType, setAssetType] = useState("KAS");
-	const [disputeMode, setDisputeMode] = useState('standard');
+	const [disputeMode, setDisputeMode] = useState("standard");
 	const [mediatorKey, setMediatorKey] = useState("");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
 		"idle",
@@ -204,7 +219,10 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 				{result.price_at_creation != null && (
 					<div className="row">
 						<span>Price at creation</span>
-						<strong>${result.price_at_creation.toFixed(4)} {result.price_currency || "USD"}</strong>
+						<strong>
+							${result.price_at_creation.toFixed(4)}{" "}
+							{result.price_currency || "USD"}
+						</strong>
 					</div>
 				)}
 			</div>
@@ -246,7 +264,10 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 				/>
 			</FormField>
 			<FormField label="Dispute resolution">
-				<select value={disputeMode} onChange={e => setDisputeMode(e.target.value)}>
+				<select
+					value={disputeMode}
+					onChange={(e) => setDisputeMode(e.target.value)}
+				>
 					<option value="standard">Standard (timeout refund)</option>
 					<option value="mediator">Specific mediator</option>
 					<option value="jury">Jury (community vote)</option>
@@ -317,7 +338,11 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 			if (evidenceContent) {
 				await api.submitEvidence(escrowId, evidenceContent, undefined, auth);
 			}
-			await api.disputeEscrow(escrowId, reason, mode === "jury" ? "jury" : undefined);
+			await api.disputeEscrow(
+				escrowId,
+				reason,
+				mode === "jury" ? "jury" : undefined,
+			);
 			setStatus("disputed");
 			onDone();
 		} catch (err) {
@@ -456,13 +481,18 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 					setError("Address and signature are required.");
 					return;
 				}
-				auth = { address: authAddress, signature: authSignature, message: action + ":" + escrowId };
+				auth = {
+					address: authAddress,
+					signature: authSignature,
+					message: action + ":" + escrowId,
+				};
 			}
 			let res: { status: string; escrow_id: string };
 			const act: string = action;
 			if (act === "settle") res = await api.settleEscrow(escrowId, auth!);
 			else if (act === "refund") res = await api.refundEscrow(escrowId, auth!);
-			else if (act === "dispute") res = await api.disputeEscrow(escrowId, disputeReason);
+			else if (act === "dispute")
+				res = await api.disputeEscrow(escrowId, disputeReason);
 			else res = await api.cancelEscrow(escrowId);
 			setResult(res);
 			setStatus("done");
@@ -558,7 +588,11 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 		setError("");
 		try {
 			const message = `daglock.io:verify:telegram:${trimmedTgHandle}`;
-			const auth: AuthHeaders = { address: trimmedTgAddr, signature: signature.trim(), message };
+			const auth: AuthHeaders = {
+				address: trimmedTgAddr,
+				signature: signature.trim(),
+				message,
+			};
 			await api.createIdentity(
 				"telegram",
 				trimmedTgHandle,
@@ -667,7 +701,9 @@ function OfferCard({
 			<p>
 				{offer.base_asset} for {offer.quote_asset}
 			</p>
-			<small className="muted addr">by {offer.creator_address.slice(0, 24)}…</small>
+			<small className="muted addr">
+				by {offer.creator_address.slice(0, 24)}…
+			</small>
 			<code>{offer.id}</code>
 			<small className="muted">{relativeTime(offer.created_at)}</small>
 			{canAct && (
@@ -706,7 +742,9 @@ function EscrowLookup() {
 	const [evidence, setEvidence] = useState<LoadState<DisputeEvidence[]>>({
 		loading: false,
 	});
-	const [messages, setMessages] = useState<LoadState<EscrowMessage[]>>({ loading: false });
+	const [messages, setMessages] = useState<LoadState<EscrowMessage[]>>({
+		loading: false,
+	});
 	const [msgText, setMsgText] = useState("");
 	const [chatAddr, setChatAddr] = useState("");
 	const [chatSig, setChatSig] = useState("");
@@ -721,9 +759,14 @@ function EscrowLookup() {
 			setState({ data, loading: false });
 			// Also fetch messages (requires auth)
 			if (chatAddr && chatSig) {
-				const cauth: AuthHeaders = { address: chatAddr, signature: chatSig, message: "messages" };
-				api.listMessages(id.trim(), cauth)
-					.then(r => setMessages({ data: r.messages, loading: false }))
+				const cauth: AuthHeaders = {
+					address: chatAddr,
+					signature: chatSig,
+					message: "messages",
+				};
+				api
+					.listMessages(id.trim(), cauth)
+					.then((r) => setMessages({ data: r.messages, loading: false }))
 					.catch(() => setMessages({ loading: false }));
 			}
 			// Also fetch evidence if disputed
@@ -755,10 +798,18 @@ function EscrowLookup() {
 			</form>
 			<div className="form form-stacked" style={{ marginTop: 8 }}>
 				<FormField label="Address (for chat)">
-					<input value={chatAddr} onChange={e => setChatAddr(e.target.value)} placeholder="kaspa:..." />
+					<input
+						value={chatAddr}
+						onChange={(e) => setChatAddr(e.target.value)}
+						placeholder="kaspa:..."
+					/>
 				</FormField>
 				<FormField label="Signature">
-					<input value={chatSig} onChange={e => setChatSig(e.target.value)} placeholder="hex" />
+					<input
+						value={chatSig}
+						onChange={(e) => setChatSig(e.target.value)}
+						placeholder="hex"
+					/>
 				</FormField>
 			</div>
 			<LookupResult
@@ -784,13 +835,20 @@ function EscrowLookup() {
 						{data.price_at_creation != null && (
 							<div className="row">
 								<span>Price</span>
-								<strong>${data.price_at_creation.toFixed(4)} {data.price_currency || "USD"}</strong>
+								<strong>
+									${data.price_at_creation.toFixed(4)}{" "}
+									{data.price_currency || "USD"}
+								</strong>
 							</div>
 						)}
 						{data.dispute_mode && (
 							<div className="row">
 								<span>Dispute mode</span>
-								<strong><span className={badge(data.dispute_mode)}>{data.dispute_mode}</span></strong>
+								<strong>
+									<span className={badge(data.dispute_mode)}>
+										{data.dispute_mode}
+									</span>
+								</strong>
 							</div>
 						)}
 						<div className="row">
@@ -839,7 +897,9 @@ function EscrowLookup() {
 								{messages.data.map((m, i) => (
 									<div key={i} className="evidence-item">
 										<div className="row">
-											<span className="addr">{m.sender_address.slice(0, 20)}…</span>
+											<span className="addr">
+												{m.sender_address.slice(0, 20)}…
+											</span>
 											<small>{time(m.created_at)}</small>
 										</div>
 										<p className="evidence-content">{m.content}</p>
@@ -853,19 +913,37 @@ function EscrowLookup() {
 			{messages.data != null && (
 				<div className="form form-stacked" style={{ marginTop: 12 }}>
 					<div className="form">
-						<input value={msgText} onChange={e => setMsgText(e.target.value)} placeholder="Type a message..." />
-						<button className="button primary" onClick={async () => {
-							if (!msgText || !id) return;
-							if (!chatAddr || !chatSig) { setMsgStatus("Auth required"); return; }
-							try {
-								const cauth: AuthHeaders = { address: chatAddr, signature: chatSig, message: "messages" };
-								await api.sendMessage(id, msgText, cauth);
-								setMsgText("");
-								setMsgStatus("Sent");
-								const r = await api.listMessages(id, cauth);
-								setMessages({ data: r.messages, loading: false });
-							} catch (err) { setMsgStatus((err as Error).message); }
-						}}>Send</button>
+						<input
+							value={msgText}
+							onChange={(e) => setMsgText(e.target.value)}
+							placeholder="Type a message..."
+						/>
+						<button
+							className="button primary"
+							onClick={async () => {
+								if (!msgText || !id) return;
+								if (!chatAddr || !chatSig) {
+									setMsgStatus("Auth required");
+									return;
+								}
+								try {
+									const cauth: AuthHeaders = {
+										address: chatAddr,
+										signature: chatSig,
+										message: "messages",
+									};
+									await api.sendMessage(id, msgText, cauth);
+									setMsgText("");
+									setMsgStatus("Sent");
+									const r = await api.listMessages(id, cauth);
+									setMessages({ data: r.messages, loading: false });
+								} catch (err) {
+									setMsgStatus((err as Error).message);
+								}
+							}}
+						>
+							Send
+						</button>
 					</div>
 					{msgStatus && <p className="muted">{msgStatus}</p>}
 				</div>
@@ -877,10 +955,18 @@ function EscrowLookup() {
 	const chatAuthSection = (
 		<div className="form form-stacked" style={{ marginTop: 8 }}>
 			<FormField label="Address (for chat)">
-				<input value={chatAddr} onChange={e => setChatAddr(e.target.value)} placeholder="kaspa:..." />
+				<input
+					value={chatAddr}
+					onChange={(e) => setChatAddr(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Signature">
-				<input value={chatSig} onChange={e => setChatSig(e.target.value)} placeholder="hex" />
+				<input
+					value={chatSig}
+					onChange={(e) => setChatSig(e.target.value)}
+					placeholder="hex"
+				/>
 			</FormField>
 		</div>
 	);
@@ -968,7 +1054,10 @@ function ReputationLookup() {
 						{data.trading_concentration > 0.9 && (
 							<div className="row">
 								<span>Wash trading</span>
-								<strong className="error-text">Warning: {(data.trading_concentration * 100).toFixed(0)}% volume with one counterparty</strong>
+								<strong className="error-text">
+									Warning: {(data.trading_concentration * 100).toFixed(0)}%
+									volume with one counterparty
+								</strong>
 							</div>
 						)}
 						{data.mediator_stats && (
@@ -1006,25 +1095,42 @@ function MyEscrows() {
 	return (
 		<Panel title="My escrows">
 			<form className="form" onSubmit={handleSubmit}>
-				<input value={address} onChange={e => setAddress(e.target.value)} placeholder="your kaspa address" />
-				<button className="button" type="submit">List</button>
+				<input
+					value={address}
+					onChange={(e) => setAddress(e.target.value)}
+					placeholder="your kaspa address"
+				/>
+				<button className="button" type="submit">
+					List
+				</button>
 			</form>
-			<LookupResult loading={list.loading} error={list.error} data={list.data} render={(data) => (
-				<div className="stack">
-					{data.length === 0 && <p className="muted">No escrows found for this address.</p>}
-					{data.map(e => (
-						<article key={e.id} className="offer" style={{ cursor: "default" }}>
-							<div className="offer-top">
-								<strong>{money(e.amount_sompi)}</strong>
-								<span className={badge(e.status)}>{e.status}</span>
-							</div>
-							<p>{e.asset_type} escrow</p>
-							<code>{e.id}</code>
-							<small className="muted">{relativeTime(e.created_at)}</small>
-						</article>
-					))}
-				</div>
-			)} />
+			<LookupResult
+				loading={list.loading}
+				error={list.error}
+				data={list.data}
+				render={(data) => (
+					<div className="stack">
+						{data.length === 0 && (
+							<p className="muted">No escrows found for this address.</p>
+						)}
+						{data.map((e) => (
+							<article
+								key={e.id}
+								className="offer"
+								style={{ cursor: "default" }}
+							>
+								<div className="offer-top">
+									<strong>{money(e.amount_sompi)}</strong>
+									<span className={badge(e.status)}>{e.status}</span>
+								</div>
+								<p>{e.asset_type} escrow</p>
+								<code>{e.id}</code>
+								<small className="muted">{relativeTime(e.created_at)}</small>
+							</article>
+						))}
+					</div>
+				)}
+			/>
 		</Panel>
 	);
 }
@@ -1267,25 +1373,46 @@ function MyOffersPanel() {
 	return (
 		<div className="stack">
 			<form className="form" onSubmit={handleSubmit}>
-				<input value={address} onChange={e => setAddress(e.target.value)} placeholder="your kaspa address" />
-				<button className="button" type="submit">List my offers</button>
+				<input
+					value={address}
+					onChange={(e) => setAddress(e.target.value)}
+					placeholder="your kaspa address"
+				/>
+				<button className="button" type="submit">
+					List my offers
+				</button>
 			</form>
-			<LookupResult loading={list.loading} error={list.error} data={list.data} render={(data) => (
-				<div>
-					{data.length === 0 && <p className="muted">No offers found for this address.</p>}
-					{data.map(o => (
-						<article key={o.id} className="offer" style={{ cursor: "default" }}>
-							<div className="offer-top">
-								<strong>{o.side.toUpperCase()} {money(o.amount_sompi)}</strong>
-								<span className={badge(o.status)}>{o.status}</span>
-							</div>
-							<p>{o.base_asset} for {o.quote_asset}</p>
-							<code>{o.id}</code>
-							<small className="muted">{relativeTime(o.created_at)}</small>
-						</article>
-					))}
-				</div>
-			)} />
+			<LookupResult
+				loading={list.loading}
+				error={list.error}
+				data={list.data}
+				render={(data) => (
+					<div>
+						{data.length === 0 && (
+							<p className="muted">No offers found for this address.</p>
+						)}
+						{data.map((o) => (
+							<article
+								key={o.id}
+								className="offer"
+								style={{ cursor: "default" }}
+							>
+								<div className="offer-top">
+									<strong>
+										{o.side.toUpperCase()} {money(o.amount_sompi)}
+									</strong>
+									<span className={badge(o.status)}>{o.status}</span>
+								</div>
+								<p>
+									{o.base_asset} for {o.quote_asset}
+								</p>
+								<code>{o.id}</code>
+								<small className="muted">{relativeTime(o.created_at)}</small>
+							</article>
+						))}
+					</div>
+				)}
+			/>
 		</div>
 	);
 }
@@ -1298,9 +1425,14 @@ function MyOffersPanel() {
 function CreateVaultForm({ onDone }: { onDone: () => void }) {
 	const [ownerKey, setOwnerKey] = useState("");
 	const [timeoutDays, setTimeoutDays] = useState("30");
-	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+		"idle",
+	);
 	const [error, setError] = useState("");
-	const [result, setResult] = useState<{ script: string; template_hash: string } | null>(null);
+	const [result, setResult] = useState<{
+		script: string;
+		template_hash: string;
+	} | null>(null);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -1309,7 +1441,8 @@ function CreateVaultForm({ onDone }: { onDone: () => void }) {
 			setError("Enter a valid 64-char hex public key");
 			return;
 		}
-		const timeoutSec = Math.floor(Date.now() / 1000) + (parseInt(timeoutDays) || 30) * 86400;
+		const timeoutSec =
+			Math.floor(Date.now() / 1000) + (parseInt(timeoutDays) || 30) * 86400;
 		setStatus("loading");
 		setError("");
 		try {
@@ -1330,20 +1463,38 @@ function CreateVaultForm({ onDone }: { onDone: () => void }) {
 		return (
 			<div className="result stack">
 				<p className="muted success-text">Vault covenant compiled!</p>
-				<div className="row"><span>Template hash</span><code>{result.template_hash}</code></div>
-				<div className="row"><span>Script</span><code style={{ fontSize: "0.7rem" }}>{result.script.slice(0, 80)}…</code></div>
+				<div className="row">
+					<span>Template hash</span>
+					<code>{result.template_hash}</code>
+				</div>
+				<div className="row">
+					<span>Script</span>
+					<code style={{ fontSize: "0.7rem" }}>
+						{result.script.slice(0, 80)}…
+					</code>
+				</div>
 			</div>
 		);
 	}
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
-			<p className="muted">Create a time-locked KAS vault. Only the owner can withdraw after the timeout.</p>
+			<p className="muted">
+				Create a time-locked KAS vault. Only the owner can withdraw after the
+				timeout.
+			</p>
 			<FormField label="Owner public key (hex)">
-				<input value={ownerKey} onChange={e => setOwnerKey(e.target.value)} placeholder="64 hex chars" />
+				<input
+					value={ownerKey}
+					onChange={(e) => setOwnerKey(e.target.value)}
+					placeholder="64 hex chars"
+				/>
 			</FormField>
 			<FormField label="Lock duration">
-				<select value={timeoutDays} onChange={e => setTimeoutDays(e.target.value)}>
+				<select
+					value={timeoutDays}
+					onChange={(e) => setTimeoutDays(e.target.value)}
+				>
 					<option value="1">1 day</option>
 					<option value="7">7 days</option>
 					<option value="30">30 days</option>
@@ -1352,7 +1503,11 @@ function CreateVaultForm({ onDone }: { onDone: () => void }) {
 				</select>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
-			<button className="button primary" type="submit" disabled={status === "loading"}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+			>
 				{status === "loading" ? "Compiling…" : "Compile vault"}
 			</button>
 		</form>
@@ -1363,15 +1518,21 @@ function CreateVaultForm({ onDone }: { onDone: () => void }) {
 function CompileCovenantForm({ onDone }: { onDone: () => void }) {
 	const [template, setTemplate] = useState("daglock");
 	const [paramsStr, setParamsStr] = useState("{}");
-	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+		"idle",
+	);
 	const [error, setError] = useState("");
 	const [result, setResult] = useState<any>(null);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		let params: Record<string, string>;
-		try { params = JSON.parse(paramsStr); }
-		catch { setError("Params must be valid JSON"); return; }
+		try {
+			params = JSON.parse(paramsStr);
+		} catch {
+			setError("Params must be valid JSON");
+			return;
+		}
 		setStatus("loading");
 		setError("");
 		try {
@@ -1388,18 +1549,35 @@ function CompileCovenantForm({ onDone }: { onDone: () => void }) {
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
 			<FormField label="Template">
-				<select value={template} onChange={e => setTemplate(e.target.value)}>
+				<select value={template} onChange={(e) => setTemplate(e.target.value)}>
 					<option value="daglock">DagLock (KAS escrow)</option>
-					<option value="daglock_arbiter">DagLock Arbiter (with mediator)</option>
+					<option value="daglock_arbiter">
+						DagLock Arbiter (with mediator)
+					</option>
 					<option value="daglock_vault">DagLock Vault (time-locked)</option>
 				</select>
 			</FormField>
 			<FormField label="Params (JSON)">
-				<textarea value={paramsStr} onChange={e => setParamsStr(e.target.value)} className="evidence-input" placeholder='{"buyer_key":"...","seller_key":"...","timeout":"1700000000","treasury_key":"..."}' />
+				<textarea
+					value={paramsStr}
+					onChange={(e) => setParamsStr(e.target.value)}
+					className="evidence-input"
+					placeholder='{"buyer_key":"...","seller_key":"...","timeout":"1700000000","treasury_key":"..."}'
+				/>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
-			<button className="button primary" type="submit" disabled={status === "loading"}>{status === "loading" ? "Compiling…" : "Compile"}</button>
-			{result && <pre className="muted" style={{ fontSize: "0.7rem", marginTop: 8 }}>{JSON.stringify(result, null, 2)}</pre>}
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+			>
+				{status === "loading" ? "Compiling…" : "Compile"}
+			</button>
+			{result && (
+				<pre className="muted" style={{ fontSize: "0.7rem", marginTop: 8 }}>
+					{JSON.stringify(result, null, 2)}
+				</pre>
+			)}
 		</form>
 	);
 }
@@ -1472,14 +1650,14 @@ export default function App() {
 	const tabPanels: Record<string, { title: string; content: React.ReactNode }> =
 		{
 			"create-vault": {
-			title: "Create vault",
-			content: <CreateVaultForm onDone={closeTab} />,
-		},
-		"compile": {
-			title: "Compile covenant",
-			content: <CompileCovenantForm onDone={closeTab} />,
-		},
-		"create-offer": {
+				title: "Create vault",
+				content: <CreateVaultForm onDone={closeTab} />,
+			},
+			compile: {
+				title: "Compile covenant",
+				content: <CompileCovenantForm onDone={closeTab} />,
+			},
+			"create-offer": {
 				title: "Create offer",
 				content: <CreateOfferForm onDone={closeTab} />,
 			},
@@ -1515,7 +1693,16 @@ export default function App() {
 
 	return (
 		<main className="app">
-			<div style={{background:'#ff9800',color:'#000',textAlign:'center',padding:'8px',fontWeight:'bold',fontSize:'14px'}}>
+			<div
+				style={{
+					background: "#ff9800",
+					color: "#000",
+					textAlign: "center",
+					padding: "8px",
+					fontWeight: "bold",
+					fontSize: "14px",
+				}}
+			>
 				⚠️ TESTNET — This is a testnet deployment. Do not use real funds.
 			</div>
 			<header className="hero">
@@ -1621,33 +1808,73 @@ export default function App() {
 				/>
 
 				<div className="action-tabs">
-					{(
-						[
-							["Create vault", "create-vault"],
-							["Compile", "compile"],
-							["Create offer", "create-offer"],
-							["Create escrow", "create-escrow"],
-							["Settle", "settle"],
-							["Refund", "refund"],
-							["Dispute", "dispute"],
-							["Cancel", "cancel"],
-							["My offers", "my-offers"],
-							["Link Telegram", "link-telegram"],
-							["Jury", "jury"],
-						] as const
-					).map(([label, key]) => (
-						<button
-							key={key}
-							className={`button ${activeTab === key ? "primary" : ""}`}
-							onClick={() =>
-								setActiveTab(
-									activeTab === key ? null : (key as typeof activeTab),
-								)
-							}
-						>
-							{label}
-						</button>
-					))}
+					<div className="action-group">
+						<span className="action-group-label">Create</span>
+						{(
+							[
+								["Offer", "create-offer"],
+								["Escrow", "create-escrow"],
+								["Vault", "create-vault"],
+							] as const
+						).map(([label, key]) => (
+							<button
+								key={key}
+								className={`button ${activeTab === key ? "primary" : ""}`}
+								onClick={() =>
+									setActiveTab(
+										activeTab === key ? null : (key as typeof activeTab),
+									)
+								}
+							>
+								{label}
+							</button>
+						))}
+					</div>
+					<div className="action-group">
+						<span className="action-group-label">Manage</span>
+						{(
+							[
+								["Settle", "settle"],
+								["Refund", "refund"],
+								["Dispute", "dispute"],
+								["Cancel", "cancel"],
+							] as const
+						).map(([label, key]) => (
+							<button
+								key={key}
+								className={`button ${activeTab === key ? "primary" : ""}`}
+								onClick={() =>
+									setActiveTab(
+										activeTab === key ? null : (key as typeof activeTab),
+									)
+								}
+							>
+								{label}
+							</button>
+						))}
+					</div>
+					<div className="action-group">
+						<span className="action-group-label">Account</span>
+						{(
+							[
+								["My offers", "my-offers"],
+								["Telegram", "link-telegram"],
+								["Jury", "jury"],
+							] as const
+						).map(([label, key]) => (
+							<button
+								key={key}
+								className={`button ${activeTab === key ? "primary" : ""}`}
+								onClick={() =>
+									setActiveTab(
+										activeTab === key ? null : (key as typeof activeTab),
+									)
+								}
+							>
+								{label}
+							</button>
+						))}
+					</div>
 				</div>
 
 				{activeTab && (

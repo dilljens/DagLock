@@ -215,8 +215,23 @@ code {
 .action-tabs {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: 16px;
 	margin-bottom: 16px;
+}
+
+.action-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.action-group-label {
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--muted);
+	margin-right: 4px;
 }
 
 .action-panel {
