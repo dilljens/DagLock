@@ -218,10 +218,19 @@ async fn main() -> anyhow::Result<()> {
         Commands::Receipt { id } => {
             commands::receipt::run(api_url, &id).await?;
         }
-        Commands::Msg { id, text, address, signature } => {
+        Commands::Msg {
+            id,
+            text,
+            address,
+            signature,
+        } => {
             commands::message::send(api_url, &id, &text, &address, &signature).await?;
         }
-        Commands::Messages { id, address, signature } => {
+        Commands::Messages {
+            id,
+            address,
+            signature,
+        } => {
             commands::message::list(api_url, &id, &address, &signature).await?;
         }
         Commands::Config { api_url: new_url } => {

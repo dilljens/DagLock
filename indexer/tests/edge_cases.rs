@@ -31,7 +31,7 @@ async fn test_atomic_settle_only_works_on_active() {
     sqlx::query(
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, amount_sompi, fee_sompi, template_hash, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
     )
     .bind("esc_active")
     .bind("tx1")
@@ -51,7 +51,7 @@ async fn test_atomic_settle_only_works_on_active() {
     sqlx::query(
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, amount_sompi, fee_sompi, template_hash, created_at, settled_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
     )
     .bind("esc_settled")
     .bind("tx2")
@@ -71,7 +71,7 @@ async fn test_atomic_settle_only_works_on_active() {
     // Try to settle active escrow - should succeed
     let result = sqlx::query(
         "UPDATE escrows SET status = 'settled', settled_at = ?1, refunded_at = NULL 
-         WHERE id = ?2 AND status = 'active'"
+         WHERE id = ?2 AND status = 'active'",
     )
     .bind(1_700_002_000i64)
     .bind("esc_active")
@@ -83,7 +83,7 @@ async fn test_atomic_settle_only_works_on_active() {
     // Try to settle already settled escrow - should fail (0 rows affected)
     let result = sqlx::query(
         "UPDATE escrows SET status = 'settled', settled_at = ?1, refunded_at = NULL 
-         WHERE id = ?2 AND status = 'active'"
+         WHERE id = ?2 AND status = 'active'",
     )
     .bind(1_700_003_000i64)
     .bind("esc_settled")
@@ -101,7 +101,7 @@ async fn test_atomic_refund_only_works_on_active() {
     sqlx::query(
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, amount_sompi, fee_sompi, template_hash, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
     )
     .bind("esc_active")
     .bind("tx1")
@@ -120,7 +120,7 @@ async fn test_atomic_refund_only_works_on_active() {
     // Refund active escrow - should succeed
     let result = sqlx::query(
         "UPDATE escrows SET status = 'refunded', refunded_at = ?1, settled_at = NULL 
-         WHERE id = ?2 AND status = 'active'"
+         WHERE id = ?2 AND status = 'active'",
     )
     .bind(1_700_002_000i64)
     .bind("esc_active")
@@ -141,24 +141,34 @@ async fn test_atomic_refund_only_works_on_active() {
 #[tokio::test]
 async fn test_address_validation() {
     // Test valid addresses
-    assert!(daglock_indexer::api::escrows::validate_kaspa_address("kaspa:qz2q8c9yxp8yru3n"));
-    assert!(daglock_indexer::api::escrows::validate_kaspa_address("kaspa:qr3a5x9yzp8yru3n"));
+    assert!(daglock_indexer::api::escrows::validate_kaspa_address(
+        "kaspa:qz2q8c9yxp8yru3n"
+    ));
+    assert!(daglock_indexer::api::escrows::validate_kaspa_address(
+        "kaspa:qr3a5x9yzp8yru3n"
+    ));
 
     // Test invalid addresses
     assert!(!daglock_indexer::api::escrows::validate_kaspa_address(""));
-    assert!(!daglock_indexer::api::escrows::validate_kaspa_address("kaspa:"));
-    assert!(!daglock_indexer::api::escrows::validate_kaspa_address("invalid"));
-    assert!(!daglock_indexer::api::escrows::validate_kaspa_address("kaspa:INVALID"));
+    assert!(!daglock_indexer::api::escrows::validate_kaspa_address(
+        "kaspa:"
+    ));
+    assert!(!daglock_indexer::api::escrows::validate_kaspa_address(
+        "invalid"
+    ));
+    assert!(!daglock_indexer::api::escrows::validate_kaspa_address(
+        "kaspa:INVALID"
+    ));
 }
 
 #[tokio::test]
 async fn test_fee_calculation_edge_cases() {
     // Test various amounts
     let test_cases = vec![
-        (0i64, 0i64),           // Zero amount
-        (199i64, 0i64),         // Below fee threshold
-        (200i64, 1i64),         // Exactly 0.5%
-        (100_000_000i64, 500_000i64),    // 1 KAS
+        (0i64, 0i64),                     // Zero amount
+        (199i64, 0i64),                   // Below fee threshold
+        (200i64, 1i64),                   // Exactly 0.5%
+        (100_000_000i64, 500_000i64),     // 1 KAS
         (1_000_000_000i64, 5_000_000i64), // 10 KAS
     ];
 

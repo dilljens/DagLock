@@ -11,7 +11,9 @@ use uuid::Uuid;
 
 use crate::api::AppState;
 
-use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext, SignatureVerifier};
+use crate::auth::{
+    verify_refund_authorization, verify_settle_authorization, AuthContext, SignatureVerifier,
+};
 use crate::db::queries;
 use crate::types::*;
 use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
@@ -205,12 +207,19 @@ pub async fn create(
 
     // Check for duplicate lock_tx (same UTXO used in another escrow)
     // The unique index enforces this at the DB level, but we check early for a better error message
-    match queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await {
+    match queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await
+    {
         Ok((existing, _)) => {
-            if existing.iter().any(|e| e.lock_tx_id == body.lock_tx_id && e.lock_tx_output_index == body.lock_tx_output_index) {
+            if existing.iter().any(|e| {
+                e.lock_tx_id == body.lock_tx_id
+                    && e.lock_tx_output_index == body.lock_tx_output_index
+            }) {
                 return Err((
                     StatusCode::CONFLICT,
-                    Json(json!(ApiError::new("duplicate_lock", "An escrow already exists for this UTXO"))),
+                    Json(json!(ApiError::new(
+                        "duplicate_lock",
+                        "An escrow already exists for this UTXO"
+                    ))),
                 ));
             }
         }
@@ -243,8 +252,11 @@ pub async fn create(
         refunded_at: None,
         mediator_key: body.mediator_key.clone(),
         dispute_mode: body.dispute_mode.or_else(|| {
-            if body.mediator_key.is_some() { Some("mediator".to_string()) }
-            else { None }
+            if body.mediator_key.is_some() {
+                Some("mediator".to_string())
+            } else {
+                None
+            }
         }),
         dispute_outcome: None,
         dispute_resolved_at: None,
@@ -630,14 +642,37 @@ pub async fn cancel(
             ) =>
         {
             let auth = AuthContext::from_headers(&headers).map_err(|_e| {
-                (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))))
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!(ApiError::new(
+                        "unauthorized",
+                        "X-Daglock-* headers required"
+                    ))),
+                )
             })?;
             let sig_verifier = crate::auth::Secp256k1Verifier::new();
-            if !(&sig_verifier as &dyn SignatureVerifier).verify_signature(&auth.address, &auth.signature, &format!("cancel:{}", id)).unwrap_or(false) {
-                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature for cancel")))));
+            if !(&sig_verifier as &dyn SignatureVerifier)
+                .verify_signature(&auth.address, &auth.signature, &format!("cancel:{}", id))
+                .unwrap_or(false)
+            {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new(
+                        "forbidden",
+                        "Invalid signature for cancel"
+                    ))),
+                ));
             }
-            if auth.address != current.buyer_address && current.seller_address.as_deref() != Some(&auth.address) {
-                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Only escrow parties can cancel")))));
+            if auth.address != current.buyer_address
+                && current.seller_address.as_deref() != Some(&auth.address)
+            {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new(
+                        "forbidden",
+                        "Only escrow parties can cancel"
+                    ))),
+                ));
             }
             Err((
                 StatusCode::CONFLICT,

@@ -10,13 +10,13 @@
 //!
 //! Falls back to offline reconciliation mode if wRPC connection fails.
 
-use kaspa_wrpc_client::prelude::{NetworkId, NetworkType};
 use kaspa_rpc_core::api::rpc::RpcApi;
+use kaspa_wrpc_client::prelude::{NetworkId, NetworkType};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 use crate::db::queries;
 
@@ -35,8 +35,12 @@ pub fn spawn(
         info!("wRPC listener starting for {network} at {wrpc_url}");
 
         // Parse template hashes from hex strings
-        let kas_hash = daglock_kas_template.as_ref().and_then(|h| hex::decode(h).ok());
-        let krc20_hash = daglock_krc20_template.as_ref().and_then(|h| hex::decode(h).ok());
+        let kas_hash = daglock_kas_template
+            .as_ref()
+            .and_then(|h| hex::decode(h).ok());
+        let krc20_hash = daglock_krc20_template
+            .as_ref()
+            .and_then(|h| hex::decode(h).ok());
 
         if kas_hash.is_none() && krc20_hash.is_none() {
             warn!("No template hashes configured — listener will only run reconciliation");
@@ -67,7 +71,8 @@ async fn connect_wrpc(
     let network_id = match network {
         "mainnet" => NetworkId::new(NetworkType::Mainnet),
         n if n.starts_with("testnet-") => {
-            let _num: u8 = n.strip_prefix("testnet-")
+            let _num: u8 = n
+                .strip_prefix("testnet-")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(12);
             NetworkId::new(NetworkType::Testnet)
@@ -97,7 +102,9 @@ async fn connect_wrpc(
         ..Default::default()
     };
 
-    client.connect(Some(options)).await
+    client
+        .connect(Some(options))
+        .await
         .map_err(|e| format!("Failed to connect: {e}"))?;
 
     Ok(client)
@@ -194,7 +201,7 @@ mod tests {
 
     #[test]
     #[allow(dead_code)]
-fn check_template_match_returns_none_for_unknown_script() {
+    fn check_template_match_returns_none_for_unknown_script() {
         let script = vec![0x01, 0x02, 0x03];
         let result = check_template_match(&script, None, None);
         assert!(result.is_none());
@@ -202,7 +209,7 @@ fn check_template_match_returns_none_for_unknown_script() {
 
     #[test]
     #[allow(dead_code)]
-fn check_template_match_detects_kas_hash() {
+    fn check_template_match_detects_kas_hash() {
         let script = vec![0xaa, 0xbb, 0xcc];
         let hash = blake2b_simd::Params::new()
             .hash_length(20)
@@ -215,7 +222,7 @@ fn check_template_match_detects_kas_hash() {
 
     #[test]
     #[allow(dead_code)]
-fn check_template_match_detects_krc20_hash() {
+    fn check_template_match_detects_krc20_hash() {
         let script = vec![0xdd, 0xee, 0xff];
         let hash = blake2b_simd::Params::new()
             .hash_length(20)

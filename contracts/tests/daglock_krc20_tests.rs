@@ -24,12 +24,12 @@ fn krc20_compiles_with_valid_params() {
         &sample_trade_hash(),
         1_700_000_000,
         &zero_key(),
-        0,  // kcc20_template_prefix_len
-        0,  // kcc20_template_suffix_len
-        &zero_key(),  // kcc20_expected_template_hash
-        &[],  // kcc20_template_prefix
-        &[],  // kcc20_template_suffix
-        &zero_key(),  // kcc20_covenant_id
+        0,           // kcc20_template_prefix_len
+        0,           // kcc20_template_suffix_len
+        &zero_key(), // kcc20_expected_template_hash
+        &[],         // kcc20_template_prefix
+        &[],         // kcc20_template_suffix
+        &zero_key(), // kcc20_covenant_id
     );
 
     assert_eq!(compiled.abi.len(), 3);
@@ -43,12 +43,30 @@ fn krc20_compiles_with_valid_params() {
 #[test]
 fn krc20_template_hash_is_deterministic() {
     let c1 = compile_daglock_krc20(
-        &zero_key(), &zero_key(), &sample_trade_hash(), 1_700_000_000, &zero_key(),
-        0, 0, &zero_key(), &[], &[], &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        &sample_trade_hash(),
+        1_700_000_000,
+        &zero_key(),
+        0,
+        0,
+        &zero_key(),
+        &[],
+        &[],
+        &zero_key(),
     );
     let c2 = compile_daglock_krc20(
-        &zero_key(), &zero_key(), &sample_trade_hash(), 1_700_000_000, &zero_key(),
-        0, 0, &zero_key(), &[], &[], &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        &sample_trade_hash(),
+        1_700_000_000,
+        &zero_key(),
+        0,
+        0,
+        &zero_key(),
+        &[],
+        &[],
+        &zero_key(),
     );
 
     let (_, _, h1) = template_parts_and_hash(&c1);
@@ -60,15 +78,36 @@ fn krc20_template_hash_is_deterministic() {
 #[test]
 fn krc20_different_keys_produce_different_scripts() {
     let c1 = compile_daglock_krc20(
-        &zero_key(), &zero_key(), &zero_key(), 1_700_000_000, &zero_key(),
-        0, 0, &zero_key(), &[], &[], &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        1_700_000_000,
+        &zero_key(),
+        0,
+        0,
+        &zero_key(),
+        &[],
+        &[],
+        &zero_key(),
     );
     let c2 = compile_daglock_krc20(
-        &one_key(), &one_key(), &zero_key(), 1_700_000_000, &one_key(),
-        0, 0, &one_key(), &[], &[], &one_key(),
+        &one_key(),
+        &one_key(),
+        &zero_key(),
+        1_700_000_000,
+        &one_key(),
+        0,
+        0,
+        &one_key(),
+        &[],
+        &[],
+        &one_key(),
     );
 
-    assert_ne!(c1.script, c2.script, "different keys should produce different scripts");
+    assert_ne!(
+        c1.script, c2.script,
+        "different keys should produce different scripts"
+    );
 }
 
 #[test]
@@ -76,11 +115,24 @@ fn krc20_template_hash_differs_from_kas() {
     use daglock_contracts::compile_daglock;
 
     let krc20 = compile_daglock_krc20(
-        &zero_key(), &zero_key(), &zero_key(), 1_700_000_000, &zero_key(),
-        0, 0, &zero_key(), &[], &[], &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        1_700_000_000,
+        &zero_key(),
+        0,
+        0,
+        &zero_key(),
+        &[],
+        &[],
+        &zero_key(),
     );
     let kas = compile_daglock(
-        &zero_key(), &zero_key(), &zero_key(), 1_700_000_000, &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        1_700_000_000,
+        &zero_key(),
     );
 
     let (_, _, krc20_hash) = template_parts_and_hash(&krc20);
@@ -96,8 +148,8 @@ fn krc20_template_hash_differs_from_kas() {
 fn krc20_fee_calculation() {
     // Test that fee is correctly calculated as 0.5% (1/200)
     let test_cases = vec![
-        (100_000_000i64, 500_000i64),      // 1 KAS -> 0.005 KAS fee
-        (1_000_000_000i64, 5_000_000i64),  // 10 KAS -> 0.05 KAS fee
+        (100_000_000i64, 500_000i64),       // 1 KAS -> 0.005 KAS fee
+        (1_000_000_000i64, 5_000_000i64),   // 10 KAS -> 0.05 KAS fee
         (10_000_000_000i64, 50_000_000i64), // 100 KAS -> 0.5 KAS fee
     ];
 
@@ -111,9 +163,22 @@ fn krc20_fee_calculation() {
 fn krc20_entrypoint_count() {
     // Verify both covenants have exactly 3 entrypoints
     let krc20 = compile_daglock_krc20(
-        &zero_key(), &zero_key(), &zero_key(), 1_700_000_000, &zero_key(),
-        0, 0, &zero_key(), &[], &[], &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        &zero_key(),
+        1_700_000_000,
+        &zero_key(),
+        0,
+        0,
+        &zero_key(),
+        &[],
+        &[],
+        &zero_key(),
     );
 
-    assert_eq!(krc20.abi.len(), 3, "KRC-20 covenant should have 3 entrypoints");
+    assert_eq!(
+        krc20.abi.len(),
+        3,
+        "KRC-20 covenant should have 3 entrypoints"
+    );
 }

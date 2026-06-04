@@ -19,7 +19,7 @@ use axum::{Json, Router};
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer, AllowOrigin};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 /// Shared application state.
 #[derive(Clone)]
@@ -46,7 +46,9 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             .allow_methods(Any)
             .allow_headers(Any)
     } else {
-        let origin = cors_origin.parse::<axum::http::HeaderValue>().expect("Invalid CORS origin");
+        let origin = cors_origin
+            .parse::<axum::http::HeaderValue>()
+            .expect("Invalid CORS origin");
         CorsLayer::new()
             .allow_origin(AllowOrigin::predicate(move |o, _| o == &origin))
             .allow_methods(Any)
@@ -73,7 +75,10 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             "/v1/escrows/:id/resolve-dispute",
             post(evidence::resolve_dispute),
         )
-        .route("/v1/escrows/:id/messages", post(messages::send).get(messages::list))
+        .route(
+            "/v1/escrows/:id/messages",
+            post(messages::send).get(messages::list),
+        )
         .route("/v1/stats", get(escrows::stats))
         .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))

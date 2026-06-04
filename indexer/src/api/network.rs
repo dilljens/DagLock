@@ -27,20 +27,18 @@ pub async fn get(State(state): State<AppState>) -> Json<Value> {
 /// GET /v1/network/price
 /// Returns KAS/USD price from CoinGecko.
 pub async fn price(State(_state): State<AppState>) -> Json<Value> {
-    let resp = reqwest::get(
-        "https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd"
-    ).await;
+    let resp =
+        reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
+            .await;
 
     let price_json = match resp {
-        Ok(r) if r.status().is_success() => {
-            r.json::<serde_json::Value>().await.unwrap_or_default()
-        }
+        Ok(r) if r.status().is_success() => r.json::<serde_json::Value>().await.unwrap_or_default(),
         _ => json!({"kaspa": {"usd": 0.0}}),
     };
 
     let usd = price_json["kaspa"]["usd"].as_f64().unwrap_or(0.0);
     let timestamp = chrono::Utc::now().timestamp();
-    
+
     Json(json!({
         "kas_usd": usd,
         "updated_at": timestamp,

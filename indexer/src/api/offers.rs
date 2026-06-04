@@ -40,7 +40,10 @@ pub async fn create(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
             )
         })?;
 
@@ -56,10 +59,7 @@ pub struct OfferQuery {
 }
 
 /// GET /v1/offers
-pub async fn list(
-    State(state): State<AppState>,
-    Query(params): Query<OfferQuery>,
-) -> Json<Value> {
+pub async fn list(State(state): State<AppState>, Query(params): Query<OfferQuery>) -> Json<Value> {
     if let Some(ref creator) = params.creator {
         // Filter by creator
         return match queries::list_offers_by_creator(&state.db, creator).await {
@@ -73,7 +73,10 @@ pub async fn list(
             "offers": offers,
             "total": total,
         })),
-        Err(_e) => Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+        Err(_e) => Json(json!(ApiError::new(
+            "internal_error",
+            "An internal error occurred."
+        ))),
     }
 }
 
@@ -87,7 +90,10 @@ pub async fn accept(
     let offer = queries::get_offer(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+            Json(json!(ApiError::new(
+                "internal_error",
+                "An internal error occurred."
+            ))),
         )
     })?;
 
@@ -97,7 +103,10 @@ pub async fn accept(
             if body.counterparty_address == o.creator_address {
                 return Err((
                     StatusCode::BAD_REQUEST,
-                    Json(json!(ApiError::new("self_accept", "You cannot accept your own offer"))),
+                    Json(json!(ApiError::new(
+                        "self_accept",
+                        "You cannot accept your own offer"
+                    ))),
                 ));
             }
             queries::accept_offer(&state.db, &id, &body.counterparty_address)
@@ -105,7 +114,10 @@ pub async fn accept(
                 .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                        Json(json!(ApiError::new(
+                            "internal_error",
+                            "An internal error occurred."
+                        ))),
                     )
                 })?;
 
@@ -137,7 +149,10 @@ pub async fn cancel(
     let offer = queries::get_offer(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+            Json(json!(ApiError::new(
+                "internal_error",
+                "An internal error occurred."
+            ))),
         )
     })?;
 
@@ -145,12 +160,21 @@ pub async fn cancel(
         Some(o) if o.status == "proposed" || o.status == "accepted" => {
             // Auth: only the creator can cancel
             let auth = AuthContext::from_headers(&headers).map_err(|_e| {
-                (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))))
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!(ApiError::new(
+                        "unauthorized",
+                        "X-Daglock-* headers required"
+                    ))),
+                )
             })?;
             if auth.address != o.creator_address {
                 return Err((
                     StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new("forbidden", "Only the creator can cancel this offer"))),
+                    Json(json!(ApiError::new(
+                        "forbidden",
+                        "Only the creator can cancel this offer"
+                    ))),
                 ));
             }
             queries::update_offer_status(&state.db, &id, "cancelled")
@@ -158,7 +182,10 @@ pub async fn cancel(
                 .map_err(|_e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                        Json(json!(ApiError::new(
+                            "internal_error",
+                            "An internal error occurred."
+                        ))),
                     )
                 })?;
 

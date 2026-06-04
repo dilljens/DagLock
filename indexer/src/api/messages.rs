@@ -23,22 +23,58 @@ pub async fn send(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // Validate content length
     if body.content.is_empty() || body.content.len() > 1024 {
-        return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_content", "Content must be 1-1024 characters")))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_content",
+                "Content must be 1-1024 characters"
+            ))),
+        ));
     }
 
     // Auth
     let auth = AuthContext::from_headers(&headers).map_err(|_e| {
-        (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))))
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!(ApiError::new(
+                "unauthorized",
+                "X-Daglock-* headers required"
+            ))),
+        )
     })?;
 
     // Verify escrow exists and sender is a party
-    let escrow = queries::get_escrow(&state.db, &escrow_id).await.map_err(|_e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!(ApiError::new("internal_error", "An internal error occurred."))))
+    let escrow = queries::get_escrow(&state.db, &escrow_id)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
+            )
+        })?;
+    let escrow = escrow.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!(ApiError::new(
+                "escrow_not_found",
+                format!("No escrow found with id '{escrow_id}'")
+            ))),
+        )
     })?;
-    let escrow = escrow.ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!(ApiError::new("escrow_not_found", format!("No escrow found with id '{escrow_id}'"))))))?;
 
-    if auth.address != escrow.buyer_address && escrow.seller_address.as_deref() != Some(&auth.address) {
-        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Only escrow parties can send messages")))));
+    if auth.address != escrow.buyer_address
+        && escrow.seller_address.as_deref() != Some(&auth.address)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "Only escrow parties can send messages"
+            ))),
+        ));
     }
 
     // Encrypt
@@ -46,16 +82,27 @@ pub async fn send(
 
     let now = chrono::Utc::now().timestamp();
     let msg = EscrowMessage {
-        id: format!("msg_{}", Uuid::new_v4().to_string().split('-').next().unwrap()),
+        id: format!(
+            "msg_{}",
+            Uuid::new_v4().to_string().split('-').next().unwrap()
+        ),
         escrow_id: escrow_id.clone(),
         sender_address: auth.address.clone(),
         content: body.content,
         created_at: now,
     };
 
-    queries::insert_message(&state.db, &msg, &content_enc, &nonce).await.map_err(|_e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!(ApiError::new("internal_error", "An internal error occurred."))))
-    })?;
+    queries::insert_message(&state.db, &msg, &content_enc, &nonce)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
+            )
+        })?;
 
     Ok(Json(json!({"status":"sent","message":msg})))
 }
@@ -67,26 +114,59 @@ pub async fn list(
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // Verify escrow exists
-    let escrow = queries::get_escrow(&state.db, &escrow_id).await.map_err(|_e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!(ApiError::new("internal_error", "An internal error occurred."))))
+    let escrow = queries::get_escrow(&state.db, &escrow_id)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
+            )
+        })?;
+    let escrow = escrow.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!(ApiError::new(
+                "escrow_not_found",
+                format!("No escrow found with id '{escrow_id}'")
+            ))),
+        )
     })?;
-    let escrow = escrow.ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!(ApiError::new("escrow_not_found", format!("No escrow found with id '{escrow_id}'"))))))?;
 
     // Auth: parties can always read. Jurors can read during a dispute.
     let auth_res = AuthContext::from_headers(&headers);
     let allow = match auth_res {
         Ok(auth_ref) => {
             let sig_verifier = crate::auth::Secp256k1Verifier::new();
-            if !(&sig_verifier as &dyn SignatureVerifier).verify_signature(&auth_ref.address, &auth_ref.signature, &format!("messages:{}", escrow_id)).unwrap_or(false) {
-                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature for messages")))));
+            if !(&sig_verifier as &dyn SignatureVerifier)
+                .verify_signature(
+                    &auth_ref.address,
+                    &auth_ref.signature,
+                    &format!("messages:{}", escrow_id),
+                )
+                .unwrap_or(false)
+            {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new(
+                        "forbidden",
+                        "Invalid signature for messages"
+                    ))),
+                ));
             }
             // Check if party
             // Check if party
-            if auth_ref.address == escrow.buyer_address || escrow.seller_address.as_deref() == Some(&auth_ref.address) {
+            if auth_ref.address == escrow.buyer_address
+                || escrow.seller_address.as_deref() == Some(&auth_ref.address)
+            {
                 true
             } else if escrow.status == crate::types::EscrowStatus::Disputed {
                 // Check if juror on this escrow
-                let jury_case = queries::get_jury_case_by_escrow(&state.db, &escrow_id).await.unwrap_or(None);
+                let jury_case = queries::get_jury_case_by_escrow(&state.db, &escrow_id)
+                    .await
+                    .unwrap_or(None);
                 match jury_case {
                     Some(c) => c.jurors.contains(&auth_ref.address),
                     None => false,
@@ -99,13 +179,27 @@ pub async fn list(
     };
 
     if !allow {
-        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Only escrow parties or assigned jurors can read messages")))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "Only escrow parties or assigned jurors can read messages"
+            ))),
+        ));
     }
 
     // Fetch and decrypt
-    let raw = queries::list_messages_raw(&state.db, &escrow_id).await.map_err(|_e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!(ApiError::new("internal_error", "An internal error occurred."))))
-    })?;
+    let raw = queries::list_messages_raw(&state.db, &escrow_id)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
+            )
+        })?;
 
     let mut messages = Vec::new();
     for (sender, content_enc, nonce, created_at) in &raw {

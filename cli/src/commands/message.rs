@@ -28,12 +28,7 @@ pub async fn send(
     Ok(())
 }
 
-pub async fn list(
-    api_url: String,
-    escrow_id: &str,
-    address: &str,
-    signature: &str,
-) -> Result<()> {
+pub async fn list(api_url: String, escrow_id: &str, address: &str, signature: &str) -> Result<()> {
     let client = reqwest::Client::new();
     let resp = client
         .get(format!("{}/v1/escrows/{}/messages", api_url, escrow_id))

@@ -69,7 +69,7 @@ fn test_dispute_path(
     party_sig_buyer: bool,
     party_sig_valid: bool,
     mediator_fee: u64,
-    wrong_output_fee: bool,
+    _wrong_output_fee: bool,
 ) -> Result<(), kaspa_txscript_errors::TxScriptError> {
     let buyer = random_keypair();
     let seller = random_keypair();

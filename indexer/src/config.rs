@@ -40,5 +40,4 @@ pub struct Args {
     pub db_type: String,
 }
 
-impl Args {
-}
+impl Args {}

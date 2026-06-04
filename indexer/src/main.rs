@@ -14,8 +14,8 @@ mod verification;
 mod websocket;
 
 use std::sync::Arc;
-use tokio::sync::broadcast;
 use std::time::Instant;
+use tokio::sync::broadcast;
 
 use clap::Parser;
 use tracing::info;

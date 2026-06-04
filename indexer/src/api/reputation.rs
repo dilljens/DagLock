@@ -21,7 +21,10 @@ pub async fn get(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
             )
         })?;
 

@@ -144,7 +144,7 @@ pub async fn ensure_lock_tx_id_index(pool: &Pool<Sqlite>) -> Result<(), sqlx::Er
     // duplicate escrows for the same UTXO
     sqlx::query(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_escrows_lock_tx
-         ON escrows(lock_tx_id, lock_tx_output_index)"
+         ON escrows(lock_tx_id, lock_tx_output_index)",
     )
     .execute(pool)
     .await

@@ -336,14 +336,13 @@ pub struct MediatorStats {
     pub score: f64,
 }
 
-
 /// Escrow message record (encrypted at rest).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowMessage {
     pub id: String,
     pub escrow_id: EscrowId,
     pub sender_address: Address,
-    pub content: String,  // decrypted plaintext
+    pub content: String, // decrypted plaintext
     pub created_at: i64,
 }
 
