@@ -131,6 +131,8 @@ mod tests {
             dispute_mode: None,
             dispute_outcome: None,
             dispute_resolved_at: None,
+            price_at_creation: None,
+            price_currency: None,
         }
     }
 

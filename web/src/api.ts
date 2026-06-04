@@ -73,6 +73,8 @@ export type Escrow = {
 	refunded_at?: number | null;
 	mediator_key?: string | null;
 	dispute_mode?: string | null;
+	price_at_creation?: number | null;
+	price_currency?: string | null;
 	dispute_outcome?: string | null;
 	dispute_resolved_at?: number | null;
 };
@@ -87,6 +89,8 @@ export type CreateEscrowRequest = {
 	asset_type?: string;
 	mediator_key?: string;
 	dispute_mode?: string;
+	price_at_creation?: number;
+	price_currency?: string;
 };
 
 export type AuthHeaders = {
@@ -281,6 +285,7 @@ async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
 export const api = {
 	health: () => loadJson<Health>("/v1/health"),
 	network: () => loadJson<NetworkInfo>("/v1/network"),
+	networkPrice: () => loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
 	stats: () => loadJson<Stats>("/v1/stats"),
 
 	// Escrows

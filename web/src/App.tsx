@@ -338,6 +338,12 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 						<strong className="addr">{result.mediator_key}</strong>
 					</div>
 				)}
+				{result.price_at_creation != null && (
+					<div className="row">
+						<span>Price at creation</span>
+						<strong>${result.price_at_creation.toFixed(4)} {result.price_currency || "USD"}</strong>
+					</div>
+				)}
 			</div>
 		);
 	}
@@ -912,6 +918,12 @@ function EscrowLookup() {
 							<span>Fee (0.5%)</span>
 							<strong>{money(data.fee_sompi)}</strong>
 						</div>
+						{data.price_at_creation != null && (
+							<div className="row">
+								<span>Price</span>
+								<strong>${data.price_at_creation.toFixed(4)} {data.price_currency || "USD"}</strong>
+							</div>
+						)}
 						{data.dispute_mode && (
 							<div className="row">
 								<span>Dispute mode</span>

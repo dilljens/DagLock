@@ -55,6 +55,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
     Router::new()
         .route("/v1/health", get(health))
         .route("/v1/network", get(network::get))
+        .route("/v1/network/price", get(network::price))
         .route("/v1/fees/estimate", get(network::fees_estimate))
         .route("/v1/escrows", get(escrows::list).post(escrows::create))
         .route("/v1/escrows/:id", get(escrows::get_by_id))

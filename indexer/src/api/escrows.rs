@@ -248,6 +248,8 @@ pub async fn create(
         }),
         dispute_outcome: None,
         dispute_resolved_at: None,
+        price_at_creation: body.price_at_creation,
+        price_currency: body.price_currency,
     };
 
     queries::insert_escrow(&state.db, &escrow)
