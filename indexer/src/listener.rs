@@ -133,7 +133,7 @@ async fn run_online_loop(
                 }
 
                 heartbeat_count += 1;
-                if heartbeat_count % 10 == 0 {
+                if heartbeat_count.is_multiple_of(10) {
                     info!("Listener heartbeat: {heartbeat_count} cycles, DAA: {daa_score}");
                 }
             }
@@ -161,7 +161,7 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
             Err(e) => warn!("Reconciliation failed: {e}"),
         }
         count += 1;
-        if count % 20 == 0 {
+        if count.is_multiple_of(20) {
             info!("Offline listener heartbeat: {count} cycles");
         }
     }
