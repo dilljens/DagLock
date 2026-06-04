@@ -27,7 +27,15 @@ use crate::db::init_pool;
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
+    let mut args = Args::parse();
+
+    // Railway injects PORT env var — use it as the source of truth
+    // (standard Heroku/Railway pattern: PORT env overrides hardcoded defaults)
+    if let Ok(port_str) = std::env::var("PORT") {
+        if let Ok(port) = port_str.parse::<u16>() {
+            args.port = port;
+        }
+    }
 
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new(&args.log_level))
