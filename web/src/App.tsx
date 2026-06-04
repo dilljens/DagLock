@@ -46,13 +46,13 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 		e.preventDefault();
 		const amountNum = Number.parseFloat(amount);
 		if (!amountNum || amountNum <= 0) {
-			setError("Amount must be positive");
+			setError("Invalid amount. Please enter a positive number.");
 			return;
 		}
 		const trimmedAddr = address.trim();
 		if (!trimmedAddr.startsWith("kaspa:")) {
 			setError(
-				"Address must start with kaspa: (check for leading/trailing spaces)",
+				"Invalid address format. Must be a valid Kaspa address starting with 'kaspa:'. Check for leading/trailing spaces.",
 			);
 			return;
 		}
@@ -170,7 +170,7 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 		if (!amountNum || amountNum <= 0) return;
 		const trimmedBuyer = buyerAddress.trim();
 		if (!trimmedBuyer.startsWith("kaspa:")) {
-			setError("Buyer address must start with kaspa: (check for spaces)");
+			setError("Invalid buyer address. Must be a valid Kaspa address starting with 'kaspa:'.");
 			return;
 		}
 		setStatus("loading");
@@ -323,7 +323,7 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 		if (!escrowId || !reason) return;
 		const trimmedDispAddr = authAddress.trim();
 		if (!trimmedDispAddr || !authSig) {
-			setError("Address and signature are required.");
+			setError("Authentication required. Please provide your Kaspa address and signature.");
 			return;
 		}
 		setStatus("loading");
@@ -448,7 +448,7 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 			if (needsAuth) {
 				if (!authAddress || !authSignature) {
 					setStatus("error");
-					setError("Address and signature are required for this action.");
+					setError("Authentication required. Please provide your Kaspa address and signature to proceed.");
 					return;
 				}
 				auth = {
@@ -478,7 +478,7 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 			if (needsAuth) {
 				if (!authAddress || !authSignature) {
 					setStatus("error");
-					setError("Address and signature are required.");
+					setError("Authentication required. Please provide your Kaspa address and signature.");
 					return;
 				}
 				auth = {
@@ -573,15 +573,15 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 		const trimmedTgAddr = address.trim();
 		const trimmedTgHandle = telegramHandle.trim();
 		if (!trimmedTgAddr.startsWith("kaspa:")) {
-			setError("Address must start with kaspa:");
+			setError("Invalid address format. Must be a valid Kaspa address starting with 'kaspa:'.");
 			return;
 		}
 		if (!trimmedTgHandle.startsWith("@")) {
-			setError("Telegram handle must start with @");
+			setError("Invalid Telegram handle. Must start with '@' (e.g., @username).");
 			return;
 		}
 		if (!signature.trim()) {
-			setError("Signature is required");
+			setError("Signature is required for verification. Please sign a message with your Kaspa wallet.");
 			return;
 		}
 		setStatus("loading");
@@ -923,7 +923,7 @@ function EscrowLookup() {
 							onClick={async () => {
 								if (!msgText || !id) return;
 								if (!chatAddr || !chatSig) {
-									setMsgStatus("Auth required");
+									setMsgStatus("Authentication required. Please provide your address and signature.");
 									return;
 								}
 								try {
