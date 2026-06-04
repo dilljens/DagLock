@@ -1,5 +1,7 @@
 # DagLock 🔒⛓️
 
+> ⚠️ **Testnet phase.** DagLock is deployed on Kaspa Testnet 12 for testing. Covenants activate on mainnet with the Toccata hard fork (June 5, 2026). Do not send real KAS yet.
+
 **Trustless escrow & atomic swaps on Kaspa L1 via SilverScript covenants.**
 
 Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptographic conditions are met. No intermediaries. No admin keys. No custodial risk.
@@ -56,7 +58,9 @@ See [DEPLOYMENT-RAILWAY.md](docs/DEPLOYMENT-RAILWAY.md) for the full guide.
 | **Telegram bot** | Same features from chat — `/create`, `/offers`, `/reputation`, `/msg`, `/jury` |
 | **CLI** | Power-user terminal tool — create, claim, status, reputation, message, receipt |
 | **REST API** | 30+ endpoints for programmatic access. See [API.md](docs/API.md) |
-| **Covenant templates** | Deploy your own KAS escrow, arbiter escrow, or time-locked vault via `POST /v1/compile` |
+| **Covenant templates** | Compile and deploy any DagLock covenant from the UI or API — no SilverScript knowledge needed |
+
+Want to compile a custom escrow or vault without running the compiler? The web UI has a **Compile covenant** tab, and the API has `POST /v1/compile`. Fill in the params, get the bytecode + address back. This is how wallets and bots integrate DagLock without installing any toolchain. See the **Covenant template** action tab in the web UI.
 
 ---
 
