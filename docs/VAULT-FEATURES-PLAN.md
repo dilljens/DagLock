@@ -6,26 +6,26 @@ Expand DagLock's vault functionality from basic time-locked vaults to a full sui
 
 ---
 
-## Vault Types
+## Current Status
 
-### 1. Time-Locked Vault (Existing)
-**Status**: ✅ Built  
-**Covenant**: `daglock_vault.sil`  
-**Web UI**: CreateVaultForm (basic)
+### Phase 1: Vault Status & Withdrawal ✅ COMPLETE
+- [x] Added 009_create_vaults.sql migration
+- [x] Added Vault, VaultType, VaultStatus types
+- [x] Added vault queries (insert, get, list, update)
+- [x] Added vault API endpoints (GET /v1/vaults, POST /v1/vaults, POST /v1/vaults/:id/withdraw)
+- [x] Added VaultListPanel component
 
-**What it does:**
-- Lock KAS for a specified duration
-- Only the owner can withdraw after the timeout
-- Returns to owner if timeout expires without withdrawal
-
-**Current gaps:**
-- No UI to view existing vaults
-- No status tracking (locked/unlocked/expired)
-- No withdrawal flow
+### Phase 2: Vault UI Improvements ✅ COMPLETE
+- [x] Added VaultStatusPanel component (shows lock/expiry state, withdraw button)
+- [x] Added VaultLookup component (look up vault by ID)
+- [x] Updated CreateVaultForm to use Kaspa address and amount
+- [x] Create vault entry in database via API
 
 ---
 
-### 2. Beneficiary Vault
+## Future Phases (Planned)
+
+### Phase 3: Beneficiary Vault
 **Status**: 📋 Planned  
 **Complexity**: Medium
 
