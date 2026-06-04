@@ -16,4 +16,4 @@ EXPOSE 8443
 ENV RUST_LOG=info
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD curl -sf http://localhost:8443/v1/health || exit 1
 # Railway overrides CMD with its own start command (no ENTRYPOINT).
-CMD ["daglock-indexer", "--host", "0.0.0.0", "--port", "8443"]
+CMD ["daglock-indexer", "--host", "0.0.0.0", "--port", "8443", "--database-url", "sqlite:/data/daglock.db"]
