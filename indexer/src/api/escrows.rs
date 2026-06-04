@@ -207,23 +207,20 @@ pub async fn create(
 
     // Check for duplicate lock_tx (same UTXO used in another escrow)
     // The unique index enforces this at the DB level, but we check early for a better error message
-    match queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await
+    if let Ok((existing, _)) = queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await
     {
-        Ok((existing, _)) => {
-            if existing.iter().any(|e| {
-                e.lock_tx_id == body.lock_tx_id
-                    && e.lock_tx_output_index == body.lock_tx_output_index
-            }) {
-                return Err((
-                    StatusCode::CONFLICT,
-                    Json(json!(ApiError::new(
-                        "duplicate_lock",
-                        "An escrow already exists for this UTXO"
-                    ))),
-                ));
-            }
+        if existing.iter().any(|e| {
+            e.lock_tx_id == body.lock_tx_id
+                && e.lock_tx_output_index == body.lock_tx_output_index
+        }) {
+            return Err((
+                StatusCode::CONFLICT,
+                Json(json!(ApiError::new(
+                    "duplicate_lock",
+                    "An escrow already exists for this UTXO"
+                ))),
+            ));
         }
-        Err(_) => {} // Proceed anyway — DB index will catch duplicates
     }
 
     let fee_sompi = body.amount_sompi / 200; // 0.5%

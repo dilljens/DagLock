@@ -188,10 +188,10 @@ async fn test_reputation_score_bounds() {
         (100, 100_000_000_000, 3650, 10, 5),
     ];
 
-    for (trades, volume, age, disputes, refunds) in test_cases {
+    for (trades, volume, age, _disputes, refunds) in test_cases {
         let score = daglock_indexer::db::queries::calculate_reputation_score(
             trades, 0, volume, age, refunds, 0,
         );
-        assert!(score >= 1.0 && score <= 5.0, "Score {} out of range", score);
+        assert!((1.0..=5.0).contains(&score), "Score {} out of range", score);
     }
 }

@@ -144,8 +144,8 @@ mod tests {
         assert!(result.is_ok());
 
         let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
-        assert!(json["script"].as_str().unwrap().len() > 0);
-        assert!(json["template_hash"].as_str().unwrap().len() > 0);
+        assert!(!json["script"].as_str().unwrap().is_empty());
+        assert!(!json["template_hash"].as_str().unwrap().is_empty());
         assert!(json["escrow_id"].as_str().unwrap().starts_with("esc_"));
     }
 

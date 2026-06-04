@@ -29,7 +29,7 @@ pub async fn run(api_url: String, id: &str) -> Result<()> {
     );
     println!(
         "   Seller:     {}",
-        e["seller_address"].as_str().or(Some("—")).unwrap()
+        e["seller_address"].as_str().unwrap_or("—")
     );
     println!(
         "   Amount:     {} KAS",

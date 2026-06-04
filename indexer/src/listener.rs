@@ -114,8 +114,8 @@ async fn connect_wrpc(
 async fn run_online_loop(
     client: Arc<kaspa_wrpc_client::KaspaRpcClient>,
     db: Pool<Sqlite>,
-    kas_hash: Option<Vec<u8>>,
-    krc20_hash: Option<Vec<u8>>,
+    _kas_hash: Option<Vec<u8>>,
+    _krc20_hash: Option<Vec<u8>>,
 ) {
     let mut heartbeat_count: u64 = 0;
 

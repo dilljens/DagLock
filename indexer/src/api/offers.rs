@@ -51,6 +51,7 @@ pub async fn create(
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct OfferQuery {
     pub creator: Option<String>,
     pub asset: Option<String>,

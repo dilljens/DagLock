@@ -2,8 +2,6 @@
 //!
 //! Tests the full request/response cycle against an in-memory SQLite database.
 
-use axum::http::StatusCode;
-use serde_json::{json, Value};
 use sqlx::SqlitePool;
 
 // We need to import from the binary crate, so we'll use a different approach
@@ -170,7 +168,7 @@ async fn test_reputation_calculation() {
 
 #[tokio::test]
 async fn test_fee_calculation() {
-    let pool = test_pool().await;
+    let _pool = test_pool().await;
 
     // Test various amounts
     let test_cases = vec![

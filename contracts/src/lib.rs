@@ -118,6 +118,7 @@ pub fn compile_daglock_vault(owner_key: &[u8], timeout: i64) -> CompiledContract
 /// - `kcc20_template_prefix`: template prefix bytes
 /// - `kcc20_template_suffix`: template suffix bytes
 /// - `kcc20_covenant_id`: 32-byte covenant identifier
+#[allow(clippy::too_many_arguments)]
 pub fn compile_daglock_krc20(
     buyer_pubkey: &[u8],
     seller_pubkey: &[u8],

@@ -50,7 +50,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             .parse::<axum::http::HeaderValue>()
             .expect("Invalid CORS origin");
         CorsLayer::new()
-            .allow_origin(AllowOrigin::predicate(move |o, _| o == &origin))
+            .allow_origin(AllowOrigin::predicate(move |o, _| o == origin))
             .allow_methods(Any)
             .allow_headers(Any)
     };
@@ -98,9 +98,6 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .layer(cors)
         .with_state(state)
 }
-
-/// Optional authentication middleware for read endpoints.
-/// If auth headers are present, validates them. If not, allows the request through.
 
 /// WebSocket upgrade handler.
 async fn websocket_handler(

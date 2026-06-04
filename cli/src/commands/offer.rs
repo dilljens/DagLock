@@ -9,7 +9,7 @@ pub async fn list(api_url: String) -> Result<()> {
     let data: serde_json::Value = resp.json().await?;
     let offers = data["offers"]
         .as_array()
-        .map(|v| v.clone())
+        .cloned()
         .unwrap_or_default();
 
     if offers.is_empty() {
