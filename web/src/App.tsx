@@ -39,6 +39,20 @@ function time(value?: number | null): string {
 	return new Date(value * 1000).toLocaleString();
 }
 
+function relativeTime(ts: number | null | undefined): string {
+	if (!ts) return "—";
+	const seconds = Math.floor((Date.now() / 1000) - ts);
+	if (seconds < 60) return "just now";
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	if (days < 30) return `${days}d ago`;
+	const months = Math.floor(days / 30);
+	return `${months}mo ago`;
+}
+
 function badge(status: string): string {
 	return `pill pill-${status.replace(/_/g, "-")}`;
 }
@@ -73,6 +87,41 @@ function Panel({
 			{children}
 		</section>
 	);
+}
+
+function ValidatedInput({ label, value, onChange, placeholder, validate }: {
+	label: string;
+	value: string;
+	onChange: (v: string) => void;
+	placeholder: string;
+	validate?: (v: string) => string | null;
+}) {
+	const [touched, setTouched] = useState(false);
+	const trimmed = value.trim();
+	const error = touched && validate ? validate(trimmed) : null;
+	const valid = touched && !error && value.length > 0;
+	return (
+		<FormField label={label}>
+			<div className="validated-input">
+				<input
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					onBlur={() => setTouched(true)}
+					placeholder={placeholder}
+					className={error ? "input-error" : valid ? "input-valid" : ""}
+				/>
+				{error && <span className="input-feedback error">{error}</span>}
+				{valid && <span className="input-feedback valid">OK</span>}
+			</div>
+		</FormField>
+	);
+}
+
+/** Quick validation message */
+function kvad(addr: string): string | null {
+	if (!addr.startsWith("kaspa:")) return "Must start with kaspa:";
+	if (addr.length < 15) return "Address too short";
+	return null;
 }
 
 function LookupResult<T>({
@@ -187,13 +236,13 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 					placeholder="100"
 				/>
 			</FormField>
-			<FormField label="Your address">
-				<input
-					value={address}
-					onChange={(e) => setAddress(e.target.value)}
-					placeholder="kaspa:..."
-				/>
-			</FormField>
+			<ValidatedInput
+				label="Your address"
+				value={address}
+				onChange={setAddress}
+				placeholder="kaspa:..."
+				validate={kvad}
+			/>
 			<FormField label="Counterparty (optional)">
 				<input
 					value={counterparty}
@@ -711,6 +760,7 @@ function OfferCard({
 				{offer.base_asset} for {offer.quote_asset}
 			</p>
 			<code>{offer.id}</code>
+			<small className="muted">{relativeTime(offer.created_at)}</small>
 			{canAct && (
 				<div className="offer-actions">
 					<input
@@ -990,6 +1040,12 @@ function ReputationLookup() {
 								<strong>{data.vouch_score.toFixed(2)}/5</strong>
 							</div>
 						)}
+						{data.trading_concentration > 0.9 && (
+							<div className="row">
+								<span>Wash trading</span>
+								<strong className="error-text">Warning: {(data.trading_concentration * 100).toFixed(0)}% volume with one counterparty</strong>
+							</div>
+						)}
 						{data.mediator_stats && (
 							<div className="row">
 								<span>Mediator</span>
@@ -1218,6 +1274,57 @@ function JuryPanel() {
 					<button className="button primary" onClick={handleVote}>
 						Submit vote
 					</button>
+				</div>
+			)}
+		</div>
+	);
+}
+
+/* ─── Confirmation Dialog ─── */
+function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }: {
+	title: string;
+	message: string;
+	confirmLabel: string;
+	onConfirm: () => void;
+	onCancel: () => void;
+}) {
+	return (
+		<div className="confirm-overlay" onClick={onCancel}>
+			<div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+				<h3>{title}</h3>
+				<p>{message}</p>
+				<div className="confirm-actions">
+					<button className="button" onClick={onCancel}>Cancel</button>
+					<button className="button primary" onClick={onConfirm}>{confirmLabel}</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+/* ─── Status Timeline ─── */
+function StatusTimeline({ status }: { status: string }) {
+	const steps = [
+		{ key: "pending_confirmation", label: "Locked" },
+		{ key: "active", label: "Active" },
+		{ key: "disputed", label: "Disputed", optional: true },
+		{ key: "settled", label: "Settled" },
+	];
+	const currentIdx = steps.findIndex((s) => s.key === status);
+	const altPath = ["refunded", "cancelled", "expired"];
+
+	return (
+		<div className="timeline">
+			{steps.map((s, i) => (
+				<div key={s.key} className={`timeline-step ${i <= currentIdx ? "active" : ""} ${s.optional ? "optional" : ""}`}>
+					<div className="timeline-dot" />
+					<span className="timeline-label">{s.label}</span>
+				</div>
+			))}
+			{altPath.includes(status) && (
+				<div className="timeline-step active alt">
+					<div className="timeline-dot" />
+					<span className="timeline-label">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
 				</div>
 			)}
 		</div>

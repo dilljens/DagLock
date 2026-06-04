@@ -402,3 +402,145 @@ code {
 .offer:hover {
 	border-color: rgba(83, 215, 105, 0.40);
 }
+
+/* ─── Inline validated input ─── */
+.validated-input {
+	display: grid;
+	gap: 4px;
+}
+
+.input-error {
+	border-color: #ff7b7b !important;
+}
+
+.input-valid {
+	border-color: #53d769 !important;
+}
+
+.input-feedback {
+	font-size: 0.75rem;
+}
+
+.input-feedback.error {
+	color: #ff7b7b;
+}
+
+.input-feedback.valid {
+	color: #53d769;
+}
+
+/* ─── Confirmation dialog ─── */
+.confirm-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+}
+
+.confirm-dialog {
+	background: #0f1f0f;
+	border: 1px solid rgba(83, 215, 105, 0.25);
+	border-radius: 20px;
+	padding: 24px;
+	max-width: 400px;
+	width: 90%;
+}
+
+.confirm-dialog h3 {
+	margin: 0 0 8px;
+}
+
+.confirm-dialog p {
+	color: #88b888;
+	margin: 0 0 16px;
+}
+
+.confirm-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: end;
+}
+
+/* ─── Status Timeline ─── */
+.timeline {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 12px 0;
+	overflow-x: auto;
+}
+
+.timeline-step {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.75rem;
+	color: #5a7a5a;
+	white-space: nowrap;
+}
+
+.timeline-step.active {
+	color: #53d769;
+}
+
+.timeline-step.active.alt {
+	color: #ffaa44;
+}
+
+.timeline-step.optional {
+	opacity: 0.5;
+}
+
+.timeline-step.active.optional {
+	opacity: 1;
+}
+
+.timeline-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: #2a4a2a;
+	flex-shrink: 0;
+}
+
+.timeline-step.active .timeline-dot {
+	background: #53d769;
+	box-shadow: 0 0 6px rgba(83, 215, 105, 0.5);
+}
+
+.timeline-step:not(:last-child)::after {
+	content: "—";
+	margin-left: 4px;
+	color: #2a4a2a;
+}
+
+.timeline-step.active:not(:last-child)::after {
+	color: #53d769;
+}
+
+/* ─── Offer card improvements ─── */
+.offer small {
+	display: block;
+	margin-top: 4px;
+	font-size: 0.75rem;
+}
+
+/* ─── Loading spinner ─── */
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid rgba(83, 215, 105, 0.2);
+	border-top-color: #53d769;
+	border-radius: 50%;
+	animation: spin 0.6s linear infinite;
+	vertical-align: middle;
+	margin-right: 6px;
+}
