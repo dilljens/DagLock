@@ -34,7 +34,7 @@ a {
 .card,
 .offer {
 	border: 1px solid rgba(83, 215, 105, 0.14);
-	background: rgba(10, 30, 15, 0.80);
+	background: rgba(10, 30, 15, 0.8);
 	backdrop-filter: blur(12px);
 	box-shadow: 0 14px 50px rgba(0, 0, 0, 0.24);
 }
@@ -183,7 +183,7 @@ a {
 	border-radius: 999px;
 	padding: 4px 10px;
 	font-size: 0.8rem;
-	background: rgba(83, 215, 105, 0.10);
+	background: rgba(83, 215, 105, 0.1);
 }
 
 .form {
@@ -415,7 +415,7 @@ code {
 }
 
 .offer:hover {
-	border-color: rgba(83, 215, 105, 0.40);
+	border-color: rgba(83, 215, 105, 0.4);
 }
 
 /* ─── Inline validated input ─── */
@@ -545,7 +545,9 @@ code {
 
 /* ─── Loading spinner ─── */
 @keyframes spin {
-	to { transform: rotate(360deg); }
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .loading-spinner {
