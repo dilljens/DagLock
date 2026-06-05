@@ -78,3 +78,20 @@ Market-price offers that auto-update via CoinGecko.
 ### Frontend
 - CreateOfferForm — price type selector, offset, and bounds
 - OfferCard — shows current market price for market-priced offers
+
+## Security
+
+### Auth System
+- Schnorr signature verification via `Secp256k1Verifier` in `auth.rs`
+- Auth headers: `X-Daglock-Address`, `X-Daglock-Signature`, `X-Daglock-Message`
+- Actions require signed messages: `settle:id`, `refund:id`, `dispute:id`, `cancel:id`
+
+### CORS
+- Default: `https://daglock.com` (set in `config.rs`)
+- Dev: `*` via `--cors-origin *`
+
+### Best Practices
+- No `.unwrap()` in production code — use `.expect()` with descriptive messages
+- All SQL queries use bind parameters (no string interpolation)
+- Kaspa address validation on create
+- MockVerifier for dev, WrpcVerifier for production

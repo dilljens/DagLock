@@ -184,8 +184,8 @@ impl WrpcVerifier {
 impl EscrowVerifier for WrpcVerifier {
     fn verify_utxo_exists(&self, escrow: &Escrow) -> VerificationResult<bool> {
         match &self.client {
-            Some(client) => {
-                let address = if escrow.asset_type == "KAS" {
+            Some(_client) => {
+                let _address = if escrow.asset_type == "KAS" {
                     &escrow.buyer_address
                 } else {
                     &escrow.buyer_address
@@ -210,5 +210,3 @@ impl EscrowVerifier for WrpcVerifier {
         }
     }
 }
-
-

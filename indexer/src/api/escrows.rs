@@ -228,7 +228,11 @@ pub async fn create(
     let escrow = Escrow {
         id: format!(
             "esc_{}",
-            Uuid::new_v4().to_string().split('-').next().expect("UUID should have a dash")
+            Uuid::new_v4()
+                .to_string()
+                .split('-')
+                .next()
+                .expect("UUID should have a dash")
         ),
         lock_tx_id: body.lock_tx_id,
         lock_tx_output_index: body.lock_tx_output_index,

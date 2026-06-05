@@ -822,7 +822,11 @@ pub async fn create_jury_case(
     use uuid::Uuid;
     let case_id = format!(
         "jr_{}",
-        Uuid::new_v4().to_string().split('-').next().expect("UUID should have a dash")
+        Uuid::new_v4()
+            .to_string()
+            .split('-')
+            .next()
+            .expect("UUID should have a dash")
     );
     let now = chrono::Utc::now().timestamp();
 

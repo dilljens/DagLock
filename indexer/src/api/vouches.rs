@@ -87,7 +87,11 @@ pub async fn create(
     let vouch = Vouch {
         id: format!(
             "vch_{}",
-            Uuid::new_v4().to_string().split('-').next().expect("UUID should have a dash")
+            Uuid::new_v4()
+                .to_string()
+                .split('-')
+                .next()
+                .expect("UUID should have a dash")
         ),
         voucher_address: auth.address,
         subject_address: body.subject_address,
