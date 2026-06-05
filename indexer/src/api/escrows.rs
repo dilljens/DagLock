@@ -376,20 +376,40 @@ pub async fn create(
         }),
         dispute_outcome: None,
         dispute_resolved_at: None,
-        price_at_creation: body.price_at_creation,
-        price_currency: body.price_currency,
+        price_at_creation: if body.price_type.as_deref() == Some("market") {
+            // Fetch market price from CoinGecko
+            let price = match reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd").await {
+                Ok(resp) => resp.json::<serde_json::Value>().await.ok().and_then(|j| j["kaspa"]["usd"].as_f64()),
+                Err(_) => None,
+            };
+            price
+        } else {
+            body.price_at_creation
+        },
+        price_currency: body.price_currency.or_else(|| {
+            if body.price_type.as_deref() == Some("market") {
+                Some("USD".to_string())
+            } else {
+                None
+            }
+        }),
         trade_hash: body.trade_hash.clone(),
-        price_lock_time: if body.price_at_creation.is_some() {
+        price_lock_time: if body.price_at_creation.is_some() || body.price_type.as_deref() == Some("market") {
             Some(chrono::Utc::now().timestamp())
         } else {
             None
         },
-        price_at_settlement: body.price_at_creation,
-        price_source: if body.price_at_creation.is_some() {
-            Some("api".to_string())
+        price_at_settlement: if body.price_type.as_deref() == Some("market") {
+            None // Will be set at settlement time
+        } else {
+            body.price_at_creation
+        },
+        price_source: if body.price_type.as_deref() == Some("market") {
+            Some("coingecko".to_string())
         } else {
             None
         },
+        price_type: body.price_type.clone(),
     };
 
     queries::insert_escrow(&state.db, &escrow)

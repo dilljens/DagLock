@@ -101,6 +101,7 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
     .bind(escrow.price_lock_time)
     .bind(escrow.price_at_settlement)
     .bind(&escrow.price_source)
+    .bind(&escrow.price_type)
     .execute(pool).await?;
     Ok(())
 }
@@ -1531,6 +1532,7 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
     let price_lock_time: Option<i64> = row.try_get("price_lock_time").ok().flatten();
     let price_at_settlement: Option<f64> = row.try_get("price_at_settlement").ok().flatten();
     let price_source: Option<String> = row.try_get("price_source").ok().flatten();
+    let price_type: Option<String> = row.try_get("price_type").ok().flatten();
 
     Escrow {
         id,
@@ -1562,6 +1564,7 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
         price_lock_time,
         price_at_settlement,
         price_source,
+        price_type,
     }
 }
 
@@ -1736,6 +1739,7 @@ mod tests {
             price_lock_time: None,
             price_at_settlement: None,
             price_source: None,
+            price_type: None,
         }
     }
 

@@ -90,6 +90,7 @@ pub struct Escrow {
     pub price_lock_time: Option<i64>,
     pub price_at_settlement: Option<f64>,
     pub price_source: Option<String>,
+    pub price_type: Option<String>,
 }
 
 /// Create escrow request (from POST endpoint).

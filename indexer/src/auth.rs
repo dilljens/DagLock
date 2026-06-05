@@ -393,6 +393,7 @@ mod tests {
             price_lock_time: None,
             price_at_settlement: None,
             price_source: None,
+            price_type: None,
         }
     }
 
