@@ -183,8 +183,8 @@ bot.command('list', async (ctx) => {
                 cancelled: '🛑',
                 expired: '⏰',
             };
-            msg += `${statusEmoji[e.status] || '❓'} *${amount} KAS* — \\`${e.status}\\`\n`;
-            msg += `  ID: \\`${e.id}\\`\n\n`;
+            msg += `${statusEmoji[e.status] || '❓'} *${amount} KAS* — \`${e.status}\`\n`;
+            msg += `  ID: \`${e.id}\`\n\n`;
         }
         if (escrows.length > 5) msg += `_...and ${escrows.length - 5} more_\n`;
         msg += '💡 Use /status <id> for details';
