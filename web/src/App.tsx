@@ -40,6 +40,10 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 	const [address, setAddress] = useState("");
 	const [counterparty, setCounterparty] = useState("");
 	const [expireHours, setExpireHours] = useState("72");
+	const [priceType, setPriceType] = useState("fixed");
+	const [priceOffset, setPriceOffset] = useState("0");
+	const [minPrice, setMinPrice] = useState("");
+	const [maxPrice, setMaxPrice] = useState("");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
 		"idle",
 	);
@@ -70,7 +74,13 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				amount_sompi: sompi(amountNum),
 				expires_at:
 					Math.floor(Date.now() / 1000) + (parseInt(expireHours) || 72) * 3600,
+				price_type: priceType,
 			};
+			if (priceType === "market") {
+				body.price_offset = parseFloat(priceOffset) || 0;
+				if (minPrice) body.min_price = parseFloat(minPrice);
+				if (maxPrice) body.max_price = parseFloat(maxPrice);
+			}
 			if (counterparty.startsWith("kaspa:"))
 				body.counterparty_address = counterparty;
 			await api.createOffer(body);
@@ -123,6 +133,23 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				placeholder="kaspa:..."
 				validate={kvad}
 			/>
+			<FormField label="Price type">
+				<select value={priceType} onChange={(e) => setPriceType(e.target.value)}>
+					<option value="fixed">Fixed price</option>
+					<option value="market">Market price (updates hourly)</option>
+				</select>
+			</FormField>
+			{priceType === "market" && <>
+				<FormField label="Price offset (%)">
+					<input type="number" step="0.1" value={priceOffset} onChange={(e) => setPriceOffset(e.target.value)} placeholder="0" />
+				</FormField>
+				<FormField label="Min price (USD)">
+					<input type="number" step="0.001" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="0.10" />
+				</FormField>
+				<FormField label="Max price (USD)">
+					<input type="number" step="0.001" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="0.20" />
+				</FormField>
+			</>}
 			<FormField label="Expires in">
 				<select
 					value={expireHours}
@@ -718,6 +745,9 @@ function OfferCard({
 			<p>
 				{offer.base_asset} for {offer.quote_asset}
 			</p>
+			{offer.price_type === "market" && offer.current_price && (
+				<small className="muted">Market price: ${offer.current_price.toFixed(4)} USD</small>
+			)}
 			<small className="muted addr">
 				by {offer.creator_address.slice(0, 24)}…
 			</small>

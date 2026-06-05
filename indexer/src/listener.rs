@@ -152,6 +152,7 @@ async fn run_online_loop(
 async fn run_offline_loop(db: Pool<Sqlite>) {
     let mut ticker = interval(Duration::from_secs(30));
     let mut count: u64 = 0;
+    let mut price_update_count: u64 = 0;
 
     loop {
         ticker.tick().await;
@@ -160,11 +161,58 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
             Ok(n) => info!("Reconciled {n} expired escrow(s)"),
             Err(e) => warn!("Reconciliation failed: {e}"),
         }
+
+        // Update market prices every hour (120 cycles at 30s)
+        price_update_count += 1;
+        if price_update_count >= 120 {
+            price_update_count = 0;
+            match update_market_prices(&db).await {
+                Ok(n) => {
+                    if n > 0 {
+                        info!("Updated prices for {n} market-priced offers");
+                    }
+                }
+                Err(e) => warn!("Price update failed: {e}"),
+            }
+        }
+
         count += 1;
         if count.is_multiple_of(20) {
             info!("Offline listener heartbeat: {count} cycles");
         }
     }
+}
+
+/// Update market prices for price_locked offers (fetches from CoinGecko).
+async fn update_market_prices(pool: &Pool<Sqlite>) -> Result<u64, String> {
+    // Fetch current KAS/USD price
+    let resp = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
+        .await
+        .map_err(|e| format!("Failed to fetch price: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("CoinGecko returned {}", resp.status()));
+    }
+
+    let price_json: serde_json::Value = resp.json().await.map_err(|e| format!("Failed to parse price: {e}"))?;
+    let usd_price = price_json["kaspa"]["usd"].as_f64().unwrap_or(0.0);
+
+    if usd_price <= 0.0 {
+        return Err("Invalid price from CoinGecko".to_string());
+    }
+
+    // Update all market-priced offers
+    let now = chrono::Utc::now().timestamp();
+    let result = sqlx::query(
+        "UPDATE offers SET current_price = ?1, price_updated_at = ?2 WHERE price_type = 'market' AND status = 'proposed'"
+    )
+    .bind(usd_price)
+    .bind(now)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Failed to update prices: {e}"))?;
+
+    Ok(result.rows_affected())
 }
 
 /// Check if a script matches any DagLock template hash by computing its BLAKE2b-160 hash.

@@ -43,6 +43,13 @@ export type Offer = {
 	status: string;
 	expires_at?: number | null;
 	created_at: number;
+	price_type: string;
+	price_offset?: number | null;
+	min_price?: number | null;
+	max_price?: number | null;
+	current_price?: number | null;
+	price_currency: string;
+	price_updated_at?: number | null;
 };
 
 export type CreateOfferRequest = {
@@ -53,6 +60,10 @@ export type CreateOfferRequest = {
 	amount_sompi: number;
 	counterparty_address?: string;
 	expires_at?: number;
+	price_type?: string;
+	price_offset?: number;
+	min_price?: number;
+	max_price?: number;
 };
 
 export type Escrow = {
