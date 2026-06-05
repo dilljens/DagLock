@@ -136,7 +136,7 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 			<FormField label="Price type">
 				<select value={priceType} onChange={(e) => setPriceType(e.target.value)}>
 					<option value="fixed">Fixed price</option>
-					<option value="market">Market price (updates hourly)</option>
+					<option value="market">Market price (updates every 15 min)</option>
 				</select>
 			</FormField>
 			{priceType === "market" && <>

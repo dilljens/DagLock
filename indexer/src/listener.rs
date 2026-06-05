@@ -162,9 +162,9 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
             Err(e) => warn!("Reconciliation failed: {e}"),
         }
 
-        // Update market prices every hour (120 cycles at 30s)
+        // Update market prices every 15 minutes (30 cycles at 30s)
         price_update_count += 1;
-        if price_update_count >= 120 {
+        if price_update_count >= 30 {
             price_update_count = 0;
             match update_market_prices(&db).await {
                 Ok(n) => {
