@@ -17,14 +17,21 @@ pub async fn list(api_url: String) -> Result<()> {
     println!("📋 Open offers:");
     println!("{:-<80}", "");
     for offer in offers {
+        let price_info = match offer["price_type"].as_str() {
+            Some("market") => format!(
+                " | market @ ${:.4} USD",
+                offer["current_price"].as_f64().unwrap_or(0.0)
+            ),
+            _ => String::new(),
+        };
         println!(
-            "  {} | {} {} {} for {} | creator: {}",
+            "  {} | {} {} {} for {}{}",
             offer["id"].as_str().unwrap_or("?"),
             offer["side"].as_str().unwrap_or("?"),
             offer["amount_sompi"].as_i64().unwrap_or(0) as f64 / 100_000_000.0,
             offer["base_asset"].as_str().unwrap_or("?"),
             offer["quote_asset"].as_str().unwrap_or("?"),
-            &offer["creator_address"].as_str().unwrap_or("?")[..12],
+            price_info,
         );
     }
 

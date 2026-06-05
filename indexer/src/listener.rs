@@ -217,11 +217,17 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
 /// Update market prices for price_locked offers (fetches from CoinGecko).
 #[allow(dead_code)]
 async fn update_market_prices(pool: &Pool<Sqlite>) -> Result<u64, String> {
-    // Fetch current KAS/USD price
-    let resp =
-        reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
-            .await
-            .map_err(|e| format!("Failed to fetch price: {e}"))?;
+    // Fetch current KAS/USD price (5s timeout)
+    use std::time::Duration;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap_or_default();
+    let resp = client
+        .get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch price: {e}"))?;
 
     if !resp.status().is_success() {
         return Err(format!("CoinGecko returned {}", resp.status()));

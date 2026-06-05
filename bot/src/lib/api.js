@@ -5,12 +5,15 @@ export class ApiClient {
 		this.baseUrl = baseUrl;
 	}
 
-	async request(path, options = {}) {
+	async request(path, options = {}, auth) {
+		const headers = { "Content-Type": "application/json", ...options.headers };
+		if (auth) {
+			headers["X-Daglock-Address"] = auth.address;
+			headers["X-Daglock-Signature"] = auth.signature;
+			headers["X-Daglock-Message"] = auth.message;
+		}
 		const url = `${this.baseUrl}/v1${path}`;
-		const res = await fetch(url, {
-			headers: { "Content-Type": "application/json", ...options.headers },
-			...options,
-		});
+		const res = await fetch(url, { headers, ...options });
 		if (!res.ok) {
 			const err = await res
 				.json()
@@ -67,6 +70,13 @@ export class ApiClient {
 		});
 	}
 
+	swapEscrow(id, preimage) {
+		return this.request(`/escrows/${encodeURIComponent(id)}/swap`, {
+			method: "POST",
+			body: JSON.stringify({ preimage }),
+		});
+	}
+
 	// ── Offer endpoints ───────────────────────────────────────────────
 
 	listOffers({ asset, side, status } = {}) {
@@ -109,15 +119,6 @@ export class ApiClient {
 		return this.request(`/receipts/${encodeURIComponent(id)}`);
 	}
 
-	// ── Swap ─────────────────────────────────────────────────────────
-
-	swapEscrow(id, preimage) {
-		return this.request(`/escrows/${encodeURIComponent(id)}/swap`, {
-			method: "POST",
-			body: JSON.stringify({ preimage }),
-		});
-	}
-
 	// ── Vaults ────────────────────────────────────────────────────────
 
 	listVaults(owner) {
@@ -128,31 +129,37 @@ export class ApiClient {
 		return this.request(`/vaults/${encodeURIComponent(id)}`);
 	}
 
-	createVault(data) {
+	createVault(data, auth) {
 		return this.request("/vaults", {
 			method: "POST",
 			body: JSON.stringify(data),
-		});
+		}, auth);
 	}
 
-	withdrawVault(id, ownerAddress, signature) {
+	withdrawVault(id, ownerAddress, signature, auth) {
 		return this.request(`/vaults/${encodeURIComponent(id)}/withdraw`, {
 			method: "POST",
 			body: JSON.stringify({ owner_address: ownerAddress, signature }),
-		});
+		}, auth);
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
 
-	sendMessage(escrowId, content) {
+	sendMessage(escrowId, content, auth) {
 		return this.request(`/escrows/${encodeURIComponent(escrowId)}/messages`, {
 			method: "POST",
 			body: JSON.stringify({ content }),
-		});
+		}, auth);
 	}
 
-	listMessages(escrowId) {
-		return this.request(`/escrows/${encodeURIComponent(escrowId)}/messages`);
+	listMessages(escrowId, auth) {
+		return this.request(`/escrows/${encodeURIComponent(escrowId)}/messages`, undefined, auth);
+	}
+
+	// ── Evidence ──────────────────────────────────────────────────────
+
+	listEvidence(escrowId) {
+		return this.request(`/escrows/${encodeURIComponent(escrowId)}/evidence`);
 	}
 
 	// ── Stats & Health ────────────────────────────────────────────────

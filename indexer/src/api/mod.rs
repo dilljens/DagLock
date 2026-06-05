@@ -23,6 +23,7 @@ use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::limit::RequestBodyLimitLayer;
 
 /// Shared application state.
 #[derive(Clone)]
@@ -61,6 +62,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
     };
 
     Router::new()
+        .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
         .route("/v1/health", get(health))
         .route("/v1/network", get(network::get))
         .route("/v1/network/price", get(network::price))
@@ -97,6 +99,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/vaults", get(vaults::list).post(vaults::create))
         .route("/v1/vaults/:id", get(vaults::get_by_id))
         .route("/v1/vaults/:id/withdraw", post(vaults::withdraw))
+        .route("/v1/vaults/:id/transfer", post(vaults::transfer))
         .route("/v1/swap/generate", post(swap::generate))
         .route("/v1/jury/register", post(jury::register))
         .route("/v1/jury/unregister", post(jury::unregister))

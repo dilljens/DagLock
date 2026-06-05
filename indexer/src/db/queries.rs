@@ -785,9 +785,8 @@ pub async fn list_eligible_jurors(
     let rows = sqlx::query(
         "SELECT * FROM juror_registrations WHERE reliability_score >= ?1 ORDER BY reliability_score DESC"
     )
-    .bind((min_score * 100.0) as i64) // store as integer in SQLite
+    .bind(min_score)
     .fetch_all(pool).await?;
-    // Actually reliability_score is REAL, not stored as int
     Ok(rows
         .into_iter()
         .map(|row| JurorRegistration {
@@ -1654,6 +1653,19 @@ pub async fn update_vault_status(
 ) -> Result<(), sqlx::Error> {
     sqlx::query("UPDATE vaults SET status = ?1 WHERE id = ?2")
         .bind(status)
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn update_vault_beneficiary(
+    pool: &Pool<Sqlite>,
+    id: &str,
+    beneficiary: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE vaults SET beneficiary_address = ?1 WHERE id = ?2")
+        .bind(beneficiary)
         .bind(id)
         .execute(pool)
         .await?;

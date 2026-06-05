@@ -71,6 +71,7 @@ bot.api.setMyCommands([
 	{ command: "cancel", description: "Cancel an escrow" },
 	{ command: "msg", description: "Send a message on an escrow" },
 	{ command: "messages", description: "Read message thread on an escrow" },
+	{ command: "evidence", description: "List evidence for an escrow" },
 	{ command: "help", description: "Show help" },
 ]);
 
@@ -477,6 +478,35 @@ bot.command("messages", async (ctx) => {
 		await ctx.reply(msg, { parse_mode: "Markdown" });
 	} catch (err) {
 		await ctx.reply("❌ Could not fetch messages: " + err.message);
+	}
+});
+
+// ── Evidence command ────────────────────────────────────────────────
+
+bot.command("evidence", async (ctx) => {
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /evidence <escrow-id>");
+
+	try {
+		const data = await api.listEvidence(id);
+		const evidence = data.evidence || [];
+
+		if (evidence.length === 0) {
+			return await ctx.reply("📄 No evidence submitted for this escrow.");
+		}
+
+		let msg = `📄 *Evidence for \`${id}\`*\n\n`;
+		for (const ev of evidence.slice(-5)) {
+			const date = new Date(ev.created_at * 1000).toISOString().slice(0, 19).replace("T", " ");
+			const by = (ev.submitted_by || "").slice(0, 16);
+			const content = (ev.content || "").slice(0, 200);
+			msg += `[${date}] \`${by}...\`: ${content}\n\n`;
+		}
+		if (evidence.length > 5) msg += `_...${evidence.length - 5} older items_\n`;
+
+		await ctx.reply(msg, { parse_mode: "Markdown" });
+	} catch (err) {
+		await ctx.reply("❌ Could not fetch evidence: " + err.message);
 	}
 });
 

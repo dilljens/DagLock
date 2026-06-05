@@ -1373,6 +1373,121 @@ function EscrowLookup() {
 	);
 }
 
+/* ─── Vouch Panel ─── */
+function VouchPanel({ onDone }: { onDone: () => void }) {
+	const [subjectAddress, setSubjectAddress] = useState("");
+	const [note, setNote] = useState("");
+	const [authAddress, setAuthAddress] = useState("");
+	const [authSig, setAuthSig] = useState("");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [error, setError] = useState("");
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!subjectAddress.startsWith("kaspa:") || !authAddress || !authSig) {
+			setError("Valid Kaspa address and auth signature required");
+			return;
+		}
+		setStatus("loading");
+		setError("");
+		try {
+			const auth: AuthHeaders = {
+				address: authAddress,
+				signature: authSig,
+				message: "vouch:" + subjectAddress,
+			};
+			await api.vouch(subjectAddress, auth, undefined, note || undefined);
+			setStatus("done");
+			onDone();
+		} catch (err) {
+			setStatus("error");
+			setError((err as Error).message);
+		}
+	}
+
+	if (status === "done") return <p className="muted success-text">Vouch created!</p>;
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<FormField label="Subject address">
+				<input value={subjectAddress} onChange={(e) => setSubjectAddress(e.target.value)} placeholder="kaspa:..." />
+			</FormField>
+			<FormField label="Note (optional)">
+				<input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why do you vouch for them?" />
+			</FormField>
+			<FormField label="Your address">
+				<input value={authAddress} onChange={(e) => setAuthAddress(e.target.value)} placeholder="kaspa:..." />
+			</FormField>
+			<FormField label="Signature">
+				<input value={authSig} onChange={(e) => setAuthSig(e.target.value)} placeholder="hex" />
+			</FormField>
+			{error && <p className="muted error-text">{error}</p>}
+			<button className="button primary" type="submit" disabled={status === "loading"}>
+				{status === "loading" ? "Creating..." : "Create vouch"}
+			</button>
+		</form>
+	);
+}
+
+/* ─── Resolve Dispute Panel ─── */
+function ResolveDisputePanel({ onDone }: { onDone: () => void }) {
+	const [escrowId, setEscrowId] = useState("");
+	const [outcome, setOutcome] = useState("expunge");
+	const [authAddress, setAuthAddress] = useState("");
+	const [authSig, setAuthSig] = useState("");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [error, setError] = useState("");
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!escrowId || !authAddress || !authSig) {
+			setError("Escrow ID and auth required");
+			return;
+		}
+		setStatus("loading");
+		setError("");
+		try {
+			const auth: AuthHeaders = {
+				address: authAddress,
+				signature: authSig,
+				message: "resolve:" + escrowId,
+			};
+			await api.resolveDispute(escrowId, outcome, authAddress, auth);
+			setStatus("done");
+			onDone();
+		} catch (err) {
+			setStatus("error");
+			setError((err as Error).message);
+		}
+	}
+
+	if (status === "done") return <p className="muted success-text">Dispute resolved!</p>;
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<FormField label="Escrow ID">
+				<input value={escrowId} onChange={(e) => setEscrowId(e.target.value)} placeholder="esc_..." />
+			</FormField>
+			<FormField label="Outcome">
+				<select value={outcome} onChange={(e) => setOutcome(e.target.value)}>
+					<option value="expunge">Expunge (dismiss dispute)</option>
+					<option value="uphold">Uphold (dispute valid)</option>
+				</select>
+			</FormField>
+			<FormField label="Your address">
+				<input value={authAddress} onChange={(e) => setAuthAddress(e.target.value)} placeholder="kaspa:..." />
+			</FormField>
+			<FormField label="Signature">
+				<input value={authSig} onChange={(e) => setAuthSig(e.target.value)} placeholder="hex" />
+			</FormField>
+			{error && <p className="muted error-text">{error}</p>}
+			<button className="button primary" type="submit" disabled={status === "loading"}>
+				{status === "loading" ? "Resolving..." : "Resolve dispute"}
+			</button>
+		</form>
+	);
+}
+
 /* ─── Receipt lookup ─── */
 
 function ReputationLookup() {
@@ -2290,6 +2405,8 @@ export default function App() {
 		| "my-offers"
 		| "link-telegram"
 		| "jury"
+		| "vouch"
+		| "resolve-dispute"
 		| null
 	>(null);
 
@@ -2384,6 +2501,14 @@ export default function App() {
 			jury: {
 				title: "Jury panel",
 				content: <JuryPanel />,
+			},
+			"vouch": {
+				title: "Vouch",
+				content: <VouchPanel onDone={closeTab} />,
+			},
+			"resolve-dispute": {
+				title: "Resolve dispute",
+				content: <ResolveDisputePanel onDone={closeTab} />,
 			},
 		};
 
@@ -2625,6 +2750,8 @@ export default function App() {
 								["Telegram", "link-telegram"],
 								["Jury", "jury"],
 								["Compile", "compile"],
+								["Vouch", "vouch"],
+								["Resolve", "resolve-dispute"],
 							] as const
 						).map(([label, key]) => (
 							<button

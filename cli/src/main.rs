@@ -95,6 +95,11 @@ enum Commands {
         /// Escrow ID
         id: String,
     },
+    /// List evidence for an escrow
+    Evidence {
+        /// Escrow ID
+        id: String,
+    },
     /// Configure DagLock CLI settings
     Config {
         /// Set indexer API URL
@@ -292,6 +297,9 @@ async fn main() -> anyhow::Result<()> {
         Commands::Receipt { id } => {
             commands::receipt::run(api_url, &id).await?;
         }
+        Commands::Evidence { id } => {
+            commands::evidence::list_evidence(api_url, &id).await?;
+        }
         Commands::Msg {
             id,
             text,
@@ -318,6 +326,7 @@ async fn main() -> anyhow::Result<()> {
 mod commands {
     pub mod claim;
     pub mod create;
+    pub mod evidence;
     pub mod message;
     pub mod offer;
     pub mod receipt;

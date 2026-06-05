@@ -771,7 +771,9 @@ pub async fn dispute(
                     "mode": "jury"
                 })))
             } else {
-                let _ = state.ws_tx.send(WsEvent::escrow_disputed(&id, &body.reason));
+                let _ = state
+                    .ws_tx
+                    .send(WsEvent::escrow_disputed(&id, &body.reason));
                 Ok(Json(json!({
                     "status": "disputed",
                     "escrow_id": id

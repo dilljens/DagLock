@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use crate::api::AppState;
 use crate::auth::AuthContext;
 use crate::db::queries;
-use crate::types::{CreateVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest};
+use crate::types::{CreateVaultRequest, TransferVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest};
 
 /// GET /v1/vaults?owner=...
 pub async fn list(
@@ -240,6 +240,80 @@ pub async fn withdraw(
         "status": "unlocked",
         "vault_id": id,
         "message": "Vault unlocked. Funds can now be withdrawn."
+    })))
+}
+
+/// POST /v1/vaults/:id/transfer
+///
+/// Transfer vault ownership to a beneficiary. Requires auth headers.
+pub async fn transfer(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
+    JsonBody(body): JsonBody<TransferVaultRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let vault = queries::get_vault(&state.db, &id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})),
+            )
+        })?;
+
+    // Auth: extract and verify signature
+    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error": "unauthorized", "message": "X-Daglock-* headers required"})),
+        )
+    })?;
+
+    let expected_message = format!("transfer:{}", id);
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|_| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+            )
+        })?
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+        ));
+    }
+
+    // Verify ownership
+    if auth.address != vault.owner_address {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Only the vault owner can transfer"})),
+        ));
+    }
+
+    // Update beneficiary
+    queries::update_vault_beneficiary(&state.db, &id, &body.beneficiary_address)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?;
+
+    Ok(Json(json!({
+        "status": "transferred",
+        "vault_id": id,
+        "beneficiary_address": body.beneficiary_address,
     })))
 }
 

@@ -25,11 +25,17 @@ pub async fn get(State(state): State<AppState>) -> Json<Value> {
 }
 
 /// GET /v1/network/price
-/// Returns KAS/USD price from CoinGecko.
+/// Returns KAS/USD price from CoinGecko (5s timeout).
 pub async fn price(State(_state): State<AppState>) -> Json<Value> {
-    let resp =
-        reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
-            .await;
+    use std::time::Duration;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap_or_default();
+    let resp = client
+        .get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
+        .send()
+        .await;
 
     let price_json = match resp {
         Ok(r) if r.status().is_success() => r.json::<serde_json::Value>().await.unwrap_or_default(),
