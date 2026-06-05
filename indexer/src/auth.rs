@@ -390,6 +390,9 @@ mod tests {
             price_at_creation: None,
             price_currency: None,
             trade_hash: None,
+            price_lock_time: None,
+            price_at_settlement: None,
+            price_source: None,
         }
     }
 

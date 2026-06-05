@@ -275,6 +275,7 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 	const [mediatorKey, setMediatorKey] = useState("");
 	const [tradeHash, setTradeHash] = useState("");
 	const [tradeSecret, setTradeSecret] = useState("");
+	const [priceType, setPriceType] = useState("market");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
 		"idle",
 	);
@@ -309,6 +310,10 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 				body.mediator_key = mediatorKey;
 			if (tradeHash.trim())
 				body.trade_hash = tradeHash.trim();
+			body.price_type = priceType;
+			if (priceType === "market") {
+				// Price will be fetched and locked by the backend
+			}
 			const escrow = await api.createEscrow(body);
 			setResult(escrow);
 			setStatus("done");
@@ -419,6 +424,17 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 					</p>
 				</FormField>
 			)}
+			<FormField label="Price type">
+				<select value={priceType} onChange={(e) => setPriceType(e.target.value)}>
+					<option value="market">Market price (locked at creation)</option>
+					<option value="fixed">Fixed price</option>
+				</select>
+			</FormField>
+			{priceType === "market" && (
+				<small className="muted" style={{fontSize:"12px",marginTop:"-8px"}}>
+					Price will be fetched from CoinGecko and locked at creation time.
+				</small>
+			)}
 			<FormField label="Trade hash (optional)">
 				<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
 					<input
@@ -498,7 +514,7 @@ function SwapForm({ onDone }: { onDone: () => void }) {
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
-			<p className="muted">Submit a preimage to atomically settle an escrow. The preimage must match the trade hash stored in the covenant.</p>
+			<p className="muted">Settle an escrow. For market orders, no preimage is needed. For atomic swaps, submit the preimage.</p>
 			<FormField label="Escrow ID">
 				<input value={escrowId} onChange={(e) => { setEscrowId(e.target.value); fetchEscrow(); }} placeholder="esc_..." />
 			</FormField>
@@ -508,8 +524,8 @@ function SwapForm({ onDone }: { onDone: () => void }) {
 					<code>{expectedHash}</code>
 				</div>
 			)}
-			<FormField label="Preimage (hex)">
-				<input value={preimage} onChange={(e) => setPreimage(e.target.value)} placeholder="hex encoded secret" />
+			<FormField label="Preimage (hex, optional for market orders)">
+				<input value={preimage} onChange={(e) => setPreimage(e.target.value)} placeholder="hex encoded secret (leave empty for market orders)" />
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
 			<button className="button primary" type="submit" disabled={status === "loading"}>

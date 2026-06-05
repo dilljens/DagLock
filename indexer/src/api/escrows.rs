@@ -379,6 +379,17 @@ pub async fn create(
         price_at_creation: body.price_at_creation,
         price_currency: body.price_currency,
         trade_hash: body.trade_hash.clone(),
+        price_lock_time: if body.price_at_creation.is_some() {
+            Some(chrono::Utc::now().timestamp())
+        } else {
+            None
+        },
+        price_at_settlement: body.price_at_creation,
+        price_source: if body.price_at_creation.is_some() {
+            Some("api".to_string())
+        } else {
+            None
+        },
     };
 
     queries::insert_escrow(&state.db, &escrow)

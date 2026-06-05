@@ -87,6 +87,9 @@ pub struct Escrow {
     pub price_at_creation: Option<f64>,
     pub price_currency: Option<String>,
     pub trade_hash: Option<String>,
+    pub price_lock_time: Option<i64>,
+    pub price_at_settlement: Option<f64>,
+    pub price_source: Option<String>,
 }
 
 /// Create escrow request (from POST endpoint).
@@ -110,6 +113,8 @@ pub struct CreateEscrowRequest {
     pub price_currency: Option<String>,
     #[serde(default)]
     pub trade_hash: Option<String>,
+    #[serde(default)]
+    pub price_type: Option<String>,
 }
 
 /// Offer record stored in the database.

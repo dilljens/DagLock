@@ -107,6 +107,7 @@ export type CreateEscrowRequest = {
 	price_at_creation?: number;
 	price_currency?: string;
 	trade_hash?: string;
+	price_type?: string;
 };
 
 export type AuthHeaders = {
