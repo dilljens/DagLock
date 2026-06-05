@@ -163,11 +163,32 @@ pub async fn atomic_swap(
                 ));
             }
 
-            let hash = blake2b_simd::Params::new()
-                .hash_length(32)
-                .hash(&preimage_bytes)
-                .to_hex();
-            tracing::info!("Atomic swap: escrow {} preimage hash {}", id, hash);
+            // Compute SHA-256 of preimage to match covenant's trade_hash check
+            use sha2::{Digest, Sha256};
+            let mut sha_hasher = Sha256::new();
+            sha_hasher.update(&preimage_bytes);
+            let preimage_hash = sha_hasher.finalize();
+            let preimage_hash_hex = hex::encode(&preimage_hash);
+            tracing::info!(
+                "Atomic swap: escrow {} preimage hash {}",
+                id,
+                preimage_hash_hex
+            );
+
+            // Verify preimage matches the stored trade_hash (if set)
+            if let Some(ref expected_hash) = current.trade_hash {
+                if !expected_hash.is_empty() {
+                    if preimage_hash_hex != *expected_hash {
+                        return Err((
+                            StatusCode::FORBIDDEN,
+                            Json(json!(ApiError::new(
+                                "preimage_mismatch",
+                                "Preimage does not match trade hash"
+                            ))),
+                        ));
+                    }
+                }
+            }
 
             // Atomic settle
             let settled = queries::settle_escrow_atomic(&state.db, &id)
@@ -361,6 +382,7 @@ pub async fn create(
         dispute_resolved_at: None,
         price_at_creation: body.price_at_creation,
         price_currency: body.price_currency,
+        trade_hash: body.trade_hash.clone(),
     };
 
     queries::insert_escrow(&state.db, &escrow)

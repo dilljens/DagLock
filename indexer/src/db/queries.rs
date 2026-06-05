@@ -84,8 +84,8 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, seller_address, amount_sompi, fee_sompi, template_hash,
          expiration_daa_score, disputed_at, dispute_reason, cancelled_at, expired_at,
-         created_at, settled_at, refunded_at, mediator_key, dispute_mode, dispute_outcome, dispute_resolved_at, price_at_creation, price_currency)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)"
+         created_at, settled_at, refunded_at, mediator_key, dispute_mode, dispute_outcome, dispute_resolved_at, price_at_creation, price_currency, trade_hash)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)"
     )
     .bind(&escrow.id).bind(&escrow.lock_tx_id)
     .bind(escrow.lock_tx_output_index as i64).bind(escrow.status.as_str())
@@ -97,6 +97,7 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
     .bind(escrow.expired_at)
     .bind(escrow.created_at).bind(escrow.settled_at).bind(escrow.refunded_at)
     .bind(&escrow.mediator_key).bind(&escrow.dispute_mode).bind(&escrow.dispute_outcome).bind(escrow.dispute_resolved_at).bind(escrow.price_at_creation).bind(&escrow.price_currency)
+    .bind(&escrow.trade_hash)
     .execute(pool).await?;
     Ok(())
 }
@@ -1523,6 +1524,7 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
     let dispute_resolved_at: Option<i64> = row.try_get("dispute_resolved_at").unwrap_or(None);
     let price_at_creation: Option<f64> = row.try_get("price_at_creation").unwrap_or(None);
     let price_currency: Option<String> = row.try_get("price_currency").unwrap_or(None);
+    let trade_hash: Option<String> = row.try_get("trade_hash").ok().flatten();
 
     Escrow {
         id,
@@ -1550,6 +1552,7 @@ fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
         dispute_resolved_at,
         price_at_creation,
         price_currency,
+        trade_hash,
     }
 }
 
@@ -1720,6 +1723,7 @@ mod tests {
             dispute_resolved_at: None,
             price_at_creation: None,
             price_currency: None,
+            trade_hash: None,
         }
     }
 

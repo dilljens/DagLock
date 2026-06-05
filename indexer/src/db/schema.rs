@@ -50,6 +50,11 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .await
         .ok();
 
+    sqlx::query(include_str!("migrations/011_add_trade_hash.sql"))
+        .execute(pool)
+        .await
+        .ok();
+
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_price_columns(pool).await?;
     ensure_dispute_mode_column(pool).await?;

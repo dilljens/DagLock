@@ -91,6 +91,7 @@ export type Escrow = {
 	price_currency?: string | null;
 	dispute_outcome?: string | null;
 	dispute_resolved_at?: number | null;
+	trade_hash?: string | null;
 };
 
 export type CreateEscrowRequest = {
@@ -105,6 +106,7 @@ export type CreateEscrowRequest = {
 	dispute_mode?: string;
 	price_at_creation?: number;
 	price_currency?: string;
+	trade_hash?: string;
 };
 
 export type AuthHeaders = {
@@ -392,6 +394,8 @@ export const api = {
 			`/v1/escrows/${encodeURIComponent(id)}/swap`,
 			{ preimage },
 		),
+	generateSwap: () =>
+		loadJson<{ secret: string; hash: string }>("/v1/swap/generate"),
 
 	// Offers
 	offers: (creator?: string) =>

@@ -135,6 +135,7 @@ mod tests {
             dispute_resolved_at: None,
             price_at_creation: None,
             price_currency: None,
+            trade_hash: None,
         }
     }
 

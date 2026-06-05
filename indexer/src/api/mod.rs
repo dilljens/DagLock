@@ -10,6 +10,7 @@ pub mod network;
 pub mod offers;
 pub mod receipts;
 pub mod reputation;
+pub mod swap;
 pub mod vaults;
 pub mod vouches;
 
@@ -93,6 +94,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/vaults", get(vaults::list).post(vaults::create))
         .route("/v1/vaults/:id", get(vaults::get_by_id))
         .route("/v1/vaults/:id/withdraw", post(vaults::withdraw))
+        .route("/v1/swap/generate", post(swap::generate))
         .route("/v1/jury/register", post(jury::register))
         .route("/v1/jury/unregister", post(jury::unregister))
         .route("/v1/jury/cases", get(jury::list_cases))

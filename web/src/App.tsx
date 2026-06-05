@@ -273,6 +273,8 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 	const [assetType, setAssetType] = useState("KAS");
 	const [disputeMode, setDisputeMode] = useState("standard");
 	const [mediatorKey, setMediatorKey] = useState("");
+	const [tradeHash, setTradeHash] = useState("");
+	const [tradeSecret, setTradeSecret] = useState("");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
 		"idle",
 	);
@@ -305,6 +307,8 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 			body.dispute_mode = disputeMode;
 			if (disputeMode === "mediator" && mediatorKey.startsWith("kaspa:"))
 				body.mediator_key = mediatorKey;
+			if (tradeHash.trim())
+				body.trade_hash = tradeHash.trim();
 			const escrow = await api.createEscrow(body);
 			setResult(escrow);
 			setStatus("done");
@@ -408,6 +412,35 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 					/>
 				</FormField>
 			)}
+			{tradeHash && (
+				<FormField label="Trade secret (for atomic swap)">
+					<p className="muted" style={{fontSize:"12px",marginTop:0}}>
+						Secret: <code>{tradeSecret}</code>
+					</p>
+				</FormField>
+			)}
+			<FormField label="Trade hash (optional)">
+				<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+					<input
+						value={tradeHash}
+						onChange={(e) => setTradeHash(e.target.value)}
+						placeholder="Leave empty for non-atomic escrow"
+						style={{flex:1}}
+					/>
+					<button type="button" className="button" onClick={async () => {
+						try {
+							const res = await api.generateSwap();
+							setTradeHash(res.hash);
+							setTradeSecret(res.secret);
+						} catch (err) {
+							setError((err as Error).message);
+						}
+					}}>
+						Generate
+					</button>
+				</div>
+				<small className="muted" style={{fontSize:"11px",marginTop:"4px",display:"block"}}>Save this secret! It's needed to claim the escrow atomically.</small>
+			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
 			<button
 				className="button primary"
@@ -427,6 +460,21 @@ function SwapForm({ onDone }: { onDone: () => void }) {
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 	const [error, setError] = useState("");
 	const [result, setResult] = useState<string | null>(null);
+	const [expectedHash, setExpectedHash] = useState<string | null>(null);
+
+	async function fetchEscrow() {
+		if (!escrowId.trim()) return;
+		try {
+			const data = await api.escrow(escrowId.trim());
+			if (data.trade_hash) {
+				setExpectedHash(data.trade_hash);
+			} else {
+				setExpectedHash(null);
+			}
+		} catch {
+			setExpectedHash(null);
+		}
+	}
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -452,8 +500,14 @@ function SwapForm({ onDone }: { onDone: () => void }) {
 		<form className="form form-stacked" onSubmit={handleSubmit}>
 			<p className="muted">Submit a preimage to atomically settle an escrow. The preimage must match the trade hash stored in the covenant.</p>
 			<FormField label="Escrow ID">
-				<input value={escrowId} onChange={(e) => setEscrowId(e.target.value)} placeholder="esc_..." />
+				<input value={escrowId} onChange={(e) => { setEscrowId(e.target.value); fetchEscrow(); }} placeholder="esc_..." />
 			</FormField>
+			{expectedHash && (
+				<div className="row" style={{fontSize:"13px"}}>
+					<span>Expected hash</span>
+					<code>{expectedHash}</code>
+				</div>
+			)}
 			<FormField label="Preimage (hex)">
 				<input value={preimage} onChange={(e) => setPreimage(e.target.value)} placeholder="hex encoded secret" />
 			</FormField>

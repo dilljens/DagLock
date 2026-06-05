@@ -32,5 +32,11 @@ Thumbs.db
 
 # Pi lens cache
 .pi-lens/
+
+# Pi internal artifacts
+.pi/
+
+# Docs
+/docs/REDDIT-POST.md
 .env.testwallets
 .env.cloudflare
