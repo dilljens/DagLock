@@ -387,6 +387,11 @@ export const api = {
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/cancel`,
 		),
+	swapEscrow: (id: string, preimage: string) =>
+		postJson<{ status: string; escrow_id: string; method: string; preimage_hash: string }>(
+			`/v1/escrows/${encodeURIComponent(id)}/swap`,
+			{ preimage },
+		),
 
 	// Offers
 	offers: (creator?: string) =>

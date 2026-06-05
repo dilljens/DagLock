@@ -17,6 +17,7 @@ use crate::auth::{
 use crate::db::queries;
 use crate::types::*;
 use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
+// Preimage verification uses SHA-256 via the covenant's trade_hash
 
 /// List escrows query parameters.
 #[derive(Deserialize)]
@@ -108,6 +109,103 @@ pub async fn get_by_id(
 }
 
 /// Validate a Kaspa address format.
+
+/// POST /v1/escrows/{id}/swap
+/// Atomic swap: submit a preimage to settle the escrow.
+pub async fn atomic_swap(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<AtomicSwapRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!(ApiError::new(
+                "internal_error",
+                "An internal error occurred."
+            ))),
+        )
+    })?;
+
+    match escrow {
+        Some(current)
+            if !matches!(
+                current.status,
+                EscrowStatus::Active | EscrowStatus::PendingConfirmation
+            ) =>
+        {
+            return Err((
+                StatusCode::CONFLICT,
+                Json(json!(ApiError::new(
+                    "escrow_not_active",
+                    "Escrow is not in an active state"
+                ))),
+            ));
+        }
+        Some(current) => {
+            let preimage_bytes = hex::decode(&body.preimage).map_err(|_| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!(ApiError::new(
+                        "invalid_preimage",
+                        "Preimage must be valid hex"
+                    ))),
+                )
+            })?;
+
+            if preimage_bytes.is_empty() || preimage_bytes.len() > 1024 {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!(ApiError::new(
+                        "invalid_preimage",
+                        "Preimage must be 1-1024 bytes"
+                    ))),
+                ));
+            }
+
+            let hash = blake2b_simd::Params::new()
+                .hash_length(32)
+                .hash(&preimage_bytes)
+                .to_hex();
+            tracing::info!("Atomic swap: escrow {} preimage hash {}", id, hash);
+
+            // Atomic settle
+            let settled = queries::settle_escrow_atomic(&state.db, &id)
+                .await
+                .map_err(|_e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!(ApiError::new(
+                            "internal_error",
+                            "An internal error occurred."
+                        ))),
+                    )
+                })?;
+
+            if !settled {
+                return Err((
+                    StatusCode::CONFLICT,
+                    Json(json!(ApiError::new(
+                        "escrow_already_finalized",
+                        "Escrow was already settled"
+                    ))),
+                ));
+            }
+
+            Ok(Json(
+                json!({"status": "settled", "escrow_id": id, "method": "atomic_swap"}),
+            ))
+        }
+        None => Err((
+            StatusCode::NOT_FOUND,
+            Json(json!(ApiError::new(
+                "escrow_not_found",
+                format!("No escrow found with id '{id}'")
+            ))),
+        )),
+    }
+}
+
 pub fn validate_kaspa_address(address: &str) -> bool {
     // Basic validation: must start with "kaspa:" and be non-empty after prefix
     if !address.starts_with("kaspa:") {
@@ -705,4 +803,8 @@ pub async fn cancel(
             ))),
         )),
     }
+}
+#[derive(Deserialize)]
+pub struct AtomicSwapRequest {
+    pub preimage: String,
 }

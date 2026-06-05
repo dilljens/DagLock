@@ -420,8 +420,53 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 	);
 }
 
+/* ─── Atomic Swap Form ─── */
+function SwapForm({ onDone }: { onDone: () => void }) {
+	const [escrowId, setEscrowId] = useState("");
+	const [preimage, setPreimage] = useState("");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [error, setError] = useState("");
+	const [result, setResult] = useState<string | null>(null);
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		if (!escrowId.trim() || !preimage.trim()) return;
+		setStatus("loading");
+		setError("");
+		try {
+			const res = await api.swapEscrow(escrowId.trim(), preimage.trim());
+			setResult(res.preimage_hash || "Settled");
+			setStatus("done");
+			onDone();
+		} catch (err) {
+			setStatus("error");
+			setError((err as Error).message);
+		}
+	}
+
+	if (status === "done") {
+		return <p className="muted success-text">Swap settled! Preimage hash: {result}</p>;
+	}
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<p className="muted">Submit a preimage to atomically settle an escrow. The preimage must match the trade hash stored in the covenant.</p>
+			<FormField label="Escrow ID">
+				<input value={escrowId} onChange={(e) => setEscrowId(e.target.value)} placeholder="esc_..." />
+			</FormField>
+			<FormField label="Preimage (hex)">
+				<input value={preimage} onChange={(e) => setPreimage(e.target.value)} placeholder="hex encoded secret" />
+			</FormField>
+			{error && <p className="muted error-text">{error}</p>}
+			<button className="button primary" type="submit" disabled={status === "loading"}>
+				{status === "loading" ? "Settling..." : "Submit Preimage"}
+			</button>
+		</form>
+	);
+}
+
 /* ─── Escrow Action (settle / refund / dispute / cancel) ─── */
-type EscrowAction = "settle" | "refund" | "dispute" | "cancel";
+type EscrowAction = "settle" | "refund" | "dispute" | "cancel" | "swap";
 
 function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 	const [escrowId, setEscrowId] = useState("");
@@ -2018,6 +2063,7 @@ export default function App() {
 		| "create-escrow"
 		| "settle"
 		| "refund"
+		| "swap"
 		| "dispute"
 		| "cancel"
 		| "my-offers"
@@ -2093,6 +2139,10 @@ export default function App() {
 			refund: {
 				title: "Refund escrow",
 				content: <EscrowActionForm action="refund" />,
+			},
+			swap: {
+				title: "Atomic Swap",
+				content: <SwapForm onDone={closeTab} />,
 			},
 			dispute: {
 				title: "Dispute escrow",

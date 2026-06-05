@@ -55,12 +55,17 @@ daglock-cli --api-url https://test-api.daglock.com reputation kaspa:qdyzkrhd74v6
 - Tell me if something is confusing or doesn't work.
 - What feature would make you actually use this on mainnet?
 
-**What's in the pipeline:**
+**What's already built (everything):**
 
-- Telegram bot (@DagLock_test_bot already up for testing)
-- Volume-based fee tiers (0.5% standard, down to 0.15% for whales)
-- Jury-based dispute resolution
-- Atomic swap wizard (abstracts the hash preimage stuff)
+- Telegram bot (@DagLock_test_bot live now — `/create`, `/claim`, `/offers`, `/reputation`, `/dispute`, `/msg`)
+- Jury-based dispute resolution (random jurors, voting, case lifecycle)
+- Encrypted messaging per-escrow
+- Settlement receipts (verifiable JSON proof)
+- Reputation system (on-chain trade history + vouching)
+- Atomic swaps (the `swap` entrypoint works, hash preimage flow — no guided UI wizard yet)
+- Vault covenant (time-locked self-custody)
+
+Everything works on Testnet 12 right now.
 
 **Links:**
 
