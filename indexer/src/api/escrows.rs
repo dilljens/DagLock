@@ -107,7 +107,7 @@ pub async fn get_by_id(
 }
 
 /// Validate a Kaspa address format.
-
+///
 /// POST /v1/escrows/{id}/swap
 /// Atomic swap: submit a preimage to settle the escrow.
 pub async fn atomic_swap(
@@ -378,8 +378,16 @@ pub async fn create(
         dispute_resolved_at: None,
         price_at_creation: if body.price_type.as_deref() == Some("market") {
             // Fetch market price from CoinGecko
-            let price = match reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd").await {
-                Ok(resp) => resp.json::<serde_json::Value>().await.ok().and_then(|j| j["kaspa"]["usd"].as_f64()),
+            let price = match reqwest::get(
+                "https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd",
+            )
+            .await
+            {
+                Ok(resp) => resp
+                    .json::<serde_json::Value>()
+                    .await
+                    .ok()
+                    .and_then(|j| j["kaspa"]["usd"].as_f64()),
                 Err(_) => None,
             };
             price
@@ -394,7 +402,9 @@ pub async fn create(
             }
         }),
         trade_hash: body.trade_hash.clone(),
-        price_lock_time: if body.price_at_creation.is_some() || body.price_type.as_deref() == Some("market") {
+        price_lock_time: if body.price_at_creation.is_some()
+            || body.price_type.as_deref() == Some("market")
+        {
             Some(chrono::Utc::now().timestamp())
         } else {
             None

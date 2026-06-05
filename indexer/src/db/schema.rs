@@ -60,8 +60,14 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .await
         .ok();
 
+    sqlx::query(include_str!("migrations/013_price_type_on_escrows.sql"))
+        .execute(pool)
+        .await
+        .ok();
+
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_price_columns(pool).await?;
+    ensure_price_type_column(pool).await?;
     ensure_dispute_mode_column(pool).await?;
     ensure_mediator_key_column(pool).await?;
     ensure_dispute_outcome_columns(pool).await?;
@@ -118,6 +124,22 @@ pub async fn ensure_price_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error
     }
     if !existing.contains("price_currency") {
         sqlx::query("ALTER TABLE escrows ADD COLUMN price_currency TEXT DEFAULT 'USD'")
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn ensure_price_type_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(escrows)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("price_type") {
+        sqlx::query("ALTER TABLE escrows ADD COLUMN price_type TEXT")
             .execute(pool)
             .await?;
     }

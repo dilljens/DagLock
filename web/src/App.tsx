@@ -31,11 +31,24 @@ import {
 	StatusTimeline,
 } from "./ui";
 import type { LoadState } from "./helpers";
-import { detectKasware, connectWallet, signMessage, type WalletState } from "./kasware";
+import {
+	detectKasware,
+	connectWallet,
+	signMessage,
+	type WalletState,
+} from "./kasware";
 
 /* ─── Wallet Button ─── */
 function WalletStatus() {
-	const [wallet, setWallet] = useState<WalletState>({ detected: false, connected: false, address: null, network: null, balance: null, loading: false, error: null });
+	const [wallet, setWallet] = useState<WalletState>({
+		detected: false,
+		connected: false,
+		address: null,
+		network: null,
+		balance: null,
+		loading: false,
+		error: null,
+	});
 
 	useEffect(() => {
 		detectKasware().then((detected) => setWallet((s) => ({ ...s, detected })));
@@ -45,19 +58,38 @@ function WalletStatus() {
 		setWallet((s) => ({ ...s, loading: true, error: null }));
 		try {
 			const { address, network, balance } = await connectWallet();
-			setWallet({ detected: true, connected: true, address, network, balance, loading: false, error: null });
+			setWallet({
+				detected: true,
+				connected: true,
+				address,
+				network,
+				balance,
+				loading: false,
+				error: null,
+			});
 		} catch (err) {
-			setWallet((s) => ({ ...s, loading: false, error: (err as Error).message }));
+			setWallet((s) => ({
+				...s,
+				loading: false,
+				error: (err as Error).message,
+			}));
 		}
 	}
 
 	return (
 		<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 			{!wallet.detected && (
-				<small className="muted" style={{ fontSize: "12px" }}>No wallet</small>
+				<small className="muted" style={{ fontSize: "12px" }}>
+					No wallet
+				</small>
 			)}
 			{wallet.detected && !wallet.connected && (
-				<button className="button" onClick={handleConnect} disabled={wallet.loading} style={{ fontSize: "12px", padding: "4px 10px" }}>
+				<button
+					className="button"
+					onClick={handleConnect}
+					disabled={wallet.loading}
+					style={{ fontSize: "12px", padding: "4px 10px" }}
+				>
 					{wallet.loading ? "Connecting..." : "Connect Wallet"}
 				</button>
 			)}
@@ -71,7 +103,15 @@ function WalletStatus() {
 }
 
 /* ─── Sign With Wallet Button ─── */
-function SignWithWallet({ message, onSignature, walletAddress }: { message: string; onSignature: (sig: string) => void; walletAddress: string | null }) {
+function SignWithWallet({
+	message,
+	onSignature,
+	walletAddress,
+}: {
+	message: string;
+	onSignature: (sig: string) => void;
+	walletAddress: string | null;
+}) {
 	const [signing, setSigning] = useState(false);
 	const [error, setError] = useState("");
 
@@ -94,11 +134,28 @@ function SignWithWallet({ message, onSignature, walletAddress }: { message: stri
 
 	return (
 		<div>
-			<button type="button" className="button" onClick={handleSign} disabled={signing} style={{ fontSize: "12px", padding: "4px 10px" }}>
+			<button
+				type="button"
+				className="button"
+				onClick={handleSign}
+				disabled={signing}
+				style={{ fontSize: "12px", padding: "4px 10px" }}
+			>
 				{signing ? "Signing..." : "✍️ Sign with Wallet"}
 			</button>
-			{error && <p className="muted" style={{ fontSize: "12px", color: "#ff7b7b", marginTop: "4px" }}>{error}</p>}
-			{walletAddress && <p className="muted" style={{ fontSize: "11px", marginTop: "2px" }}>Signing as {walletAddress.slice(0, 16)}...</p>}
+			{error && (
+				<p
+					className="muted"
+					style={{ fontSize: "12px", color: "#ff7b7b", marginTop: "4px" }}
+				>
+					{error}
+				</p>
+			)}
+			{walletAddress && (
+				<p className="muted" style={{ fontSize: "11px", marginTop: "2px" }}>
+					Signing as {walletAddress.slice(0, 16)}...
+				</p>
+			)}
 		</div>
 	);
 }
@@ -175,7 +232,10 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				</select>
 			</FormField>
 			<FormField label="Sell asset">
-				<select value={baseAsset} onChange={(e) => setBaseAsset(e.target.value)}>
+				<select
+					value={baseAsset}
+					onChange={(e) => setBaseAsset(e.target.value)}
+				>
 					<option value="KAS">KAS</option>
 					<option value="KRC20:NACHO">KRC20:NACHO</option>
 					<option value="KRC20:KASPY">KRC20:KASPY</option>
@@ -183,7 +243,10 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				</select>
 			</FormField>
 			<FormField label="For asset">
-				<select value={quoteAsset} onChange={(e) => setQuoteAsset(e.target.value)}>
+				<select
+					value={quoteAsset}
+					onChange={(e) => setQuoteAsset(e.target.value)}
+				>
 					<option value="USDC">USDC</option>
 					<option value="KAS">KAS</option>
 					<option value="KRC20:NACHO">KRC20:NACHO</option>
@@ -205,9 +268,13 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				const fee = n * 0.005;
 				if (n <= 0) return null;
 				return (
-					<p className="muted" style={{fontSize: "13px", marginTop: "-8px"}}>
+					<p className="muted" style={{ fontSize: "13px", marginTop: "-8px" }}>
 						Fee: {fee.toFixed(4)} KAS (0.5%)
-						{n < 1 && <span style={{color: "#ff9800", marginLeft: "8px"}}>⚠️ Low amount — fee may be significant</span>}
+						{n < 1 && (
+							<span style={{ color: "#ff9800", marginLeft: "8px" }}>
+								⚠️ Low amount — fee may be significant
+							</span>
+						)}
 					</p>
 				);
 			})()}
@@ -219,22 +286,45 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				validate={kvad}
 			/>
 			<FormField label="Price type">
-				<select value={priceType} onChange={(e) => setPriceType(e.target.value)}>
+				<select
+					value={priceType}
+					onChange={(e) => setPriceType(e.target.value)}
+				>
 					<option value="fixed">Fixed price</option>
 					<option value="market">Market price (updates every 15 min)</option>
 				</select>
 			</FormField>
-			{priceType === "market" && <>
-				<FormField label="Price offset (%)">
-					<input type="number" step="0.1" value={priceOffset} onChange={(e) => setPriceOffset(e.target.value)} placeholder="0" />
-				</FormField>
-				<FormField label="Min price (USD)">
-					<input type="number" step="0.001" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="0.10" />
-				</FormField>
-				<FormField label="Max price (USD)">
-					<input type="number" step="0.001" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="0.20" />
-				</FormField>
-			</>}
+			{priceType === "market" && (
+				<>
+					<FormField label="Price offset (%)">
+						<input
+							type="number"
+							step="0.1"
+							value={priceOffset}
+							onChange={(e) => setPriceOffset(e.target.value)}
+							placeholder="0"
+						/>
+					</FormField>
+					<FormField label="Min price (USD)">
+						<input
+							type="number"
+							step="0.001"
+							value={minPrice}
+							onChange={(e) => setMinPrice(e.target.value)}
+							placeholder="0.10"
+						/>
+					</FormField>
+					<FormField label="Max price (USD)">
+						<input
+							type="number"
+							step="0.001"
+							value={maxPrice}
+							onChange={(e) => setMaxPrice(e.target.value)}
+							placeholder="0.20"
+						/>
+					</FormField>
+				</>
+			)}
 			<FormField label="Expires in">
 				<select
 					value={expireHours}
@@ -308,8 +398,7 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 			body.dispute_mode = disputeMode;
 			if (disputeMode === "mediator" && mediatorKey.startsWith("kaspa:"))
 				body.mediator_key = mediatorKey;
-			if (tradeHash.trim())
-				body.trade_hash = tradeHash.trim();
+			if (tradeHash.trim()) body.trade_hash = tradeHash.trim();
 			body.price_type = priceType;
 			if (priceType === "market") {
 				// Price will be fetched and locked by the backend
@@ -408,54 +497,60 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 					/>
 				</FormField>
 			)}
-			{disputeMode === "mediator" && (
-				<FormField label="Mediator address">
-					<input
-						value={mediatorKey}
-						onChange={(e) => setMediatorKey(e.target.value)}
-						placeholder="kaspa:..."
-					/>
-				</FormField>
-			)}
 			{tradeHash && (
 				<FormField label="Trade secret (for atomic swap)">
-					<p className="muted" style={{fontSize:"12px",marginTop:0}}>
+					<p className="muted" style={{ fontSize: "12px", marginTop: 0 }}>
 						Secret: <code>{tradeSecret}</code>
 					</p>
 				</FormField>
 			)}
 			<FormField label="Price type">
-				<select value={priceType} onChange={(e) => setPriceType(e.target.value)}>
+				<select
+					value={priceType}
+					onChange={(e) => setPriceType(e.target.value)}
+				>
 					<option value="market">Market price (locked at creation)</option>
 					<option value="fixed">Fixed price</option>
 				</select>
 			</FormField>
 			{priceType === "market" && (
-				<small className="muted" style={{fontSize:"12px",marginTop:"-8px"}}>
+				<small
+					className="muted"
+					style={{ fontSize: "12px", marginTop: "-8px" }}
+				>
 					Price will be fetched from CoinGecko and locked at creation time.
 				</small>
 			)}
 			<FormField label="Trade hash (optional)">
-				<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+				<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
 					<input
 						value={tradeHash}
 						onChange={(e) => setTradeHash(e.target.value)}
 						placeholder="Leave empty for non-atomic escrow"
-						style={{flex:1}}
+						style={{ flex: 1 }}
 					/>
-					<button type="button" className="button" onClick={async () => {
-						try {
-							const res = await api.generateSwap();
-							setTradeHash(res.hash);
-							setTradeSecret(res.secret);
-						} catch (err) {
-							setError((err as Error).message);
-						}
-					}}>
+					<button
+						type="button"
+						className="button"
+						onClick={async () => {
+							try {
+								const res = await api.generateSwap();
+								setTradeHash(res.hash);
+								setTradeSecret(res.secret);
+							} catch (err) {
+								setError((err as Error).message);
+							}
+						}}
+					>
 						Generate
 					</button>
 				</div>
-				<small className="muted" style={{fontSize:"11px",marginTop:"4px",display:"block"}}>Save this secret! It's needed to claim the escrow atomically.</small>
+				<small
+					className="muted"
+					style={{ fontSize: "11px", marginTop: "4px", display: "block" }}
+				>
+					Save this secret! It's needed to claim the escrow atomically.
+				</small>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
 			<button
@@ -473,7 +568,9 @@ function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 function SwapForm({ onDone }: { onDone: () => void }) {
 	const [escrowId, setEscrowId] = useState("");
 	const [preimage, setPreimage] = useState("");
-	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+		"idle",
+	);
 	const [error, setError] = useState("");
 	const [result, setResult] = useState<string | null>(null);
 	const [expectedHash, setExpectedHash] = useState<string | null>(null);
@@ -509,26 +606,48 @@ function SwapForm({ onDone }: { onDone: () => void }) {
 	}
 
 	if (status === "done") {
-		return <p className="muted success-text">Swap settled! Preimage hash: {result}</p>;
+		return (
+			<p className="muted success-text">
+				Swap settled! Preimage hash: {result}
+			</p>
+		);
 	}
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
-			<p className="muted">Settle an escrow. For market orders, no preimage is needed. For atomic swaps, submit the preimage.</p>
+			<p className="muted">
+				Settle an escrow. For market orders, no preimage is needed. For atomic
+				swaps, submit the preimage.
+			</p>
 			<FormField label="Escrow ID">
-				<input value={escrowId} onChange={(e) => { setEscrowId(e.target.value); fetchEscrow(); }} placeholder="esc_..." />
+				<input
+					value={escrowId}
+					onChange={(e) => {
+						setEscrowId(e.target.value);
+						fetchEscrow();
+					}}
+					placeholder="esc_..."
+				/>
 			</FormField>
 			{expectedHash && (
-				<div className="row" style={{fontSize:"13px"}}>
+				<div className="row" style={{ fontSize: "13px" }}>
 					<span>Expected hash</span>
 					<code>{expectedHash}</code>
 				</div>
 			)}
 			<FormField label="Preimage (hex, optional for market orders)">
-				<input value={preimage} onChange={(e) => setPreimage(e.target.value)} placeholder="hex encoded secret (leave empty for market orders)" />
+				<input
+					value={preimage}
+					onChange={(e) => setPreimage(e.target.value)}
+					placeholder="hex encoded secret (leave empty for market orders)"
+				/>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
-			<button className="button primary" type="submit" disabled={status === "loading"}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+			>
 				{status === "loading" ? "Settling..." : "Submit Preimage"}
 			</button>
 		</form>
@@ -621,9 +740,19 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 				/>
 			</FormField>
 			<FormField label="Signature">
-				<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
-					<input value={authSig} onChange={(e) => setAuthSig(e.target.value)} placeholder="auto-filled when signing" readOnly={authSig.length > 0} style={{flex:1}} />
-					<SignWithWallet message={`dispute:${escrowId}`} onSignature={(sig) => setAuthSig(sig)} walletAddress={authAddress} />
+				<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+					<input
+						value={authSig}
+						onChange={(e) => setAuthSig(e.target.value)}
+						placeholder="auto-filled when signing"
+						readOnly={authSig.length > 0}
+						style={{ flex: 1 }}
+					/>
+					<SignWithWallet
+						message={`dispute:${escrowId}`}
+						onSignature={(sig) => setAuthSig(sig)}
+						walletAddress={authAddress}
+					/>
 				</div>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
@@ -725,10 +854,10 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 				};
 			}
 			let res: { status: string; escrow_id: string };
-			const act: string = action;
-			if (act === "settle") res = await api.settleEscrow(escrowId, auth!);
-			else if (act === "refund") res = await api.refundEscrow(escrowId, auth!);
-			else if (act === "dispute")
+			if (action === "settle") res = await api.settleEscrow(escrowId, auth!);
+			else if (action === "refund")
+				res = await api.refundEscrow(escrowId, auth!);
+			else if (action === "dispute")
 				res = await api.disputeEscrow(escrowId, disputeReason);
 			else res = await api.cancelEscrow(escrowId);
 			setResult(res);
@@ -776,13 +905,15 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 					</FormField>
 					{authAddress.startsWith("kaspa:") && (
 						<FormField label="Signature">
-							<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+							<div
+								style={{ display: "flex", gap: "8px", alignItems: "center" }}
+							>
 								<input
 									value={authSignature}
 									onChange={(e) => setAuthSignature(e.target.value)}
 									placeholder="auto-filled when signing"
 									readOnly={authSignature.length > 0}
-									style={{flex:1}}
+									style={{ flex: 1 }}
 								/>
 								<SignWithWallet
 									message={`${action}:${escrowId}`}
@@ -887,9 +1018,19 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 				/>
 			</FormField>
 			<FormField label="Signature">
-				<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
-					<input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder="auto-filled when signing" readOnly={signature.length > 0} style={{flex:1}} />
-					<SignWithWallet message={`daglock.io:verify:telegram:${telegramHandle}`} onSignature={(sig) => setSignature(sig)} walletAddress={address} />
+				<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+					<input
+						value={signature}
+						onChange={(e) => setSignature(e.target.value)}
+						placeholder="auto-filled when signing"
+						readOnly={signature.length > 0}
+						style={{ flex: 1 }}
+					/>
+					<SignWithWallet
+						message={`daglock.io:verify:telegram:${telegramHandle}`}
+						onSignature={(sig) => setSignature(sig)}
+						walletAddress={address}
+					/>
 				</div>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
@@ -955,7 +1096,9 @@ function OfferCard({
 				{offer.base_asset} for {offer.quote_asset}
 			</p>
 			{offer.price_type === "market" && offer.current_price && (
-				<small className="muted">Market price: ${offer.current_price.toFixed(4)} USD</small>
+				<small className="muted">
+					Market price: ${offer.current_price.toFixed(4)} USD
+				</small>
 			)}
 			<small className="muted addr">
 				by {offer.creator_address.slice(0, 24)}…
@@ -1886,7 +2029,12 @@ function MyOffersPanel() {
 			{list.data && list.data.length > 0 && (
 				<div className="action-tabs" style={{ marginTop: "8px" }}>
 					{["all", "proposed", "accepted", "cancelled"].map((f) => (
-						<button key={f} className={`button ${filter === f ? "primary" : ""}`} onClick={() => setFilter(f)} style={{ fontSize: "11px", padding: "2px 8px" }}>
+						<button
+							key={f}
+							className={`button ${filter === f ? "primary" : ""}`}
+							onClick={() => setFilter(f)}
+							style={{ fontSize: "11px", padding: "2px 8px" }}
+						>
 							{f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
 						</button>
 					))}
@@ -1899,7 +2047,10 @@ function MyOffersPanel() {
 				render={(data) => (
 					<div>
 						{data.length === 0 && (
-							<p className="muted">No {filter === "all" ? "" : filter} offers found for this address.</p>
+							<p className="muted">
+								No {filter === "all" ? "" : filter} offers found for this
+								address.
+							</p>
 						)}
 						{data.map((o) => (
 							<article
@@ -2226,6 +2377,10 @@ export default function App() {
 				title: "Link Telegram",
 				content: <LinkTelegramForm onDone={closeTab} />,
 			},
+			"my-offers": {
+				title: "My offers",
+				content: <MyOffersPanel />,
+			},
 			jury: {
 				title: "Jury panel",
 				content: <JuryPanel />,
@@ -2256,18 +2411,63 @@ export default function App() {
 				</a>
 				.
 			</div>
-			<div style={{background:'#1a3a1a',border:'1px solid rgba(83,215,105,0.3)',borderRadius:'8px',padding:'16px',marginTop:'8px',marginBottom:'8px'}}>
+			<div
+				style={{
+					background: "#1a3a1a",
+					border: "1px solid rgba(83,215,105,0.3)",
+					borderRadius: "8px",
+					padding: "16px",
+					marginTop: "8px",
+					marginBottom: "8px",
+				}}
+			>
 				<strong>🚀 Getting Started</strong>
-				<ol style={{margin:'8px 0 0 0',paddingLeft:'20px',fontSize:'13px',lineHeight:1.8}}>
-					<li>Install <a href="https://kasware.xyz" target="_blank" rel="noopener noreferrer" style={{color:'#53d769'}}>KasWare</a> browser extension</li>
-					<li>Get testnet KAS from <a href="https://faucet-tn10.kaspanet.io/" target="_blank" rel="noopener noreferrer" style={{color:'#53d769'}}>Testnet Faucet</a></li>
+				<ol
+					style={{
+						margin: "8px 0 0 0",
+						paddingLeft: "20px",
+						fontSize: "13px",
+						lineHeight: 1.8,
+					}}
+				>
+					<li>
+						Install{" "}
+						<a
+							href="https://kasware.xyz"
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{ color: "#53d769" }}
+						>
+							KasWare
+						</a>{" "}
+						browser extension
+					</li>
+					<li>
+						Get testnet KAS from{" "}
+						<a
+							href="https://faucet-tn10.kaspanet.io/"
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{ color: "#53d769" }}
+						>
+							Testnet Faucet
+						</a>
+					</li>
 					<li>Connect your wallet using the button in the header</li>
 					<li>Create an offer or escrow below</li>
 				</ol>
 			</div>
 			<header className="hero">
 				<div>
-					<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "8px" }}>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "space-between",
+							width: "100%",
+							marginBottom: "8px",
+						}}
+					>
 						<div className="brand">Kaspa Escrow</div>
 						<WalletStatus />
 					</div>
@@ -2399,6 +2599,7 @@ export default function App() {
 							[
 								["Settle", "settle"],
 								["Refund", "refund"],
+								["Swap", "swap"],
 								["Dispute", "dispute"],
 								["Cancel", "cancel"],
 							] as const
@@ -2423,6 +2624,7 @@ export default function App() {
 								["My offers", "my-offers"],
 								["Telegram", "link-telegram"],
 								["Jury", "jury"],
+								["Compile", "compile"],
 							] as const
 						).map(([label, key]) => (
 							<button

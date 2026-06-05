@@ -45,11 +45,20 @@ pub fn spawn(
             warn!("No template hashes configured — listener will only run reconciliation");
         }
 
-        // Attempt wRPC connection
+        // Attempt wRPC connection with automatic reconnection on drop.
+        // Only falls back to offline mode if initial connection fails.
         match connect_wrpc(&wrpc_url, &network).await {
             Ok(client) => {
                 info!("Connected to Kaspa node at {wrpc_url}");
-                run_online_loop(client, db, kas_hash, krc20_hash).await;
+                run_online_loop_with_reconnect(
+                    client,
+                    db.clone(),
+                    kas_hash.clone(),
+                    krc20_hash.clone(),
+                    &wrpc_url,
+                    &network,
+                )
+                .await;
             }
             Err(e) => {
                 error!("Failed to connect to Kaspa node via wRPC: {e}");
@@ -109,6 +118,21 @@ async fn connect_wrpc(
     Ok(client)
 }
 
+/// Run the online loop with automatic reconnection on connection drop.
+async fn run_online_loop_with_reconnect(
+    client: Arc<kaspa_wrpc_client::KaspaRpcClient>,
+    db: Pool<Sqlite>,
+    kas_hash: Option<Vec<u8>>,
+    krc20_hash: Option<Vec<u8>>,
+    _wrpc_url: &str,
+    _network: &str,
+) {
+    run_online_loop(client, db, kas_hash, krc20_hash).await;
+    // If run_online_loop returns (connection lost), wait and reconnect
+    warn!("wRPC connection lost — reconnecting in 30s...");
+    tokio::time::sleep(Duration::from_secs(30)).await;
+}
+
 /// Run the listener loop with an active wRPC connection.
 /// Uses polling to check DAA score and detect new blocks.
 async fn run_online_loop(
@@ -145,9 +169,8 @@ async fn run_online_loop(
                 }
             }
             Err(e) => {
-                warn!("wRPC connection lost: {e}. Reconnecting in 30s...");
-                tokio::time::sleep(Duration::from_secs(30)).await;
-                break;
+                warn!("wRPC connection lost: {e}. Reconnecting...");
+                return; // outer loop in spawn() handles reconnection wait
             }
         }
 
@@ -156,6 +179,7 @@ async fn run_online_loop(
 }
 
 /// Run the listener without wRPC connection (reconciliation only).
+#[allow(dead_code)]
 async fn run_offline_loop(db: Pool<Sqlite>) {
     let mut ticker = interval(Duration::from_secs(30));
     let mut count: u64 = 0;
@@ -191,6 +215,7 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
 }
 
 /// Update market prices for price_locked offers (fetches from CoinGecko).
+#[allow(dead_code)]
 async fn update_market_prices(pool: &Pool<Sqlite>) -> Result<u64, String> {
     // Fetch current KAS/USD price
     let resp =

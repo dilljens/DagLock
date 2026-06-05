@@ -1,6 +1,6 @@
 # Web
 
-**Source**: `web/src/`  **Updated**: `2026-06-04`  (3 files)
+**Source**: `web/src/`  **Updated**: `2026-06-05`  (3 files)
 
 ## What it does
 React + Vite dashboard for browser-based users. Provides escrow creation, claiming, offer board, and reputation views. Communicates with the indexer REST API.
@@ -15,21 +15,25 @@ App.tsx (all components)
 
 Components:
     CreateOfferForm         Post a buy/sell listing with expiry
-    CreateEscrowForm        Create escrow (standard/mediator/jury)
-    EscrowActionForm        Settle, refund, cancel with confirmation
+    CreateEscrowForm        Create escrow (standard/mediator/jury) with atomic swap + market price
+    EscrowActionForm        Settle, refund, cancel with KasWare signing
+    SwapForm                Atomic swap settle via preimage
     DisputeWithEvidenceForm Dispute with evidence + jury mode
     OfferCard               Offer listing with accept/cancel inline
     LookupResult            Reusable fetch-and-display component
-    EscrowLookup            Escrow detail with timeline + messages
-    ReputationLookup        Beta score breakdown + witnesses
+    EscrowLookup            Escrow detail with timeline + messages + evidence
+    ReputationLookup        Beta score breakdown + vouch scores + wash trading signal
     MyEscrows               List escrows by address
-    MyOffersPanel           List offers by address
+    MyOffersPanel           List offers by address with status filter
     ReceiptLookup           Settlement receipt viewer
     JuryPanel               Register, unregister, vote on cases
     LinkTelegramForm        Verify Telegram handle
-    StatusTimeline          Visual lifecycle indicator
-    ValidatedInput          Inline address validation on blur
-    ConfirmDialog           Modal for destructive actions
+    CreateVaultForm         Create time-locked vault
+    VaultLookup             Vault details by ID
+    VaultListPanel          List vaults by owner address
+    VaultStatusPanel        Withdraw from vault (prompts for address + signature)
+    WalletStatus            KasWare wallet connection + balance
+    SignWithWallet          Schnorr message signing via KasWare
 ```
 
 ## Key functions / components

@@ -1,6 +1,6 @@
 # CLI
 
-**Source**: `cli/src/`  **Updated**: `2026-06-04`  (8 files)
+**Source**: `cli/src/`  **Updated**: `2026-06-05`  (10 files)
 
 ## What it does
 Command-line power-user tool for DagLock escrow operations. Connects to the indexer REST API for queries and assembles unsigned transactions for signing with kaspawallet or KasWare.
@@ -16,6 +16,8 @@ main.rs (clap dispatch)
     ├── commands/reputation.rs ──▶ GET /v1/reputation/:address
     ├── commands/receipt.rs   ──▶ GET /v1/receipts/:id
     ├── commands/message.rs  ──▶ POST/GET messages
+    ├── commands/swap.rs      ──▶ POST /v1/escrows/:id/swap (atomic swap settle)
+    ├── commands/vault.rs    ──▶ POST/GET /v1/vaults, /vaults/:id/withdraw
     │
     └── tx.rs                 ──▶ Transaction assembly (unsigned)
 ```
@@ -23,10 +25,16 @@ main.rs (clap dispatch)
 ## Key functions / components
 | Name | Kind | File:Line | Purpose |
 |------|------|-----------|---------|
-| `Commands` | enum | `cli/src/main.rs` | All CLI subcommands (Create, Claim, Refund, Dispute, Cancel, Offer, Status, Reputation, Receipt, Config) |
+| `Commands` | enum | `cli/src/main.rs` | All CLI subcommands (Create, Claim, Refund, Dispute, Cancel, Swap, Vault, Offer, Status, Reputation, Receipt, Msg, Messages, Config) |
 | `OfferCommands` | enum | `cli/src/main.rs` | Offer subcommands (List, Create, Accept, Cancel) |
+| `VaultCommands` | enum | `cli/src/main.rs` | Vault subcommands (Create, List, Get, Withdraw) |
 | `commands::create::run()` | function | `cli/src/commands/create.rs` | Create escrow proposal via API |
 | `commands::claim::run()` | function | `cli/src/commands/claim.rs` | Claim/release escrow |
+| `commands::swap::run()` | function | `cli/src/commands/swap.rs` | Atomic swap settle via preimage |
+| `commands::vault::create()` | function | `cli/src/commands/vault.rs` | Create time-locked vault |
+| `commands::vault::list()` | function | `cli/src/commands/vault.rs` | List vaults by owner |
+| `commands::vault::get()` | function | `cli/src/commands/vault.rs` | Get vault details |
+| `commands::vault::withdraw()` | function | `cli/src/commands/vault.rs` | Withdraw from vault |
 | `commands::offer::list()` | function | `cli/src/commands/offer.rs` | Browse open offers |
 
 ## Data flow

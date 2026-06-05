@@ -84,8 +84,9 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, seller_address, amount_sompi, fee_sompi, template_hash,
          expiration_daa_score, disputed_at, dispute_reason, cancelled_at, expired_at,
-         created_at, settled_at, refunded_at, mediator_key, dispute_mode, dispute_outcome, dispute_resolved_at, price_at_creation, price_currency, trade_hash)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)"
+         created_at, settled_at, refunded_at, mediator_key, dispute_mode, dispute_outcome, dispute_resolved_at, price_at_creation, price_currency, trade_hash,
+         price_lock_time, price_at_settlement, price_source, price_type)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29)"
     )
     .bind(&escrow.id).bind(&escrow.lock_tx_id)
     .bind(escrow.lock_tx_output_index as i64).bind(escrow.status.as_str())

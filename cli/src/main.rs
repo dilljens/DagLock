@@ -66,6 +66,17 @@ enum Commands {
         /// Escrow ID
         id: String,
     },
+    /// Settle via atomic swap (preimage)
+    Swap {
+        /// Escrow ID
+        id: String,
+        /// Preimage hex (secret for atomic swap)
+        #[arg(long)]
+        preimage: String,
+    },
+    /// Vault management
+    #[command(subcommand)]
+    Vault(VaultCommands),
     /// Offer board management
     #[command(subcommand)]
     Offer(OfferCommands),
@@ -109,6 +120,44 @@ enum Commands {
         /// Escrow ID
         id: String,
         /// Your Kaspa address
+        #[arg(long)]
+        address: String,
+        /// Hex signature
+        #[arg(long)]
+        signature: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum VaultCommands {
+    /// Create a new time-locked vault
+    Create {
+        /// Owner Kaspa address
+        #[arg(long)]
+        address: String,
+        /// Amount in KAS
+        #[arg(long)]
+        amount: String,
+        /// Timeout in seconds from now
+        #[arg(long, default_value_t = 86400)]
+        timeout: u64,
+    },
+    /// List vaults by owner address
+    List {
+        /// Owner Kaspa address
+        #[arg(long)]
+        address: String,
+    },
+    /// Get vault details
+    Get {
+        /// Vault ID
+        id: String,
+    },
+    /// Withdraw from vault
+    Withdraw {
+        /// Vault ID
+        id: String,
+        /// Owner Kaspa address
         #[arg(long)]
         address: String,
         /// Hex signature
@@ -192,6 +241,31 @@ async fn main() -> anyhow::Result<()> {
         Commands::Cancel { id } => {
             commands::claim::run_cancel(api_url, &id).await?;
         }
+        Commands::Swap { id, preimage } => {
+            commands::swap::run(api_url, &id, &preimage).await?;
+        }
+        Commands::Vault(cmd) => match cmd {
+            VaultCommands::Create {
+                address,
+                amount,
+                timeout,
+            } => {
+                commands::vault::create(api_url, &address, &amount, timeout).await?;
+            }
+            VaultCommands::List { address } => {
+                commands::vault::list(api_url, &address).await?;
+            }
+            VaultCommands::Get { id } => {
+                commands::vault::get(api_url, &id).await?;
+            }
+            VaultCommands::Withdraw {
+                id,
+                address,
+                signature,
+            } => {
+                commands::vault::withdraw(api_url, &id, &address, &signature).await?;
+            }
+        },
         Commands::Offer(cmd) => match cmd {
             OfferCommands::List => commands::offer::list(api_url).await?,
             OfferCommands::Create {
@@ -249,4 +323,6 @@ mod commands {
     pub mod receipt;
     pub mod reputation;
     pub mod status;
+    pub mod swap;
+    pub mod vault;
 }
