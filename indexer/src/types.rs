@@ -487,6 +487,7 @@ pub struct WithdrawVaultRequest {
 
 /// Transfer vault request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct TransferVaultRequest {
     pub beneficiary_address: Address,
     pub owner_address: Address,

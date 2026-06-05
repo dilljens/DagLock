@@ -104,6 +104,7 @@ pub fn verify_escrow_refundable(
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
     use crate::types::*;
@@ -171,11 +172,13 @@ mod tests {
 /// Real verifier that checks UTXO existence via wRPC connection to a Kaspa node.
 ///
 /// Requires a connected KaspaRpcClient. Falls back gracefully when no connection is available.
+#[allow(dead_code)]
 pub struct WrpcVerifier {
     client: Option<Arc<kaspa_wrpc_client::KaspaRpcClient>>,
 }
 
 impl WrpcVerifier {
+    #[allow(dead_code)]
     pub fn new(client: Option<Arc<kaspa_wrpc_client::KaspaRpcClient>>) -> Self {
         Self { client }
     }
@@ -185,15 +188,6 @@ impl EscrowVerifier for WrpcVerifier {
     fn verify_utxo_exists(&self, escrow: &Escrow) -> VerificationResult<bool> {
         match &self.client {
             Some(_client) => {
-                let _address = if escrow.asset_type == "KAS" {
-                    &escrow.buyer_address
-                } else {
-                    &escrow.buyer_address
-                };
-
-                // Query UTXOs for the escrow address
-                // This requires async, but the trait is sync.
-                // We use a simple approach: convert lock_tx_id to a searchable format
                 warn!(
                     "WrpcVerifier: checking UTXO for escrow {} (tx: {})",
                     escrow.id, escrow.lock_tx_id

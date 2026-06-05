@@ -1663,6 +1663,7 @@ fn row_to_vault(row: sqlx::sqlite::SqliteRow) -> Vault {
 
 // ── wRPC Listener Queries
 
+#[allow(dead_code)]
 pub async fn try_find_escrow_by_lock_tx(
     pool: &Pool<Sqlite>,
     lock_tx_id: &str,
@@ -1675,6 +1676,7 @@ pub async fn try_find_escrow_by_lock_tx(
     Ok(row.map(|(id,)| id))
 }
 
+#[allow(dead_code)]
 pub async fn update_escrow_status_only(
     pool: &Pool<Sqlite>,
     id: &str,
