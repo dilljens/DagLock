@@ -1734,9 +1734,9 @@ function VaultStatusPanel({
 	);
 }
 
-/* ─── My Offers Panel ─── */
 function MyOffersPanel() {
 	const [address, setAddress] = useState("");
+	const [filter, setFilter] = useState("all");
 	const [list, setList] = useState<LoadState<Offer[]>>({ loading: false });
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -1751,6 +1751,11 @@ function MyOffersPanel() {
 		}
 	}
 
+	const filtered = list.data?.filter((o) => {
+		if (filter === "all") return true;
+		return o.status === filter;
+	});
+
 	return (
 		<div className="stack">
 			<form className="form" onSubmit={handleSubmit}>
@@ -1763,14 +1768,23 @@ function MyOffersPanel() {
 					List my offers
 				</button>
 			</form>
+			{list.data && list.data.length > 0 && (
+				<div className="action-tabs" style={{ marginTop: "8px" }}>
+					{["all", "proposed", "accepted", "cancelled"].map((f) => (
+						<button key={f} className={`button ${filter === f ? "primary" : ""}`} onClick={() => setFilter(f)} style={{ fontSize: "11px", padding: "2px 8px" }}>
+							{f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+						</button>
+					))}
+				</div>
+			)}
 			<LookupResult
 				loading={list.loading}
 				error={list.error}
-				data={list.data}
+				data={filtered}
 				render={(data) => (
 					<div>
 						{data.length === 0 && (
-							<p className="muted">No offers found for this address.</p>
+							<p className="muted">No {filter === "all" ? "" : filter} offers found for this address.</p>
 						)}
 						{data.map((o) => (
 							<article
@@ -1789,6 +1803,11 @@ function MyOffersPanel() {
 								</p>
 								<code>{o.id}</code>
 								<small className="muted">{relativeTime(o.created_at)}</small>
+								{o.expires_at && (
+									<small className="muted">
+										Expires: {relativeTime(o.expires_at)}
+									</small>
+								)}
 							</article>
 						))}
 					</div>
