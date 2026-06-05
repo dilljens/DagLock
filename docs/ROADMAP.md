@@ -72,7 +72,7 @@
 |---|---|
 | **DagLock Telegram Bot** | `/create` — initiate escrow from chat\`/claim <id>` — claim an escrow\`/offers` — browse open offers\`/reputation <address>` — check counterparty\`/receipt <id>` — export settlement receipt |
 | CLI tool | `daglock-cli create --amount 5000 --counterparty kaspa:...`\`daglock-cli claim <escrow-id>`\`daglock-cli offers --token KRC20:NACHO` |
-| Trade link deep links | `https://t.me/DagLockBot?start=claim_abc123` — open Telegram directly to claim |
+| Trade link deep links | `https://t.me/DagLock_bot?start=claim_abc123` — open Telegram directly to claim |
 | KasWare wallet bridge | Bot sends unsigned tx to KasWare for signing (no private key exposure) |
 
 **Validation:**
@@ -136,7 +136,7 @@
 | Task | Deliverable |
 |---|---|
 | Deploy indexer on mainnet | Swap TN12 for mainnet wRPC |
-| Deploy Telegram bot on mainnet | `@DagLockBot` live |
+| Deploy Telegram bot on mainnet | `@DagLock_bot` live |
 | Deploy web UI | `daglock.io` |
 | Publish audit report | Public covenant audit |
 | **Volume-based fee tiers** | Track off-chain volume per address; offer rebates at thresholds (e.g., >100K KAS vol → 0.25% fee) |

@@ -355,7 +355,7 @@ bot.command('help', async (ctx) => {
         '/reputation <address> — Check reputation\n\n' +
         '*Trade Links:*\n' +
         'Share a link to let someone claim your escrow:\n' +
-        '`https://t.me/DagLockBot?start=claim_<escrow-id>`',
+        '`https://t.me/DagLock_bot?start=claim_<escrow-id>`',
         { parse_mode: 'Markdown' }
     );
 });

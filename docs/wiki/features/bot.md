@@ -3,7 +3,7 @@
 **Source**: `bot/src/`  **Updated**: `2026-06-04`  (2 files)
 
 ## What it does
-Telegram bot (`@DagLockBot`) for DagLock escrow operations. Meet Kaspa users where they are — Telegram. Uses grammY framework, communicates with indexer REST API.
+Telegram bot (`@DagLock_bot`) for DagLock escrow operations. Meet Kaspa users where they are — Telegram. Uses grammY framework, communicates with indexer REST API.
 
 ## Architecture
 ```
@@ -36,14 +36,14 @@ index.js (bot entry + command handlers)
 | `/help` | All commands |
 
 ## Data flow
-1. User sends command to `@DagLockBot`
+1. User sends command to `@DagLock_bot`
 2. Bot parses command → calls indexer REST API
 3. Bot responds with formatted data / inline keyboards
 4. For signing: bot sends trade link deep link to KasWare/Kaspium
 
 ## Edge cases & gotchas
 - Bot NEVER sees private keys — unsigned tx only
-- Trade links: `https://t.me/DagLockBot?start=claim_<escrow_id>`
+- Trade links: `https://t.me/DagLock_bot?start=claim_<escrow_id>`
 - Node.js runtime — not Rust like other components
 - grammY framework (not telegraf)
 

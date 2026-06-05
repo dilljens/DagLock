@@ -13,7 +13,7 @@ Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptog
 **Try it now:**
 
 - **Web app:** Visit [daglock.com](https://daglock.com) — no installation needed
-- **Telegram bot:** Message [@DagLockBot](https://t.me/DagLockBot) on Telegram — see [BOT-README.md](docs/BOT-README.md) for commands
+- **Telegram bot:** Message [@DagLock_bot](https://t.me/DagLock_bot) on Telegram — see [BOT-README.md](docs/BOT-README.md) for commands
 - **CLI:** `cargo install --git https://github.com/dilljens/DagLock daglock-cli` — see [CLI-README.md](docs/CLI-README.md) for commands
 
 **Create escrows, check reputation, find counterparties, and resolve disputes — all without trusting a middleman.**
@@ -86,7 +86,7 @@ daglock/
 ├── contracts/     SilverScript covenant source (.sil) + compiler tests
 ├── indexer/       Rust daemon — wRPC listener + REST API (30+ endpoints)
 ├── cli/           Command-line tool for power users
-├── bot/           Telegram bot (@DagLockBot)
+├── bot/           Telegram bot (@DagLock_bot)
 ├── wasm-sdk/      WASM bindings for browser wallet integration
 ├── web/           React + Vite dashboard (full action UI)
 ├── docs/          Architecture, protocol, API, roadmap, security

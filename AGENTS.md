@@ -35,7 +35,7 @@
 
 | Surface | Audience | Channel |
 |---|---|---|
-| **DagLock Telegram Bot** | KRC-20 traders, community members | `@DagLockBot` on Telegram |
+| **DagLock Telegram Bot** | KRC-20 traders, community members | `@DagLock_bot` on Telegram |
 | **Web Dashboard** | Desktop users, whales, OTC desks | `daglock.io` |
 | **CLI Tool** | Power users, integrators, testers | `daglock-cli` binary |
 | **REST API** | Other dApps embedding DagLock escrow | `api.daglock.io/v1` |
