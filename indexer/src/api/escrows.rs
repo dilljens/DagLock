@@ -175,7 +175,7 @@ pub async fn atomic_swap(
                 preimage_hash_hex
             );
 
-            // Verify preimage matches the stored trade_hash (if set)
+            // Verify preimage matches the stored trade_hash (if set) — BEFORE settling
             if let Some(ref expected_hash) = current.trade_hash {
                 if !expected_hash.is_empty() {
                     if preimage_hash_hex != *expected_hash {
@@ -190,7 +190,7 @@ pub async fn atomic_swap(
                 }
             }
 
-            // Atomic settle
+            // Now settle — verification passed
             let settled = queries::settle_escrow_atomic(&state.db, &id)
                 .await
                 .map_err(|_e| {

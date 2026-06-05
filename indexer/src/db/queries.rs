@@ -160,7 +160,7 @@ pub async fn settle_escrow_atomic(pool: &Pool<Sqlite>, id: &str) -> Result<bool,
     let result = sqlx::query(
         "UPDATE escrows 
          SET status = 'settled', settled_at = ?1, refunded_at = NULL 
-         WHERE id = ?2 AND status = 'active'",
+         WHERE id = ?2 AND status IN ('active', 'pending_confirmation')",
     )
     .bind(chrono::Utc::now().timestamp())
     .bind(id)
