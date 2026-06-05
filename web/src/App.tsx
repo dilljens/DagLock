@@ -70,6 +70,39 @@ function WalletStatus() {
 	);
 }
 
+/* ─── Sign With Wallet Button ─── */
+function SignWithWallet({ message, onSignature, walletAddress }: { message: string; onSignature: (sig: string) => void; walletAddress: string | null }) {
+	const [signing, setSigning] = useState(false);
+	const [error, setError] = useState("");
+
+	async function handleSign() {
+		if (!window.kasware) {
+			setError("KasWare wallet not detected");
+			return;
+		}
+		setSigning(true);
+		setError("");
+		try {
+			const sig = await signMessage(message, "schnorr");
+			onSignature(sig);
+		} catch (err) {
+			setError((err as Error).message || "Signing cancelled");
+		} finally {
+			setSigning(false);
+		}
+	}
+
+	return (
+		<div>
+			<button type="button" className="button" onClick={handleSign} disabled={signing} style={{ fontSize: "12px", padding: "4px 10px" }}>
+				{signing ? "Signing..." : "✍️ Sign with Wallet"}
+			</button>
+			{error && <p className="muted" style={{ fontSize: "12px", color: "#ff7b7b", marginTop: "4px" }}>{error}</p>}
+			{walletAddress && <p className="muted" style={{ fontSize: "11px", marginTop: "2px" }}>Signing as {walletAddress.slice(0, 16)}...</p>}
+		</div>
+	);
+}
+
 function CreateOfferForm({ onDone }: { onDone: () => void }) {
 	const [side, setSide] = useState("sell");
 	const [baseAsset, setBaseAsset] = useState("KAS");
@@ -469,12 +502,11 @@ function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 					placeholder="kaspa:..."
 				/>
 			</FormField>
-			<FormField label="Signature (hex)">
-				<input
-					value={authSig}
-					onChange={(e) => setAuthSig(e.target.value)}
-					placeholder="hex signature from wallet"
-				/>
+			<FormField label="Signature">
+				<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+					<input value={authSig} onChange={(e) => setAuthSig(e.target.value)} placeholder="auto-filled when signing" readOnly={authSig.length > 0} style={{flex:1}} />
+					<SignWithWallet message={`dispute:${escrowId}`} onSignature={(sig) => setAuthSig(sig)} walletAddress={authAddress} />
+				</div>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
 			<button
@@ -624,13 +656,24 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 							placeholder="kaspa:..."
 						/>
 					</FormField>
-					<FormField label="Signature (hex)">
-						<input
-							value={authSignature}
-							onChange={(e) => setAuthSignature(e.target.value)}
-							placeholder="hex signature from wallet"
-						/>
-					</FormField>
+					{authAddress.startsWith("kaspa:") && (
+						<FormField label="Signature">
+							<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+								<input
+									value={authSignature}
+									onChange={(e) => setAuthSignature(e.target.value)}
+									placeholder="auto-filled when signing"
+									readOnly={authSignature.length > 0}
+									style={{flex:1}}
+								/>
+								<SignWithWallet
+									message={`${action}:${escrowId}`}
+									onSignature={(sig) => setAuthSignature(sig)}
+									walletAddress={authAddress}
+								/>
+							</div>
+						</FormField>
+					)}
 				</>
 			)}
 			{error && <p className="muted error-text">{error}</p>}
@@ -725,12 +768,11 @@ function LinkTelegramForm({ onDone }: { onDone: () => void }) {
 					placeholder="@yourhandle"
 				/>
 			</FormField>
-			<FormField label="Signature (hex)">
-				<input
-					value={signature}
-					onChange={(e) => setSignature(e.target.value)}
-					placeholder="hex signature from wallet"
-				/>
+			<FormField label="Signature">
+				<div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+					<input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder="auto-filled when signing" readOnly={signature.length > 0} style={{flex:1}} />
+					<SignWithWallet message={`daglock.io:verify:telegram:${telegramHandle}`} onSignature={(sig) => setSignature(sig)} walletAddress={address} />
+				</div>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
 			<button
