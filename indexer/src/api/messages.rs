@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
-use crate::auth::{AuthContext, SignatureVerifier};
+use crate::auth::AuthContext;
 use crate::crypto;
 use crate::db::queries;
 use crate::types::*;
@@ -143,8 +143,8 @@ pub async fn list(
     let auth_res = AuthContext::from_headers(&headers);
     let allow = match auth_res {
         Ok(auth_ref) => {
-            let sig_verifier = crate::auth::Secp256k1Verifier::new();
-            if !(&sig_verifier as &dyn SignatureVerifier)
+            if !state
+                .sig_verifier
                 .verify_signature(
                     &auth_ref.address,
                     &auth_ref.signature,

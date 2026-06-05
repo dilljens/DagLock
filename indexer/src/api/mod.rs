@@ -14,6 +14,7 @@ pub mod swap;
 pub mod vaults;
 pub mod vouches;
 
+use crate::auth::SignatureVerifier;
 use crate::verification::EscrowVerifier;
 use crate::websocket;
 use axum::routing::{get, post};
@@ -35,6 +36,8 @@ pub struct AppState {
     /// On-chain verification service.
     /// Uses MockVerifier for now; replace with WrpcVerifier when wRPC is ready.
     pub verifier: Arc<dyn EscrowVerifier>,
+    /// Signature verifier — MockVerifier or SchnorrVerifier based on --mock-auth.
+    pub sig_verifier: Arc<dyn SignatureVerifier>,
     /// WebSocket broadcast channel.
     pub ws_tx: tokio::sync::broadcast::Sender<crate::websocket::WsEvent>,
 }

@@ -54,10 +54,15 @@ async fn main() {
 
     info!("Database ready: {}", args.database_url);
 
-    // Initialize verifier — use MockVerifier for now
+    // Initialize on-chain verifier — use MockVerifier for now
     // wRPC verifier — wired when the listener is connected to a Kaspa node
     let verifier: Arc<dyn crate::verification::EscrowVerifier> =
         Arc::new(crate::verification::MockVerifier);
+
+    // Initialize signature verifier — chooses mock or real based on --mock-auth
+    // Panics if --mock-auth is combined with --network mainnet
+    let sig_verifier: Arc<dyn crate::auth::SignatureVerifier> =
+        Arc::from(crate::auth::create_verifier(&args.network, args.mock_auth));
 
     // Create WebSocket event channel
     let (ws_tx, _) = broadcast::channel(100);
@@ -70,6 +75,7 @@ async fn main() {
         daglock_kas_template: args.daglock_kas_template.clone(),
         daglock_krc20_template: args.daglock_krc20_template.clone(),
         verifier,
+        sig_verifier,
         ws_tx,
     };
 

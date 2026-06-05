@@ -1,11 +1,7 @@
 //! Atomic swap API endpoints.
 
-use axum::extract::State;
-use axum::http::StatusCode;
 use axum::Json;
 use serde_json::{json, Value};
-
-use crate::api::AppState;
 
 /// POST /v1/swap/generate
 /// Generate a random secret and compute its SHA-256 hash for atomic swaps.
@@ -17,11 +13,11 @@ pub async fn generate() -> Json<Value> {
     rand::thread_rng().fill_bytes(&mut secret);
 
     let mut hasher = Sha256::new();
-    hasher.update(&secret);
+    hasher.update(secret);
     let hash = hasher.finalize();
 
     Json(json!({
-        "secret": hex::encode(&secret),
-        "hash": hex::encode(&hash),
+        "secret": hex::encode(secret),
+        "hash": hex::encode(hash),
     }))
 }

@@ -38,6 +38,11 @@ pub struct Args {
     /// Database type: sqlite or postgres.
     #[arg(long, default_value = "sqlite")]
     pub db_type: String,
+
+    /// Use mock authentication (any hex string passes).
+    /// For dev/testnet only — panics if used with --network mainnet.
+    #[arg(long, default_value_t = true)]
+    pub mock_auth: bool,
 }
 
 impl Args {}

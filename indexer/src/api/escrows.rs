@@ -11,9 +11,7 @@ use uuid::Uuid;
 
 use crate::api::AppState;
 
-use crate::auth::{
-    verify_refund_authorization, verify_settle_authorization, AuthContext, SignatureVerifier,
-};
+use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
 use crate::db::queries;
 use crate::types::*;
 use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
@@ -134,13 +132,13 @@ pub async fn atomic_swap(
                 EscrowStatus::Active | EscrowStatus::PendingConfirmation
             ) =>
         {
-            return Err((
+            Err((
                 StatusCode::CONFLICT,
                 Json(json!(ApiError::new(
                     "escrow_not_active",
                     "Escrow is not in an active state"
                 ))),
-            ));
+            ))
         }
         Some(current) => {
             let preimage_bytes = hex::decode(&body.preimage).map_err(|_| {
@@ -168,7 +166,7 @@ pub async fn atomic_swap(
             let mut sha_hasher = Sha256::new();
             sha_hasher.update(&preimage_bytes);
             let preimage_hash = sha_hasher.finalize();
-            let preimage_hash_hex = hex::encode(&preimage_hash);
+            let preimage_hash_hex = hex::encode(preimage_hash);
             tracing::info!(
                 "Atomic swap: escrow {} preimage hash {}",
                 id,
@@ -177,16 +175,14 @@ pub async fn atomic_swap(
 
             // Verify preimage matches the stored trade_hash (if set) — BEFORE settling
             if let Some(ref expected_hash) = current.trade_hash {
-                if !expected_hash.is_empty() {
-                    if preimage_hash_hex != *expected_hash {
-                        return Err((
-                            StatusCode::FORBIDDEN,
-                            Json(json!(ApiError::new(
-                                "preimage_mismatch",
-                                "Preimage does not match trade hash"
-                            ))),
-                        ));
-                    }
+                if !expected_hash.is_empty() && preimage_hash_hex != *expected_hash {
+                    return Err((
+                        StatusCode::FORBIDDEN,
+                        Json(json!(ApiError::new(
+                            "preimage_mismatch",
+                            "Preimage does not match trade hash"
+                        ))),
+                    ));
                 }
             }
 
@@ -459,13 +455,14 @@ pub async fn settle(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            let sig_verifier = crate::auth::Secp256k1Verifier::new();
-            verify_settle_authorization(&current, &auth, &sig_verifier).map_err(|e| {
-                (
-                    StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new("forbidden", e.to_string()))),
-                )
-            })?;
+            verify_settle_authorization(&current, &auth, state.sig_verifier.as_ref()).map_err(
+                |e| {
+                    (
+                        StatusCode::FORBIDDEN,
+                        Json(json!(ApiError::new("forbidden", e.to_string()))),
+                    )
+                },
+            )?;
 
             // Verify escrow can be settled (UTXO exists on-chain)
             verify_escrow_settleable(&current, state.verifier.as_ref()).map_err(|e| {
@@ -558,13 +555,14 @@ pub async fn refund(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            let sig_verifier = crate::auth::Secp256k1Verifier::new();
-            verify_refund_authorization(&current, &auth, &sig_verifier).map_err(|e| {
-                (
-                    StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new("forbidden", e.to_string()))),
-                )
-            })?;
+            verify_refund_authorization(&current, &auth, state.sig_verifier.as_ref()).map_err(
+                |e| {
+                    (
+                        StatusCode::FORBIDDEN,
+                        Json(json!(ApiError::new("forbidden", e.to_string()))),
+                    )
+                },
+            )?;
 
             // Verify escrow can be refunded (UTXO exists on-chain)
             verify_escrow_refundable(&current, state.verifier.as_ref()).map_err(|e| {
@@ -771,8 +769,8 @@ pub async fn cancel(
                     ))),
                 )
             })?;
-            let sig_verifier = crate::auth::Secp256k1Verifier::new();
-            if !(&sig_verifier as &dyn SignatureVerifier)
+            if !state
+                .sig_verifier
                 .verify_signature(&auth.address, &auth.signature, &format!("cancel:{}", id))
                 .unwrap_or(false)
             {
