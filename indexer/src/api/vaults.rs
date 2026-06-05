@@ -9,7 +9,9 @@ use serde_json::{json, Value};
 use crate::api::AppState;
 use crate::auth::AuthContext;
 use crate::db::queries;
-use crate::types::{CreateVaultRequest, TransferVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest};
+use crate::types::{
+    CreateVaultRequest, TransferVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest,
+};
 
 /// GET /v1/vaults?owner=...
 pub async fn list(

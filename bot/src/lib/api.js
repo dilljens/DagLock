@@ -130,30 +130,46 @@ export class ApiClient {
 	}
 
 	createVault(data, auth) {
-		return this.request("/vaults", {
-			method: "POST",
-			body: JSON.stringify(data),
-		}, auth);
+		return this.request(
+			"/vaults",
+			{
+				method: "POST",
+				body: JSON.stringify(data),
+			},
+			auth,
+		);
 	}
 
 	withdrawVault(id, ownerAddress, signature, auth) {
-		return this.request(`/vaults/${encodeURIComponent(id)}/withdraw`, {
-			method: "POST",
-			body: JSON.stringify({ owner_address: ownerAddress, signature }),
-		}, auth);
+		return this.request(
+			`/vaults/${encodeURIComponent(id)}/withdraw`,
+			{
+				method: "POST",
+				body: JSON.stringify({ owner_address: ownerAddress, signature }),
+			},
+			auth,
+		);
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
 
 	sendMessage(escrowId, content, auth) {
-		return this.request(`/escrows/${encodeURIComponent(escrowId)}/messages`, {
-			method: "POST",
-			body: JSON.stringify({ content }),
-		}, auth);
+		return this.request(
+			`/escrows/${encodeURIComponent(escrowId)}/messages`,
+			{
+				method: "POST",
+				body: JSON.stringify({ content }),
+			},
+			auth,
+		);
 	}
 
 	listMessages(escrowId, auth) {
-		return this.request(`/escrows/${encodeURIComponent(escrowId)}/messages`, undefined, auth);
+		return this.request(
+			`/escrows/${encodeURIComponent(escrowId)}/messages`,
+			undefined,
+			auth,
+		);
 	}
 
 	// ── Evidence ──────────────────────────────────────────────────────

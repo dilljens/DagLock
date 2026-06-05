@@ -497,7 +497,10 @@ bot.command("evidence", async (ctx) => {
 
 		let msg = `📄 *Evidence for \`${id}\`*\n\n`;
 		for (const ev of evidence.slice(-5)) {
-			const date = new Date(ev.created_at * 1000).toISOString().slice(0, 19).replace("T", " ");
+			const date = new Date(ev.created_at * 1000)
+				.toISOString()
+				.slice(0, 19)
+				.replace("T", " ");
 			const by = (ev.submitted_by || "").slice(0, 16);
 			const content = (ev.content || "").slice(0, 200);
 			msg += `[${date}] \`${by}...\`: ${content}\n\n`;

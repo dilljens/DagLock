@@ -1379,7 +1379,9 @@ function VouchPanel({ onDone }: { onDone: () => void }) {
 	const [note, setNote] = useState("");
 	const [authAddress, setAuthAddress] = useState("");
 	const [authSig, setAuthSig] = useState("");
-	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+		"idle",
+	);
 	const [error, setError] = useState("");
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -1405,24 +1407,45 @@ function VouchPanel({ onDone }: { onDone: () => void }) {
 		}
 	}
 
-	if (status === "done") return <p className="muted success-text">Vouch created!</p>;
+	if (status === "done")
+		return <p className="muted success-text">Vouch created!</p>;
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
 			<FormField label="Subject address">
-				<input value={subjectAddress} onChange={(e) => setSubjectAddress(e.target.value)} placeholder="kaspa:..." />
+				<input
+					value={subjectAddress}
+					onChange={(e) => setSubjectAddress(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Note (optional)">
-				<input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why do you vouch for them?" />
+				<input
+					value={note}
+					onChange={(e) => setNote(e.target.value)}
+					placeholder="Why do you vouch for them?"
+				/>
 			</FormField>
 			<FormField label="Your address">
-				<input value={authAddress} onChange={(e) => setAuthAddress(e.target.value)} placeholder="kaspa:..." />
+				<input
+					value={authAddress}
+					onChange={(e) => setAuthAddress(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Signature">
-				<input value={authSig} onChange={(e) => setAuthSig(e.target.value)} placeholder="hex" />
+				<input
+					value={authSig}
+					onChange={(e) => setAuthSig(e.target.value)}
+					placeholder="hex"
+				/>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
-			<button className="button primary" type="submit" disabled={status === "loading"}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+			>
 				{status === "loading" ? "Creating..." : "Create vouch"}
 			</button>
 		</form>
@@ -1435,7 +1458,9 @@ function ResolveDisputePanel({ onDone }: { onDone: () => void }) {
 	const [outcome, setOutcome] = useState("expunge");
 	const [authAddress, setAuthAddress] = useState("");
 	const [authSig, setAuthSig] = useState("");
-	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+		"idle",
+	);
 	const [error, setError] = useState("");
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -1461,12 +1486,17 @@ function ResolveDisputePanel({ onDone }: { onDone: () => void }) {
 		}
 	}
 
-	if (status === "done") return <p className="muted success-text">Dispute resolved!</p>;
+	if (status === "done")
+		return <p className="muted success-text">Dispute resolved!</p>;
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
 			<FormField label="Escrow ID">
-				<input value={escrowId} onChange={(e) => setEscrowId(e.target.value)} placeholder="esc_..." />
+				<input
+					value={escrowId}
+					onChange={(e) => setEscrowId(e.target.value)}
+					placeholder="esc_..."
+				/>
 			</FormField>
 			<FormField label="Outcome">
 				<select value={outcome} onChange={(e) => setOutcome(e.target.value)}>
@@ -1475,13 +1505,25 @@ function ResolveDisputePanel({ onDone }: { onDone: () => void }) {
 				</select>
 			</FormField>
 			<FormField label="Your address">
-				<input value={authAddress} onChange={(e) => setAuthAddress(e.target.value)} placeholder="kaspa:..." />
+				<input
+					value={authAddress}
+					onChange={(e) => setAuthAddress(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Signature">
-				<input value={authSig} onChange={(e) => setAuthSig(e.target.value)} placeholder="hex" />
+				<input
+					value={authSig}
+					onChange={(e) => setAuthSig(e.target.value)}
+					placeholder="hex"
+				/>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
-			<button className="button primary" type="submit" disabled={status === "loading"}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+			>
 				{status === "loading" ? "Resolving..." : "Resolve dispute"}
 			</button>
 		</form>
@@ -2502,7 +2544,7 @@ export default function App() {
 				title: "Jury panel",
 				content: <JuryPanel />,
 			},
-			"vouch": {
+			vouch: {
 				title: "Vouch",
 				content: <VouchPanel onDone={closeTab} />,
 			},

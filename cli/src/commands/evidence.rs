@@ -27,7 +27,12 @@ pub async fn list_evidence(api_url: String, id: &str) -> Result<()> {
         let by = ev["submitted_by"].as_str().unwrap_or("?");
         let at = ev["created_at"].as_i64().unwrap_or(0);
         let content = ev["content"].as_str().unwrap_or("");
-        println!("  [{}] by {}: {}", at, &by[..by.len().min(20)], &content[..content.len().min(100)]);
+        println!(
+            "  [{}] by {}: {}",
+            at,
+            &by[..by.len().min(20)],
+            &content[..content.len().min(100)]
+        );
     }
     Ok(())
 }
