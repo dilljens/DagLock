@@ -175,20 +175,23 @@ function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				</select>
 			</FormField>
 			<FormField label="Sell asset">
-				<input
-					value={baseAsset}
-					onChange={(e) => setBaseAsset(e.target.value)}
-					placeholder="KAS"
-				/>
+				<select value={baseAsset} onChange={(e) => setBaseAsset(e.target.value)}>
+					<option value="KAS">KAS</option>
+					<option value="KRC20:NACHO">KRC20:NACHO</option>
+					<option value="KRC20:KASPY">KRC20:KASPY</option>
+					<option value="other">Other...</option>
+				</select>
 			</FormField>
 			<FormField label="For asset">
-				<input
-					value={quoteAsset}
-					onChange={(e) => setQuoteAsset(e.target.value)}
-					placeholder="USDC"
-				/>
+				<select value={quoteAsset} onChange={(e) => setQuoteAsset(e.target.value)}>
+					<option value="USDC">USDC</option>
+					<option value="KAS">KAS</option>
+					<option value="KRC20:NACHO">KRC20:NACHO</option>
+					<option value="KRC20:KASPY">KRC20:KASPY</option>
+					<option value="other">Other...</option>
+				</select>
 			</FormField>
-			<FormField label="Amount (KAS)">
+			<FormField label={`Amount (${baseAsset})`}>
 				<input
 					type="number"
 					step="any"
