@@ -10,8 +10,7 @@
 //!
 //! Falls back to offline reconciliation mode if wRPC connection fails.
 
-use kaspa_rpc_core::api::rpc::RpcApi;
-use kaspa_wrpc_client::prelude::{NetworkId, NetworkType};
+use kaspa_wrpc_client::prelude::{NetworkId, NetworkType, RpcApi};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 use std::time::Duration;
@@ -111,21 +110,29 @@ async fn connect_wrpc(
 }
 
 /// Run the listener loop with an active wRPC connection.
+/// Uses polling to check DAA score and detect new blocks.
 async fn run_online_loop(
     client: Arc<kaspa_wrpc_client::KaspaRpcClient>,
     db: Pool<Sqlite>,
     _kas_hash: Option<Vec<u8>>,
     _krc20_hash: Option<Vec<u8>>,
 ) {
+    let mut last_daa_score: i64 = 0;
     let mut heartbeat_count: u64 = 0;
 
-    // Track connection state for reconnection
+    info!("Starting wRPC online listener loop (polling)...");
+
     loop {
-        // Get current DAA score for reconciliation
         match client.get_block_dag_info().await {
             Ok(info) => {
                 let daa_score = info.virtual_daa_score as i64;
-                info!("Connected to node — DAA score: {daa_score}");
+
+                // Detect new blocks by DAA score increase
+                if daa_score > last_daa_score && last_daa_score > 0 {
+                    let new_blocks = daa_score - last_daa_score;
+                    info!("DAA progressed: {last_daa_score} → {daa_score} (+{new_blocks} blocks)");
+                }
+                last_daa_score = daa_score;
 
                 // Reconcile expired escrows
                 if let Err(e) = queries::reconcile_expired_escrows(&db, daa_score).await {
@@ -140,7 +147,7 @@ async fn run_online_loop(
             Err(e) => {
                 warn!("wRPC connection lost: {e}. Reconnecting in 30s...");
                 tokio::time::sleep(Duration::from_secs(30)).await;
-                break; // Exit to outer loop for reconnection
+                break;
             }
         }
 
@@ -186,15 +193,19 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
 /// Update market prices for price_locked offers (fetches from CoinGecko).
 async fn update_market_prices(pool: &Pool<Sqlite>) -> Result<u64, String> {
     // Fetch current KAS/USD price
-    let resp = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
-        .await
-        .map_err(|e| format!("Failed to fetch price: {e}"))?;
+    let resp =
+        reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
+            .await
+            .map_err(|e| format!("Failed to fetch price: {e}"))?;
 
     if !resp.status().is_success() {
         return Err(format!("CoinGecko returned {}", resp.status()));
     }
 
-    let price_json: serde_json::Value = resp.json().await.map_err(|e| format!("Failed to parse price: {e}"))?;
+    let price_json: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse price: {e}"))?;
     let usd_price = price_json["kaspa"]["usd"].as_f64().unwrap_or(0.0);
 
     if usd_price <= 0.0 {

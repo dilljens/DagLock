@@ -1566,7 +1566,9 @@ fn row_to_offer(row: sqlx::sqlite::SqliteRow) -> Offer {
         min_price: row.try_get("min_price").ok().flatten(),
         max_price: row.try_get("max_price").ok().flatten(),
         current_price: row.try_get("current_price").ok().flatten(),
-        price_currency: row.try_get("price_currency").unwrap_or_else(|_| "USD".to_string()),
+        price_currency: row
+            .try_get("price_currency")
+            .unwrap_or_else(|_| "USD".to_string()),
         price_updated_at: row.try_get("price_updated_at").ok().flatten(),
     }
 }
@@ -1653,6 +1655,33 @@ fn row_to_vault(row: sqlx::sqlite::SqliteRow) -> Vault {
         unlocked_at: row.try_get("unlocked_at").ok().flatten(),
         expires_at: row.try_get("expires_at").ok().flatten(),
     }
+}
+
+// ── wRPC Listener Queries
+
+pub async fn try_find_escrow_by_lock_tx(
+    pool: &Pool<Sqlite>,
+    lock_tx_id: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    let row =
+        sqlx::query_as::<_, (String,)>("SELECT id FROM escrows WHERE lock_tx_id = ?1 LIMIT 1")
+            .bind(lock_tx_id)
+            .fetch_optional(pool)
+            .await?;
+    Ok(row.map(|(id,)| id))
+}
+
+pub async fn update_escrow_status_only(
+    pool: &Pool<Sqlite>,
+    id: &str,
+    status: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE escrows SET status = ?1 WHERE id = ?2 AND status = 'pending_confirmation'")
+        .bind(status)
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(())
 }
 
 #[cfg(test)]

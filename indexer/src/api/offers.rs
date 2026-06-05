@@ -22,7 +22,10 @@ pub async fn create(
     let price_type = body.price_type.unwrap_or_else(|| "fixed".to_string());
     let current_price = if price_type == "market" {
         // Fetch current price from CoinGecko
-        let price_resp = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd").await;
+        let price_resp = reqwest::get(
+            "https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd",
+        )
+        .await;
         let kaspa_price = match price_resp {
             Ok(r) if r.status().is_success() => {
                 let price_json: serde_json::Value = r.json().await.unwrap_or_default();
@@ -55,7 +58,11 @@ pub async fn create(
         max_price: body.max_price,
         current_price,
         price_currency: "USD".to_string(),
-        price_updated_at: if current_price.is_some() { Some(chrono::Utc::now().timestamp()) } else { None },
+        price_updated_at: if current_price.is_some() {
+            Some(chrono::Utc::now().timestamp())
+        } else {
+            None
+        },
     };
 
     queries::insert_offer(&state.db, &offer)
