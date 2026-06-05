@@ -672,3 +672,18 @@ code {
 	vertical-align: middle;
 	margin-right: 6px;
 }
+
+@media (max-width: 600px) {
+	.hero { flex-direction: column; text-align: center; padding: 24px 16px; }
+	.hero h1 { font-size: 1.5rem; }
+	.grid { grid-template-columns: 1fr !important; }
+	.two-up { grid-template-columns: 1fr !important; }
+	.lookup-grid { grid-template-columns: 1fr !important; }
+	.offers { grid-template-columns: 1fr !important; }
+	.form { flex-direction: column; }
+	.action-tabs { flex-direction: column; gap: 8px; }
+	.action-group { flex-wrap: wrap; }
+	input, select, button, .button { font-size: 16px !important; }
+	.panel { margin: 8px; }
+	.offer { margin: 4px 0; }
+}

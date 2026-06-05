@@ -2072,6 +2072,15 @@ export default function App() {
 				</a>
 				.
 			</div>
+			<div style={{background:'#1a3a1a',border:'1px solid rgba(83,215,105,0.3)',borderRadius:'8px',padding:'16px',marginTop:'8px',marginBottom:'8px'}}>
+				<strong>🚀 Getting Started</strong>
+				<ol style={{margin:'8px 0 0 0',paddingLeft:'20px',fontSize:'13px',lineHeight:1.8}}>
+					<li>Install <a href="https://kasware.xyz" target="_blank" rel="noopener noreferrer" style={{color:'#53d769'}}>KasWare</a> browser extension</li>
+					<li>Get testnet KAS from <a href="https://faucet-tn10.kaspanet.io/" target="_blank" rel="noopener noreferrer" style={{color:'#53d769'}}>Testnet Faucet</a></li>
+					<li>Connect your wallet using the button in the header</li>
+					<li>Create an offer or escrow below</li>
+				</ol>
+			</div>
 			<header className="hero">
 				<div>
 					<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "8px" }}>
