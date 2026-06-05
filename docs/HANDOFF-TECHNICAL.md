@@ -216,11 +216,11 @@ This is the most technically complex part of the project. It depends on SilverSc
 ## 8. Deployment Architecture
 
 ```
-                    ┌─────────────────────────┐
-                    │  Cloudflare DNS          │
-                    │  daglock.com             │
-                    │  test.daglock.com        │
-                    └─────────────────────────┘
+                    
+                      Cloudflare DNS          
+                      daglock.com             
+                      test.daglock.com        
+                    
 
 Mainnet:
   daglock.com (Cloudflare Pages) → api.daglock.com (Railway)
@@ -267,15 +267,15 @@ Current state (June 5):
 
 | Layer | Status | Notes |
 |-------|--------|-------|
-| Covenants (KAS, KRC-20, Arbiter, Vault) | ✅ Done | Compiled, tested, audited |
-| Indexer API | ✅ Done | 30+ endpoints |
-| Web UI | ✅ Done | Full dashboard |
-| Telegram Bot | ✅ Done | All commands |
-| CLI | ✅ Done | All commands |
-| wRPC Listener | ⏳ Stub | Not connected to Kaspa node |
-| Auth (Schnorr verification) | ✅ Done | Mock by default, real available |
-| Testnet Deployment | ✅ Done | Railway + CF Pages live |
-| Mainnet Deployment | 🔜 June 30 | Waiting for Toccata hard fork |
+| Covenants (KAS, KRC-20, Arbiter, Vault) |  Done | Compiled, tested, audited |
+| Indexer API |  Done | 30+ endpoints |
+| Web UI |  Done | Full dashboard |
+| Telegram Bot |  Done | All commands |
+| CLI |  Done | All commands |
+| wRPC Listener |  Stub | Not connected to Kaspa node |
+| Auth (Schnorr verification) |  Done | Mock by default, real available |
+| Testnet Deployment |  Done | Railway + CF Pages live |
+| Mainnet Deployment |  June 30 | Waiting for Toccata hard fork |
 
 ### Deployed Features (testnet)
 

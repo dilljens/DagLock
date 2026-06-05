@@ -7,41 +7,41 @@
 ## 1. High-Level System Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          Users                                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
-│  │  Telegram    │  │  Web         │  │  CLI         │               │
-│  │  @DagLock_bot │  │  daglock.io  │  │  daglock-cli │               │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │
-│         │                 │                 │                        │
-│         └─────────────────┼─────────────────┘                        │
-│                           │ KasWare / Kaspium signing               │
-└───────────────────────────┼──────────────────────────────────────────┘
-                            │ HTTPS + WebSocket
-                            ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                      DagLock Indexer (Rust)                          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ │
-│  │ wRPC     │ │ Template │ │ Database │ │ REST     │ │ Reputation│ │
-│  │ Listener │▶│ Matcher  │▶│ (SQLite  │▶│ API      │▶│ Engine    │ │
-│  │          │ │(KAS+KRC) │ │ /PG)     │ │          │ │           │ │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └───────────┘ │
-│                                                  │                   │
-│  ┌──────────┐ ┌──────────┐                      │                   │
-│  │ Offer    │ │ Receipt  │◀─────────────────────┘                   │
-│  │ Board    │ │ Generator│                                          │
-│  └──────────┘ └──────────┘                                          │
-└───────────────────────────┼──────────────────────────────────────────┘
-                            │ wRPC (Borsh binary over WebSocket)
-                            ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│               Kaspa Node (rusty-kaspa)                               │
-│  BlockDAG Consensus Engine (10 BPS → 100 BPS)                        │
-│  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐            │
-│  │ Mempool │ │ UTXO Set │ │  Script  │ │ wRPC Server  │            │
-│  │         │ │ (pruned) │ │  Engine  │ │              │            │
-│  └─────────┘ └──────────┘ └──────────┘ └──────────────┘            │
-└──────────────────────────────────────────────────────────────────────┘
+
+                          Users                                       
+                     
+    Telegram        Web             CLI                        
+    @DagLock_bot     daglock.io      daglock-cli                
+                     
+                                                                   
+                                 
+                            KasWare / Kaspium signing               
+
+                             HTTPS + WebSocket
+                            
+
+                      DagLock Indexer (Rust)                          
+       
+   wRPC       Template   Database   REST       Reputation 
+   Listener  Matcher   (SQLite   API       Engine     
+             (KAS+KRC)   /PG)                             
+       
+                                                                     
+                                            
+   Offer      Receipt                     
+   Board      Generator                                          
+                                             
+
+                             wRPC (Borsh binary over WebSocket)
+                            
+
+               Kaspa Node (rusty-kaspa)                               
+  BlockDAG Consensus Engine (10 BPS → 100 BPS)                        
+                 
+   Mempool   UTXO Set    Script    wRPC Server              
+             (pruned)    Engine                             
+                 
+
 ```
 
 ---
@@ -116,41 +116,41 @@ React + Vite dashboard for browser-based users. Communicates with the indexer RE
 
 ```
 Alice (Buyer)               DagLock Indexer               Bob (Seller)
-     │                            │                            │
-     │ 1. POST /v1/offers         │                            │
-     │    {side:buy,asset:KAS,    │                            │
-     │     amount:5000}           │                            │
-     │───────────────────────────▶│                            │
-     │                            │                            │
-     │                  2. Offer visible on board              │
-     │                            │                            │
-     │                            │  3. GET /v1/offers?asset=KAS
-     │                            │◀───────────────────────────│
-     │                            │                            │
-     │                            │  4. Bob sees Alice's offer │
-     │                            │───────────────────────────▶│
-     │                            │                            │
-     │                            │  5. POST /v1/offers/:id/accept
-     │                            │◀───────────────────────────│
-     │                            │                            │
-     │  6. Alice notified:        │                            │
-     │     "Bob accepted.         │                            │
-     │      Fund the escrow now." │                            │
-     │◀───────────────────────────│                            │
-     │                            │                            │
-     │  7. Alice deploys DagLock  │                            │
-     │     on-chain (KasWare)     │                            │
-     │────────────────────────────│────────────────────────────│
-     │                            │                            │
-     │                  8. Indexer detects lock tx             │
-     │                     Offer status → LOCKED               │
-     │                            │                            │
-     │  9. Bob claims (signs      │                            │
-     │     release tx)            │                            │
-     │                            │◀───────────────────────────│
-     │                            │                            │
-     │                 10. Settlement detected                 │
-     │                     Receipt generated                   │
+                                                             
+      1. POST /v1/offers                                     
+         {side:buy,asset:KAS,                                
+          amount:5000}                                       
+                                 
+                                                             
+                       2. Offer visible on board              
+                                                             
+                                   3. GET /v1/offers?asset=KAS
+                                 
+                                                             
+                                   4. Bob sees Alice's offer 
+                                 
+                                                             
+                                   5. POST /v1/offers/:id/accept
+                                 
+                                                             
+       6. Alice notified:                                    
+          "Bob accepted.                                     
+           Fund the escrow now."                             
+                                 
+                                                             
+       7. Alice deploys DagLock                              
+          on-chain (KasWare)                                 
+     
+                                                             
+                       8. Indexer detects lock tx             
+                          Offer status → LOCKED               
+                                                             
+       9. Bob claims (signs                                  
+          release tx)                                        
+                                 
+                                                             
+                      10. Settlement detected                 
+                          Receipt generated                   
 ```
 
 ---
@@ -203,22 +203,22 @@ Each new block is scanned for outputs matching either hash. The indexer routes d
 ## 7. Network Topology (Simplified)
 
 ```
-         ┌──────────────────┐
-         │   DagLock DNS    │
-         └────────┬─────────┘
-                  │
-         ┌────────▼─────────┐
-         │   Indexer        │  (Single binary, single instance for alpha)
-         │   + REST API     │
-         └────────┬─────────┘
-                  │
-         ┌────────▼─────────┐
-         │   PostgreSQL     │  (Or SQLite for dev)
-         └──────────────────┘
-                  │
-         ┌────────▼─────────┐
-         │   Kaspa Node     │  (wRPC — local or public resolver)
-         └──────────────────┘
+         
+            DagLock DNS    
+         
+                  
+         
+            Indexer          (Single binary, single instance for alpha)
+            + REST API     
+         
+                  
+         
+            PostgreSQL       (Or SQLite for dev)
+         
+                  
+         
+            Kaspa Node       (wRPC — local or public resolver)
+         
 ```
 
 Horizontal scaling (multiple indexers behind load balancer) is deferred until user volume demands it (> 100 concurrent users).

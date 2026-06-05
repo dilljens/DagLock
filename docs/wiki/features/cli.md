@@ -8,18 +8,18 @@ Command-line power-user tool for DagLock escrow operations. Connects to the inde
 ## Architecture
 ```
 main.rs (clap dispatch)
-    │
-    ├── commands/create.rs    ──▶ POST /v1/escrows
-    ├── commands/claim.rs     ──▶ POST /v1/escrows/:id/settle, /refund, /dispute, /cancel
-    ├── commands/offer.rs     ──▶ POST /v1/offers, /accept, /cancel
-    ├── commands/status.rs    ──▶ GET /v1/escrows/:id
-    ├── commands/reputation.rs ──▶ GET /v1/reputation/:address
-    ├── commands/receipt.rs   ──▶ GET /v1/receipts/:id
-    ├── commands/message.rs  ──▶ POST/GET messages
-    ├── commands/swap.rs      ──▶ POST /v1/escrows/:id/swap (atomic swap settle)
-    ├── commands/vault.rs    ──▶ POST/GET /v1/vaults, /vaults/:id/withdraw
-    │
-    └── tx.rs                 ──▶ Transaction assembly (unsigned)
+    
+     commands/create.rs     POST /v1/escrows
+     commands/claim.rs      POST /v1/escrows/:id/settle, /refund, /dispute, /cancel
+     commands/offer.rs      POST /v1/offers, /accept, /cancel
+     commands/status.rs     GET /v1/escrows/:id
+     commands/reputation.rs  GET /v1/reputation/:address
+     commands/receipt.rs    GET /v1/receipts/:id
+     commands/message.rs   POST/GET messages
+     commands/swap.rs       POST /v1/escrows/:id/swap (atomic swap settle)
+     commands/vault.rs     POST/GET /v1/vaults, /vaults/:id/withdraw
+    
+     tx.rs                  Transaction assembly (unsigned)
 ```
 
 ## Key functions / components

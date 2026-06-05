@@ -5,27 +5,27 @@
 ## Architecture
 
 ```
-                     ┌─────────────────────────────┐
-                     │    Cloudflare DNS            │
-                     │  daglock.com ────┐          │
-                     │  api.daglock.io ─┤          │
-                     └─────────────────┼──────────┘
-                                       │
-              ┌────────────────────────┼──────────────────┐
-              │                        │                   │
-     ┌────────▼────────┐    ┌──────────▼───────────┐      │
-     │ Cloudflare Pages │    │     Railway           │      │
-     │   (web UI)       │    │   (indexer backend)   │      │
-     │   daglock.com   │    │   api.daglock.io      │      │
-     │                  │    │                       │      │
-     │  React SPA       │    │  Rust Axum API        │      │
-     │  api.ts →        │───▶│  SQLite volume        │      │
-     │  api.daglock.io  │    │  DAGLOCK_MESSAGE_KEY  │      │
-     └──────────────────┘    └───────────────────────┘      │
-              │                                             │
-         User's browser                                     │
-              │                                             │
-              └─────────────────────────────────────────────┘
+                     
+                         Cloudflare DNS            
+                       daglock.com           
+                       api.daglock.io           
+                     
+                                       
+              
+                                                         
+               
+      Cloudflare Pages          Railway                 
+        (web UI)              (indexer backend)         
+        daglock.com          api.daglock.io            
+                                                        
+       React SPA             Rust Axum API              
+       api.ts →          SQLite volume              
+       api.daglock.io        DAGLOCK_MESSAGE_KEY        
+               
+                                                           
+         User's browser                                     
+                                                           
+              
 ```
 
 ---

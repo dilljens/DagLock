@@ -1,20 +1,20 @@
 # DagLock Comprehensive Roadmap
 
 ## Current Status
-- ✅ Web dashboard live at daglock.com
-- ✅ API backend on Railway
-- ✅ Telegram bot (@DagLock_bot)
-- ✅ CLI tool
-- ✅ Price-locked offers (15-min CoinGecko updates)
-- ✅ Basic vault system
-- ✅ API docs (OpenAPI + reference)
-- ✅ wRPC listener (polling)
-- ❌ Wallet integration (critical)
-- ❌ Real on-chain verification (critical)
-- ❌ KRC-20 trading UI
-- ❌ User onboarding
-- ❌ Mobile responsive
-- ❌ Production security
+-  Web dashboard live at daglock.com
+-  API backend on Railway
+-  Telegram bot (@DagLock_bot)
+-  CLI tool
+-  Price-locked offers (15-min CoinGecko updates)
+-  Basic vault system
+-  API docs (OpenAPI + reference)
+-  wRPC listener (polling)
+-  Wallet integration (critical)
+-  Real on-chain verification (critical)
+-  KRC-20 trading UI
+-  User onboarding
+-  Mobile responsive
+-  Production security
 
 ---
 
@@ -35,7 +35,7 @@
 - `web/src/App.tsx` — Connect button, signed flow
 
 **Effort:** 3-5 days
-**Status:** ❌ Not started
+**Status:**  Not started
 
 ### 2. Real Authentication (Replace Mock Verifier)
 
@@ -51,7 +51,7 @@
 - `indexer/src/verification.rs` — UTXO verification (real)
 
 **Effort:** 2-3 days
-**Status:** ⏸️ Real crypto exists, mock verifier is default
+**Status:**  Real crypto exists, mock verifier is default
 
 ### 3. On-Chain UTXO Verification
 
@@ -67,7 +67,7 @@
 - `indexer/src/listener.rs` — Block detection
 
 **Effort:** 3-5 days
-**Status:** ⏸️ wRPC listener exists (polling), verification is still mock
+**Status:**  wRPC listener exists (polling), verification is still mock
 
 ### 4. Remove Mock Mode
 
@@ -79,7 +79,7 @@
 - Show testnet faucet prominently for new users
 
 **Effort:** 1-2 days
-**Status:** ❌ Not started
+**Status:**  Not started
 
 ---
 
@@ -104,7 +104,7 @@
 - Needs template hash for KRC-20 covenant
 
 **Effort:** 3-5 days
-**Status:** ❌ Not started
+**Status:**  Not started
 
 ### 6. User Onboarding Flow
 
@@ -121,7 +121,7 @@
 - `web/src/styles.css` — Onboarding styles
 
 **Effort:** 2-3 days
-**Status:** ❌ Not started
+**Status:**  Not started
 
 ### 7. Mobile Responsive Design
 
@@ -138,7 +138,7 @@
 - `web/src/App.tsx` — Responsive layout changes
 
 **Effort:** 2-3 days
-**Status:** ❌ Not started
+**Status:**  Not started
 
 ### 8. Offer History & Status Tracking
 
@@ -155,7 +155,7 @@
 - `web/src/App.tsx` — Offer history display
 
 **Effort:** 2-3 days
-**Status:** ⏸️ Basic listing exists, no history
+**Status:**  Basic listing exists, no history
 
 ---
 

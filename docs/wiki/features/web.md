@@ -8,10 +8,10 @@ React + Vite dashboard for browser-based users. Provides escrow creation, claimi
 ## Architecture
 ```
 App.tsx (all components)
-    │
-    ├── api.ts              ──▶ indexer REST API (HTTP)
-    ├── styles.css           ──▶ Dark Kaspa green theme
-    └── main.tsx             ──▶ React entry point
+    
+     api.ts               indexer REST API (HTTP)
+     styles.css            Dark Kaspa green theme
+     main.tsx              React entry point
 
 Components:
     CreateOfferForm         Post a buy/sell listing with expiry

@@ -9,47 +9,47 @@
 DagLockKRC20 does NOT hold token balances. Instead, it **owns** a KCC-20 branch via covenant-ID, and the KCC-20 contract itself enforces that DagLockKRC20 must authorize any transfer.
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                    Settlement Transaction                │
-│                                                          │
-│  INPUTS:                                                 │
-│  ┌──────────────────────────────────────────────┐        │
-│  │ Input 0: KCC-20 Branch                       │        │
-│  │   State: {                                    │        │
-│  │     ownerIdentifier: <DagLock covenant ID>    │        │
-│  │     identifierType: IDENTIFIER_COVENANT_ID    │        │
-│  │     amount: 100000 (NACHO)                    │        │
-│  │     isMinter: false                           │        │
-│  │   }                                           │        │
-│  └──────────────────────────────────────────────┘        │
-│                                                          │
-│  ┌──────────────────────────────────────────────┐        │
-│  │ Input 1: DagLockKRC20 UTXO                   │        │
-│  │   Covenant ID = <D>                          │        │
-│  │   Contains escrow terms:                     │        │
-│  │     buyerPubKey, sellerPubKey, timeout       │        │
-│  └──────────────────────────────────────────────┘        │
-│                                                          │
-│  OUTPUTS:                                                │
-│  ┌──────────────────────────────────────────────┐        │
-│  │ Output 0: KCC-20 Branch (new)                │        │
-│  │   ownerIdentifier: sellerPubKey               │        │
-│  │   amount: 100000 (same, conserved)            │        │
-│  └──────────────────────────────────────────────┘        │
-│  ┌──────────────────────────────────────────────┐        │
-│  │ Output 1: KAS fee → DagLock Treasury         │        │
-│  └──────────────────────────────────────────────┘        │
-└──────────────────────────────────────────────────────────┘
+
+                    Settlement Transaction                
+                                                          
+  INPUTS:                                                 
+          
+   Input 0: KCC-20 Branch                               
+     State: {                                            
+       ownerIdentifier: <DagLock covenant ID>            
+       identifierType: IDENTIFIER_COVENANT_ID            
+       amount: 100000 (NACHO)                            
+       isMinter: false                                   
+     }                                                   
+          
+                                                          
+          
+   Input 1: DagLockKRC20 UTXO                           
+     Covenant ID = <D>                                  
+     Contains escrow terms:                             
+       buyerPubKey, sellerPubKey, timeout               
+          
+                                                          
+  OUTPUTS:                                                
+          
+   Output 0: KCC-20 Branch (new)                        
+     ownerIdentifier: sellerPubKey                       
+     amount: 100000 (same, conserved)                    
+          
+          
+   Output 1: KAS fee → DagLock Treasury                 
+          
+
 
 KCC-20 transfer() checks:
   checkSigs(): OpInputCovenantId(1) == Input 0's ownerIdentifier
-               → Input 1 is DagLockKRC20 with covenant ID D ✓
-  checkAmounts(): amount_in == amount_out → 100000 == 100000 ✓
+               → Input 1 is DagLockKRC20 with covenant ID D 
+  checkAmounts(): amount_in == amount_out → 100000 == 100000 
 
 DagLockKRC20 release() checks:
-  checkSig(buyerSig, buyerPubKey) ✓
-  checkSig(sellerSig, sellerPubKey) ✓
-  Treasury fee output exists ✓
+  checkSig(buyerSig, buyerPubKey) 
+  checkSig(sellerSig, sellerPubKey) 
+  Treasury fee output exists 
 
 Both contracts satisfied → transaction confirmed.
 ```
@@ -60,13 +60,13 @@ Both contracts satisfied → transaction confirmed.
 
 ```
 STEP 1: Deploy DagLockKRC20
-─────────────────────────────
+
 Creator → DagLockKRC20(buyer, seller, tradeHash, timeout,
                        treasury, templateMeta, kcc20CovenantId)
         → Covenant ID = D
 
 STEP 2: Create KCC-20 Escrow Branch
-────────────────────────────────────
+
 Depositor → KCC-20.transfer()
           → New KCC-20 output:
               ownerIdentifier = D
@@ -75,14 +75,14 @@ Depositor → KCC-20.transfer()
               isMinter = false
 
 STEP 3: Settlement (Release/Swap)
-──────────────────────────────────
+
 Transaction with BOTH inputs (KCC-20 branch + DagLockKRC20 UTXO)
   → KCC-20 validates: DagLockKRC20 authorizes this transfer
   → DagLockKRC20 validates: escrow conditions met
   → Both pass → new KCC-20 branch created (seller-owned) + fee to treasury
 
 STEP 4: Refund (Timeout)
-─────────────────────────
+
 Transaction with BOTH inputs (KCC-20 branch + DagLockKRC20 UTXO)
   → KCC-20 validates: DagLockKRC20 authorizes this transfer
   → DagLockKRC20 validates: timeout passed + buyer signed

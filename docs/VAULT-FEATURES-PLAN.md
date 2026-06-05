@@ -8,14 +8,14 @@ Expand DagLock's vault functionality from basic time-locked vaults to a full sui
 
 ## Current Status
 
-### Phase 1: Vault Status & Withdrawal ✅ COMPLETE
+### Phase 1: Vault Status & Withdrawal  COMPLETE
 - [x] Added 009_create_vaults.sql migration
 - [x] Added Vault, VaultType, VaultStatus types
 - [x] Added vault queries (insert, get, list, update)
 - [x] Added vault API endpoints (GET /v1/vaults, POST /v1/vaults, POST /v1/vaults/:id/withdraw)
 - [x] Added VaultListPanel component
 
-### Phase 2: Vault UI Improvements ✅ COMPLETE
+### Phase 2: Vault UI Improvements  COMPLETE
 - [x] Added VaultStatusPanel component (shows lock/expiry state, withdraw button)
 - [x] Added VaultLookup component (look up vault by ID)
 - [x] Updated CreateVaultForm to use Kaspa address and amount
@@ -26,7 +26,7 @@ Expand DagLock's vault functionality from basic time-locked vaults to a full sui
 ## Future Phases (Planned)
 
 ### Phase 3: Beneficiary Vault
-**Status**: 📋 Planned  
+**Status**:  Planned  
 **Complexity**: Medium
 
 **What it does:**
@@ -53,7 +53,7 @@ Expand DagLock's vault functionality from basic time-locked vaults to a full sui
 ---
 
 ### 3. Deadman Switch Vault
-**Status**: 📋 Planned  
+**Status**:  Planned  
 **Complexity**: High
 
 **What it does:**
@@ -84,7 +84,7 @@ Expand DagLock's vault functionality from basic time-locked vaults to a full sui
 ---
 
 ### 4. Inheritance Vault
-**Status**: 📋 Planned  
+**Status**:  Planned  
 **Complexity**: High
 
 **What it does:**
@@ -112,7 +112,7 @@ Expand DagLock's vault functionality from basic time-locked vaults to a full sui
 ---
 
 ### 5. Multi-Sig Vault
-**Status**: 📋 Planned  
+**Status**:  Planned  
 **Complexity**: Very High
 
 **What it does:**

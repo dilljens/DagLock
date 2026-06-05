@@ -7,13 +7,13 @@ Add a split-pane terminal to Pi where both AI and human can interact with bash c
 ## Architecture
 
 ```
-┌─────────────────────┬─────────────────────┐
-│   ratatui           │   portable-pty      │
-│   ┌───────────────┐ │   ┌───────────────┐ │
-│   │ Conversation  │ │   │ Bash/Shell    │ │
-│   │ (Pi chat)     │ │   │ (interactive) │ │
-│   └───────────────┘ │   └───────────────┘ │
-└─────────────────────┴─────────────────────┘
+
+   ratatui              portable-pty      
+        
+    Conversation       Bash/Shell     
+    (Pi chat)          (interactive)  
+        
+
 ```
 
 ## Components

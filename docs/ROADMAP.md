@@ -17,75 +17,75 @@ Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. The co
 
 ---
 
-## Phase 0: Covenants ✅ (Done)
+## Phase 0: Covenants  (Done)
 
 | Task | Status |
 |---|---|
-| `daglock.sil` — KAS escrow (release, swap, refund) | ✅ Done |
-| `daglock_krc20.sil` — KRC-20 escrow via ICC pattern | ✅ Done |
-| `daglock_arbiter.sil` — KAS escrow with mediator/jury paths | ✅ Done |
-| `daglock_vault.sil` — time-locked self-custody vault | ✅ Done |
-| Compilation against `silverc` | ✅ Done |
-| TxScriptEngine unit tests — all paths + negatives | ✅ Done (7+ per covenant) |
-| Script mass benchmarking | ✅ Done |
-| Template hash extraction | ✅ Done |
-| Published open-source | ✅ github.com/dilljens/DagLock |
+| `daglock.sil` — KAS escrow (release, swap, refund) |  Done |
+| `daglock_krc20.sil` — KRC-20 escrow via ICC pattern |  Done |
+| `daglock_arbiter.sil` — KAS escrow with mediator/jury paths |  Done |
+| `daglock_vault.sil` — time-locked self-custody vault |  Done |
+| Compilation against `silverc` |  Done |
+| TxScriptEngine unit tests — all paths + negatives |  Done (7+ per covenant) |
+| Script mass benchmarking |  Done |
+| Template hash extraction |  Done |
+| Published open-source |  github.com/dilljens/DagLock |
 
 **No remaining work in this phase.**
 
 ---
 
-## Phase 1: Indexer + Counterparty Discovery ✅ (Done)
+## Phase 1: Indexer + Counterparty Discovery  (Done)
 
 | Task | Status |
 |---|---|
-| REST API v1 — 30+ endpoints | ✅ Done |
-| SQLite schema — escrows, offers, reputation, jury, messages, etc. | ✅ Done |
-| Offer board — create, list, accept, cancel offers | ✅ Done |
-| Reputation system — Beta formula, recency weighting, wash trading signal | ✅ Done |
-| Settlement receipts — BLAKE2b-hashed verifiable receipts | ✅ Done |
-| Encrypted messaging — AES-256-GCM per-escrow threads | ✅ Done |
-| Jury system — random juror selection, voting, case lifecycle | ✅ Done |
-| Evidence logging — signed proof during disputes | ✅ Done |
-| Vouching / Web of Trust | ✅ Done |
-| Identity linking — Telegram handle to Kaspa address | ✅ Done |
-| Covenant compiler API — compile templates via REST | ✅ Done |
-| wRPC listener | ⏳ **Stub** — detects nothing, logs only. Needs implementation before mainnet. |
+| REST API v1 — 30+ endpoints |  Done |
+| SQLite schema — escrows, offers, reputation, jury, messages, etc. |  Done |
+| Offer board — create, list, accept, cancel offers |  Done |
+| Reputation system — Beta formula, recency weighting, wash trading signal |  Done |
+| Settlement receipts — BLAKE2b-hashed verifiable receipts |  Done |
+| Encrypted messaging — AES-256-GCM per-escrow threads |  Done |
+| Jury system — random juror selection, voting, case lifecycle |  Done |
+| Evidence logging — signed proof during disputes |  Done |
+| Vouching / Web of Trust |  Done |
+| Identity linking — Telegram handle to Kaspa address |  Done |
+| Covenant compiler API — compile templates via REST |  Done |
+| wRPC listener |  **Stub** — detects nothing, logs only. Needs implementation before mainnet. |
 
 **Remaining:**
 - [ ] **wRPC listener** — connect to Kaspa node, auto-detect DagLock UTXOs by template hash, update escrow state. This is the single most important missing piece.
 
 ---
 
-## Phase 2: Telegram Bot + CLI ✅ (Done)
+## Phase 2: Telegram Bot + CLI  (Done)
 
 | Task | Status |
 |---|---|
-| Telegram bot — `/create`, `/claim`, `/offers`, `/list`, `/reputation`, `/receipt`, `/dispute`, `/msg`, `/messages`, `/status` | ✅ Done, running |
-| CLI tool — `daglock-cli` with 7 command modules | ✅ Done |
-| Trade link deep links (`t.me/DagLock_bot?start=claim_abc123`) | ✅ Done |
-| KasWare wallet bridge | ⏳ Not critical for launch. Bot works offline with signatures supplied manually. |
+| Telegram bot — `/create`, `/claim`, `/offers`, `/list`, `/reputation`, `/receipt`, `/dispute`, `/msg`, `/messages`, `/status` |  Done, running |
+| CLI tool — `daglock-cli` with 7 command modules |  Done |
+| Trade link deep links (`t.me/DagLock_bot?start=claim_abc123`) |  Done |
+| KasWare wallet bridge |  Not critical for launch. Bot works offline with signatures supplied manually. |
 
 **Remaining:** Nothing blocking. KasWare bridge is nice-to-have.
 
 ---
 
-## Phase 3: Web UI ✅ (Done)
+## Phase 3: Web UI  (Done)
 
 | Task | Status |
 |---|---|
-| Create escrow page | ✅ Done |
-| Claim page | ✅ Done |
-| Dashboard — escrows by status/token | ✅ Done |
-| Offer board with filters | ✅ Done |
-| Reputation view inline on trade cards | ✅ Done |
-| Settlement receipts (JSON) | ✅ Done |
-| Jury registration + voting UI | ✅ Done |
-| Encrypted messaging UI | ✅ Done |
-| Vault creation UI | ✅ Done |
-| Telegram linking UI | ✅ Done |
-| Evidence submission UI | ✅ Done |
-| Atomic swap wizard | ❌ **Deferred** — the `swap` entrypoint works in the covenant, but there's no guided UI. Users can do atomic swaps manually with the hash preimage flow. A polished wizard would be nice but isn't blocking launch. |
+| Create escrow page |  Done |
+| Claim page |  Done |
+| Dashboard — escrows by status/token |  Done |
+| Offer board with filters |  Done |
+| Reputation view inline on trade cards |  Done |
+| Settlement receipts (JSON) |  Done |
+| Jury registration + voting UI |  Done |
+| Encrypted messaging UI |  Done |
+| Vault creation UI |  Done |
+| Telegram linking UI |  Done |
+| Evidence submission UI |  Done |
+| Atomic swap wizard |  **Deferred** — the `swap` entrypoint works in the covenant, but there's no guided UI. Users can do atomic swaps manually with the hash preimage flow. A polished wizard would be nice but isn't blocking launch. |
 
 **Remaining:** Nothing blocking.
 
@@ -97,8 +97,8 @@ Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. The co
 
 | Task | Status |
 |---|---|
-| Deploy testnet infra (indexer, web, bot) | 🔜 This week |
-| Post on Reddit / Telegram with test wallet | 🔜 This week |
+| Deploy testnet infra (indexer, web, bot) |  This week |
+| Post on Reddit / Telegram with test wallet |  This week |
 | Fix bugs from user feedback | — |
 | Community audit period | — |
 
@@ -117,19 +117,19 @@ Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. The co
 
 | Task | Status |
 |---|---|
-| Deploy mainnet indexer on Railway | 🔜 ~June 28 (staging, dormant) |
-| Swap daglock.com to mainnet API | 🔜 June 30 |
-| Deploy @DagLock_bot (mainnet) | 🔜 June 30 |
-| Announce mainnet launch | 🔜 June 30 |
-| Monitoring — health checks, error alerting | 🔜 Basic |
-| wRPC listener connecting to a Kaspa mainnet node | ⏳ Needs implementation first |
-| Documentation site `docs.daglock.io` | ❌ **Deferred** — README + wiki covers it for now |
+| Deploy mainnet indexer on Railway |  ~June 28 (staging, dormant) |
+| Swap daglock.com to mainnet API |  June 30 |
+| Deploy @DagLock_bot (mainnet) |  June 30 |
+| Announce mainnet launch |  June 30 |
+| Monitoring — health checks, error alerting |  Basic |
+| wRPC listener connecting to a Kaspa mainnet node |  Needs implementation first |
+| Documentation site `docs.daglock.io` |  **Deferred** — README + wiki covers it for now |
 
 **What is NOT planned for mainnet launch:**
-- ❌ Volume-based fee tier rebates — not worth building until someone asks for a discount
-- ❌ Atomic swap wizard UI — the covenant supports it, no guided UI yet
-- ❌ Batch escrow UI — nice for whales, not needed at zero users
-- ❌ Price oracle — Phase 6 territory
+-  Volume-based fee tier rebates — not worth building until someone asks for a discount
+-  Atomic swap wizard UI — the covenant supports it, no guided UI yet
+-  Batch escrow UI — nice for whales, not needed at zero users
+-  Price oracle — Phase 6 territory
 
 ---
 

@@ -83,10 +83,10 @@ Build a full DEX experience with two order types:
 
 | Step | Task | Files |
 |------|------|-------|
-| 1 | Existing atomic swap endpoint | `escrows.rs` ✅ |
-| 2 | Trade hash generation | `swap.rs` ✅ |
+| 1 | Existing atomic swap endpoint | `escrows.rs`  |
+| 2 | Trade hash generation | `swap.rs`  |
 | 3 | CreateEscrowForm: fixed price option | `App.tsx` |
-| 4 | SwapForm: submit preimage | `App.tsx` ✅ |
+| 4 | SwapForm: submit preimage | `App.tsx`  |
 | 5 | Testing + deploy | — |
 
 ---

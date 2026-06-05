@@ -3,15 +3,15 @@
 ## Current State
 
 DagLock is a testnet escrow platform with:
-- ✅ REST API (Rust backend)
-- ✅ Web dashboard (React)
-- ✅ Telegram bot
-- ✅ CLI tool
-- ✅ Basic escrow/offer functionality
-- ❌ No real KRC-20 trading
-- ❌ No on-chain verification
-- ❌ No wallet integration
-- ❌ No market price feeds
+-  REST API (Rust backend)
+-  Web dashboard (React)
+-  Telegram bot
+-  CLI tool
+-  Basic escrow/offer functionality
+-  No real KRC-20 trading
+-  No on-chain verification
+-  No wallet integration
+-  No market price feeds
 
 ---
 
@@ -94,13 +94,13 @@ The **minimum viable product** for real trading needs:
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| **P0** | wRPC listener (on-chain detection) | ❌ Missing |
-| **P0** | Wallet integration (signing) | ❌ Missing |
-| **P0** | Market price oracle | ✅ Built |
-| **P1** | Price-locked offers | ❌ Missing |
-| **P1** | KRC-20 token support | ✅ Built (covenant) |
-| **P2** | Limit orders | ❌ Missing |
-| **P2** | Tax reporting | ❌ Missing |
+| **P0** | wRPC listener (on-chain detection) |  Missing |
+| **P0** | Wallet integration (signing) |  Missing |
+| **P0** | Market price oracle |  Built |
+| **P1** | Price-locked offers |  Missing |
+| **P1** | KRC-20 token support |  Built (covenant) |
+| **P2** | Limit orders |  Missing |
+| **P2** | Tax reporting |  Missing |
 
 **Without wRPC and wallet integration, the system is a simulation.** These are the critical missing pieces.
 

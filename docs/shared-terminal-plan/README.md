@@ -36,26 +36,26 @@ Add a split-pane terminal to Pi where both AI and human can interact with bash c
 
 **Default state (conversation only):**
 ```
-┌─────────────────────────────────────────┐
-│                                         │
-│   Conversation (full width)             │
-│                                         │
-│   You: deploy the bot                   │
-│   Pi: Running railway commands...       │
-│                                         │
-└─────────────────────────────────────────┘
+
+                                         
+   Conversation (full width)             
+                                         
+   You: deploy the bot                   
+   Pi: Running railway commands...       
+                                         
+
 ```
 
 **Toggle ON (split pane):**
 ```
-┌─────────────────────┬───────────────────┐
-│                     │                   │
-│   Conversation      │   Terminal        │
-│                     │   (shared)        │
-│   You: deploy bot   │   $ railway login │
-│   Pi: running...    │   > open URL...   │
-│                     │                   │
-└─────────────────────┴───────────────────┘
+
+                                        
+   Conversation         Terminal        
+                        (shared)        
+   You: deploy bot      $ railway login 
+   Pi: running...       > open URL...   
+                                        
+
 ```
 
 ---
@@ -65,59 +65,59 @@ Add a split-pane terminal to Pi where both AI and human can interact with bash c
 ### High-Level Design
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Pi TUI Application                     │
-├─────────────────────────┬───────────────────────────────────┤
-│                         │                                   │
-│   ConversationPane      │   TerminalPane                    │
-│   ┌───────────────────┐ │   ┌───────────────────────────┐  │
-│   │                   │ │   │                           │  │
-│   │  - Message list   │ │   │  - PTY output buffer      │  │
-│   │  - Input editor   │ │   │  - Command history        │  │
-│   │  - Tool output    │ │   │  - Scrollback             │  │
-│   │                   │ │   │                           │  │
-│   └───────────────────┘ │   └───────────────────────────┘  │
-│                         │                                   │
-│   Uses: ratatui         │   Uses: portable-pty + ratatui   │
-│   Input: Pi keybindings │   Input: PTY stdin              │
-│   Output: Pi render     │   Output: PTY stdout            │
-│                         │                                   │
-├─────────────────────────┴───────────────────────────────────┤
-│                      Shared Components                      │
-│   - SplitLayout (divider, resize)                           │
-│   - KeyboardRouter (input dispatch)                         │
-│   - StatusBar (active pane, shell info)                     │
-└─────────────────────────────────────────────────────────────┘
+
+                      Pi TUI Application                     
+
+                                                            
+   ConversationPane         TerminalPane                    
+         
+                                                       
+     - Message list         - PTY output buffer        
+     - Input editor         - Command history          
+     - Tool output          - Scrollback               
+                                                       
+         
+                                                            
+   Uses: ratatui            Uses: portable-pty + ratatui   
+   Input: Pi keybindings    Input: PTY stdin              
+   Output: Pi render        Output: PTY stdout            
+                                                            
+
+                      Shared Components                      
+   - SplitLayout (divider, resize)                           
+   - KeyboardRouter (input dispatch)                         
+   - StatusBar (active pane, shell info)                     
+
 ```
 
 ### Data Flow
 
 ```
 User Input
-    │
-    ▼
+    
+    
 KeyboardRouter
-    │
-    ├──► ConversationPane (if focused)
-    │       │
-    │       ▼
-    │    Pi's existing keybinding handler
-    │
-    └──► TerminalPane (if focused)
-            │
-            ▼
+    
+     ConversationPane (if focused)
+           
+           
+        Pi's existing keybinding handler
+    
+     TerminalPane (if focused)
+            
+            
          PTY stdin
-            │
-            ▼
+            
+            
          Bash/Shell process
-            │
-            ▼
+            
+            
          PTY stdout
-            │
-            ▼
+            
+            
          TerminalPane buffer
-            │
-            ▼
+            
+            
          ratatui render
 ```
 
@@ -175,30 +175,30 @@ shared-terminal = ["ratatui", "portable-pty", "crossterm"]
 
 ```
 pi/
-├── crates/
-│   └── shared-terminal/
-│       ├── Cargo.toml
-│       ├── src/
-│       │   ├── lib.rs              # Public API
-│       │   ├── layout.rs           # SplitPaneLayout
-│       │   ├── terminal.rs         # TerminalPane (PTY wrapper)
-│       │   ├── conversation.rs     # ConversationPane (existing Pi chat)
-│       │   ├── keyboard.rs         # KeyboardRouter
-│       │   ├── pty.rs              # PTY management
-│       │   ├── buffer.rs           # Terminal buffer/scrollback
-│       │   ├── status.rs           # StatusBar component
-│       │   └── hotkeys.rs          # Hotkey definitions
-│       └── tests/
-│           ├── layout_test.rs
-│           ├── terminal_test.rs
-│           └── integration_test.rs
-│
-├── crates/pi-tui/
-│   └── src/
-│       └── app.rs                  # Add toggle_terminal() method
-│
-└── ~/.pi/agent/
-    └── keybindings.json            # Add terminal hotkeys
+ crates/
+    shared-terminal/
+        Cargo.toml
+        src/
+           lib.rs              # Public API
+           layout.rs           # SplitPaneLayout
+           terminal.rs         # TerminalPane (PTY wrapper)
+           conversation.rs     # ConversationPane (existing Pi chat)
+           keyboard.rs         # KeyboardRouter
+           pty.rs              # PTY management
+           buffer.rs           # Terminal buffer/scrollback
+           status.rs           # StatusBar component
+           hotkeys.rs          # Hotkey definitions
+        tests/
+            layout_test.rs
+            terminal_test.rs
+            integration_test.rs
+
+ crates/pi-tui/
+    src/
+        app.rs                  # Add toggle_terminal() method
+
+ ~/.pi/agent/
+     keybindings.json            # Add terminal hotkeys
 ```
 
 ---
@@ -528,7 +528,7 @@ impl StatusBar {
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let status = format!(
             "[{}] {} | Lines: {}/{} | Scroll: {} | Focus: {}",
-            if self.active_pane == "Terminal" { "●" } else { "○" },
+            if self.active_pane == "Terminal" { "" } else { "" },
             self.shell,
             self.lines,
             self.total,

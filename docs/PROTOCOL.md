@@ -196,13 +196,13 @@ Outputs:
 ### 6.1 Offer Lifecycle
 
 ```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│ PROPOSED │────▶│ ACCEPTED │────▶│  LOCKED  │────▶│ SETTLED  │
-│(no funds │     │(term     │     │(funds    │     │(complete)│
-│ locked)  │     │ agreed)  │     │ on-chain)│     │          │
-└──────────┘     └──────────┘     └──────────┘     └──────────┘
-     │                                                  │
-     └────────────────── EXPIRED ◀──────────────────────┘
+               
+ PROPOSED  ACCEPTED   LOCKED   SETTLED  
+(no funds      (term          (funds         (complete)
+ locked)        agreed)        on-chain)               
+               
+                                                       
+      EXPIRED 
                         (timeout, no action)
 ```
 
@@ -261,28 +261,28 @@ The user-facing flow hides all cryptographic complexity:
 
 ```
 User A (Buyer)                     User B (Seller)
-     │                                   │
-     │  1. "Swap 5000 KAS for 100K NACHO"│
-     │     App generates random secret S  │
-     │     Computes H = SHA-256(S)        │
-     │───────────────────────────────────│
-     │                                   │
-     │  2. Deploys DagLock(tradeHash=H)  │
-     │     with 5000 KAS                 │
-     │     Shares escrow link            │
-     │──────────────────────────────────▶│
-     │                                   │
-     │                         3. Verifies terms
-     │                            Deploys counterparty escrow
-     │                            with same H, 100K NACHO
-     │                                   │
-     │  4. Claims B's escrow by           │
-     │     revealing S on-chain          │
-     │◀──────────────────────────────────│
-     │                                   │
-     │                         5. Sees S on-chain
-     │                            Uses S to claim A's escrow
-     │                            Swap complete
+                                        
+       1. "Swap 5000 KAS for 100K NACHO"
+          App generates random secret S  
+          Computes H = SHA-256(S)        
+     
+                                        
+       2. Deploys DagLock(tradeHash=H)  
+          with 5000 KAS                 
+          Shares escrow link            
+     
+                                        
+                              3. Verifies terms
+                                 Deploys counterparty escrow
+                                 with same H, 100K NACHO
+                                        
+       4. Claims B's escrow by           
+          revealing S on-chain          
+     
+                                        
+                              5. Sees S on-chain
+                                 Uses S to claim A's escrow
+                                 Swap complete
 ```
 
 The app manages secret generation, hash sharing, and dual-escrow coordination. Users see: "Swapping 5000 KAS for 100K NACHO... Step 2 of 5: Waiting for counterparty."

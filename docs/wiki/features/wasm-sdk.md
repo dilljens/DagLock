@@ -8,10 +8,10 @@ Browser/JavaScript SDK for assembling DagLock transactions in the web UI. Compil
 ## Architecture
 ```
 wasm-sdk/src/lib.rs
-    │
-    ├──▶ contracts::compile_daglock()     (covenant compilation)
-    ├──▶ contracts::template_parts_and_hash() (template hash)
-    └──▶ wasm-bindgen exports             (JS API)
+    
+     contracts::compile_daglock()     (covenant compilation)
+     contracts::template_parts_and_hash() (template hash)
+     wasm-bindgen exports             (JS API)
 ```
 
 ## Key functions / components

@@ -8,8 +8,8 @@ Telegram bot (`@DagLock_bot`) for DagLock escrow operations. Meet Kaspa users wh
 ## Architecture
 ```
 index.js (bot entry + command handlers)
-    │
-    └── lib/api.js    ──▶ indexer REST API (HTTP)
+    
+     lib/api.js     indexer REST API (HTTP)
 ```
 
 ## Key functions / components

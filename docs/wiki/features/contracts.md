@@ -8,13 +8,13 @@ SilverScript covenants for trustless escrow and atomic swaps on Kaspa L1. Two co
 ## Architecture
 ```
 daglock.sil / daglock_krc20.sil
-        │
-        ▼
+        
+        
    lib.rs (compile_daglock, compile_daglock_krc20)
-        │
-        ├──▶ CompiledContract (script, ABI, state_layout)
-        │
-        └──▶ template_parts_and_hash() → (prefix, suffix, blake2b-160 hash)
+        
+         CompiledContract (script, ABI, state_layout)
+        
+         template_parts_and_hash() → (prefix, suffix, blake2b-160 hash)
 ```
 
 ## Key functions / components

@@ -14,10 +14,10 @@ DagLock is designed to be **trustless**: no party needs to trust any other party
 4. **secp256k1 cryptography** — ECDSA signature security
 
 **What DagLock does NOT require trust for:**
-- ❌ DagLock team (no admin keys, no upgrade mechanism)
-- ❌ Oracle providers (no external data feeds)
-- ❌ Relayers or validators (all logic is on-chain)
-- ❌ Counterparty (covenant enforces terms automatically)
+-  DagLock team (no admin keys, no upgrade mechanism)
+-  Oracle providers (no external data feeds)
+-  Relayers or validators (all logic is on-chain)
+-  Counterparty (covenant enforces terms automatically)
 
 ---
 

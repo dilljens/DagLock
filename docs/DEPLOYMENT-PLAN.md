@@ -22,29 +22,29 @@ The existing Railway service uses the default `--network testnet-12` with no wRP
 ## 2. Target Architecture
 
 ```
-                      ┌─────────────────────────────┐
-                      │     Cloudflare DNS           │
-                      │  daglock.com ──→ CF Pages    │
-                      │  test.daglock.com ──→ CF     │
-                      │  api.daglock.com ──→ Railway  │
-                      │  test-api.daglock.com ──→     │
-                      └─────────────────────────────┘
+                      
+                           Cloudflare DNS           
+                        daglock.com → CF Pages    
+                        test.daglock.com → CF     
+                        api.daglock.com → Railway  
+                        test-api.daglock.com →     
+                      
 
 Mainnet:
-  daglock.com ──→ api.daglock.com ──→ Railway Service A (mainnet indexer)
+  daglock.com → api.daglock.com → Railway Service A (mainnet indexer)
                                         Volume: daglock-mainnet-data
                                         Network: mainnet + wRPC
                                         --allow-mainnet
 
 Testnet:
-  test.daglock.com ──→ test-api.daglock.com ──→ Railway Service B (testnet indexer)
+  test.daglock.com → test-api.daglock.com → Railway Service B (testnet indexer)
                                                    Volume: daglock-testnet-data
                                                    Network: testnet-12 (default)
                                                    No --allow-mainnet (safety)
 
 Telegram:
-  @DagLock_bot ──→ api.daglock.com (mainnet)
-  @DagLock_test_bot ──→ test-api.daglock.com (testnet)
+  @DagLock_bot → api.daglock.com (mainnet)
+  @DagLock_test_bot → test-api.daglock.com (testnet)
 ```
 
 ---
@@ -135,7 +135,7 @@ In the existing Cloudflare Pages project (`daglock.com`):
    ```bash
    BOT_TOKEN=<test-token> INDEXER_URL=https://test-api.daglock.com node bot/src/index.js
    ```
-4. Add bot description: "🧪 TESTNET — DagLock escrow on Kaspa Testnet 12. No real money."
+4. Add bot description: " TESTNET — DagLock escrow on Kaspa Testnet 12. No real money."
 
 **Mainnet bot (Day 7):**
 1. `/newbot` → name: `DagLock`, username: `DagLock_bot`
@@ -175,10 +175,10 @@ In the existing Cloudflare Pages project (`daglock.com`):
 ### 4-Week Timeline (June 5 → June 30)
 
 ```
-Week 1 (Jun 5-11)  ████████░░░░░░░░░░░░░░  Set up infra, announce testnet
-Week 2 (Jun 12-18)  ░░░░░░░░████████░░░░░░  Collect feedback, fix bugs
-Week 3 (Jun 19-25)  ░░░░░░░░░░░░░░░░████░░  Iterate, prep mainnet config
-Week 4 (Jun 26-30)  ░░░░░░░░░░░░░░░░░░░░██  Mainnet launch on Toccata day
+Week 1 (Jun 5-11)    Set up infra, announce testnet
+Week 2 (Jun 12-18)    Collect feedback, fix bugs
+Week 3 (Jun 19-25)    Iterate, prep mainnet config
+Week 4 (Jun 26-30)    Mainnet launch on Toccata day
 ```
 
 ### Week 1 — June 5 to June 11: Set Up + Announce
@@ -277,7 +277,7 @@ python3 scripts/genkeys.py generate
 Post format:
 
 ```
-🧪 DagLock testnet is live on Kaspa Testnet 12
+ DagLock testnet is live on Kaspa Testnet 12
 
 Try it at: https://test.daglock.com
 API/CLI: https://test-api.daglock.com
@@ -299,6 +299,6 @@ Plenty of time to test before then.
 - **Testnet indexer doesn't need `--allow-mainnet`** because its network is `testnet-12`. This is a safety guard: if someone fat-fingers the config, mainnet UTXOs won't appear in the testnet database.
 - **Both indexers share the same Dockerfile.** The only difference is the start command flags.
 - **SQLite is fine for both.** Each service has its own volume. No shared state.
-- **The testnet web UI doesn't need to be polished.** It's for debugging. A banner saying "🧪 TESTNET — No real money" at the top of the page is enough.
+- **The testnet web UI doesn't need to be polished.** It's for debugging. A banner saying " TESTNET — No real money" at the top of the page is enough.
 - **No rush.** You have 3.5 weeks before Toccata. Use the time to get real testnet feedback. If nobody uses testnet the first week, that's fine — drop another Reddit post, try Telegram groups. You have the runway.
 - **If testnet volume is very low**, you can merge both indexers into one box by running two processes on different ports. But two Railway services is simpler and only costs ~$5/mo.
