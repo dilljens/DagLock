@@ -7,6 +7,7 @@ use axum::Json as JsonBody;
 use serde_json::{json, Value};
 
 use crate::api::AppState;
+use crate::auth::AuthContext;
 use crate::db::queries;
 use crate::types::{CreateVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest};
 
@@ -26,10 +27,12 @@ pub async fn list(
     };
 
     match queries::list_vaults_by_owner(&state.db, &owner).await {
-        Ok(vaults) => Json(json!(VaultListResponse {
-            vaults,
-            total: 0, // TODO: count query
-        })),
+        Ok(vaults) => {
+            let total = queries::count_vaults_by_owner(&state.db, &owner)
+                .await
+                .unwrap_or(vaults.len() as i64);
+            Json(json!(VaultListResponse { vaults, total }))
+        }
         Err(e) => Json(json!({
             "error": "database_error",
             "message": format!("Failed to list vaults: {e}")
@@ -61,10 +64,39 @@ pub async fn get_by_id(
 }
 
 /// POST /v1/vaults
+///
+/// Create a vault. Requires auth headers proving ownership of the address.
+/// The owner_address is set from the authenticated address, not the request body.
 pub async fn create(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     JsonBody(body): JsonBody<CreateVaultRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error": "unauthorized", "message": "X-Daglock-* headers required"})),
+        )
+    })?;
+
+    // Verify signature: the owner proves they control this address
+    let expected_message = "create:vault".to_string();
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|_| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+            )
+        })?
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+        ));
+    }
+
     // Validate amount
     if body.amount_sompi <= 0 {
         return Err((
@@ -87,9 +119,10 @@ pub async fn create(
         uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
     );
 
+    // Owner address is taken from the authenticated user, not the request body
     let vault = crate::types::Vault {
         id: vault_id.clone(),
-        owner_address: body.owner_address.clone(),
+        owner_address: auth.address.clone(),
         beneficiary_address: body.beneficiary_address.clone(),
         vault_type: body.vault_type,
         status: VaultStatus::Locked,
@@ -115,10 +148,14 @@ pub async fn create(
 }
 
 /// POST /v1/vaults/:id/withdraw
+///
+/// Withdraw from a vault. Requires auth headers proving ownership.
+/// Message format: "withdraw:{vault_id}"
 pub async fn withdraw(
     State(state): State<AppState>,
     Path(id): Path<String>,
-    JsonBody(body): JsonBody<WithdrawVaultRequest>,
+    headers: axum::http::HeaderMap,
+    JsonBody(_body): JsonBody<WithdrawVaultRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let vault = queries::get_vault(&state.db, &id)
         .await
@@ -135,8 +172,33 @@ pub async fn withdraw(
             )
         })?;
 
-    // Verify ownership
-    if vault.owner_address != body.owner_address {
+    // Auth: extract and verify signature
+    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error": "unauthorized", "message": "X-Daglock-* headers required"})),
+        )
+    })?;
+
+    let expected_message = format!("withdraw:{}", id);
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|_| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+            )
+        })?
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+        ));
+    }
+
+    // Verify ownership — address comes from auth (already verified via sig)
+    if auth.address != vault.owner_address {
         return Err((
             StatusCode::FORBIDDEN,
             Json(json!({"error": "forbidden", "message": "Only the vault owner can withdraw"})),

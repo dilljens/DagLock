@@ -15,6 +15,7 @@ use crate::auth::{verify_refund_authorization, verify_settle_authorization, Auth
 use crate::db::queries;
 use crate::types::*;
 use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
+use crate::websocket::WsEvent;
 // Preimage verification uses SHA-256 via the covenant's trade_hash
 
 /// List escrows query parameters.
@@ -377,11 +378,16 @@ pub async fn create(
         dispute_outcome: None,
         dispute_resolved_at: None,
         price_at_creation: if body.price_type.as_deref() == Some("market") {
-            // Fetch market price from CoinGecko
-            let price = match reqwest::get(
-                "https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd",
-            )
-            .await
+            // Fetch market price from CoinGecko with 5s timeout
+            use std::time::Duration;
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(5))
+                .build()
+                .unwrap_or_default();
+            let price = match client
+                .get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
+                .send()
+                .await
             {
                 Ok(resp) => resp
                     .json::<serde_json::Value>()
@@ -433,6 +439,8 @@ pub async fn create(
                 ))),
             )
         })?;
+
+    let _ = state.ws_tx.send(WsEvent::escrow_created(&escrow.id));
 
     Ok((StatusCode::CREATED, Json(json!(escrow))))
 }
@@ -536,6 +544,8 @@ pub async fn settle(
                 ));
             }
 
+            let _ = state.ws_tx.send(WsEvent::escrow_settled(&id));
+
             Ok(Json(json!({ "status": "settled", "escrow_id": id })))
         }
         None => Err((
@@ -635,6 +645,8 @@ pub async fn refund(
                     ))),
                 ));
             }
+
+            let _ = state.ws_tx.send(WsEvent::escrow_refunded(&id));
 
             Ok(Json(json!({ "status": "refunded", "escrow_id": id })))
         }
@@ -759,6 +771,7 @@ pub async fn dispute(
                     "mode": "jury"
                 })))
             } else {
+                let _ = state.ws_tx.send(WsEvent::escrow_disputed(&id, &body.reason));
                 Ok(Json(json!({
                     "status": "disputed",
                     "escrow_id": id
@@ -801,6 +814,16 @@ pub async fn cancel(
                     | EscrowStatus::Expired
             ) =>
         {
+            Err((
+                StatusCode::CONFLICT,
+                Json(json!(ApiError::new(
+                    "escrow_already_finalized",
+                    "Escrow cannot be cancelled"
+                ))),
+            ))
+        }
+        Some(current) => {
+            // Verify caller is authorized (buyer or seller with valid signature)
             let auth = AuthContext::from_headers(&headers).map_err(|_e| {
                 (
                     StatusCode::UNAUTHORIZED,
@@ -834,15 +857,6 @@ pub async fn cancel(
                     ))),
                 ));
             }
-            Err((
-                StatusCode::CONFLICT,
-                Json(json!(ApiError::new(
-                    "escrow_already_finalized",
-                    "Escrow cannot be cancelled"
-                ))),
-            ))
-        }
-        Some(_) => {
             queries::mark_escrow_cancelled(&state.db, &id)
                 .await
                 .map_err(|_e| {
@@ -854,6 +868,9 @@ pub async fn cancel(
                         ))),
                     )
                 })?;
+
+            let _ = state.ws_tx.send(WsEvent::escrow_cancelled(&id));
+
             Ok(Json(json!({ "status": "cancelled", "escrow_id": id })))
         }
         None => Err((

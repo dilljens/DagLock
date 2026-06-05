@@ -66,10 +66,6 @@ pub async fn create_identity(
     })?;
 
     // Verify the signed message matches the expected format
-    // The wallet signed: "daglock.io:verify:{platform}:{handle}"
-    // This proves the user controls this wallet AND requested this specific handle.
-    // The actual signature verification happens client-side; we just store the
-    // signed message so anyone can independently verify later.
     let expected_message = format!("daglock.io:verify:{}:{}", body.platform, body.handle);
     if body.signed_message != expected_message {
         return Err((
@@ -77,6 +73,22 @@ pub async fn create_identity(
             Json(json!(ApiError::new(
                 "invalid_message",
                 format!("Signed message must be '{expected_message}'")
+            ))),
+        ));
+    }
+
+    // Cryptographically verify the signature — the wallet signed
+    // "daglock.io:verify:telegram:@handle" proving ownership of this address.
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "invalid_signature",
+                "Signature does not match the claimed address"
             ))),
         ));
     }

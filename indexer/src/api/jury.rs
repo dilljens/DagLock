@@ -38,6 +38,21 @@ pub async fn register(
         )
     })?;
 
+    // Verify signature
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, "jury:register")
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "invalid_signature",
+                "Signature does not match the claimed address"
+            ))),
+        ));
+    }
+
     // Check minimum requirements
     let rep = queries::get_reputation(&state.db, &auth.address)
         .await
@@ -91,6 +106,21 @@ pub async fn unregister(
             ))),
         )
     })?;
+
+    // Verify signature
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, "jury:unregister")
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "invalid_signature",
+                "Signature does not match the claimed address"
+            ))),
+        ));
+    }
 
     let removed = queries::unregister_juror(&state.db, &auth.address)
         .await
@@ -206,6 +236,21 @@ pub async fn cast_vote(
             ))),
         )
     })?;
+
+    // Verify signature
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &format!("vote:{}", case_id))
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "invalid_signature",
+                "Signature does not match the claimed address"
+            ))),
+        ));
+    }
 
     // Verify this juror is assigned to this case
     let case = queries::get_jury_case(&state.db, &case_id)

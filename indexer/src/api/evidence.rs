@@ -66,6 +66,22 @@ pub async fn submit_evidence(
         )
     })?;
 
+    // Verify signature — proves the caller owns the claimed address
+    let expected_msg = format!("evidence:{}", id);
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_msg)
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "invalid_signature",
+                "Signature does not match the claimed address"
+            ))),
+        ));
+    }
+
     // Verify the submitter is one of the escrow parties
     if auth.address != escrow.buyer_address
         && escrow.seller_address.as_deref() != Some(&auth.address)
@@ -75,6 +91,17 @@ pub async fn submit_evidence(
             Json(json!(ApiError::new(
                 "forbidden",
                 "Only escrow parties can submit evidence"
+            ))),
+        ));
+    }
+
+    // Validate content size (max 100KB)
+    if body.content.len() > 102_400 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "content_too_large",
+                "Evidence content must be under 100KB"
             ))),
         ));
     }
@@ -200,6 +227,22 @@ pub async fn resolve_dispute(
             ))),
         )
     })?;
+
+    // Verify signature — proves the caller owns the claimed address
+    let expected_msg = format!("resolve:{}", id);
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_msg)
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "invalid_signature",
+                "Signature does not match the claimed address"
+            ))),
+        ));
+    }
 
     // Verify the resolver is one of the escrow parties or the mediator
     let is_party = auth.address == escrow.buyer_address

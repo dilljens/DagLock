@@ -1639,6 +1639,14 @@ pub async fn list_vaults_by_owner(
     Ok(rows.into_iter().map(row_to_vault).collect())
 }
 
+pub async fn count_vaults_by_owner(pool: &Pool<Sqlite>, owner: &str) -> Result<i64, sqlx::Error> {
+    let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM vaults WHERE owner_address = ?1")
+        .bind(owner)
+        .fetch_one(pool)
+        .await?;
+    Ok(count)
+}
+
 pub async fn update_vault_status(
     pool: &Pool<Sqlite>,
     id: &str,

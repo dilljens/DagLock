@@ -161,7 +161,6 @@ pub async fn list(
                 ));
             }
             // Check if party
-            // Check if party
             if auth_ref.address == escrow.buyer_address
                 || escrow.seller_address.as_deref() == Some(&auth_ref.address)
             {
