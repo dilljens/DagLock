@@ -31,6 +31,44 @@ import {
 	StatusTimeline,
 } from "./ui";
 import type { LoadState } from "./helpers";
+import { detectKasware, connectWallet, signMessage, type WalletState } from "./kasware";
+
+/* ─── Wallet Button ─── */
+function WalletStatus() {
+	const [wallet, setWallet] = useState<WalletState>({ detected: false, connected: false, address: null, network: null, balance: null, loading: false, error: null });
+
+	useEffect(() => {
+		detectKasware().then((detected) => setWallet((s) => ({ ...s, detected })));
+	}, []);
+
+	async function handleConnect() {
+		setWallet((s) => ({ ...s, loading: true, error: null }));
+		try {
+			const { address, network, balance } = await connectWallet();
+			setWallet({ detected: true, connected: true, address, network, balance, loading: false, error: null });
+		} catch (err) {
+			setWallet((s) => ({ ...s, loading: false, error: (err as Error).message }));
+		}
+	}
+
+	return (
+		<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+			{!wallet.detected && (
+				<small className="muted" style={{ fontSize: "12px" }}>No wallet</small>
+			)}
+			{wallet.detected && !wallet.connected && (
+				<button className="button" onClick={handleConnect} disabled={wallet.loading} style={{ fontSize: "12px", padding: "4px 10px" }}>
+					{wallet.loading ? "Connecting..." : "Connect Wallet"}
+				</button>
+			)}
+			{wallet.connected && wallet.address && (
+				<small className="muted" style={{ fontSize: "12px" }}>
+					{wallet.address.slice(0, 10)}... | {wallet.balance} KAS
+				</small>
+			)}
+		</div>
+	);
+}
 
 function CreateOfferForm({ onDone }: { onDone: () => void }) {
 	const [side, setSide] = useState("sell");
@@ -2036,7 +2074,10 @@ export default function App() {
 			</div>
 			<header className="hero">
 				<div>
-					<div className="brand">Kaspa Escrow</div>
+					<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "8px" }}>
+						<div className="brand">Kaspa Escrow</div>
+						<WalletStatus />
+					</div>
 					<h1>Trustless escrow and atomic swaps on Kaspa.</h1>
 					<p>
 						The public front door for offers, escrows, reputation, and receipts.
