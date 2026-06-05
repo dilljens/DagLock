@@ -122,6 +122,13 @@ pub struct Offer {
     pub status: String,
     pub expires_at: Option<i64>,
     pub created_at: i64,
+    pub price_type: String,
+    pub price_offset: Option<f64>,
+    pub min_price: Option<f64>,
+    pub max_price: Option<f64>,
+    pub current_price: Option<f64>,
+    pub price_currency: String,
+    pub price_updated_at: Option<i64>,
 }
 
 /// Create offer request.
@@ -134,6 +141,10 @@ pub struct CreateOfferRequest {
     pub amount_sompi: i64,
     pub counterparty_address: Option<Address>,
     pub expires_at: Option<i64>,
+    pub price_type: Option<String>,
+    pub price_offset: Option<f64>,
+    pub min_price: Option<f64>,
+    pub max_price: Option<f64>,
 }
 
 /// Accept offer request.

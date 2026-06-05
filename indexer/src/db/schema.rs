@@ -45,6 +45,11 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
+    sqlx::query(include_str!("migrations/010_price_locked_offers.sql"))
+        .execute(pool)
+        .await
+        .ok();
+
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_price_columns(pool).await?;
     ensure_dispute_mode_column(pool).await?;

@@ -19,6 +19,22 @@ pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<CreateOfferRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let price_type = body.price_type.unwrap_or_else(|| "fixed".to_string());
+    let current_price = if price_type == "market" {
+        // Fetch current price from CoinGecko
+        let price_resp = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd").await;
+        let kaspa_price = match price_resp {
+            Ok(r) if r.status().is_success() => {
+                let price_json: serde_json::Value = r.json().await.unwrap_or_default();
+                Some(price_json["kaspa"]["usd"].as_f64().unwrap_or(0.0))
+            }
+            _ => None,
+        };
+        kaspa_price
+    } else {
+        None
+    };
+
     let offer = Offer {
         id: format!(
             "off_{}",
@@ -33,6 +49,13 @@ pub async fn create(
         status: "proposed".to_string(),
         expires_at: body.expires_at,
         created_at: chrono::Utc::now().timestamp(),
+        price_type,
+        price_offset: body.price_offset,
+        min_price: body.min_price,
+        max_price: body.max_price,
+        current_price,
+        price_currency: "USD".to_string(),
+        price_updated_at: if current_price.is_some() { Some(chrono::Utc::now().timestamp()) } else { None },
     };
 
     queries::insert_offer(&state.db, &offer)

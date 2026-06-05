@@ -1,0 +1,702 @@
+openapi: 3.0.3
+info:
+  title: DagLock API
+  description: Trustless escrow and atomic swaps on Kaspa
+  version: 1.0.0
+  contact:
+    name: DagLock
+    url: https://daglock.com
+
+servers:
+  - url: https://daglock-production.up.railway.app
+    description: Production server
+  - url: http://localhost:8443
+    description: Local development
+
+paths:
+  /v1/health:
+    get:
+      summary: Health check
+      tags: [System]
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /v1/network:
+    get:
+      summary: Network information
+      tags: [System]
+      responses:
+        '200':
+          description: Network details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+
+  /v1/network/price:
+    get:
+      summary: KAS/USD price
+      tags: [System]
+      responses:
+        '200':
+          description: Current price
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kas_usd:
+                    type: number
+                  updated_at:
+                    type: integer
+
+  /v1/stats:
+    get:
+      summary: Platform statistics
+      tags: [System]
+      responses:
+        '200':
+          description: Statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+
+  /v1/escrows:
+    get:
+      summary: List escrows
+      tags: [Escrows]
+      parameters:
+        - name: address
+          in: query
+          schema:
+            type: string
+          description: Filter by address
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          description: Max results
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          description: Pagination offset
+      responses:
+        '200':
+          description: Escrow list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  escrows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Escrow'
+                  total:
+                    type: integer
+    post:
+      summary: Create escrow
+      tags: [Escrows]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEscrowRequest'
+      responses:
+        '201':
+          description: Escrow created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Escrow'
+
+  /v1/escrows/{id}:
+    get:
+      summary: Get escrow by ID
+      tags: [Escrows]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Escrow details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Escrow'
+        '404':
+          description: Escrow not found
+
+  /v1/escrows/{id}/settle:
+    post:
+      summary: Settle escrow
+      tags: [Escrows]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Escrow settled
+
+  /v1/escrows/{id}/refund:
+    post:
+      summary: Refund escrow
+      tags: [Escrows]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Escrow refunded
+
+  /v1/escrows/{id}/dispute:
+    post:
+      summary: Dispute escrow
+      tags: [Escrows]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                mode:
+                  type: string
+                  enum: [standard, mediator, jury]
+      responses:
+        '200':
+          description: Escrow disputed
+
+  /v1/escrows/{id}/cancel:
+    post:
+      summary: Cancel escrow
+      tags: [Escrows]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Escrow cancelled
+
+  /v1/offers:
+    get:
+      summary: List offers
+      tags: [Offers]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status
+        - name: creator
+          in: query
+          schema:
+            type: string
+          description: Filter by creator
+      responses:
+        '200':
+          description: Offer list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Offer'
+                  total:
+                    type: integer
+    post:
+      summary: Create offer
+      tags: [Offers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOfferRequest'
+      responses:
+        '201':
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offer'
+
+  /v1/offers/{id}/accept:
+    post:
+      summary: Accept offer
+      tags: [Offers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                counterparty_address:
+                  type: string
+      responses:
+        '200':
+          description: Offer accepted
+
+  /v1/offers/{id}/cancel:
+    post:
+      summary: Cancel offer
+      tags: [Offers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Offer cancelled
+
+  /v1/reputation/{address}:
+    get:
+      summary: Get reputation
+      tags: [Reputation]
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reputation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reputation'
+
+  /v1/receipts/{id}:
+    get:
+      summary: Get receipt
+      tags: [Receipts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Receipt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+
+  /v1/vaults:
+    get:
+      summary: List vaults
+      tags: [Vaults]
+      parameters:
+        - name: owner
+          in: query
+          schema:
+            type: string
+          description: Filter by owner address
+      responses:
+        '200':
+          description: Vault list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vaults:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vault'
+                  total:
+                    type: integer
+    post:
+      summary: Create vault
+      tags: [Vaults]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVaultRequest'
+      responses:
+        '201':
+          description: Vault created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vault'
+
+  /v1/vaults/{id}:
+    get:
+      summary: Get vault by ID
+      tags: [Vaults]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vault details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vault'
+
+  /v1/vaults/{id}/withdraw:
+    post:
+      summary: Withdraw from vault
+      tags: [Vaults]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawVaultRequest'
+      responses:
+        '200':
+          description: Vault withdrawn
+
+components:
+  schemas:
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        node_synced:
+          type: boolean
+        node_daa_score:
+          type: integer
+        uptime_seconds:
+          type: integer
+
+    Network:
+      type: object
+      properties:
+        network:
+          type: string
+        daa_score:
+          type: integer
+        block_count:
+          type: integer
+        difficulty:
+          type: number
+        bps:
+          type: number
+
+    Stats:
+      type: object
+      properties:
+        total_escrows:
+          type: integer
+        active_escrows:
+          type: integer
+        disputed_escrows:
+          type: integer
+        settled_escrows:
+          type: integer
+        refunded_escrows:
+          type: integer
+        cancelled_escrows:
+          type: integer
+        total_volume_kas:
+          type: string
+        total_fees_collected_kas:
+          type: string
+        unique_buyers:
+          type: integer
+        unique_sellers:
+          type: integer
+
+    Escrow:
+      type: object
+      properties:
+        id:
+          type: string
+        lock_tx_id:
+          type: string
+        lock_tx_output_index:
+          type: integer
+        status:
+          type: string
+          enum: [pending_confirmation, active, disputed, settled, refunded, cancelled, expired]
+        asset_type:
+          type: string
+        buyer_address:
+          type: string
+        seller_address:
+          type: string
+        amount_sompi:
+          type: integer
+        fee_sompi:
+          type: integer
+        template_hash:
+          type: array
+          items:
+            type: integer
+        created_at:
+          type: integer
+        settled_at:
+          type: integer
+        refunded_at:
+          type: integer
+        disputed_at:
+          type: integer
+        dispute_reason:
+          type: string
+        cancelled_at:
+          type: integer
+        expired_at:
+          type: integer
+
+    CreateEscrowRequest:
+      type: object
+      required: [lock_tx_id, lock_tx_output_index, buyer_address, amount_sompi]
+      properties:
+        lock_tx_id:
+          type: string
+        lock_tx_output_index:
+          type: integer
+        buyer_address:
+          type: string
+        seller_address:
+          type: string
+        amount_sompi:
+          type: integer
+        asset_type:
+          type: string
+          default: KAS
+        mediator_key:
+          type: string
+        dispute_mode:
+          type: string
+          enum: [standard, mediator, jury]
+          default: standard
+
+    Offer:
+      type: object
+      properties:
+        id:
+          type: string
+        creator_address:
+          type: string
+        side:
+          type: string
+          enum: [buy, sell]
+        base_asset:
+          type: string
+        quote_asset:
+          type: string
+        amount_sompi:
+          type: integer
+        counterparty_address:
+          type: string
+        status:
+          type: string
+          enum: [proposed, accepted, cancelled]
+        expires_at:
+          type: integer
+        created_at:
+          type: integer
+
+    CreateOfferRequest:
+      type: object
+      required: [creator_address, side, base_asset, quote_asset, amount_sompi]
+      properties:
+        creator_address:
+          type: string
+        side:
+          type: string
+          enum: [buy, sell]
+        base_asset:
+          type: string
+        quote_asset:
+          type: string
+        amount_sompi:
+          type: integer
+        counterparty_address:
+          type: string
+        expires_at:
+          type: integer
+
+    Reputation:
+      type: object
+      properties:
+        address:
+          type: string
+        score:
+          type: number
+        trade_count:
+          type: integer
+        settled_count:
+          type: integer
+        refunded_count:
+          type: integer
+        disputed_count:
+          type: integer
+        dispute_rate:
+          type: number
+        refund_rate:
+          type: number
+        total_volume_sompi:
+          type: integer
+        age_days:
+          type: integer
+        trading_concentration:
+          type: number
+
+    Receipt:
+      type: object
+      properties:
+        receipt_id:
+          type: string
+        escrow_id:
+          type: string
+        status:
+          type: string
+        asset:
+          type: string
+        amount_sompi:
+          type: integer
+        fee_sompi:
+          type: integer
+        buyer_address:
+          type: string
+        seller_address:
+          type: string
+        lock_tx_id:
+          type: string
+        created_at:
+          type: integer
+
+    Vault:
+      type: object
+      properties:
+        id:
+          type: string
+        owner_address:
+          type: string
+        beneficiary_address:
+          type: string
+        vault_type:
+          type: string
+          enum: [time, beneficiary, deadman, inheritance, multisig]
+        status:
+          type: string
+          enum: [locked, unlocked, expired, transferred]
+        amount_sompi:
+          type: integer
+        timeout:
+          type: integer
+        created_at:
+          type: integer
+        unlocked_at:
+          type: integer
+        expires_at:
+          type: integer
+
+    CreateVaultRequest:
+      type: object
+      required: [owner_address, vault_type, amount_sompi, timeout]
+      properties:
+        owner_address:
+          type: string
+        beneficiary_address:
+          type: string
+        vault_type:
+          type: string
+          enum: [time, beneficiary, deadman, inheritance, multisig]
+        amount_sompi:
+          type: integer
+        timeout:
+          type: integer
+        lock_tx_id:
+          type: string
+        lock_tx_output_index:
+          type: integer
+
+    WithdrawVaultRequest:
+      type: object
+      required: [owner_address, signature]
+      properties:
+        owner_address:
+          type: string
+        signature:
+          type: string
+
+    AuthRequest:
+      type: object
+      properties:
+        address:
+          type: string
+        signature:
+          type: string
+        message:
+          type: string
