@@ -1,6 +1,9 @@
 # DagLock Deployment Plan — Testnet + Mainnet
 
-> Dual-network deployment strategy. One week of testnet feedback, then mainnet launch with shared infrastructure.
+> Dual-network deployment strategy. Toccata activates June 30, 2026. That gives ~3.5 weeks of testnet feedback before mainnet launch with shared infrastructure.
+>
+> **Key date:** Kaspa Toccata hard fork activates at DAA score 474,165,565 (~June 30, 16:15 UTC).
+> Covenants become available on mainnet at that point. DagLock mainnet launches same day.
 
 ---
 
@@ -169,35 +172,51 @@ In the existing Cloudflare Pages project (`daglock.com`):
 
 ## 5. Deployment Calendar
 
+### 4-Week Timeline (June 5 → June 30)
+
 ```
-Day 1  ████████░░░░░░░░░░░░░░░░░░░░░░  Set up testnet + mainnet infra
-Day 1  ░░░░░░░░████████░░░░░░░░░░░░░░  Deploy testnet, announce on Reddit
-Day 2  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Watch testnet feedback, fix bugs
-Day 3  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Iterate on feedback
-Day 4  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Fix issues found
-Day 5  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Verify fixes on testnet
-Day 6  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Final checks
-Day 7  ░░░░░░░░░░░░░░░░░░░░░░░████████  Mainnet launch + mainnet bot live
+Week 1 (Jun 5-11)  ████████░░░░░░░░░░░░░░  Set up infra, announce testnet
+Week 2 (Jun 12-18)  ░░░░░░░░████████░░░░░░  Collect feedback, fix bugs
+Week 3 (Jun 19-25)  ░░░░░░░░░░░░░░░░████░░  Iterate, prep mainnet config
+Week 4 (Jun 26-30)  ░░░░░░░░░░░░░░░░░░░░██  Mainnet launch on Toccata day
 ```
 
-**Day 1 tasks:**
+### Week 1 — June 5 to June 11: Set Up + Announce
+
 - [ ] Rename current Railway service to `daglock-indexer-testnet`
-- [ ] Create `daglock-indexer-mainnet` Railway service
+- [ ] Create `daglock-indexer-mainnet` Railway service (starts dormant, ready to go)
 - [ ] Add custom domains (`api.daglock.com`, `test-api.daglock.com`)
 - [ ] Deploy testnet web UI at `test.daglock.com`
-- [ ] Update mainnet web UI env var to point at `api.daglock.com`
+- [ ] Update mainnet web UI env var to point at `api.daglock.com` (won't be live yet)
+- [ ] Deploy `@DagLock_test_bot`
 - [ ] Post on Reddit with test wallet and `test.daglock.com` link
-- [ ] (Optional) Deploy `@DagLock_test_bot`
+- [ ] Verify the whole flow works end-to-end on Testnet 12
 
-**Day 7 tasks:**
-- [ ] Verify no critical bugs found during testnet week
-- [ ] Announce DagLock mainnet is live
-- [ ] Deploy `@DagLock_bot` pointing at mainnet
-- [ ] Leave testnet infra running for ongoing testing
+### Week 2 — June 12 to June 18: Feedback + Fixes
 
-### Early Exit (if nobody uses testnet)
+- [ ] Monitor testnet usage, watch logs
+- [ ] Fix any bugs reported
+- [ ] Fix UI friction points
+- [ ] Fix telegram bot issues
+- [ ] No pressure — if nobody's testing, that's fine. Keep iterating.
 
-If after Day 3-4 there's zero testnet activity, just launch mainnet early. The infra stays up for CI/testing regardless.
+### Week 3 — June 19 to June 25: Iterate + Prep
+
+- [ ] Polish mainnet config
+- [ ] Test mainnet indexer against a test Kaspa mainnet node if available
+- [ ] Register `@DagLock_bot` on BotFather (keep it dormant)
+- [ ] Set up mainnet Cloudflare Pages project (keep it on a holding page or password)
+- [ ] Write the mainnet announcement post
+
+### Week 4 — June 26 to June 30: Mainnet Launch
+
+- [ ] **June 28:** Flip `daglock.com` to point at mainnet API. Put up countdown page.
+- [ ] **June 30 (~16:15 UTC):** Toccata activates. Covenants go live on mainnet.
+- [ ] Deploy `@DagLock_bot` pointing at `api.daglock.com`
+- [ ] Announce: "DagLock is live on Kaspa mainnet"
+- [ ] Leave testnet infra running for ongoing debugging
+
+**The beauty of this schedule:** If Toccata gets delayed further, you lose nothing. Testnet keeps running, mainnet infra sits ready. You flip the switch when they flip theirs.
 
 ---
 
@@ -269,7 +288,8 @@ Test wallet address: kaspa:qdyzkrhd74v6cetrv4fhv
 Just create an offer, check reputation, or browse escrows.
 Tell me what breaks or what's confusing.
 
-Mainnet launch planned in about a week.
+Mainnet launches when Toccata activates (~June 30).
+Plenty of time to test before then.
 ```
 
 ---
@@ -280,4 +300,5 @@ Mainnet launch planned in about a week.
 - **Both indexers share the same Dockerfile.** The only difference is the start command flags.
 - **SQLite is fine for both.** Each service has its own volume. No shared state.
 - **The testnet web UI doesn't need to be polished.** It's for debugging. A banner saying "🧪 TESTNET — No real money" at the top of the page is enough.
+- **No rush.** You have 3.5 weeks before Toccata. Use the time to get real testnet feedback. If nobody uses testnet the first week, that's fine — drop another Reddit post, try Telegram groups. You have the runway.
 - **If testnet volume is very low**, you can merge both indexers into one box by running two processes on different ports. But two Railway services is simpler and only costs ~$5/mo.

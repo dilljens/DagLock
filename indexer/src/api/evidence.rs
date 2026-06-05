@@ -89,7 +89,7 @@ pub async fn submit_evidence(
     let evidence = DisputeEvidence {
         id: format!(
             "ev_{}",
-            Uuid::new_v4().to_string().split('-').next().unwrap()
+            Uuid::new_v4().to_string().split('-').next().expect("UUID should have a dash")
         ),
         escrow_id: id,
         submitted_by: auth.address,

@@ -28,7 +28,7 @@ pub struct Args {
     pub log_level: String,
 
     /// Allowed CORS origin. Set to a specific domain in production, * for dev.
-    #[arg(long, default_value = "*")]
+    #[arg(long, default_value = "https://daglock.com")]
     pub cors_origin: String,
 
     /// Block mainnet if this flag isn't explicitly set (production safety).

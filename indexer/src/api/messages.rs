@@ -84,7 +84,7 @@ pub async fn send(
     let msg = EscrowMessage {
         id: format!(
             "msg_{}",
-            Uuid::new_v4().to_string().split('-').next().unwrap()
+            Uuid::new_v4().to_string().split('-').next().expect("UUID should have a dash")
         ),
         escrow_id: escrow_id.clone(),
         sender_address: auth.address.clone(),
