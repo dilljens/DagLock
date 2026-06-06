@@ -24,7 +24,7 @@ export function time(value?: number | null): string {
 
 export function relativeTime(ts: number | null | undefined): string {
 	if (!ts) return "—";
-	const seconds = Math.floor((Date.now() / 1000) - ts);
+	const seconds = Math.floor(Date.now() / 1000 - ts);
 	if (seconds < 60) return "just now";
 	const minutes = Math.floor(seconds / 60);
 	if (minutes < 60) return `${minutes}m ago`;
@@ -34,6 +34,11 @@ export function relativeTime(ts: number | null | undefined): string {
 	if (days < 30) return `${days}d ago`;
 	const months = Math.floor(days / 30);
 	return `${months}mo ago`;
+}
+
+export function errMsg(err: unknown): string {
+	if (err instanceof Error) return err.message;
+	return String(err);
 }
 
 export function badge(status: string): string {

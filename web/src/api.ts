@@ -1,5 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL || "";
-console.log("[DagLock] API_BASE:", API_BASE);
+if (import.meta.env.DEV) {
+	console.log("[DagLock] API_BASE:", API_BASE);
+}
 
 export type Health = {
 	status: string;
@@ -234,12 +236,7 @@ export type DisputeEvidence = {
 
 // ── Vault Types ─────────────────────────────────────────────────
 
-export type VaultType =
-	| "time"
-	| "beneficiary"
-	| "deadman"
-	| "inheritance"
-	| "multisig";
+export type VaultType = "time" | "beneficiary" | "deadman" | "inheritance" | "multisig";
 
 export type VaultStatus = "locked" | "unlocked" | "expired" | "transferred";
 
@@ -292,11 +289,7 @@ async function loadJson<T>(path: string): Promise<T> {
 	return response.json() as Promise<T>;
 }
 
-async function postJson<T>(
-	path: string,
-	body: unknown,
-	auth?: AuthHeaders,
-): Promise<T> {
+async function postJson<T>(path: string, body: unknown, auth?: AuthHeaders): Promise<T> {
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 	};
@@ -335,17 +328,18 @@ async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
 	return response.json() as Promise<T>;
 }
 
+export type CompileResponse = {
+	script: string;
+	template_hash: string;
+	abi: { name: string }[];
+};
+
 export const api = {
 	health: () => loadJson<Health>("/v1/health"),
 	compile: (template: string, params: Record<string, string>) =>
-		postJson<{
-			script: string;
-			template_hash: string;
-			abi: { name: string }[];
-		}>("/v1/compile", { template, params }),
+		postJson<CompileResponse>("/v1/compile", { template, params }),
 	network: () => loadJson<NetworkInfo>("/v1/network"),
-	networkPrice: () =>
-		loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
+	networkPrice: () => loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
 	stats: () => loadJson<Stats>("/v1/stats"),
 
 	// Vaults
@@ -353,8 +347,7 @@ export const api = {
 		loadJson<{ vaults: Vault[]; total: number }>(
 			`/v1/vaults${owner ? `?owner=${encodeURIComponent(owner)}` : ""}`,
 		),
-	vault: (id: string) =>
-		loadJson<Vault>(`/v1/vaults/${encodeURIComponent(id)}`),
+	vault: (id: string) => loadJson<Vault>(`/v1/vaults/${encodeURIComponent(id)}`),
 	createVault: (req: CreateVaultRequest) => postJson<Vault>("/v1/vaults", req),
 	withdrawVault: (id: string, ownerAddress: string, signature: string) =>
 		postJson<{ status: string; vault_id: string }>(
@@ -367,10 +360,8 @@ export const api = {
 		loadJson<{ escrows: Escrow[]; total: number }>(
 			`/v1/escrows?address=${encodeURIComponent(address)}`,
 		),
-	escrow: (id: string) =>
-		loadJson<Escrow>(`/v1/escrows/${encodeURIComponent(id)}`),
-	createEscrow: (req: CreateEscrowRequest) =>
-		postJson<Escrow>("/v1/escrows", req),
+	escrow: (id: string) => loadJson<Escrow>(`/v1/escrows/${encodeURIComponent(id)}`),
+	createEscrow: (req: CreateEscrowRequest) => postJson<Escrow>("/v1/escrows", req),
 	settleEscrow: (id: string, auth: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/settle`,
@@ -395,8 +386,7 @@ export const api = {
 			`/v1/escrows/${encodeURIComponent(id)}/swap`,
 			{ preimage },
 		),
-	generateSwap: () =>
-		loadJson<{ secret: string; hash: string }>("/v1/swap/generate"),
+	generateSwap: () => loadJson<{ secret: string; hash: string }>("/v1/swap/generate"),
 
 	// Offers
 	offers: (creator?: string) =>
@@ -405,22 +395,14 @@ export const api = {
 		),
 	createOffer: (req: CreateOfferRequest) => postJson<Offer>("/v1/offers", req),
 	acceptOffer: (id: string, counterparty_address: string) =>
-		postJson<{ status: string; offer_id: string }>(
-			`/v1/offers/${encodeURIComponent(id)}/accept`,
-			{ counterparty_address },
-		),
+		postJson<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/accept`, {
+			counterparty_address,
+		}),
 	cancelOffer: (id: string) =>
-		postEmpty<{ status: string; offer_id: string }>(
-			`/v1/offers/${encodeURIComponent(id)}/cancel`,
-		),
+		postEmpty<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/cancel`),
 
 	// Vouching
-	vouch: (
-		subjectAddress: string,
-		auth: AuthHeaders,
-		escrowId?: string,
-		note?: string,
-	) =>
+	vouch: (subjectAddress: string, auth: AuthHeaders, escrowId?: string, note?: string) =>
 		postJson<{ status: string; vouch: Vouch }>(
 			"/v1/vouches",
 			{ subject_address: subjectAddress, escrow_id: escrowId, note },
@@ -442,36 +424,20 @@ export const api = {
 
 	// Jury
 	juryRegister: (auth: AuthHeaders) =>
-		postJson<{ status: string; address: string }>(
-			"/v1/jury/register",
-			{},
-			auth,
-		),
+		postJson<{ status: string; address: string }>("/v1/jury/register", {}, auth),
 	juryUnregister: (auth: AuthHeaders) =>
-		postJson<{ status: string; address: string }>(
-			"/v1/jury/unregister",
-			{},
-			auth,
-		),
+		postJson<{ status: string; address: string }>("/v1/jury/unregister", {}, auth),
 	juryCases: (auth: AuthHeaders) =>
 		loadAuthJson<{ cases: JuryCase[]; total: number }>("/v1/jury/cases", auth),
-	juryCase: (caseId: string) =>
-		loadJson<JuryCase>(`/v1/jury/cases/${encodeURIComponent(caseId)}`),
-	juryVote: (
-		caseId: string,
-		vote: string,
-		reasoning?: string,
-		auth?: AuthHeaders,
-	) =>
+	juryCase: (caseId: string) => loadJson<JuryCase>(`/v1/jury/cases/${encodeURIComponent(caseId)}`),
+	juryVote: (caseId: string, vote: string, reasoning?: string, auth?: AuthHeaders) =>
 		postJson<{ status: string; vote: string; verdict?: string | null }>(
 			`/v1/jury/cases/${encodeURIComponent(caseId)}/vote`,
 			{ vote, reasoning },
 			auth,
 		),
 	juryCandidates: () =>
-		loadJson<{ candidates: JurorRegistration[]; total: number }>(
-			"/v1/jury/candidates",
-		),
+		loadJson<{ candidates: JurorRegistration[]; total: number }>("/v1/jury/candidates"),
 
 	// Messages
 	sendMessage: (escrowId: string, content: string, auth: AuthHeaders) =>
@@ -512,16 +478,10 @@ export const api = {
 		),
 	reputation: (address: string) =>
 		loadJson<Reputation>(`/v1/reputation/${encodeURIComponent(address)}`),
-	receipt: (id: string) =>
-		loadJson<Receipt>(`/v1/receipts/${encodeURIComponent(id)}`),
+	receipt: (id: string) => loadJson<Receipt>(`/v1/receipts/${encodeURIComponent(id)}`),
 
 	// Evidence
-	submitEvidence: (
-		escrowId: string,
-		content: string,
-		signedMessage?: string,
-		auth?: AuthHeaders,
-	) =>
+	submitEvidence: (escrowId: string, content: string, signedMessage?: string, auth?: AuthHeaders) =>
 		postJson<DisputeEvidence>(
 			`/v1/escrows/${encodeURIComponent(escrowId)}/evidence`,
 			{ content, signed_message: signedMessage },
@@ -531,12 +491,7 @@ export const api = {
 		loadJson<{ evidence: DisputeEvidence[]; escrow_id: string }>(
 			`/v1/escrows/${encodeURIComponent(escrowId)}/evidence`,
 		),
-	resolveDispute: (
-		escrowId: string,
-		outcome: string,
-		resolved_by: string,
-		auth?: AuthHeaders,
-	) =>
+	resolveDispute: (escrowId: string, outcome: string, resolved_by: string, auth?: AuthHeaders) =>
 		postJson<{ status: string; escrow_id: string; outcome: string }>(
 			`/v1/escrows/${encodeURIComponent(escrowId)}/resolve-dispute`,
 			{ outcome, resolved_by },

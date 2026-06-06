@@ -21,7 +21,12 @@ export function Panel({ title, children }: { title: string; children: React.Reac
 	);
 }
 
-export function LookupResult<T>({ loading, error, data, render }: {
+export function LookupResult<T>({
+	loading,
+	error,
+	data,
+	render,
+}: {
 	loading: boolean;
 	error?: string;
 	data?: T;
@@ -42,7 +47,13 @@ export function FormField({ label, children }: { label: string; children: React.
 	);
 }
 
-export function ValidatedInput({ label, value, onChange, placeholder, validate }: {
+export function ValidatedInput({
+	label,
+	value,
+	onChange,
+	placeholder,
+	validate,
+}: {
 	label: string;
 	value: string;
 	onChange: (v: string) => void;
@@ -56,8 +67,13 @@ export function ValidatedInput({ label, value, onChange, placeholder, validate }
 	return (
 		<FormField label={label}>
 			<div className="validated-input">
-				<input value={value} onChange={(e) => onChange(e.target.value)} onBlur={() => setTouched(true)} placeholder={placeholder}
-					className={error ? "input-error" : valid ? "input-valid" : ""} />
+				<input
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					onBlur={() => setTouched(true)}
+					placeholder={placeholder}
+					className={error ? "input-error" : valid ? "input-valid" : ""}
+				/>
 				{error && <span className="input-feedback error">{error}</span>}
 				{valid && <span className="input-feedback valid">OK</span>}
 			</div>
@@ -71,7 +87,13 @@ export function kvad(addr: string): string | null {
 	return null;
 }
 
-export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }: {
+export function ConfirmDialog({
+	title,
+	message,
+	confirmLabel,
+	onConfirm,
+	onCancel,
+}: {
 	title: string;
 	message: string;
 	confirmLabel: string;
@@ -84,8 +106,12 @@ export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCance
 				<h3>{title}</h3>
 				<p>{message}</p>
 				<div className="confirm-actions">
-					<button className="button" onClick={onCancel}>Cancel</button>
-					<button className="button primary" onClick={onConfirm}>{confirmLabel}</button>
+					<button className="button" onClick={onCancel}>
+						Cancel
+					</button>
+					<button className="button primary" onClick={onConfirm}>
+						{confirmLabel}
+					</button>
 				</div>
 			</div>
 		</div>
@@ -104,7 +130,10 @@ export function StatusTimeline({ status }: { status: string }) {
 	return (
 		<div className="timeline">
 			{steps.map((s, i) => (
-				<div key={s.key} className={`timeline-step ${i <= currentIdx ? "active" : ""} ${s.optional ? "optional" : ""}`}>
+				<div
+					key={s.key}
+					className={`timeline-step ${i <= currentIdx ? "active" : ""} ${s.optional ? "optional" : ""}`}
+				>
 					<div className="timeline-dot" />
 					<span className="timeline-label">{s.label}</span>
 				</div>

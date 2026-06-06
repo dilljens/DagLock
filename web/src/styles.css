@@ -1,7 +1,6 @@
 :root {
 	color-scheme: dark;
-	font-family:
-		Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	background: #0a1a0a;
 	color: #e0f0e0;
 }
@@ -13,8 +12,7 @@
 body {
 	margin: 0;
 	min-width: 320px;
-	background:
-		radial-gradient(circle at top, rgba(83, 215, 105, 0.12), transparent 30%),
+	background: radial-gradient(circle at top, rgba(83, 215, 105, 0.12), transparent 30%),
 		linear-gradient(180deg, #0a1a0a 0%, #071007 100%);
 }
 
@@ -674,16 +672,46 @@ code {
 }
 
 @media (max-width: 600px) {
-	.hero { flex-direction: column; text-align: center; padding: 24px 16px; }
-	.hero h1 { font-size: 1.5rem; }
-	.grid { grid-template-columns: 1fr !important; }
-	.two-up { grid-template-columns: 1fr !important; }
-	.lookup-grid { grid-template-columns: 1fr !important; }
-	.offers { grid-template-columns: 1fr !important; }
-	.form { flex-direction: column; }
-	.action-tabs { flex-direction: column; gap: 8px; }
-	.action-group { flex-wrap: wrap; }
-	input, select, button, .button { font-size: 16px !important; }
-	.panel { margin: 8px; }
-	.offer { margin: 4px 0; }
+	.hero {
+		flex-direction: column;
+		text-align: center;
+		padding: 24px 16px;
+	}
+	.hero h1 {
+		font-size: 1.5rem;
+	}
+	.grid {
+		grid-template-columns: 1fr !important;
+	}
+	.two-up {
+		grid-template-columns: 1fr !important;
+	}
+	.lookup-grid {
+		grid-template-columns: 1fr !important;
+	}
+	.offers {
+		grid-template-columns: 1fr !important;
+	}
+	.form {
+		flex-direction: column;
+	}
+	.action-tabs {
+		flex-direction: column;
+		gap: 8px;
+	}
+	.action-group {
+		flex-wrap: wrap;
+	}
+	input,
+	select,
+	button,
+	.button {
+		font-size: 16px !important;
+	}
+	.panel {
+		margin: 8px;
+	}
+	.offer {
+		margin: 4px 0;
+	}
 }
