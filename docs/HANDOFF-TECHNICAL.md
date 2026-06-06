@@ -54,11 +54,13 @@ This is the single most important distinction to understand.
 
 - **Release** — Both buyer and seller sign. Money splits: deposit minus 0.5% to recipient, 0.5% to treasury. The recipient address in output 0 is **not** checked by the covenant — only the amount is. This is by design: the recipient doesn't need to sign, so whoever constructs the tx controls the destination. The other party must verify before signing.
 - **Swap** — Someone reveals a secret `S` where `SHA-256(S) == tradeHash`. Same amount split. Used for atomic swaps (hash time-locked contracts). The `tradeHash` parameter comes from the escrow creator.
-- **Refund** — After the deadline, depositor reclaims full amount. No fee.
+- **Refund / refundAfterTimeout** — After the deadline, depositor reclaims full amount. No fee. On the arbiter variant, the mediator must co-sign to prevent dispute bypass.
 
 **`daglock_arbiter.sil`** — Same as daglock.sil plus two dispute paths:
 - **disputeSellerWins** — Mediator + seller sign. Seller gets deposit minus 0.5% minus mediator fee.
 - **disputeBuyerWins** — Mediator + buyer sign. Buyer gets refund minus fees.
+
+**Key difference from daglock.sil:** The refund path requires the mediator to co-sign (refundAfterTimeout). The buyer cannot take funds alone after timeout — the mediator must verify first. No fee on the refund path. If arbiterKey is all zeros, dispute paths are unreachable and refund is also unreachable. Use daglock.sil for trustless timeout refunds.
 
 If `arbiterKey` is all zeros, dispute paths are unreachable. This is how standard escrows disable them.
 

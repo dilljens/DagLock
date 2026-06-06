@@ -1,9 +1,9 @@
 # Contracts
 
-**Source**: `contracts/src/`  **Updated**: `2026-06-02`  (4 files)
+**Source**: `contracts/src/`  **Updated**: `2026-06-05`  (6 files)
 
 ## What it does
-SilverScript covenants for trustless escrow and atomic swaps on Kaspa L1. Two covenant files (KAS and KRC-20) compiled via `silverscript-lang`. The `lib.rs` crate provides a Rust API for compilation and template hash extraction.
+SilverScript covenants for trustless escrow and atomic swaps on Kaspa L1. Four covenant files (KAS, KRC-20, Arbiter, Vault) compiled via `silverscript-lang`. The `lib.rs` crate provides a Rust API for compilation and template hash extraction.
 
 ## Architecture
 ```
@@ -23,10 +23,14 @@ daglock.sil / daglock_krc20.sil
 | `daglock_source()` | function | `contracts/src/lib.rs` | Embed KAS covenant source as static str |
 | `daglock_krc20_source()` | function | `contracts/src/lib.rs` | Embed KRC-20 covenant source as static str |
 | `compile_daglock()` | function | `contracts/src/lib.rs` | Compile KAS covenant with constructor args |
+| `compile_daglock_arbiter()` | function | `contracts/src/lib.rs` | Compile arbiter covenant with mediator/jury paths |
+| `compile_daglock_vault()` | function | `contracts/src/lib.rs` | Compile time-locked vault covenant |
 | `compile_daglock_krc20()` | function | `contracts/src/lib.rs` | Compile KRC-20 covenant with constructor args |
 | `template_parts_and_hash()` | function | `contracts/src/lib.rs` | Extract prefix/suffix/hash from compiled contract |
 | `DagLock` | contract | `contracts/src/daglock.sil` | 3 entrypoints: release, swap, refund |
-| `DagLockKRC20` | contract | `contracts/src/daglock_krc20.sil` | KRC-20-aware escrow with ICC pattern |
+| `DagLockArbiter` | contract | `contracts/src/daglock_arbiter.sil` | 5 entrypoints: release, swap, refundAfterTimeout, disputeSellerWins, disputeBuyerWins |
+| `DagLockKRC20` | contract | `contracts/src/daglock_krc20.sil` | KRC-20 escrow with ICC pattern |
+| `DagLockVault` | contract | `contracts/src/daglock_vault.sil` | Time-locked self-custody (withdraw after timeout) |
 
 ## Data flow
 1. Constructor args (buyer/seller keys, trade hash, timeout, treasury key) encoded into bytecode
