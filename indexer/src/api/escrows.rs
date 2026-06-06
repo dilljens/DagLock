@@ -449,13 +449,7 @@ pub async fn create(
     queries::insert_escrow(&state.db, &escrow)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred. Please try again later."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     let _ = state.ws_tx.send(WsEvent::escrow_created(&escrow.id));

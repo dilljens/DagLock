@@ -57,13 +57,7 @@ pub async fn register(
     let rep = queries::get_reputation(&state.db, &auth.address)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
     if rep.trade_count < 10 || rep.score < 3.0 {
         return Err((
@@ -78,13 +72,7 @@ pub async fn register(
     queries::register_juror(&state.db, &auth.address)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     Ok(Json(
@@ -125,13 +113,7 @@ pub async fn unregister(
     let removed = queries::unregister_juror(&state.db, &auth.address)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     if !removed {
@@ -169,13 +151,7 @@ pub async fn list_cases(
     let cases = queries::list_active_jury_cases_for_juror(&state.db, &auth.address)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     Ok(Json(json!({"cases": cases, "total": cases.len() as i64})))
@@ -189,13 +165,7 @@ pub async fn get_case(
     let case = queries::get_jury_case(&state.db, &case_id)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     match case {
@@ -256,13 +226,7 @@ pub async fn cast_vote(
     let case = queries::get_jury_case(&state.db, &case_id)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     let case = case.ok_or_else(|| {
@@ -317,13 +281,7 @@ pub async fn cast_vote(
     let verdict = queries::check_jury_verdict(&state.db, &case_id)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     Ok(Json(json!({
@@ -340,13 +298,7 @@ pub async fn list_candidates(
     let jurors = queries::list_eligible_jurors_simple(&state.db)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     Ok(Json(

@@ -47,13 +47,7 @@ pub async fn send(
     let escrow = queries::get_escrow(&state.db, &escrow_id)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
     let escrow = escrow.ok_or_else(|| {
         (
@@ -99,13 +93,7 @@ pub async fn send(
     queries::insert_message(&state.db, &msg, &content_enc, &nonce)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     Ok(Json(json!({"status":"sent","message":msg})))
@@ -121,13 +109,7 @@ pub async fn list(
     let escrow = queries::get_escrow(&state.db, &escrow_id)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
     let escrow = escrow.ok_or_else(|| {
         (
@@ -195,13 +177,7 @@ pub async fn list(
     let raw = queries::list_messages_raw(&state.db, &escrow_id)
         .await
         .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    "An internal error occurred."
-                ))),
-            )
+            crate::types::internal_error()
         })?;
 
     let mut messages = Vec::new();
