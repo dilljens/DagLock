@@ -485,7 +485,7 @@ pub async fn settle(
                     | EscrowStatus::Refunded
                     | EscrowStatus::Cancelled
                     | EscrowStatus::Expired
-                    | EscrowStatus::PendingConfirmation
+                    
             ) =>
         {
             Err((
@@ -587,7 +587,7 @@ pub async fn refund(
                     | EscrowStatus::Refunded
                     | EscrowStatus::Cancelled
                     | EscrowStatus::Expired
-                    | EscrowStatus::PendingConfirmation
+                    
             ) =>
         {
             Err((

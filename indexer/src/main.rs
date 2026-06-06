@@ -18,7 +18,7 @@ use std::time::Instant;
 use tokio::sync::broadcast;
 
 use clap::Parser;
-use tracing::info;
+use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
 use crate::api::{build_router, AppState};
@@ -54,10 +54,24 @@ async fn main() {
 
     info!("Database ready: {}", args.database_url);
 
-    // Initialize on-chain verifier — use MockVerifier for now
-    // wRPC verifier — wired when the listener is connected to a Kaspa node
-    let verifier: Arc<dyn crate::verification::EscrowVerifier> =
-        Arc::new(crate::verification::MockVerifier);
+    // Initialize on-chain verifier
+    // Uses WrpcVerifier when connected to a Kaspa node via --wrpc-url
+    // Falls back to MockVerifier (always succeeds) when offline
+    let verifier: Arc<dyn crate::verification::EscrowVerifier> = if let Some(ref wrpc_url) = args.wrpc_url {
+        match crate::listener::try_connect_wrpc(wrpc_url, &args.network).await {
+            Ok(client) => {
+                info!("wRPC verifier connected to {wrpc_url}");
+                Arc::new(crate::verification::WrpcVerifier::new(Some(client)))
+            }
+            Err(e) => {
+                warn!("Failed to connect wRPC verifier: {e} — using mock verifier");
+                Arc::new(crate::verification::MockVerifier)
+            }
+        }
+    } else {
+        warn!("No --wrpc-url provided — using mock verifier");
+        Arc::new(crate::verification::MockVerifier)
+    };
 
     // Initialize signature verifier — chooses mock or real based on --mock-auth
     // Panics if --mock-auth is combined with --network mainnet

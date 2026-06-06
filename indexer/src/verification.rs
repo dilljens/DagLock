@@ -56,7 +56,7 @@ pub fn verify_escrow_settleable(
     verifier: &dyn EscrowVerifier,
 ) -> VerificationResult<()> {
     // Check status
-    if !matches!(escrow.status, crate::types::EscrowStatus::Active) {
+    if !matches!(escrow.status, crate::types::EscrowStatus::Active | crate::types::EscrowStatus::PendingConfirmation) {
         return Err(VerificationError::Other(format!(
             "Escrow is not in active state: {:?}",
             escrow.status
@@ -85,7 +85,7 @@ pub fn verify_escrow_refundable(
     verifier: &dyn EscrowVerifier,
 ) -> VerificationResult<()> {
     // Check status
-    if !matches!(escrow.status, crate::types::EscrowStatus::Active) {
+    if !matches!(escrow.status, crate::types::EscrowStatus::Active | crate::types::EscrowStatus::PendingConfirmation) {
         return Err(VerificationError::Other(format!(
             "Escrow is not in active state: {:?}",
             escrow.status

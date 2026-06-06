@@ -47,7 +47,7 @@ pub fn spawn(
 
         // Attempt wRPC connection with automatic reconnection on drop.
         // Only falls back to offline mode if initial connection fails.
-        match connect_wrpc(&wrpc_url, &network).await {
+        match try_connect_wrpc(&wrpc_url, &network).await {
             Ok(client) => {
                 info!("Connected to Kaspa node at {wrpc_url}");
                 run_online_loop_with_reconnect(
@@ -70,7 +70,7 @@ pub fn spawn(
 }
 
 /// Connect to a Kaspa node via wRPC.
-async fn connect_wrpc(
+pub async fn try_connect_wrpc(
     url: &str,
     network: &str,
 ) -> Result<Arc<kaspa_wrpc_client::KaspaRpcClient>, String> {
