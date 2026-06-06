@@ -332,9 +332,7 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 				};
 			}
 
-			let res: { status: string; escrow_id: string };
-			// Only settle reaches here (cancel/refund/dispute show confirm dialog)
-			res = await api.settleEscrow(escrowId, auth!);
+			const res = await api.settleEscrow(escrowId, auth as AuthHeaders);
 			setResult(res);
 			setStatus("done");
 		} catch (err) {
@@ -362,8 +360,8 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 				};
 			}
 			let res: { status: string; escrow_id: string };
-			if (action === "settle") res = await api.settleEscrow(escrowId, auth!);
-			else if (action === "refund") res = await api.refundEscrow(escrowId, auth!);
+			if (action === "settle") res = await api.settleEscrow(escrowId, auth as AuthHeaders);
+			else if (action === "refund") res = await api.refundEscrow(escrowId, auth as AuthHeaders);
 			else if (action === "dispute") res = await api.disputeEscrow(escrowId, disputeReason);
 			else res = await api.cancelEscrow(escrowId);
 			setResult(res);
@@ -700,8 +698,8 @@ export function EscrowLookup() {
 						{messages.data && (
 							<div className="evidence-log">
 								<h4>Messages ({messages.data.length})</h4>
-								{messages.data.map((m, i) => (
-									<div key={i} className="evidence-item">
+								{messages.data.map((m) => (
+									<div key={m.id} className="evidence-item">
 										<div className="row">
 											<span className="addr">{m.sender_address.slice(0, 20)}…</span>
 											<small>{time(m.created_at)}</small>
@@ -723,6 +721,7 @@ export function EscrowLookup() {
 							placeholder="Type a message..."
 						/>
 						<button
+							type="button"
 							className="button primary"
 							onClick={async () => {
 								if (!msgText || !id) return;

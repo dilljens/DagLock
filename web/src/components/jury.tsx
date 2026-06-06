@@ -93,16 +93,17 @@ export function JuryPanel() {
 			</FormField>
 			<div className="action-tabs">
 				<button
+					type="button"
 					className="button primary"
 					onClick={handleRegister}
 					disabled={regStatus === "loading"}
 				>
 					{regStatus === "loading" ? "Registering…" : "Register as juror"}
 				</button>
-				<button className="button" onClick={handleUnregister}>
+				<button type="button" className="button" onClick={handleUnregister}>
 					Unregister
 				</button>
-				<button className="button" onClick={loadCases}>
+				<button type="button" className="button" onClick={loadCases}>
 					Load my cases
 				</button>
 			</div>
@@ -144,7 +145,7 @@ export function JuryPanel() {
 							placeholder="Why?"
 						/>
 					</FormField>
-					<button className="button primary" onClick={handleVote}>
+					<button type="button" className="button primary" onClick={handleVote}>
 						Submit vote
 					</button>
 				</div>

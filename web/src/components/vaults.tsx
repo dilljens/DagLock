@@ -324,6 +324,7 @@ export function VaultStatusPanel({
 				{error && <p className="muted error-text">{error}</p>}
 				{canWithdraw && (
 					<button
+						type="button"
 						className="button primary"
 						onClick={handleWithdraw}
 						disabled={status === "loading"}

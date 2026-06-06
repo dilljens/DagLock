@@ -336,6 +336,7 @@ export default function App() {
 						).map(([label, key]) => (
 							<button
 								key={key}
+								type="button"
 								className={`button ${activeTab === key ? "primary" : ""}`}
 								onClick={() => setActiveTab(activeTab === key ? null : (key as typeof activeTab))}
 							>
@@ -356,6 +357,7 @@ export default function App() {
 						).map(([label, key]) => (
 							<button
 								key={key}
+								type="button"
 								className={`button ${activeTab === key ? "primary" : ""}`}
 								onClick={() => setActiveTab(activeTab === key ? null : (key as typeof activeTab))}
 							>
@@ -377,6 +379,7 @@ export default function App() {
 						).map(([label, key]) => (
 							<button
 								key={key}
+								type="button"
 								className={`button ${activeTab === key ? "primary" : ""}`}
 								onClick={() => setActiveTab(activeTab === key ? null : (key as typeof activeTab))}
 							>
@@ -390,7 +393,7 @@ export default function App() {
 					<div className="panel action-panel">
 						<div className="panel-head">
 							<h3>{tabPanels[activeTab].title}</h3>
-							<button className="button" onClick={closeTab}>
+							<button className="button" type="button" onClick={closeTab}>
 								✕
 							</button>
 						</div>

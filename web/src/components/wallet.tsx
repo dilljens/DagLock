@@ -48,6 +48,7 @@ export function WalletStatus() {
 			)}
 			{wallet.detected && !wallet.connected && (
 				<button
+					type="button"
 					className="button"
 					onClick={handleConnect}
 					disabled={wallet.loading}

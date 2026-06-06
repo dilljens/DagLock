@@ -101,15 +101,23 @@ export function ConfirmDialog({
 	onCancel: () => void;
 }) {
 	return (
-		<div className="confirm-overlay" onClick={onCancel}>
-			<div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+		<div
+			className="confirm-overlay"
+			onClick={onCancel}
+			onKeyDown={(e) => e.key === "Escape" && onCancel()}
+		>
+			<div
+				className="confirm-dialog"
+				onClick={(e) => e.stopPropagation()}
+				onKeyDown={(e) => e.key === "Escape" && onCancel()}
+			>
 				<h3>{title}</h3>
 				<p>{message}</p>
 				<div className="confirm-actions">
-					<button className="button" onClick={onCancel}>
+					<button className="button" type="button" onClick={onCancel}>
 						Cancel
 					</button>
-					<button className="button primary" onClick={onConfirm}>
+					<button className="button primary" type="button" onClick={onConfirm}>
 						{confirmLabel}
 					</button>
 				</div>

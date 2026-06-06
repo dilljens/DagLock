@@ -243,10 +243,20 @@ export function OfferCard({
 						placeholder="your kaspa address"
 						className="offer-input"
 					/>
-					<button className="button primary" disabled={status === "loading"} onClick={handleAccept}>
+					<button
+						className="button primary"
+						disabled={status === "loading"}
+						type="button"
+						onClick={handleAccept}
+					>
 						Accept
 					</button>
-					<button className="button" disabled={status === "loading"} onClick={handleCancel}>
+					<button
+						className="button"
+						disabled={status === "loading"}
+						type="button"
+						onClick={handleCancel}
+					>
 						Cancel
 					</button>
 				</div>
@@ -295,6 +305,7 @@ export function MyOffersPanel() {
 				<div className="action-tabs" style={{ marginTop: "8px" }}>
 					{["all", "proposed", "accepted", "cancelled"].map((f) => (
 						<button
+							type="button"
 							key={f}
 							className={`button ${filter === f ? "primary" : ""}`}
 							onClick={() => setFilter(f)}
