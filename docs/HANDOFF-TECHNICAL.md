@@ -137,9 +137,11 @@ The verification flow:
 | `POST /v1/jury/register` | Become a juror | Yes |
 | `POST /v1/jury/cases/:id/vote` | Cast jury vote | Yes |
 
-### The wRPC Listener (The Big Missing Piece)
+### On-Chain Verification (Verified at Settlement)
 
-The indexer has a `listener.rs` module with template hash matching logic, but it's not connected to a real Kaspa node yet. Currently, escrows are created manually via the API — the indexer doesn't auto-detect them on-chain.
+The indexer does NOT scan blocks for UTXO detection. Instead, verification happens at settlement time:
+when a user calls `POST /v1/escrows/:id/settle`, the `WrpcVerifier` checks the UTXO exists on-chain
+via wRPC. This is the Kaspa-native pattern — the user initiates every action.
 
 **What's needed:** Connect to a Kaspa node via wRPC, subscribe to new UTXOs, match against known template hashes, update escrow state automatically. Without this, users must manually tell the indexer about on-chain events.
 
@@ -294,7 +296,7 @@ Current state (June 5):
 
 ### Not Yet Built
 
-- [ ] **wRPC listener** — auto-detect on-chain UTXOs. The biggest functional gap.
+- [ ] **wRPC listener** — block scanning for auto-detection (deferred — verification at settlement time is sufficient)
 - [ ] **Atomic swap wizard UI** — the swap entrypoint works, but there's no guided UI
 - [ ] **Volume-based fee rebates** — deferred until a whale asks for a discount
 - [ ] **Price oracle** — CoinGecko KAS/USD at escrow creation

@@ -13,7 +13,9 @@ Project-specific terms and acronyms.
 | **ICC** | Inter-Covenant Communication | KRC-20 escrow design |
 | **UTXO** | Unspent Transaction Output | Every escrow = one UTXO |
 | **Template hash** | BLAKE2b-160 hash of covenant prefix+suffix | `contracts/src/lib.rs` |
-| **wRPC** | Kaspa's WebSocket RPC protocol | `indexer/src/listener.rs` |
+| **wRPC** | Kaspa's WebSocket RPC protocol | `indexer/src/listener.rs`, `indexer/src/verification.rs` |
+| **WrpcVerifier** | On-chain UTXO verification via wRPC (used at settlement time) | `indexer/src/verification.rs` |
+| **MockVerifier** | Dev-mode verifier that always succeeds (no wRPC needed) | `indexer/src/verification.rs` |
 | **DAA score** | Difficulty-Adjusted Average score (Kaspa block height) | Expiration logic |
 | **sompi** | Smallest unit of KAS (10^-8) | Amounts in API types |
 | **Treasury** | DagLock fee address -- receives 0.5% on settlement | `treasuryKey` in covenant |

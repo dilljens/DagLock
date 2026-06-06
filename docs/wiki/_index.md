@@ -17,7 +17,7 @@
 | Authentication (real Schnorr sigs) | `indexer/src/auth.rs` |
 | UTXO verification | `indexer/src/verification.rs` |
 | Message encryption (AES-256-GCM) | `indexer/src/crypto.rs` |
-| wRPC listener (stub) | `indexer/src/listener.rs` |
+| wRPC listener | `indexer/src/listener.rs` |
 | CLI entry | `cli/src/main.rs` |
 | WASM SDK | `wasm-sdk/src/lib.rs` |
 | Web UI entry | `web/src/App.tsx` |
@@ -106,7 +106,7 @@ DagLock/
     src/config.rs            -- argparse + production flags (--allow-mainnet, --cors-origin)
     src/crypto.rs            -- AES-256-GCM message encryption
     src/auth.rs              -- Schnorr signature verification (real, not mock)
-    src/verification.rs      -- UTXO verification (MockVerifier)
+    src/verification.rs      -- UTXO verification (WrpcVerifier / MockVerifier)
     src/websocket.rs         -- WebSocket broadcast
     src/types.rs             -- serde (all shared types)
     src/db/schema.rs         -- sqlx, migrations/ (8+ files)

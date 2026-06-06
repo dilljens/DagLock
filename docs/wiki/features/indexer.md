@@ -19,15 +19,28 @@ Market-price offers that auto-update via CoinGecko.
 - CreateOfferForm — price type selector, offset, and bounds
 - OfferCard — shows current market price for market-priced offers
 
-## wRPC Listener (v0.2.0)
+## On-Chain Verification (v0.3.0)
 
-On-chain UTXO detection via wRPC connection to a Kaspa node.
+UTXO existence checks are performed at settlement/refund time via wRPC.
+No block scanning needed -- the user initiates every action.
 
 ### How it works
-- Connects to a Kaspa node via `--wrpc-url` parameter
-- Polls DAA score every 10 seconds to detect new blocks
-- Reconciles expired escrows on each poll
-- Falls back to offline mode if wRPC connection fails
+- When `--wrpc-url` is provided, the indexer connects to a Kaspa node and creates a `WrpcVerifier`
+- When a user calls `POST /v1/escrows/:id/settle`, the verifier checks the UTXO exists on-chain
+- When a user calls `POST /v1/escrows/:id/refund`, same verification occurs
+- If wRPC is unavailable, falls back to `MockVerifier` (dev mode, always succeeds)
+- Expired escrows are reconciled via DAA score polling (requires wRPC connection)
+
+### Lifecycle
+```
+CREATE -> pending_confirmation
+  | (user broadcasts lock tx, then calls settle/refund)
+SETTLE / REFUND -> verifier checks UTXO on-chain -> finalized
+  (or rejected if UTXO not found)
+```
+Escrows in `pending_confirmation` are no longer blocked from settling.
+The on-chain verification at settlement time replaces the need for
+a state machine that tracks pending -> active transitions.
 
 ### Configuration
 ```bash
@@ -56,8 +69,19 @@ This outputs:
 ### Files
 | File | Purpose |
 |------|---------|
-| `indexer/src/listener.rs` | wRPC client, block polling, UTXO matching |
+| `indexer/src/verification.rs` | `WrpcVerifier`, `MockVerifier`, `EscrowVerifier` trait |
+| `indexer/src/main.rs` | Wires `WrpcVerifier` when `--wrpc-url` is set |
+| `indexer/src/listener.rs` | DAA polling for expiry, market price updates |
 | `indexer/src/db/queries.rs` | `try_find_escrow_by_lock_tx()`, `update_escrow_status_only()` |
+
+## wRPC Listener (v0.2.0)
+
+Background tasks run when connected to a Kaspa node.
+
+### How it works
+- DAA score polled every 10 seconds for expired escrow reconciliation
+- Market prices updated from CoinGecko every 15 minutes (offline fallback)
+- Does NOT scan blocks for UTXO detection -- verification happens at settlement time
 
 ### Price-Locked Offers (v0.2.0)
 
