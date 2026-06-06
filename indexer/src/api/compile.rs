@@ -110,7 +110,41 @@ fn enforce_treasury(
     Ok(())
 }
 
+fn optional_or_enforced_treasury(
+    params: &std::collections::HashMap<String, String>,
+    state: &AppState,
+) -> Result<Vec<u8>, (StatusCode, Json<Value>)> {
+    match params.get("treasury_key") {
+        Some(hex_str) => {
+            let key = hex::decode(hex_str).map_err(|_| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!(ApiError::new("invalid_param", "treasury_key must be valid hex"))),
+                )
+            })?;
+            enforce_treasury(state, &key)?;
+            Ok(key)
+        }
+        None => {
+            if let Some(ref canonical) = state.treasury_pubkey {
+                hex::decode(canonical).map_err(|_| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!(ApiError::new("config_error", "Invalid treasury_pubkey in server config"))),
+                    )
+                })
+            } else {
+                Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!(ApiError::new("missing_param", "treasury_key is required when no canonical treasury is configured"))),
+                ))
+            }
+        }
+    }
+}
+
 fn compile_result(
+
     compiled: &daglock_contracts::silverscript_lang::compiler::CompiledContract,
 ) -> Json<Value> {
     let (prefix, suffix, template_hash) = daglock_contracts::template_parts_and_hash(compiled);
@@ -136,9 +170,7 @@ fn compile_daglock_template(
     let seller = hex_param(params, "seller_key")?;
     let trade_hash = hex_param(params, "trade_hash")?;
     let timeout = int_param(params, "timeout")?;
-    let treasury = hex_param(params, "treasury_key")?;
-
-    enforce_treasury(state, &treasury)?;
+    let treasury = optional_or_enforced_treasury(params, state)?;
 
     if buyer.len() != 32 || seller.len() != 32 || trade_hash.len() != 32 || treasury.len() != 32 {
         return Err((
@@ -163,10 +195,16 @@ fn compile_arbiter_template(
     let seller = hex_param(params, "seller_key")?;
     let trade_hash = hex_param(params, "trade_hash")?;
     let timeout = int_param(params, "timeout")?;
-    let treasury = hex_param(params, "treasury_key")?;
+    let treasury = optional_or_enforced_treasury(params, state)?;
     let arbiter = hex_param(params, "arbiter_key")?;
 
-    enforce_treasury(state, &treasury)?;
+    // Reject zero-key arbiter — without an arbiter, refundAfterTimeout is unreachable
+    if arbiter.iter().all(|&b| b == 0) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new("invalid_param", "Arbiter key cannot be all-zeroes. Use daglock.sil template if you don't want a mediator."))),
+        ));
+    }
 
     if buyer.len() != 32
         || seller.len() != 32
