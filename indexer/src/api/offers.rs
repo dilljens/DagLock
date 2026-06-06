@@ -21,24 +21,7 @@ pub async fn create(
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
     let price_type = body.price_type.unwrap_or_else(|| "fixed".to_string());
     let current_price = if price_type == "market" {
-        // Fetch current price from CoinGecko with 5s timeout
-        use std::time::Duration;
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
-            .unwrap_or_default();
-        let price_resp = client
-            .get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
-            .send()
-            .await;
-        let kaspa_price = match price_resp {
-            Ok(r) if r.status().is_success() => {
-                let price_json: serde_json::Value = r.json().await.unwrap_or_default();
-                Some(price_json["kaspa"]["usd"].as_f64().unwrap_or(0.0))
-            }
-            _ => None,
-        };
-        kaspa_price
+        crate::types::fetch_kas_usd_price().await
     } else {
         None
     };

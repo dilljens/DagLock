@@ -414,25 +414,7 @@ pub async fn create(
         dispute_outcome: None,
         dispute_resolved_at: None,
         price_at_creation: if body.price_type.as_deref() == Some("market") {
-            // Fetch market price from CoinGecko with 5s timeout
-            use std::time::Duration;
-            let client = reqwest::Client::builder()
-                .timeout(Duration::from_secs(5))
-                .build()
-                .unwrap_or_default();
-            let price = match client
-                .get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
-                .send()
-                .await
-            {
-                Ok(resp) => resp
-                    .json::<serde_json::Value>()
-                    .await
-                    .ok()
-                    .and_then(|j| j["kaspa"]["usd"].as_f64()),
-                Err(_) => None,
-            };
-            price
+            crate::types::fetch_kas_usd_price().await
         } else {
             body.price_at_creation
         },

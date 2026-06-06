@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Unique escrow identifier.
 pub type EscrowId = String;
@@ -501,4 +502,91 @@ pub struct TransferVaultRequest {
     pub beneficiary_address: Address,
     pub owner_address: Address,
     pub signature: String,
+}
+
+
+// ── Shared Helpers ────────────────────────────────────────────────
+
+use axum::http::StatusCode;
+use axum::Json;
+use serde_json::{json, Value};
+
+/// Generate a short prefixed ID (e.g. "esc_abc123", "off_def456").
+pub fn generate_id(prefix: &str) -> String {
+    format!(
+        "{}_{}",
+        prefix,
+        Uuid::new_v4().to_string().split('-').next().unwrap()
+    )
+}
+
+/// Standard internal server error response.
+pub fn internal_error() -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+    )
+}
+
+/// Standard not found error response.
+pub fn not_found(entity: &str, id: &str) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::NOT_FOUND,
+        Json(json!(ApiError::new(
+            "not_found",
+            format!("No {} found with id '{}'", entity, id)
+        ))),
+    )
+}
+
+/// Standard bad request with custom code and message.
+pub fn bad_request(code: &str, message: &str) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::BAD_REQUEST,
+        Json(json!(ApiError::new(code, message))),
+    )
+}
+
+/// Standard forbidden error.
+pub fn forbidden(code: &str, message: &str) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::FORBIDDEN,
+        Json(json!(ApiError::new(code, message))),
+    )
+}
+
+/// Standard conflict error.
+pub fn conflict(code: &str, message: &str) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::CONFLICT,
+        Json(json!(ApiError::new(code, message))),
+    )
+}
+
+/// Standard unauthorized error.
+
+
+/// Fetch KAS/USD price from CoinGecko with 5s timeout.
+/// Returns None if the request fails or price is zero.
+pub async fn fetch_kas_usd_price() -> Option<f64> {
+    use std::time::Duration;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .ok()?;
+    let resp = client
+        .get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
+        .send()
+        .await
+        .ok()?;
+    let price_json: serde_json::Value = resp.json().await.ok()?;
+    let price = price_json["kaspa"]["usd"].as_f64()?;
+    if price > 0.0 { Some(price) } else { None }
+}
+
+pub fn unauthorized(message: &str) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(json!(ApiError::new("unauthorized", message))),
+    )
 }
