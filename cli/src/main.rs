@@ -192,6 +192,22 @@ enum OfferCommands {
         /// Amount in base asset units (e.g. "5000" or "5000.5")
         #[arg(long)]
         amount: String,
+
+        /// Price type: fixed or market (default: fixed)
+        #[arg(long)]
+        price_type: Option<String>,
+
+        /// Price offset percentage for market orders (e.g. 5 for +5%)
+        #[arg(long)]
+        price_offset: Option<f64>,
+
+        /// Minimum price in USD for market orders
+        #[arg(long)]
+        min_price: Option<f64>,
+
+        /// Maximum price in USD for market orders
+        #[arg(long)]
+        max_price: Option<f64>,
     },
     /// Accept an offer
     Accept {
@@ -278,8 +294,16 @@ async fn main() -> anyhow::Result<()> {
                 base,
                 quote,
                 amount,
+                price_type,
+                price_offset,
+                min_price,
+                max_price,
             } => {
-                commands::offer::create(api_url, &side, &base, &quote, &amount).await?;
+                commands::offer::create(
+                    api_url, &side, &base, &quote, &amount,
+                    price_type, price_offset, min_price, max_price,
+                )
+                .await?;
             }
             OfferCommands::Accept { id, address } => {
                 commands::offer::accept(api_url, &id, &address).await?;

@@ -41,26 +41,45 @@ pub async fn list(api_url: String) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create(
     api_url: String,
     side: &str,
     base: &str,
     quote: &str,
     amount_str: &str,
+    price_type: Option<String>,
+    price_offset: Option<f64>,
+    min_price: Option<f64>,
+    max_price: Option<f64>,
 ) -> Result<()> {
     let amount_sompi = crate::tx::kas_to_sompi(amount_str)?;
     let creator = format!("kaspa:user{:x}", rand::random::<u32>());
 
+    let mut body = serde_json::json!({
+        "creator_address": creator,
+        "side": side,
+        "base_asset": base,
+        "quote_asset": quote,
+        "amount_sompi": amount_sompi,
+    });
+    if let Some(ref pt) = price_type {
+        body["price_type"] = serde_json::json!(pt);
+    }
+    if let Some(ref po) = price_offset {
+        body["price_offset"] = serde_json::json!(po);
+    }
+    if let Some(ref min) = min_price {
+        body["min_price"] = serde_json::json!(min);
+    }
+    if let Some(ref max) = max_price {
+        body["max_price"] = serde_json::json!(max);
+    }
+
     let client = reqwest::Client::new();
     let resp = client
         .post(format!("{}/v1/offers", api_url))
-        .json(&serde_json::json!({
-            "creator_address": creator,
-            "side": side,
-            "base_asset": base,
-            "quote_asset": quote,
-            "amount_sompi": amount_sompi,
-        }))
+        .json(&body)
         .send()
         .await?;
 

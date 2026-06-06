@@ -107,8 +107,44 @@ pub async fn get_by_id(
     }
 }
 
-/// Validate a Kaspa address format.
-///
+
+/// GET /v1/escrows/:id/lock-status
+/// Check if the escrow's UTXO is confirmed on-chain.
+/// Returns { confirmed: bool, status: escrow_status }.
+/// Uses the configured verifier (WrpcVerifier or MockVerifier).
+pub async fn lock_status(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!(ApiError::new(
+                "internal_error",
+                "An internal error occurred. Please try again later."
+            ))),
+        )
+    })?;
+
+    match escrow {
+        Some(e) => {
+            let confirmed = state.verifier.verify_utxo_exists(&e).unwrap_or(false);
+            Ok(Json(json!({
+                "confirmed": confirmed,
+                "status": e.status,
+                "escrow_id": id,
+            })))
+        }
+        None => Err((
+            StatusCode::NOT_FOUND,
+            Json(json!(ApiError::new(
+                "escrow_not_found",
+                format!("No escrow found with id '{id}'")
+            ))),
+        )),
+    }
+}
+
 /// POST /v1/escrows/{id}/swap
 /// Atomic swap: submit a preimage to settle the escrow.
 pub async fn atomic_swap(

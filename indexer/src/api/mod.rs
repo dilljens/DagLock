@@ -72,6 +72,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/compile", post(compile::compile))
         .route("/v1/escrows", get(escrows::list).post(escrows::create))
         .route("/v1/escrows/:id", get(escrows::get_by_id))
+        .route("/v1/escrows/:id/lock-status", get(escrows::lock_status))
         .route("/v1/escrows/:id/settle", post(escrows::settle))
         .route("/v1/escrows/:id/refund", post(escrows::refund))
         .route("/v1/escrows/:id/dispute", post(escrows::dispute))

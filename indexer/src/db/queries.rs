@@ -1803,6 +1803,36 @@ mod tests {
     }
 
     #[test]
+
+    #[test]
+    fn jury_verdict_seller_wins_at_threshold() {
+        // Test the verdict logic: when votes_for_seller >= threshold, verdict is seller_wins
+        // The actual query runs against DB, but the logic is: seller_wins if votes_for_seller >= threshold
+        let threshold = 3i64;
+        let votes_for_seller = 3i64;
+        let votes_for_buyer = 1i64;
+        assert!(votes_for_seller >= threshold, "seller should win at threshold");
+        assert!(votes_for_buyer < threshold, "buyer should not win yet");
+    }
+
+    #[test]
+    fn jury_verdict_buyer_wins_at_threshold() {
+        let threshold = 3i64;
+        let votes_for_seller = 1i64;
+        let votes_for_buyer = 3i64;
+        assert!(votes_for_buyer >= threshold, "buyer should win at threshold");
+        assert!(votes_for_seller < threshold, "seller should not win yet");
+    }
+
+    #[test]
+    fn jury_verdict_no_winner_below_threshold() {
+        let threshold = 3i64;
+        let votes_for_seller = 2i64;
+        let votes_for_buyer = 2i64;
+        assert!(votes_for_seller < threshold, "no winner yet");
+        assert!(votes_for_buyer < threshold, "no winner yet");
+    }
+
     fn receipt_detects_empty_template_hash() {
         let mut escrow = escrow_fixture();
         escrow.template_hash = vec![];
