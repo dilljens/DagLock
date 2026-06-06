@@ -43,6 +43,11 @@ pub struct Args {
     /// For dev/testnet only — panics if used with --network mainnet.
     #[arg(long, default_value_t = true)]
     pub mock_auth: bool,
+
+    /// Canonical treasury public key (64 hex chars).
+    /// When set, the compile API rejects requests with a different treasury key.
+    #[arg(long)]
+    pub treasury_pubkey: Option<String>,
 }
 
 impl Args {}

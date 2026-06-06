@@ -41,6 +41,8 @@ pub struct AppState {
     pub sig_verifier: Arc<dyn SignatureVerifier>,
     /// WebSocket broadcast channel.
     pub ws_tx: tokio::sync::broadcast::Sender<crate::websocket::WsEvent>,
+    /// Canonical treasury public key (64 hex).
+    pub treasury_pubkey: Option<String>,
 }
 
 /// Build the Axum router with all API routes.

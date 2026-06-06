@@ -23,12 +23,12 @@ pub struct CompileRequest {
 /// POST /v1/compile
 /// Compile a covenant template with the given constructor parameters.
 pub async fn compile(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Json(body): Json<CompileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match body.template.as_str() {
-        "daglock" => compile_daglock_template(&body.params),
-        "daglock_arbiter" => compile_arbiter_template(&body.params),
+        "daglock" => compile_daglock_template(&state, &body.params),
+        "daglock_arbiter" => compile_arbiter_template(&state, &body.params),
         "daglock_vault" => compile_vault_template(&body.params),
         "daglock_krc20" => compile_krc20_template(&body.params),
         other => Err((
@@ -89,6 +89,27 @@ fn int_param(
     })
 }
 
+
+
+fn enforce_treasury(
+    state: &AppState,
+    treasury: &[u8],
+) -> Result<(), (StatusCode, Json<Value>)> {
+    if let Some(ref canonical) = state.treasury_pubkey {
+        let provided = hex::encode(treasury);
+        if &provided != canonical {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(json!(ApiError::new(
+                    "treasury_mismatch",
+                    format!("Canonical treasury key is {canonical}. The provided key does not match.")
+                ))),
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn compile_result(
     compiled: &daglock_contracts::silverscript_lang::compiler::CompiledContract,
 ) -> Json<Value> {
@@ -108,6 +129,7 @@ fn compile_result(
 }
 
 fn compile_daglock_template(
+    state: &AppState,
     params: &std::collections::HashMap<String, String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let buyer = hex_param(params, "buyer_key")?;
@@ -115,6 +137,8 @@ fn compile_daglock_template(
     let trade_hash = hex_param(params, "trade_hash")?;
     let timeout = int_param(params, "timeout")?;
     let treasury = hex_param(params, "treasury_key")?;
+
+    enforce_treasury(state, &treasury)?;
 
     if buyer.len() != 32 || seller.len() != 32 || trade_hash.len() != 32 || treasury.len() != 32 {
         return Err((
@@ -132,6 +156,7 @@ fn compile_daglock_template(
 }
 
 fn compile_arbiter_template(
+    state: &AppState,
     params: &std::collections::HashMap<String, String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let buyer = hex_param(params, "buyer_key")?;
@@ -140,6 +165,8 @@ fn compile_arbiter_template(
     let timeout = int_param(params, "timeout")?;
     let treasury = hex_param(params, "treasury_key")?;
     let arbiter = hex_param(params, "arbiter_key")?;
+
+    enforce_treasury(state, &treasury)?;
 
     if buyer.len() != 32
         || seller.len() != 32

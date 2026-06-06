@@ -3,11 +3,11 @@ pragma silverscript ^0.1.0;
 // DagLock Arbiter — Trustless escrow with optional mediator
 //
 // Five spending paths:
-//   release(buyerSig, sellerSig)       — both parties sign to settle
-//   swap(secret)                        — hash preimage reveals for atomic swap
-//   refund(buyerSig)                    — depositor reclaims after timeout
-//   disputeSellerWins(...)             — mediator + seller, seller gets paid
-//   disputeBuyerWins(...)              — mediator + buyer, buyer gets refund
+//   release(buyerSig, sellerSig)           — both parties sign to settle
+//   swap(secret)                            — hash preimage reveals for atomic swap
+//   refundAfterTimeout(arbiterSig, buyerSig) — mediator must co-sign timeout refund
+//   disputeSellerWins(...)                 — mediator + seller, seller gets paid
+//   disputeBuyerWins(...)                  — mediator + buyer, buyer gets refund
 //
 // Mediator fee is set per-dispute as entrypoint argument, not fixed
 // at deploy time. This keeps the template hash stable.
@@ -54,9 +54,13 @@ contract DagLockArbiter(
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
-    // ── Path C: Timeout Refund ──────────────────────────────────
-    entrypoint function refund(sig buyerSig) {
+    // ── Path C: Timeout Refund (mediator must co-sign) ────────────
+    // Buyer cannot take funds alone after timeout. Mediator must
+    // verify the dispute situation and sign. No fee — buyer gets
+    // the full deposit back.
+    entrypoint function refundAfterTimeout(sig arbiterSig, sig buyerSig) {
         require(tx.time >= timeout);
+        require(checkSig(arbiterSig, pubkey(arbiterKey)));
         require(checkSig(buyerSig, pubkey(buyerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;

@@ -91,6 +91,7 @@ async fn main() {
         verifier,
         sig_verifier,
         ws_tx,
+        treasury_pubkey: args.treasury_pubkey.clone(),
     };
 
     if let Some(wrpc_url) = state.wrpc_url.clone() {

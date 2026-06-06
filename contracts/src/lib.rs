@@ -175,6 +175,7 @@ pub mod entrypoints {
     pub const RELEASE: &str = "release";
     pub const SWAP: &str = "swap";
     pub const REFUND: &str = "refund";
+    pub const REFUND_AFTER_TIMEOUT: &str = "refundAfterTimeout";
     pub const DISPUTE_SELLER_WINS: &str = "disputeSellerWins";
     pub const DISPUTE_BUYER_WINS: &str = "disputeBuyerWins";
     pub const WITHDRAW: &str = "withdraw";
@@ -295,7 +296,7 @@ mod tests {
         assert!(src.contains("entrypoint function disputeBuyerWins"));
         assert!(src.contains("entrypoint function release"));
         assert!(src.contains("entrypoint function swap"));
-        assert!(src.contains("entrypoint function refund"));
+        assert!(src.contains("entrypoint function refundAfterTimeout"));
     }
 
     #[test]
@@ -307,7 +308,7 @@ mod tests {
         let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"release"));
         assert!(names.contains(&"swap"));
-        assert!(names.contains(&"refund"));
+        assert!(names.contains(&"refundAfterTimeout"));
         assert!(names.contains(&"disputeSellerWins"));
         assert!(names.contains(&"disputeBuyerWins"));
         assert!(!compiled.script.is_empty());
