@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, type Health, type NetworkInfo, type Stats, type Offer } from "./api";
 import { money } from "./helpers";
 import type { LoadState } from "./helpers";
@@ -28,6 +28,7 @@ export default function App() {
 	});
 	const [stats, setStats] = useState<LoadState<Stats>>({ loading: true });
 	const [offers, setOffers] = useState<LoadState<Offer[]>>({ loading: true });
+	const [juryCount, setJuryCount] = useState(0);
 	const [activeTab, setActiveTab] = useState<
 		| "create-vault"
 		| "compile"
@@ -87,6 +88,13 @@ export default function App() {
 		setActiveTab(null);
 		loadAll();
 	}
+
+	const handleWalletConnect = useCallback((addr: string) => {
+		api
+			.juryActiveCases(addr)
+			.then((r) => setJuryCount(r.count))
+			.catch(() => setJuryCount(0));
+	}, []);
 
 	const tabPanels: Record<string, { title: string; content: React.ReactNode }> = {
 		"create-vault": {
@@ -228,7 +236,7 @@ export default function App() {
 						}}
 					>
 						<div className="brand">Kaspa Escrow</div>
-						<WalletStatus />
+						<WalletStatus onConnect={handleWalletConnect} />
 					</div>
 					<h1>Trustless escrow and atomic swaps on Kaspa.</h1>
 					<p>The public front door for offers, escrows, reputation, and receipts.</p>
@@ -384,6 +392,21 @@ export default function App() {
 								onClick={() => setActiveTab(activeTab === key ? null : (key as typeof activeTab))}
 							>
 								{label}
+								{key === "jury" && juryCount > 0 && activeTab !== "jury" && (
+									<span
+										style={{
+											marginLeft: "4px",
+											background: "#ff9800",
+											color: "#000",
+											borderRadius: "50%",
+											padding: "0 5px",
+											fontSize: "11px",
+											fontWeight: "bold",
+										}}
+									>
+										{juryCount}
+									</span>
+								)}
 							</button>
 						))}
 					</div>

@@ -56,9 +56,7 @@ pub async fn register(
     // Check minimum requirements
     let rep = queries::get_reputation(&state.db, &auth.address)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
     if rep.trade_count < 10 || rep.score < 3.0 {
         return Err((
             StatusCode::FORBIDDEN,
@@ -71,9 +69,7 @@ pub async fn register(
 
     queries::register_juror(&state.db, &auth.address)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     Ok(Json(
         json!({"status": "registered", "address": auth.address}),
@@ -112,9 +108,7 @@ pub async fn unregister(
 
     let removed = queries::unregister_juror(&state.db, &auth.address)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     if !removed {
         return Err((
@@ -150,11 +144,23 @@ pub async fn list_cases(
 
     let cases = queries::list_active_jury_cases_for_juror(&state.db, &auth.address)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     Ok(Json(json!({"cases": cases, "total": cases.len() as i64})))
+}
+
+/// GET /v1/jury/cases/active/:address — count active cases for a juror (no auth)
+pub async fn active_cases(
+    State(state): State<AppState>,
+    Path(address): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let _ = queries::expire_stale_jury_cases(&state.db).await;
+
+    let cases = queries::list_active_jury_cases_for_juror(&state.db, &address)
+        .await
+        .map_err(|_e| crate::types::internal_error())?;
+
+    Ok(Json(json!({"count": cases.len() as i64, "cases": cases})))
 }
 
 /// GET /v1/jury/cases/:id — get case details
@@ -164,9 +170,7 @@ pub async fn get_case(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let case = queries::get_jury_case(&state.db, &case_id)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     match case {
         Some(c) => Ok(Json(json!(c))),
@@ -225,9 +229,7 @@ pub async fn cast_vote(
     // Verify this juror is assigned to this case
     let case = queries::get_jury_case(&state.db, &case_id)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     let case = case.ok_or_else(|| {
         (
@@ -280,9 +282,7 @@ pub async fn cast_vote(
     // Check if this vote triggers a verdict
     let verdict = queries::check_jury_verdict(&state.db, &case_id)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     Ok(Json(json!({
         "status": "voted",
@@ -297,9 +297,7 @@ pub async fn list_candidates(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let jurors = queries::list_eligible_jurors_simple(&state.db)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     Ok(Json(
         json!({"candidates": jurors, "total": jurors.len() as i64}),

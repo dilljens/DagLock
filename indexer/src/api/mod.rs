@@ -107,6 +107,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/jury/register", post(jury::register))
         .route("/v1/jury/unregister", post(jury::unregister))
         .route("/v1/jury/cases", get(jury::list_cases))
+        .route("/v1/jury/cases/active/:address", get(jury::active_cases))
         .route("/v1/jury/cases/:id", get(jury::get_case))
         .route("/v1/jury/cases/:id/vote", post(jury::cast_vote))
         .route("/v1/jury/candidates", get(jury::list_candidates))

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { detectKasware, connectWallet, signMessage, type WalletState } from "../kasware";
 
 /* ─── Wallet Button ─── */
-export function WalletStatus() {
+export function WalletStatus({ onConnect }: { onConnect?: (addr: string) => void }) {
 	const [wallet, setWallet] = useState<WalletState>({
 		detected: false,
 		connected: false,
@@ -30,6 +30,7 @@ export function WalletStatus() {
 				loading: false,
 				error: null,
 			});
+			onConnect?.(address);
 		} catch (err) {
 			setWallet((s) => ({
 				...s,

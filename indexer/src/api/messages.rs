@@ -46,9 +46,7 @@ pub async fn send(
     // Verify escrow exists and sender is a party
     let escrow = queries::get_escrow(&state.db, &escrow_id)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
     let escrow = escrow.ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -92,9 +90,7 @@ pub async fn send(
 
     queries::insert_message(&state.db, &msg, &content_enc, &nonce)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     Ok(Json(json!({"status":"sent","message":msg})))
 }
@@ -108,9 +104,7 @@ pub async fn list(
     // Verify escrow exists
     let escrow = queries::get_escrow(&state.db, &escrow_id)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
     let escrow = escrow.ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -176,9 +170,7 @@ pub async fn list(
     // Fetch and decrypt
     let raw = queries::list_messages_raw(&state.db, &escrow_id)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     let mut messages = Vec::new();
     for (sender, content_enc, nonce, created_at) in &raw {

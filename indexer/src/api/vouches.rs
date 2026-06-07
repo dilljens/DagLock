@@ -53,9 +53,7 @@ pub async fn create(
     // Must have at least 3 trades to vouch (anti-Sybil)
     let own_rep = queries::get_reputation(&state.db, &auth.address)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
     if own_rep.trade_count < 3 || own_rep.settled_count < 1 {
         return Err((
             StatusCode::FORBIDDEN,
@@ -97,9 +95,7 @@ pub async fn create(
 
     queries::insert_vouch(&state.db, &vouch)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     Ok(Json(json!({"status":"created","vouch":vouch})))
 }
@@ -124,9 +120,7 @@ pub async fn delete(
 
     let deleted = queries::delete_vouch(&state.db, &id, &auth.address)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     if deleted {
         Ok(Json(json!({ "status": "deleted", "vouch_id": id })))

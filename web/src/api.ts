@@ -497,4 +497,8 @@ export const api = {
 			{ outcome, resolved_by },
 			auth,
 		),
+	juryActiveCases: (address: string) =>
+		loadJson<{ count: number; cases: JuryCase[] }>(
+			`/v1/jury/cases/active/${encodeURIComponent(address)}`,
+		),
 };

@@ -107,7 +107,6 @@ pub async fn get_by_id(
     }
 }
 
-
 /// GET /v1/escrows/:id/lock-status
 /// Check if the escrow's UTXO is confirmed on-chain.
 /// Returns { confirmed: bool, status: escrow_status }.
@@ -448,9 +447,7 @@ pub async fn create(
 
     queries::insert_escrow(&state.db, &escrow)
         .await
-        .map_err(|_e| {
-            crate::types::internal_error()
-        })?;
+        .map_err(|_e| crate::types::internal_error())?;
 
     let _ = state.ws_tx.send(WsEvent::escrow_created(&escrow.id));
 
@@ -497,7 +494,6 @@ pub async fn settle(
                     | EscrowStatus::Refunded
                     | EscrowStatus::Cancelled
                     | EscrowStatus::Expired
-                    
             ) =>
         {
             Err((
@@ -599,7 +595,6 @@ pub async fn refund(
                     | EscrowStatus::Refunded
                     | EscrowStatus::Cancelled
                     | EscrowStatus::Expired
-                    
             ) =>
         {
             Err((

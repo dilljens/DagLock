@@ -21,6 +21,8 @@
 | CLI entry | `cli/src/main.rs` |
 | WASM SDK | `wasm-sdk/src/lib.rs` |
 | Web UI entry | `web/src/App.tsx` |
+| Web components | `web/src/components/*.tsx` (8 files) |
+| Web tests | `web/src/__tests__/*.test.tsx` (6 files) |
 | Bot entry | `bot/src/index.js` |
 | Reputation simulation | `scripts/simulation.py` |
 | Dockerfile | `Dockerfile` |
@@ -123,10 +125,17 @@ DagLock/
   wasm-sdk/           (Browser SDK)
     src/lib.rs               -- wasm-bindgen, compile_escrow
 
-  web/                (React dashboard)
-    src/App.tsx              -- all forms + panels
-    src/api.ts               -- REST API client
+  web/                (React dashboard + Vitest + Biome)
+    src/App.tsx              -- main app (layout, routing, tab management)
+    src/api.ts               -- REST API client + TypeScript types
+    src/helpers.tsx          -- utilities (money, sompi, time, badge, errMsg)
+    src/ui.tsx               -- reusable UI primitives (Panel, FormField, etc.)
+    src/kasware.ts           -- KasWare wallet integration
     src/styles.css           -- dark-theme CSS
+    src/components/          -- 8 domain component files (23 components)
+    src/__tests__/           -- 6 test files (26 tests)
+    biome.json               -- lint config
+    vite.config.ts           -- build + vitest config
 
   bot/                (Telegram bot)
     src/index.js             -- grammY, lib/api.js
@@ -151,7 +160,8 @@ DagLock/
 | Add DB table/column | `indexer/src/db/schema.rs` (migration) + `indexer/src/db/queries.rs` |
 | Change reputation formula | `indexer/src/db/queries.rs` (calculate_reputation_score) |
 | Add CLI subcommand | `cli/src/main.rs` (enum) + new `cli/src/commands/*.rs` |
-| Add web page | `web/src/App.tsx` (routes) + new component |
+| Add web component | `web/src/components/<domain>.tsx` + add to `App.tsx` imports |
+| Add web test | `web/src/__tests__/<Component>.test.tsx` (mock `../api` with `mockApi()`) |
 | Add bot command | `bot/src/index.js` (command handler) |
 | Change fee percentage | `contracts/src/daglock.sil` (hardcoded `inputValue / 200`) |
 | Change template hash logic | `contracts/src/lib.rs` (`template_parts_and_hash()`) |
@@ -168,7 +178,7 @@ DagLock/
 | indexer | `features/indexer.md` | 24 | REST API, DB, auth, crypto, verification, jury, messages |
 | cli | `features/cli.md` | 8 | Command-line power-user tool |
 | wasm-sdk | `features/wasm-sdk.md` | 1 | Browser/JS SDK for tx assembly |
-| web | `features/web.md` | 3 | React + Vite dashboard |
+| web | `features/web.md` | 14 | React + Vite dashboard |
 | bot | `features/bot.md` | 2 | Telegram bot (Node.js) |
 
 ## Existing docs

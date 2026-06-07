@@ -89,12 +89,7 @@ fn int_param(
     })
 }
 
-
-
-fn enforce_treasury(
-    state: &AppState,
-    treasury: &[u8],
-) -> Result<(), (StatusCode, Json<Value>)> {
+fn enforce_treasury(state: &AppState, treasury: &[u8]) -> Result<(), (StatusCode, Json<Value>)> {
     if let Some(ref canonical) = state.treasury_pubkey {
         let provided = hex::encode(treasury);
         if &provided != canonical {
@@ -102,7 +97,9 @@ fn enforce_treasury(
                 StatusCode::FORBIDDEN,
                 Json(json!(ApiError::new(
                     "treasury_mismatch",
-                    format!("Canonical treasury key is {canonical}. The provided key does not match.")
+                    format!(
+                        "Canonical treasury key is {canonical}. The provided key does not match."
+                    )
                 ))),
             ));
         }
@@ -119,7 +116,10 @@ fn optional_or_enforced_treasury(
             let key = hex::decode(hex_str).map_err(|_| {
                 (
                     StatusCode::BAD_REQUEST,
-                    Json(json!(ApiError::new("invalid_param", "treasury_key must be valid hex"))),
+                    Json(json!(ApiError::new(
+                        "invalid_param",
+                        "treasury_key must be valid hex"
+                    ))),
                 )
             })?;
             enforce_treasury(state, &key)?;
@@ -130,13 +130,19 @@ fn optional_or_enforced_treasury(
                 hex::decode(canonical).map_err(|_| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new("config_error", "Invalid treasury_pubkey in server config"))),
+                        Json(json!(ApiError::new(
+                            "config_error",
+                            "Invalid treasury_pubkey in server config"
+                        ))),
                     )
                 })
             } else {
                 Err((
                     StatusCode::BAD_REQUEST,
-                    Json(json!(ApiError::new("missing_param", "treasury_key is required when no canonical treasury is configured"))),
+                    Json(json!(ApiError::new(
+                        "missing_param",
+                        "treasury_key is required when no canonical treasury is configured"
+                    ))),
                 ))
             }
         }
@@ -144,7 +150,6 @@ fn optional_or_enforced_treasury(
 }
 
 fn compile_result(
-
     compiled: &daglock_contracts::silverscript_lang::compiler::CompiledContract,
 ) -> Json<Value> {
     let (prefix, suffix, template_hash) = daglock_contracts::template_parts_and_hash(compiled);

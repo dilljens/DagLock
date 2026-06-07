@@ -134,7 +134,7 @@ Detected conventions. Match these so new code fits in.
 **Rule**: All `internal_error` responses use static strings. `e.to_string()` only used in auth/verification contexts where the caller needs to know why a sig was rejected.
 
 ### UX: User-facing validation
-**Pattern**: Inline validation with trim(), onBlur feedback, and confirmation dialogs  **Example**: `web/src/App.tsx` `ValidatedInput`, `ConfirmDialog`
+**Pattern**: Inline validation with trim(), onBlur feedback, and confirmation dialogs  **Example**: `web/src/ui.tsx` `ValidatedInput`, `ConfirmDialog`
 **Rule**: All address inputs must be trimmed, validated on blur with green/red feedback. Destructive actions (cancel, refund, dispute) require a confirmation dialog.
 
 ### Offer expiry
