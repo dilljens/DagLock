@@ -70,15 +70,31 @@ pub fn spawn(
 }
 
 /// Resolve a network string to a NetworkId.
+/// Preserves the testnet/ simnet suffix number (e.g. testnet-12 → suffix 12).
 pub fn parse_network_id(network: &str) -> NetworkId {
     match network {
         "mainnet" => NetworkId::new(NetworkType::Mainnet),
-        n if n.starts_with("testnet-") => NetworkId::new(NetworkType::Testnet),
-        "simnet" => NetworkId::new(NetworkType::Simnet),
-        "devnet" => NetworkId::new(NetworkType::Devnet),
+        n if n.starts_with("testnet-") => {
+            let suffix: u32 = n.strip_prefix("testnet-")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(12);
+            NetworkId::with_suffix(NetworkType::Testnet, suffix)
+        },
+        n if n.starts_with("simnet-") => {
+            let suffix: u32 = n.strip_prefix("simnet-")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
+            NetworkId::with_suffix(NetworkType::Simnet, suffix)
+        },
+        n if n.starts_with("devnet-") => {
+            let suffix: u32 = n.strip_prefix("devnet-")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
+            NetworkId::with_suffix(NetworkType::Devnet, suffix)
+        },
         _ => {
             warn!("Unknown network '{network}', defaulting to testnet-12");
-            NetworkId::new(NetworkType::Testnet)
+            NetworkId::with_suffix(NetworkType::Testnet, 12)
         }
     }
 }
