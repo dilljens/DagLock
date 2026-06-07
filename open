@@ -1,37 +1,120 @@
 #!/bin/bash
-# DagLock Development Script - Open services
-# Usage: ./open
+# DagLock Development Script — Open services
+# Usage: ./open          # start indexer + web
+#        ./open stop     # stop everything
 
 set -euo pipefail
 
+INDEXER_PORT=8543
+WEB_PORT=5173
+PIDFILE="/tmp/daglock-dev.pid"
+
+stop_services() {
+	echo "=== Stopping services ==="
+	if [ -f "$PIDFILE" ]; then
+		while read -r pid; do
+			kill "$pid" 2>/dev/null || true
+		done < "$PIDFILE"
+		rm -f "$PIDFILE"
+	fi
+	pkill -f "daglock-indexer.*port $INDEXER_PORT" 2>/dev/null || true
+	pkill -f "vite.*$WEB_PORT" 2>/dev/null || true
+	echo "✓ Stopped"
+	exit 0
+}
+
+if [ "${1:-}" = "stop" ]; then
+	stop_services
+fi
+
 echo "=== Starting DagLock Development Environment ==="
 
-# Check if indexer is already running
-if lsof -i :8543 -t > /dev/null 2>&1; then
-    echo "✓ Indexer already running on port 8543"
-else
-    echo "Starting indexer..."
-    cargo run -p daglock-indexer -- --database-url sqlite:daglock_dev.db --host 127.0.0.1 --port 8543 &
-    sleep 2
-    echo "✓ Indexer started on http://localhost:8543"
+command -v cargo >/dev/null 2>&1 || { echo "Error: cargo not found"; exit 1; }
+command -v npm >/dev/null 2>&1 || { echo "Error: npm not found"; exit 1; }
+
+# Kill any existing daglock-dev processes
+if [ -f "$PIDFILE" ]; then
+	echo "Existing dev session found — stopping first"
+	while read -r pid; do
+		kill "$pid" 2>/dev/null || true
+	done < "$PIDFILE"
+	rm -f "$PIDFILE"
+	sleep 1
 fi
 
-# Check if web UI is already running
-if lsof -i :5173 -t > /dev/null 2>&1; then
-    echo "✓ Web UI already running on port 5173"
-else
-    echo "Starting web UI..."
-    (cd web && npm run dev) &
-    sleep 3
-    echo "✓ Web UI started on http://localhost:5173"
-fi
+cleanup() {
+	echo ""
+	echo "=== Shutting down ==="
+	if [ -f "$PIDFILE" ]; then
+		while read -r pid; do
+			kill "$pid" 2>/dev/null || true
+		done < "$PIDFILE"
+		rm -f "$PIDFILE"
+	fi
+	echo "✓ Done"
+}
+trap cleanup EXIT INT TERM
+
+# Start indexer
+echo "Starting indexer on port $INDEXER_PORT..."
+rm -f daglock_dev.db daglock_dev.db-wal daglock_dev.db-shm 2>/dev/null || true
+cargo run -p daglock-indexer -- \
+	--database-url "sqlite:daglock_dev.db" \
+	--host "127.0.0.1" \
+	--port "$INDEXER_PORT" \
+	--daglock-kas-template "30876e3ea42d0e23bb0980f3fd97ae8807e9c70f" \
+	--daglock-krc20-template "8a43a8438d183a92bc7b94337c031196ff16725b" \
+	> /tmp/daglock-indexer.log 2>&1 &
+echo $! >> "$PIDFILE"
+echo "  Logs: tail -f /tmp/daglock-indexer.log"
+
+# Wait for indexer to be ready
+echo -n "Waiting for indexer..."
+for i in $(seq 1 30); do
+	if curl -sf "http://127.0.0.1:$INDEXER_PORT/v1/health" > /dev/null 2>&1; then
+		echo " ✓"
+		break
+	fi
+	if [ "$i" -eq 30 ]; then
+		echo " ✗ (timeout)"
+		echo "Check logs: tail -20 /tmp/daglock-indexer.log"
+		exit 1
+	fi
+	sleep 1
+	echo -n "."
+done
+
+# Start web UI
+echo "Starting web UI on port $WEB_PORT..."
+(cd web && npm run dev -- --port "$WEB_PORT") > /tmp/daglock-web.log 2>&1 &
+echo $! >> "$PIDFILE"
+echo "  Logs: tail -f /tmp/daglock-web.log"
+
+echo -n "Waiting for web UI..."
+for i in $(seq 1 20); do
+	if curl -sf "http://127.0.0.1:$WEB_PORT" > /dev/null 2>&1; then
+		echo " ✓"
+		break
+	fi
+	if [ "$i" -eq 20 ]; then
+		echo " ✗ (timeout, may still be starting)"
+	else
+		sleep 1
+		echo -n "."
+	fi
+done
 
 echo ""
 echo "=== Services Running ==="
-echo "  Indexer API:  http://localhost:8543"
-echo "  Web UI:       http://localhost:5173"
+echo "  Indexer:  http://localhost:$INDEXER_PORT  (ready)"
+echo "  Web UI:   http://localhost:$WEB_PORT"
+echo "  Stop:     $0 stop"
+echo "  Logs:     tail -f /tmp/daglock-indexer.log"
 echo ""
 
-# Open the web UI in the default browser
-echo "Opening web UI in browser..."
-xdg-open http://localhost:5173 2>/dev/null || open http://localhost:5173 2>/dev/null || echo "  (open browser manually: http://localhost:5173)"
+xdg-open "http://localhost:$WEB_PORT" 2>/dev/null || \
+	open "http://localhost:$WEB_PORT" 2>/dev/null || \
+	echo "Open browser: http://localhost:$WEB_PORT"
+
+echo "Press Ctrl+C to stop all services."
+wait
