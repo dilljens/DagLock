@@ -1,32 +1,30 @@
 #!/bin/bash
-# DagLock Development Script - Close services
+# DagLock Development Script — Close services
 # Usage: ./close
+
+set -euo pipefail
+
+PIDFILE="/tmp/daglock-dev.pid"
 
 echo "=== Stopping DagLock Development Environment ==="
 
-# Stop indexer (port 8443)
-if lsof -i :8443 -t > /dev/null 2>&1; then
-    echo "Stopping indexer..."
-    kill $(lsof -i :8443 -t) 2>/dev/null || true
-    sleep 1
-    echo "✓ Indexer stopped"
+if [ -f "$PIDFILE" ]; then
+	echo "Stopping services (PID file)..."
+	while read -r pid; do
+		if kill "$pid" 2>/dev/null; then
+			echo "  ✓ Stopped PID $pid"
+		else
+			echo "  - PID $pid not running"
+		fi
+	done < "$PIDFILE"
+	rm -f "$PIDFILE"
 else
-    echo "✓ Indexer not running"
+	echo "No PID file found — stopping by process name..."
 fi
 
-# Stop web UI (port 5173)
-if lsof -i :5173 -t > /dev/null 2>&1; then
-    echo "Stopping web UI..."
-    kill $(lsof -i :5173 -t) 2>/dev/null || true
-    sleep 1
-    echo "✓ Web UI stopped"
-else
-    echo "✓ Web UI not running"
-fi
-
-# Stop any remaining cargo/node processes
-pkill -f "daglock-indexer" 2>/dev/null || true
-pkill -f "vite" 2>/dev/null || true
+# Cleanup any orphans
+pkill -f "daglock-indexer.*8543" 2>/dev/null && echo "✓ Orphaned indexer stopped" || true
+pkill -f "vite.*5173" 2>/dev/null && echo "✓ Orphaned web UI stopped" || true
 
 echo ""
 echo "=== All services stopped ==="
