@@ -22,7 +22,15 @@ const RouterContext = createContext<RouterContextValue | null>(null);
 /** Normalize a hash string to a valid Route */
 function hashToRoute(hash: string): Route {
 	const path = hash.replace(/^#/, "").split("?")[0].replace(/\/$/, "") || "/";
-	const validRoutes: Route[] = ["/", "/offers", "/escrows", "/vaults", "/reputation", "/jury", "/settings"];
+	const validRoutes: Route[] = [
+		"/",
+		"/offers",
+		"/escrows",
+		"/vaults",
+		"/reputation",
+		"/jury",
+		"/settings",
+	];
 	// Support redirects from old-style anchors like #offers → /offers
 	if (path.startsWith("#")) return hashToRoute(path);
 	if (validRoutes.includes(path as Route)) return path as Route;
@@ -42,11 +50,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
 		location.hash = to;
 	}, []);
 
-	return (
-		<RouterContext.Provider value={{ route, navigate }}>
-			{children}
-		</RouterContext.Provider>
-	);
+	return <RouterContext.Provider value={{ route, navigate }}>{children}</RouterContext.Provider>;
 }
 
 export function useRouter(): RouterContextValue {

@@ -56,7 +56,7 @@ pub const WS_CHANNEL_CAPACITY: usize = 100;
 pub const MAX_REQUEST_BODY_SIZE: usize = 1_048_576;
 
 /// Default API port.
-pub const DEFAULT_API_PORT: u16 = 8443;
+pub const DEFAULT_API_PORT: u16 = 8543;
 
 /// Kaspa address prefix for mainnet.
 pub const KASPA_MAINNET_PREFIX: &str = "kaspa:";

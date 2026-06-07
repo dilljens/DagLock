@@ -2,8 +2,8 @@
 """DagLock End-to-End Test — exercises all surfaces against a running indexer.
 
 Usage:
-  python3 scripts/e2e.py                          # assumes indexer on :8443
-  API_URL=http://my-indexer:8443 python3 scripts/e2e.py
+  python3 scripts/e2e.py                          # assumes indexer on :8543
+  API_URL=http://my-indexer:8543 python3 scripts/e2e.py
   python3 scripts/e2e.py --start-indexer          # starts + stops its own
 """
 
@@ -12,7 +12,7 @@ import argparse, json, os, secrets, subprocess, sys, time, urllib.error, urllib.
 PASS = FAIL = 0
 INDEXER_PID = None
 GREEN = "\033[0;32m"; RED = "\033[0;31m"; CYAN = "\033[0;36m"; YELLOW = "\033[1;33m"; NC = "\033[0m"
-API_URL = os.environ.get("API_URL", "http://localhost:8443")
+API_URL = os.environ.get("API_URL", "http://localhost:8543")
 
 def status(m): print(f"\n{YELLOW}== {m} =={NC}")
 def passed(m): global PASS; PASS += 1; print(f"  {GREEN}PASS{NC} {m}")
@@ -51,7 +51,7 @@ def main():
     if args.start_indexer:
         subprocess.run(["cargo", "build", "-p", "daglock-indexer"], capture_output=True)
         proc = subprocess.Popen(["cargo", "run", "-p", "daglock-indexer", "--",
-            "--database-url", "sqlite:e2e_test.db", "--host", "127.0.0.1", "--port", "8443"],
+            "--database-url", "sqlite:e2e_test.db", "--host", "127.0.0.1", "--port", "8543"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         INDEXER_PID = proc.pid
         for i in range(15):

@@ -55,7 +55,7 @@ def sign(privkey_hex, message):
     print(f"Signature:  {sig_hex}")
     print()
     print(f"API call:")
-    print(f"  curl -X POST http://localhost:8443/v1/escrows/<id>/settle \\")
+    print(f"  curl -X POST http://localhost:8543/v1/escrows/<id>/settle \\")
     print(f"    -H 'X-Daglock-Address: <address>' \\")
     print(f"    -H 'X-Daglock-Signature: {sig_hex}' \\")
     print(f'    -H "X-Daglock-Message: {message}" \\')

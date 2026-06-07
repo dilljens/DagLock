@@ -117,10 +117,10 @@ cd web && npm install && npm run dev
 # Opens at http://localhost:5173
 
 # Terminal 3: Run the CLI
-cargo run -p daglock-cli -- --api-url http://localhost:8443 health
+cargo run -p daglock-cli -- --api-url http://localhost:8543 health
 
 # Terminal 4: Run the bot
-cd bot && BOT_TOKEN=xxx INDEXER_URL=http://localhost:8443 node src/index.js
+cd bot && BOT_TOKEN=xxx INDEXER_URL=http://localhost:8543 node src/index.js
 ```
 
 ---

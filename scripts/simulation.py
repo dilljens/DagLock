@@ -202,7 +202,7 @@ def check_reputation(api, addr, expected_trades, expected_recent, expected_volum
 
 def main():
     parser = argparse.ArgumentParser(description="DagLock Reputation Simulation")
-    parser.add_argument("--api-url", default="http://localhost:8443")
+    parser.add_argument("--api-url", default="http://localhost:8543")
     parser.add_argument("--db-path", default="daglock_sim.db")
     parser.add_argument("--no-server", action="store_true")
     parser.add_argument("--trades", type=int, default=50, help="Trades per bot")
@@ -226,7 +226,7 @@ def main():
             for f in [args.db_path, args.db_path + "-wal", args.db_path + "-shm"]:
                 if os.path.exists(f): os.remove(f)
             proc = subprocess.Popen(["cargo", "run", "-p", "daglock-indexer", "--",
-                "--database-url", f"sqlite:{args.db_path}", "--host", "127.0.0.1", "--port", "8443"],
+                "--database-url", f"sqlite:{args.db_path}", "--host", "127.0.0.1", "--port", "8543"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             server_pid = proc.pid
             if wait_for_server(api): info("Indexer started")

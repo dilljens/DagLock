@@ -26,13 +26,16 @@ function AppInner() {
 
 	useEffect(() => {
 		void Promise.all([
-			api.health()
+			api
+				.health()
 				.then((d) => setHealth({ data: d, loading: false }))
 				.catch((e) => setHealth({ error: e.message, loading: false })),
-			api.stats()
+			api
+				.stats()
 				.then((d) => setStats({ data: d, loading: false }))
 				.catch((e) => setStats({ error: e.message, loading: false })),
-			api.offers()
+			api
+				.offers()
 				.then((d) => setOffers({ data: d.offers, loading: false }))
 				.catch((e) => setOffers({ error: e.message, loading: false })),
 		]);
@@ -43,13 +46,20 @@ function AppInner() {
 
 	const pageContent = (() => {
 		switch (route) {
-			case "/": return <Dashboard health={health} stats={stats} offers={offers} />;
-			case "/offers": return <OffersPage />;
-			case "/escrows": return <EscrowsPage />;
-			case "/vaults": return <VaultsPage />;
-			case "/reputation": return <ReputationPage />;
-			case "/jury": return <JuryPage />;
-			default: return <Dashboard health={health} stats={stats} offers={offers} />;
+			case "/":
+				return <Dashboard health={health} stats={stats} offers={offers} />;
+			case "/offers":
+				return <OffersPage />;
+			case "/escrows":
+				return <EscrowsPage />;
+			case "/vaults":
+				return <VaultsPage />;
+			case "/reputation":
+				return <ReputationPage />;
+			case "/jury":
+				return <JuryPage />;
+			default:
+				return <Dashboard health={health} stats={stats} offers={offers} />;
 		}
 	})();
 
@@ -58,20 +68,33 @@ function AppInner() {
 			<Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 			<main className="main-content">
 				<div className="mobile-header">
-					<button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+					<button className="hamburger" onClick={() => setSidebarOpen(true)}>
+						☰
+					</button>
 					<span className="brand">DagLock</span>
 				</div>
 
 				{/* Testnet banner */}
 				{(!wallet.network || wallet.network === "testnet-12") && (
-					<div style={{
-						background: "#ff9800", color: "#000", textAlign: "center",
-						padding: "8px 12px", fontWeight: 600, fontSize: "13px",
-						borderRadius: "12px", marginBottom: "16px",
-					}}>
+					<div
+						style={{
+							background: "#ff9800",
+							color: "#000",
+							textAlign: "center",
+							padding: "8px 12px",
+							fontWeight: 600,
+							fontSize: "13px",
+							borderRadius: "12px",
+							marginBottom: "16px",
+						}}
+					>
 						🧪 TESTNET — Use{" "}
-						<a href="https://faucet-tn10.kaspanet.io/" target="_blank" rel="noopener noreferrer"
-							style={{ color: "#000", textDecoration: "underline" }}>
+						<a
+							href="https://faucet-tn10.kaspanet.io/"
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{ color: "#000", textDecoration: "underline" }}
+						>
 							Testnet Faucet
 						</a>{" "}
 						for test KAS. Do not use real funds.

@@ -25,11 +25,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		setToasts((prev) => prev.filter((t) => t.id !== id));
 	}, []);
 
-	const notify = useCallback((type: ToastType, title: string, message?: string) => {
-		const id = nextId++;
-		setToasts((prev) => [...prev, { id, type, title, message }]);
-		setTimeout(() => dismiss(id), 5000);
-	}, [dismiss]);
+	const notify = useCallback(
+		(type: ToastType, title: string, message?: string) => {
+			const id = nextId++;
+			setToasts((prev) => [...prev, { id, type, title, message }]);
+			setTimeout(() => dismiss(id), 5000);
+		},
+		[dismiss],
+	);
 
 	return (
 		<ToastCtx.Provider value={{ toasts, notify, dismiss }}>
@@ -41,7 +44,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							<div className="toast-title">{t.title}</div>
 							{t.message && <div className="toast-message">{t.message}</div>}
 						</div>
-						<button className="toast-close" onClick={() => dismiss(t.id)}>✕</button>
+						<button className="toast-close" onClick={() => dismiss(t.id)}>
+							✕
+						</button>
 					</div>
 				))}
 			</div>

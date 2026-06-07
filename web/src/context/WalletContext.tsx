@@ -2,7 +2,13 @@
 // Eliminates the need for manual "your address" inputs everywhere.
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { detectKasware, connectWallet, signMessage, subscribeToWallet, type WalletState } from "../kasware";
+import {
+	detectKasware,
+	connectWallet,
+	signMessage,
+	subscribeToWallet,
+	type WalletState,
+} from "../kasware";
 
 export interface WalletContextValue {
 	state: WalletState;
@@ -76,9 +82,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	return (
-		<WalletCtx.Provider value={{ state, connect, sign, disconnect }}>
-			{children}
-		</WalletCtx.Provider>
+		<WalletCtx.Provider value={{ state, connect, sign, disconnect }}>{children}</WalletCtx.Provider>
 	);
 }
 

@@ -22,17 +22,31 @@ export function OffersPage() {
 			</div>
 
 			<div className="tab-bar">
-				<button className={`tab-btn ${tab === "browse" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("browse")}>Browse</button>
-				<button className={`tab-btn ${tab === "my-offers" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("my-offers")}>My Offers</button>
-				<button className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("create")}>Create</button>
+				<button
+					className={`tab-btn ${tab === "browse" ? "tab-btn--active" : ""}`}
+					onClick={() => setTab("browse")}
+				>
+					Browse
+				</button>
+				<button
+					className={`tab-btn ${tab === "my-offers" ? "tab-btn--active" : ""}`}
+					onClick={() => setTab("my-offers")}
+				>
+					My Offers
+				</button>
+				<button
+					className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
+					onClick={() => setTab("create")}
+				>
+					Create
+				</button>
 			</div>
 
 			{tab === "browse" && <BrowseOffers />}
-			{tab === "my-offers" && (wallet.connected ? <MyOffers address={address!} /> : <ConnectPrompt />)}
-			{tab === "create" && (wallet.connected ? <CreateOffer address={address!} /> : <ConnectPrompt />)}
+			{tab === "my-offers" &&
+				(wallet.connected ? <MyOffers address={address!} /> : <ConnectPrompt />)}
+			{tab === "create" &&
+				(wallet.connected ? <CreateOffer address={address!} /> : <ConnectPrompt />)}
 		</div>
 	);
 }
@@ -44,7 +58,9 @@ function ConnectPrompt() {
 			<div className="empty-state-icon">🔗</div>
 			<h3>Connect your wallet</h3>
 			<p>Connect KasWare to create and manage offers.</p>
-			<button className="button primary" onClick={connect}>Connect Wallet</button>
+			<button className="button primary" onClick={connect}>
+				Connect Wallet
+			</button>
 		</div>
 	);
 }
@@ -56,10 +72,13 @@ function BrowseOffers() {
 	const address = useAddress();
 
 	if (offers.loading) {
-		api.offers().then((d) => {
-			setOffers({ data: d.offers, loading: false });
-			setFiltered(d.offers);
-		}).catch((e) => setOffers({ error: e.message, loading: false }));
+		api
+			.offers()
+			.then((d) => {
+				setOffers({ data: d.offers, loading: false });
+				setFiltered(d.offers);
+			})
+			.catch((e) => setOffers({ error: e.message, loading: false }));
 	}
 
 	if (offers.loading) return <p className="muted">Loading offers…</p>;
@@ -75,20 +94,32 @@ function BrowseOffers() {
 				</div>
 			)}
 			<div className="offers">
-				{filtered.filter((o) => o.status === "proposed").map((o) => (
-					<OfferCard key={o.id} offer={o} currentAddress={address}
-						onMutated={() => {
-							api.offers().then((d) => setFiltered(d.offers));
-						}} />
-				))}
+				{filtered
+					.filter((o) => o.status === "proposed")
+					.map((o) => (
+						<OfferCard
+							key={o.id}
+							offer={o}
+							currentAddress={address}
+							onMutated={() => {
+								api.offers().then((d) => setFiltered(d.offers));
+							}}
+						/>
+					))}
 			</div>
 		</div>
 	);
 }
 
 /* ─── Offer Card with inline actions ─── */
-function OfferCard({ offer, currentAddress, onMutated }: {
-	offer: Offer; currentAddress: string | null; onMutated: () => void;
+function OfferCard({
+	offer,
+	currentAddress,
+	onMutated,
+}: {
+	offer: Offer;
+	currentAddress: string | null;
+	onMutated: () => void;
 }) {
 	const [loading, setLoading] = useState(false);
 	const [counterparty, setCounterparty] = useState(currentAddress || "");
@@ -126,10 +157,14 @@ function OfferCard({ offer, currentAddress, onMutated }: {
 	return (
 		<article className="offer">
 			<div className="offer-top">
-				<strong>{offer.side.toUpperCase()} {money(offer.amount_sompi)}</strong>
+				<strong>
+					{offer.side.toUpperCase()} {money(offer.amount_sompi)}
+				</strong>
 				<span className={badge(offer.status)}>{offer.status}</span>
 			</div>
-			<p>{offer.base_asset} for {offer.quote_asset}</p>
+			<p>
+				{offer.base_asset} for {offer.quote_asset}
+			</p>
 			{offer.price_type === "market" && offer.current_price && (
 				<small className="muted">Market price: ${offer.current_price.toFixed(4)} USD</small>
 			)}
@@ -138,8 +173,12 @@ function OfferCard({ offer, currentAddress, onMutated }: {
 			<small className="muted">{relativeTime(offer.created_at)}</small>
 			{canAct && (
 				<div className="offer-actions">
-					<input value={counterparty} onChange={(e) => setCounterparty(e.target.value)}
-						placeholder="your address" className="offer-input" />
+					<input
+						value={counterparty}
+						onChange={(e) => setCounterparty(e.target.value)}
+						placeholder="your address"
+						className="offer-input"
+					/>
 					<button className="button primary" disabled={loading} onClick={handleAccept}>
 						Accept
 					</button>
@@ -158,9 +197,12 @@ function MyOffers({ address }: { address: string }) {
 	const [filter, setFilter] = useState("all");
 
 	if (offers.loading) {
-		api.offers(address).then((d) => {
-			setOffers({ data: d.offers, loading: false });
-		}).catch((e) => setOffers({ error: e.message, loading: false }));
+		api
+			.offers(address)
+			.then((d) => {
+				setOffers({ data: d.offers, loading: false });
+			})
+			.catch((e) => setOffers({ error: e.message, loading: false }));
 	}
 
 	const filtered = offers.data?.filter((o) => filter === "all" || o.status === filter);
@@ -172,8 +214,12 @@ function MyOffers({ address }: { address: string }) {
 			{filtered && filtered.length > 0 && (
 				<div className="action-tabs" style={{ marginBottom: "12px" }}>
 					{["all", "proposed", "accepted", "cancelled"].map((f) => (
-						<button key={f} className={`button ${filter === f ? "primary" : ""}`}
-							onClick={() => setFilter(f)} style={{ fontSize: "11px", padding: "2px 8px" }}>
+						<button
+							key={f}
+							className={`button ${filter === f ? "primary" : ""}`}
+							onClick={() => setFilter(f)}
+							style={{ fontSize: "11px", padding: "2px 8px" }}
+						>
 							{f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
 						</button>
 					))}
@@ -189,10 +235,14 @@ function MyOffers({ address }: { address: string }) {
 			{filtered?.map((o) => (
 				<article key={o.id} className="offer" style={{ cursor: "default" }}>
 					<div className="offer-top">
-						<strong>{o.side.toUpperCase()} {money(o.amount_sompi)}</strong>
+						<strong>
+							{o.side.toUpperCase()} {money(o.amount_sompi)}
+						</strong>
 						<span className={badge(o.status)}>{o.status}</span>
 					</div>
-					<p>{o.base_asset} for {o.quote_asset}</p>
+					<p>
+						{o.base_asset} for {o.quote_asset}
+					</p>
 					<code>{o.id}</code>
 					<small className="muted">{relativeTime(o.created_at)}</small>
 					{o.expires_at && <small className="muted">Expires: {relativeTime(o.expires_at)}</small>}
@@ -230,11 +280,13 @@ function CreateOffer({ address }: { address: string }) {
 				amount_sompi: sompi(amountNum),
 				expires_at: Math.floor(Date.now() / 1000) + (Number.parseInt(expireHours) || 72) * 3600,
 				price_type: priceType,
-				...(priceType === "market" ? {
-					price_offset: Number.parseFloat(priceOffset) || 0,
-					...(minPrice ? { min_price: Number.parseFloat(minPrice) } : {}),
-					...(maxPrice ? { max_price: Number.parseFloat(maxPrice) } : {}),
-				} : {}),
+				...(priceType === "market"
+					? {
+							price_offset: Number.parseFloat(priceOffset) || 0,
+							...(minPrice ? { min_price: Number.parseFloat(minPrice) } : {}),
+							...(maxPrice ? { max_price: Number.parseFloat(maxPrice) } : {}),
+						}
+					: {}),
 			});
 			notify("success", "Offer created!");
 			setStatus("done");
@@ -245,18 +297,21 @@ function CreateOffer({ address }: { address: string }) {
 	}
 
 	if (status === "done") {
-		return <div className="empty-state">
-			<div className="empty-state-icon">✅</div>
-			<h3>Offer created!</h3>
-			<p>It's now visible on the public board.</p>
-		</div>;
+		return (
+			<div className="empty-state">
+				<div className="empty-state-icon">✅</div>
+				<h3>Offer created!</h3>
+				<p>It's now visible on the public board.</p>
+			</div>
+		);
 	}
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
 			<FormField label="Side">
 				<select value={side} onChange={(e) => setSide(e.target.value)}>
-					<option value="sell">Sell</option><option value="buy">Buy</option>
+					<option value="sell">Sell</option>
+					<option value="buy">Buy</option>
 				</select>
 			</FormField>
 			<FormField label="Sell asset">
@@ -275,11 +330,17 @@ function CreateOffer({ address }: { address: string }) {
 				</select>
 			</FormField>
 			<FormField label={`Amount (${baseAsset})`}>
-				<input type="number" step="any" value={amount}
-					onChange={(e) => setAmount(e.target.value)} placeholder="100" />
+				<input
+					type="number"
+					step="any"
+					value={amount}
+					onChange={(e) => setAmount(e.target.value)}
+					placeholder="100"
+				/>
 			</FormField>
 			<div style={{ fontSize: "13px", color: "#88b888", marginTop: "-8px" }}>
-				Your address: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 20)}…</code>
+				Your address:{" "}
+				<code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 20)}…</code>
 			</div>
 			<FormField label="Price type">
 				<select value={priceType} onChange={(e) => setPriceType(e.target.value)}>
@@ -290,16 +351,31 @@ function CreateOffer({ address }: { address: string }) {
 			{priceType === "market" && (
 				<>
 					<FormField label="Price offset (%)">
-						<input type="number" step="0.1" value={priceOffset}
-							onChange={(e) => setPriceOffset(e.target.value)} placeholder="0" />
+						<input
+							type="number"
+							step="0.1"
+							value={priceOffset}
+							onChange={(e) => setPriceOffset(e.target.value)}
+							placeholder="0"
+						/>
 					</FormField>
 					<FormField label="Min price (USD)">
-						<input type="number" step="0.001" value={minPrice}
-							onChange={(e) => setMinPrice(e.target.value)} placeholder="0.10" />
+						<input
+							type="number"
+							step="0.001"
+							value={minPrice}
+							onChange={(e) => setMinPrice(e.target.value)}
+							placeholder="0.10"
+						/>
 					</FormField>
 					<FormField label="Max price (USD)">
-						<input type="number" step="0.001" value={maxPrice}
-							onChange={(e) => setMaxPrice(e.target.value)} placeholder="0.20" />
+						<input
+							type="number"
+							step="0.001"
+							value={maxPrice}
+							onChange={(e) => setMaxPrice(e.target.value)}
+							placeholder="0.20"
+						/>
 					</FormField>
 				</>
 			)}

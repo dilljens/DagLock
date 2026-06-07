@@ -13,7 +13,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            api_url: "http://localhost:8443".to_string(),
+            api_url: "http://localhost:8543".to_string(),
         }
     }
 }

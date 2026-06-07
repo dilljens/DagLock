@@ -22,7 +22,7 @@ echo "Building Docker image..."
 docker build --load -t "$IMAGE" -t "daglock/indexer:latest" .
 
 echo "Running indexer (mainnet)..."
-docker run -d --restart=unless-stopped     --name daglock-indexer     -p "$PORT":8443     -v "$DB_DIR":/data     -e DAGLOCK_MESSAGE_KEY     -e RUST_LOG=info     "$IMAGE"     --database-url sqlite:/data/daglock.db     --network "$NETWORK"     --cors-origin "$CORS_ORIGIN"     --allow-mainnet
+docker run -d --restart=unless-stopped     --name daglock-indexer     -p "$PORT":8543     -v "$DB_DIR":/data     -e DAGLOCK_MESSAGE_KEY     -e RUST_LOG=info     "$IMAGE"     --database-url sqlite:/data/daglock.db     --network "$NETWORK"     --cors-origin "$CORS_ORIGIN"     --allow-mainnet
 
 echo "Waiting for startup..."
 sleep 5

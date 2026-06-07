@@ -15,7 +15,7 @@ struct Cli {
     command: Commands,
 
     /// Indexer API URL
-    #[arg(long, default_value = "http://localhost:8443")]
+    #[arg(long, default_value = "http://localhost:8543")]
     api_url: String,
 }
 

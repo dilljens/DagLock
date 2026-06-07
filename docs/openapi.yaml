@@ -10,7 +10,7 @@ info:
 servers:
   - url: https://daglock-production.up.railway.app
     description: Production server
-  - url: http://localhost:8443
+  - url: http://localhost:8543
     description: Local development
 
 paths:

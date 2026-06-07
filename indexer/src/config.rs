@@ -6,7 +6,7 @@ pub struct Args {
     #[arg(long, default_value = "0.0.0.0")]
     pub host: String,
 
-    #[arg(long, default_value_t = 8443)]
+    #[arg(long, default_value_t = 8543)]
     pub port: u16,
 
     #[arg(long)]

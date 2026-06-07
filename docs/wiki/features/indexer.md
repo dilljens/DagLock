@@ -46,7 +46,7 @@ a state machine that tracks pending -> active transitions.
 ```bash
 daglock-indexer \
   --host 0.0.0.0 \
-  --port 8443 \
+  --port 8543 \
   --database-url sqlite:/data/daglock.db \
   --wrpc-url wss://testnet-nodes.kaspa.com \
   --daglock-kas-template <hex-hash> \

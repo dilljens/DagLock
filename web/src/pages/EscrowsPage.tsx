@@ -21,15 +21,29 @@ export function EscrowsPage() {
 				<p>Create trustless escrows. Settle, refund, or dispute.</p>
 			</div>
 			<div className="tab-bar">
-				<button className={`tab-btn ${tab === "my-escrows" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("my-escrows")}>My Escrows</button>
-				<button className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("create")}>Create</button>
-				<button className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("lookup")}>Lookup</button>
+				<button
+					className={`tab-btn ${tab === "my-escrows" ? "tab-btn--active" : ""}`}
+					onClick={() => setTab("my-escrows")}
+				>
+					My Escrows
+				</button>
+				<button
+					className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
+					onClick={() => setTab("create")}
+				>
+					Create
+				</button>
+				<button
+					className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
+					onClick={() => setTab("lookup")}
+				>
+					Lookup
+				</button>
 			</div>
-			{tab === "my-escrows" && (wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
-			{tab === "create" && (wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
+			{tab === "my-escrows" &&
+				(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
+			{tab === "create" &&
+				(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
 			{tab === "lookup" && <EscrowLookup />}
 		</div>
 	);
@@ -42,7 +56,9 @@ function ConnectPrompt() {
 			<div className="empty-state-icon">🔗</div>
 			<h3>Connect your wallet</h3>
 			<p>Connect KasWare to create and manage escrows.</p>
-			<button className="button primary" onClick={connect}>Connect Wallet</button>
+			<button className="button primary" onClick={connect}>
+				Connect Wallet
+			</button>
 		</div>
 	);
 }
@@ -54,31 +70,42 @@ function MyEscrows({ address }: { address: string }) {
 
 	const load = useCallback(() => {
 		setEscrows({ loading: true });
-		api.escrows(address)
+		api
+			.escrows(address)
 			.then((d) => setEscrows({ data: d.escrows, loading: false }))
 			.catch((e) => setEscrows({ error: e.message, loading: false }));
 	}, [address]);
 
-	if (escrows.loading) { load(); return <p className="muted">Loading escrows…</p>; }
+	if (escrows.loading) {
+		load();
+		return <p className="muted">Loading escrows…</p>;
+	}
 	if (escrows.error) return <p className="muted error-text">{escrows.error}</p>;
-	if (!escrows.data?.length) return (
-		<div className="empty-state">
-			<div className="empty-state-icon">🔒</div>
-			<h3>No escrows yet</h3>
-			<p>Create your first escrow to start trading trustlessly.</p>
-		</div>
-	);
+	if (!escrows.data?.length)
+		return (
+			<div className="empty-state">
+				<div className="empty-state-icon">🔒</div>
+				<h3>No escrows yet</h3>
+				<p>Create your first escrow to start trading trustlessly.</p>
+			</div>
+		);
 
 	return (
 		<div>
 			{escrows.data.map((e) => (
-				<article key={e.id} className="offer" style={{ cursor: "pointer", marginBottom: "8px" }}
-					onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}>
+				<article
+					key={e.id}
+					className="offer"
+					style={{ cursor: "pointer", marginBottom: "8px" }}
+					onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}
+				>
 					<div className="offer-top">
 						<strong>{money(e.amount_sompi)}</strong>
 						<span className={badge(e.status)}>{e.status}</span>
 					</div>
-					<p>{e.asset_type} · {e.buyer_address.slice(0, 16)}…</p>
+					<p>
+						{e.asset_type} · {e.buyer_address.slice(0, 16)}…
+					</p>
 					<code>{e.id}</code>
 					{selectedId === e.id && <EscrowActions escrow={e} onMutated={load} />}
 				</article>
@@ -120,23 +147,23 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 		<div className="offer-actions" style={{ marginTop: "12px" }}>
 			{(escrow.status === "active" || escrow.status === "pending_confirmation") && (
 				<>
-					<button className="button primary" disabled={!!loading}
-						onClick={() => doAction("settle")}>
+					<button
+						className="button primary"
+						disabled={!!loading}
+						onClick={() => doAction("settle")}
+					>
 						{loading === "settle" ? "Settling…" : "✅ Settle"}
 					</button>
-					<button className="button" disabled={!!loading}
-						onClick={() => doAction("refund")}>
+					<button className="button" disabled={!!loading} onClick={() => doAction("refund")}>
 						{loading === "refund" ? "Refunding…" : "↩️ Refund"}
 					</button>
-					<button className="button" disabled={!!loading}
-						onClick={() => doAction("cancel")}>
+					<button className="button" disabled={!!loading} onClick={() => doAction("cancel")}>
 						{loading === "cancel" ? "Cancelling…" : "🛑 Cancel"}
 					</button>
 				</>
 			)}
 			{escrow.status === "active" && (
-				<button className="button" disabled={!!loading}
-					onClick={() => doAction("cancel")}>
+				<button className="button" disabled={!!loading} onClick={() => doAction("cancel")}>
 					Cancel
 				</button>
 			)}
@@ -192,11 +219,17 @@ function CreateEscrow({ address }: { address: string }) {
 	}
 
 	if (status === "done" && result) {
-		return <div className="empty-state">
-			<div className="empty-state-icon">✅</div>
-			<h3>Escrow created!</h3>
-			<p>ID: {result.id}<br />Status: {result.status}</p>
-		</div>;
+		return (
+			<div className="empty-state">
+				<div className="empty-state-icon">✅</div>
+				<h3>Escrow created!</h3>
+				<p>
+					ID: {result.id}
+					<br />
+					Status: {result.status}
+				</p>
+			</div>
+		);
 	}
 
 	return (
@@ -205,12 +238,20 @@ function CreateEscrow({ address }: { address: string }) {
 				You: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 			</div>
 			<FormField label="Amount (KAS)">
-				<input type="number" step="any" value={amount}
-					onChange={(e) => setAmount(e.target.value)} placeholder="100" />
+				<input
+					type="number"
+					step="any"
+					value={amount}
+					onChange={(e) => setAmount(e.target.value)}
+					placeholder="100"
+				/>
 			</FormField>
 			<FormField label="Seller address (optional)">
-				<input value={sellerAddress} onChange={(e) => setSellerAddress(e.target.value)}
-					placeholder="kaspa:..." />
+				<input
+					value={sellerAddress}
+					onChange={(e) => setSellerAddress(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Dispute resolution">
 				<select value={disputeMode} onChange={(e) => setDisputeMode(e.target.value)}>
@@ -221,17 +262,27 @@ function CreateEscrow({ address }: { address: string }) {
 			</FormField>
 			<FormField label="Trade hash (optional, for atomic swap)">
 				<div style={{ display: "flex", gap: "8px" }}>
-					<input value={tradeHash} onChange={(e) => setTradeHash(e.target.value)}
-						placeholder="64 hex chars" style={{ flex: 1 }} />
-					<button type="button" className="button" onClick={async () => {
-						try {
-							const r = await api.generateSwap();
-							setTradeHash(r.hash);
-							setTradeSecret(r.secret);
-						} catch (e) {
-							notify("error", (e as Error).message);
-						}
-					}}>Generate</button>
+					<input
+						value={tradeHash}
+						onChange={(e) => setTradeHash(e.target.value)}
+						placeholder="64 hex chars"
+						style={{ flex: 1 }}
+					/>
+					<button
+						type="button"
+						className="button"
+						onClick={async () => {
+							try {
+								const r = await api.generateSwap();
+								setTradeHash(r.hash);
+								setTradeSecret(r.secret);
+							} catch (e) {
+								notify("error", (e as Error).message);
+							}
+						}}
+					>
+						Generate
+					</button>
 				</div>
 			</FormField>
 			{tradeSecret && (
@@ -239,8 +290,12 @@ function CreateEscrow({ address }: { address: string }) {
 					⚠️ Save this secret: <code>{tradeSecret}</code>
 				</div>
 			)}
-			<button className="button primary" type="submit" disabled={status === "loading"}
-				style={{ marginTop: "12px" }}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+				style={{ marginTop: "12px" }}
+			>
 				{status === "loading" ? "Creating…" : "Create Escrow"}
 			</button>
 		</form>
@@ -267,7 +322,11 @@ function EscrowLookup() {
 	return (
 		<div>
 			<form className="form" onSubmit={handleSubmit} style={{ marginBottom: "16px" }}>
-				<input value={id} onChange={(e) => setId(e.target.value)} placeholder="escrow id (esc_...)" />
+				<input
+					value={id}
+					onChange={(e) => setId(e.target.value)}
+					placeholder="escrow id (esc_...)"
+				/>
 				<button className="button primary" type="submit" disabled={escrow.loading}>
 					{escrow.loading ? "Loading…" : "Fetch"}
 				</button>
@@ -276,18 +335,41 @@ function EscrowLookup() {
 			{escrow.data && (
 				<div className="panel">
 					<div className="stack">
-						<div className="row"><span>ID</span><code>{escrow.data.id}</code></div>
-						<div className="row"><span>Status</span><strong>{badge(escrow.data.status)} {escrow.data.status}</strong></div>
-						<div className="row"><span>Amount</span><strong>{money(escrow.data.amount_sompi)}</strong></div>
-						<div className="row"><span>Buyer</span><strong className="addr">{escrow.data.buyer_address}</strong></div>
+						<div className="row">
+							<span>ID</span>
+							<code>{escrow.data.id}</code>
+						</div>
+						<div className="row">
+							<span>Status</span>
+							<strong>
+								{badge(escrow.data.status)} {escrow.data.status}
+							</strong>
+						</div>
+						<div className="row">
+							<span>Amount</span>
+							<strong>{money(escrow.data.amount_sompi)}</strong>
+						</div>
+						<div className="row">
+							<span>Buyer</span>
+							<strong className="addr">{escrow.data.buyer_address}</strong>
+						</div>
 						{escrow.data.seller_address && (
-							<div className="row"><span>Seller</span><strong className="addr">{escrow.data.seller_address}</strong></div>
+							<div className="row">
+								<span>Seller</span>
+								<strong className="addr">{escrow.data.seller_address}</strong>
+							</div>
 						)}
 						{escrow.data.dispute_reason && (
-							<div className="row"><span>Dispute</span><strong>{escrow.data.dispute_reason}</strong></div>
+							<div className="row">
+								<span>Dispute</span>
+								<strong>{escrow.data.dispute_reason}</strong>
+							</div>
 						)}
 						{escrow.data.dispute_mode && (
-							<div className="row"><span>Mode</span><strong>{escrow.data.dispute_mode}</strong></div>
+							<div className="row">
+								<span>Mode</span>
+								<strong>{escrow.data.dispute_mode}</strong>
+							</div>
 						)}
 					</div>
 				</div>

@@ -60,14 +60,16 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 								<span className="sidebar-wallet-addr">
 									{state.address?.slice(0, 10)}…{state.address?.slice(-4)}
 								</span>
-								<span className="sidebar-wallet-balance">
-									{state.balance} KAS
-								</span>
+								<span className="sidebar-wallet-balance">{state.balance} KAS</span>
 							</div>
 						</div>
 					) : (
 						<button className="sidebar-connect" onClick={connect} disabled={state.loading}>
-							{state.detected ? (state.loading ? "Connecting…" : "Connect Wallet") : "Install KasWare"}
+							{state.detected
+								? state.loading
+									? "Connecting…"
+									: "Connect Wallet"
+								: "Install KasWare"}
 						</button>
 					)}
 					{state.network && state.network !== "mainnet" && (

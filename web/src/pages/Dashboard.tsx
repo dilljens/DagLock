@@ -20,7 +20,8 @@ export function Dashboard({ health, stats, offers }: DashboardProps) {
 	useEffect(() => {
 		if (!wallet.connected || !wallet.address) return;
 		setEscrows({ loading: true });
-		api.escrows(wallet.address)
+		api
+			.escrows(wallet.address)
 			.then((d) => setEscrows({ data: d.escrows, loading: false }))
 			.catch((e) => setEscrows({ error: e.message, loading: false }));
 	}, [wallet.connected, wallet.address]);
@@ -32,17 +33,26 @@ export function Dashboard({ health, stats, offers }: DashboardProps) {
 				<div className="dashboard-hero">
 					<h2>🔒 Trustless Escrow on Kaspa</h2>
 					<p>
-						Create, settle, and dispute escrows without trusting anyone.
-						Connect your KasWare wallet to get started.
+						Create, settle, and dispute escrows without trusting anyone. Connect your KasWare wallet
+						to get started.
 					</p>
 					{wallet.detected ? (
-						<button className="button primary" onClick={connect} disabled={wallet.loading}
-							style={{ fontSize: "16px", padding: "14px 28px" }}>
+						<button
+							className="button primary"
+							onClick={connect}
+							disabled={wallet.loading}
+							style={{ fontSize: "16px", padding: "14px 28px" }}
+						>
 							{wallet.loading ? "Connecting…" : "Connect Wallet"}
 						</button>
 					) : (
-						<a href="https://kasware.xyz" target="_blank" rel="noopener noreferrer"
-							className="button primary" style={{ fontSize: "16px", padding: "14px 28px" }}>
+						<a
+							href="https://kasware.xyz"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="button primary"
+							style={{ fontSize: "16px", padding: "14px 28px" }}
+						>
 							Install KasWare
 						</a>
 					)}
@@ -66,7 +76,7 @@ export function Dashboard({ health, stats, offers }: DashboardProps) {
 	// Connected — show dashboard
 	const myEscrows = escrows.data || [];
 	const activeEscrows = myEscrows.filter((e) =>
-		["pending_confirmation", "active", "disputed"].includes(e.status)
+		["pending_confirmation", "active", "disputed"].includes(e.status),
 	);
 	const settledCount = myEscrows.filter((e) => e.status === "settled").length;
 
@@ -82,7 +92,9 @@ export function Dashboard({ health, stats, offers }: DashboardProps) {
 		<div>
 			<div className="page-header">
 				<h1>Dashboard</h1>
-				<p>{wallet.address?.slice(0, 24)}… · Balance: {wallet.balance} KAS</p>
+				<p>
+					{wallet.address?.slice(0, 24)}… · Balance: {wallet.balance} KAS
+				</p>
 			</div>
 
 			{/* Stats */}
@@ -129,13 +141,19 @@ export function Dashboard({ health, stats, offers }: DashboardProps) {
 				</div>
 			)}
 			{activeEscrows.slice(0, 5).map((e) => (
-				<article key={e.id} className="offer" style={{ cursor: "pointer", marginBottom: "8px" }}
-					onClick={() => navigate("/escrows")}>
+				<article
+					key={e.id}
+					className="offer"
+					style={{ cursor: "pointer", marginBottom: "8px" }}
+					onClick={() => navigate("/escrows")}
+				>
 					<div className="offer-top">
 						<strong>{money(e.amount_sompi)}</strong>
 						<span className="pill">{e.status}</span>
 					</div>
-					<p>{e.asset_type} · {e.buyer_address.slice(0, 16)}…</p>
+					<p>
+						{e.asset_type} · {e.buyer_address.slice(0, 16)}…
+					</p>
 					<code>{e.id}</code>
 				</article>
 			))}

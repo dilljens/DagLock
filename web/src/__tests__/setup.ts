@@ -5,7 +5,9 @@ beforeAll(() => {
 	// Mock window.kasware once — configurable so test files can override
 	Object.defineProperty(window, "kasware", {
 		value: {
-			requestAccounts: vi.fn().mockResolvedValue(["kaspa:qr6g5fsvq5h4c56j8w6q8w6q8w6q8w6q8w6q8w6q"]),
+			requestAccounts: vi
+				.fn()
+				.mockResolvedValue(["kaspa:qr6g5fsvq5h4c56j8w6q8w6q8w6q8w6q8w6q8w6q"]),
 			getAccounts: vi.fn().mockResolvedValue(["kaspa:qr6g5fsvq5h4c56j8w6q8w6q8w6q8w6q8w6q8w6q"]),
 			getPublicKey: vi.fn().mockResolvedValue("a".repeat(64)),
 			getBalance: vi.fn().mockResolvedValue({ confirmed: 100_000_000_000, pending: 0 }),
