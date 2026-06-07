@@ -1,508 +1,98 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { api, type Health, type NetworkInfo, type Stats, type Offer } from "./api";
+import { useEffect, useState, useMemo } from "react";
+import { useRouter, RouterProvider } from "./router";
+import { useWallet, WalletProvider } from "./context/WalletContext";
+import { ToastProvider, useToast } from "./layout/Toast";
+import { Sidebar } from "./layout/Sidebar";
+
+import { Dashboard } from "./pages/Dashboard";
+import { OffersPage } from "./pages/OffersPage";
+import { EscrowsPage } from "./pages/EscrowsPage";
+import { VaultsPage } from "./pages/VaultsPage";
+import { ReputationPage } from "./pages/ReputationPage";
+import { JuryPage } from "./pages/JuryPage";
+
+import { api, type Health, type Stats, type Offer } from "./api";
 import { money } from "./helpers";
 import type { LoadState } from "./helpers";
-import { SectionTitle, Panel } from "./ui";
 
-import { WalletStatus } from "./components/wallet";
-import { CreateOfferForm, OfferCard, MyOffersPanel } from "./components/offers";
-import {
-	CreateEscrowForm,
-	SwapForm,
-	EscrowActionForm,
-	DisputeWithEvidenceForm,
-	EscrowLookup,
-	MyEscrows,
-} from "./components/escrows";
-import { CreateVaultForm, VaultLookup, VaultListPanel } from "./components/vaults";
-import { JuryPanel, ResolveDisputePanel, VouchPanel } from "./components/jury";
-import { LinkTelegramForm } from "./components/identity";
-import { CompileCovenantForm } from "./components/compile";
-import { ReputationLookup, ReceiptLookup } from "./components/lookup";
-
-/* ─── Main App ─── */
-export default function App() {
-	// Onboarding — show modal on first visit
-	const [showOnboarding, setShowOnboarding] = useState(() => {
-		return !localStorage.getItem("daglock.onboarding.seen");
-	});
-
-	function dismissOnboarding() {
-		localStorage.setItem("daglock.onboarding.seen", "1");
-		setShowOnboarding(false);
-	}
-
+/* ─── Inner app (has access to router + wallet) ─── */
+function AppInner() {
+	const { route } = useRouter();
+	const { state: wallet } = useWallet();
+	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [health, setHealth] = useState<LoadState<Health>>({ loading: true });
-	const [network, setNetwork] = useState<LoadState<NetworkInfo>>({
-		loading: true,
-	});
 	const [stats, setStats] = useState<LoadState<Stats>>({ loading: true });
 	const [offers, setOffers] = useState<LoadState<Offer[]>>({ loading: true });
-	const [juryCount, setJuryCount] = useState(0);
-	const [activeTab, setActiveTab] = useState<
-		| "create-vault"
-		| "compile"
-		| "create-offer"
-		| "create-escrow"
-		| "settle"
-		| "refund"
-		| "swap"
-		| "dispute"
-		| "cancel"
-		| "my-offers"
-		| "link-telegram"
-		| "jury"
-		| "vouch"
-		| "resolve-dispute"
-		| null
-	>(null);
 
-	function loadAll() {
-		setHealth({ loading: true });
-		setNetwork({ loading: true });
-		setStats({ loading: true });
-		setOffers({ loading: true });
+	useEffect(() => {
 		void Promise.all([
-			api
-				.health()
-				.then((data) => setHealth({ data, loading: false }))
-				.catch((err) => setHealth({ error: err.message, loading: false })),
-			api
-				.network()
-				.then((data) => setNetwork({ data, loading: false }))
-				.catch((err) => setNetwork({ error: err.message, loading: false })),
-			api
-				.stats()
-				.then((data) => setStats({ data, loading: false }))
-				.catch((err) => setStats({ error: err.message, loading: false })),
-			api
-				.offers()
-				.then((data) => setOffers({ data: data.offers, loading: false }))
-				.catch((err) => setOffers({ error: err.message, loading: false })),
+			api.health()
+				.then((d) => setHealth({ data: d, loading: false }))
+				.catch((e) => setHealth({ error: e.message, loading: false })),
+			api.stats()
+				.then((d) => setStats({ data: d, loading: false }))
+				.catch((e) => setStats({ error: e.message, loading: false })),
+			api.offers()
+				.then((d) => setOffers({ data: d.offers, loading: false }))
+				.catch((e) => setOffers({ error: e.message, loading: false })),
 		]);
-	}
-
-	useEffect(loadAll, []);
-
-	const highlights = useMemo(() => {
-		const s = stats.data;
-		return [
-			["Escrows", s?.total_escrows ?? "—"],
-			["Active", s?.active_escrows ?? "—"],
-			["Volume", s ? money(s.total_volume_kas) : "—"],
-			["Settled", s?.settled_escrows ?? "—"],
-		];
-	}, [stats.data]);
-
-	function closeTab() {
-		setActiveTab(null);
-		loadAll();
-	}
-
-	const handleWalletConnect = useCallback((addr: string) => {
-		api
-			.juryActiveCases(addr)
-			.then((r) => setJuryCount(r.count))
-			.catch(() => setJuryCount(0));
 	}, []);
 
-	const tabPanels: Record<string, { title: string; content: React.ReactNode }> = {
-		"create-vault": {
-			title: "Create vault",
-			content: <CreateVaultForm onDone={closeTab} />,
-		},
-		compile: {
-			title: "Compile covenant",
-			content: <CompileCovenantForm onDone={closeTab} />,
-		},
-		"create-offer": {
-			title: "Create offer",
-			content: <CreateOfferForm onDone={closeTab} />,
-		},
-		"create-escrow": {
-			title: "Create escrow",
-			content: <CreateEscrowForm onDone={closeTab} />,
-		},
-		settle: {
-			title: "Settle escrow",
-			content: <EscrowActionForm action="settle" />,
-		},
-		refund: {
-			title: "Refund escrow",
-			content: <EscrowActionForm action="refund" />,
-		},
-		swap: {
-			title: "Atomic Swap",
-			content: <SwapForm onDone={closeTab} />,
-		},
-		dispute: {
-			title: "Dispute escrow",
-			content: <DisputeWithEvidenceForm onDone={closeTab} />,
-		},
-		cancel: {
-			title: "Cancel escrow",
-			content: <EscrowActionForm action="cancel" />,
-		},
-		"link-telegram": {
-			title: "Link Telegram",
-			content: <LinkTelegramForm onDone={closeTab} />,
-		},
-		"my-offers": {
-			title: "My offers",
-			content: <MyOffersPanel />,
-		},
-		jury: {
-			title: "Jury panel",
-			content: <JuryPanel />,
-		},
-		vouch: {
-			title: "Vouch",
-			content: <VouchPanel onDone={closeTab} />,
-		},
-		"resolve-dispute": {
-			title: "Resolve dispute",
-			content: <ResolveDisputePanel onDone={closeTab} />,
-		},
-	};
+	// Close sidebar on route change
+	useEffect(() => setSidebarOpen(false), [route]);
+
+	const pageContent = (() => {
+		switch (route) {
+			case "/": return <Dashboard health={health} stats={stats} offers={offers} />;
+			case "/offers": return <OffersPage />;
+			case "/escrows": return <EscrowsPage />;
+			case "/vaults": return <VaultsPage />;
+			case "/reputation": return <ReputationPage />;
+			case "/jury": return <JuryPage />;
+			default: return <Dashboard health={health} stats={stats} offers={offers} />;
+		}
+	})();
 
 	return (
-		<main className="app">
-			<div
-				style={{
-					background: "#ff9800",
-					color: "#000",
-					textAlign: "center",
-					padding: "8px",
-					fontWeight: "bold",
-					fontSize: "14px",
-				}}
-			>
-				⚠️ TESTNET — This is a testnet deployment. Do not use real funds. Get testnet KAS from the{" "}
-				<a
-					href="https://faucet-tn10.kaspanet.io/"
-					target="_blank"
-					rel="noopener noreferrer"
-					style={{ color: "#000", textDecoration: "underline" }}
-				>
-					Kaspa Testnet Faucet
-				</a>
-				.
-			</div>
-			<div
-				style={{
-					background: "#1a3a1a",
-					border: "1px solid rgba(83,215,105,0.3)",
-					borderRadius: "8px",
-					padding: "16px",
-					marginTop: "8px",
-					marginBottom: "8px",
-				}}
-			>
-				<strong>🚀 Getting Started</strong>
-				<ol
-					style={{
-						margin: "8px 0 0 0",
-						paddingLeft: "20px",
-						fontSize: "13px",
-						lineHeight: 1.8,
-					}}
-				>
-					<li>
-						Install{" "}
-						<a
-							href="https://kasware.xyz"
-							target="_blank"
-							rel="noopener noreferrer"
-							style={{ color: "#53d769" }}
-						>
-							KasWare
-						</a>{" "}
-						browser extension
-					</li>
-					<li>
-						Get testnet KAS from{" "}
-						<a
-							href="https://faucet-tn10.kaspanet.io/"
-							target="_blank"
-							rel="noopener noreferrer"
-							style={{ color: "#53d769" }}
-						>
+		<div className="app-shell">
+			<Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+			<main className="main-content">
+				<div className="mobile-header">
+					<button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+					<span className="brand">DagLock</span>
+				</div>
+
+				{/* Testnet banner */}
+				{(!wallet.network || wallet.network === "testnet-12") && (
+					<div style={{
+						background: "#ff9800", color: "#000", textAlign: "center",
+						padding: "8px 12px", fontWeight: 600, fontSize: "13px",
+						borderRadius: "12px", marginBottom: "16px",
+					}}>
+						🧪 TESTNET — Use{" "}
+						<a href="https://faucet-tn10.kaspanet.io/" target="_blank" rel="noopener noreferrer"
+							style={{ color: "#000", textDecoration: "underline" }}>
 							Testnet Faucet
-						</a>
-					</li>
-					<li>Connect your wallet using the button in the header</li>
-					<li>Create an offer or escrow below</li>
-				</ol>
-			</div>
-			<header className="hero">
-				<div>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "space-between",
-							width: "100%",
-							marginBottom: "8px",
-						}}
-					>
-						<div className="brand">Kaspa Escrow</div>
-						<WalletStatus onConnect={handleWalletConnect} />
-					</div>
-					<h1>Trustless escrow and atomic swaps on Kaspa.</h1>
-					<p>The public front door for offers, escrows, reputation, and receipts.</p>
-				</div>
-				<div className="hero-actions">
-					<a href="#offers" className="button primary">
-						Browse offers
-					</a>
-					<a href="#actions" className="button">
-						Take action
-					</a>
-				</div>
-			</header>
-
-			<section className="grid cards">
-				{highlights.map(([label, value]) => (
-					<article key={label} className="card">
-						<span>{label}</span>
-						<strong>{value}</strong>
-					</article>
-				))}
-			</section>
-
-			<section className="grid two-up">
-				<Panel title="Network">
-					{health.error || network.error ? (
-						<p className="muted">{health.error || network.error}</p>
-					) : (
-						<div className="stack">
-							<div className="row">
-								<span>API</span>
-								<strong>{health.data?.status ?? "—"}</strong>
-							</div>
-							<div className="row">
-								<span>Network</span>
-								<strong>{network.data?.network ?? "—"}</strong>
-							</div>
-							<div className="row">
-								<span>Version</span>
-								<strong>{health.data?.version ?? "—"}</strong>
-							</div>
-							<div className="row">
-								<span>Fee tier</span>
-								<strong>0.5%</strong>
-							</div>
-						</div>
-					)}
-				</Panel>
-
-				<Panel title="Public stats">
-					{stats.data ? (
-						<div className="stack">
-							<div className="row">
-								<span>Total escrows</span>
-								<strong>{stats.data.total_escrows}</strong>
-							</div>
-							<div className="row">
-								<span>Settled</span>
-								<strong>{stats.data.settled_escrows}</strong>
-							</div>
-							<div className="row">
-								<span>Disputed</span>
-								<strong>{stats.data.disputed_escrows}</strong>
-							</div>
-							<div className="row">
-								<span>Fees</span>
-								<strong>{money(stats.data.total_fees_collected_kas)}</strong>
-							</div>
-						</div>
-					) : (
-						<p className="muted">Loading stats…</p>
-					)}
-				</Panel>
-			</section>
-
-			<section id="offers">
-				<SectionTitle title="Open offers" subtitle="Public listings available to counterparties." />
-				<div className="offers">
-					{offers.loading && <p className="muted">Loading offers…</p>}
-					{offers.error && <p className="muted error-text">{offers.error}</p>}
-					{offers.data?.length === 0 && (
-						<p className="muted">No open offers right now. Create one below!</p>
-					)}
-					{offers.data?.map((offer) => (
-						<OfferCard key={offer.id} offer={offer} onMutated={loadAll} />
-					))}
-				</div>
-			</section>
-
-			{showOnboarding && (
-				<div
-					className="confirm-overlay"
-					onClick={dismissOnboarding}
-					onKeyDown={(e) => e.key === "Escape" && dismissOnboarding()}
-					role="dialog"
-					aria-modal="true"
-				>
-					{void 0}
-					<div
-						className="confirm-dialog"
-						onClick={(e) => e.stopPropagation()}
-						onKeyDown={(e) => e.key === "Escape" && dismissOnboarding()}
-					>
-						<h3>🚀 Welcome to DagLock</h3>
-						<p style={{ margin: "12px 0", lineHeight: 1.6 }}>
-							To use trustless escrow on Kaspa, you need:
-						</p>
-						<ol
-							style={{
-								margin: "8px 0 12px 20px",
-								paddingLeft: "8px",
-								fontSize: "14px",
-								lineHeight: 2,
-							}}
-						>
-							<li>
-								<strong>KasWare</strong> browser extension —{" "}
-								<a
-									href="https://kasware.xyz"
-									target="_blank"
-									rel="noopener noreferrer"
-									style={{ color: "#53d769" }}
-								>
-									Install here
-								</a>
-							</li>
-							<li>
-								Testnet KAS from the{" "}
-								<a
-									href="https://faucet-tn10.kaspanet.io/"
-									target="_blank"
-									rel="noopener noreferrer"
-									style={{ color: "#53d769" }}
-								>
-									Testnet Faucet
-								</a>
-							</li>
-							<li>Connect your wallet using the button in the header</li>
-							<li>Create an offer or escrow to get started</li>
-						</ol>
-						<div className="confirm-actions">
-							<button className="button primary" type="button" onClick={dismissOnboarding}>
-								Get started
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
-			<section id="actions" className="actions-section">
-				<SectionTitle
-					title="Actions"
-					subtitle="Create offers & escrows, settle, refund, dispute, or cancel."
-				/>
-
-				<div className="action-tabs">
-					<div className="action-group">
-						<span className="action-group-label">Create</span>
-						{(
-							[
-								["Offer", "create-offer"],
-								["Escrow", "create-escrow"],
-								["Vault", "create-vault"],
-							] as const
-						).map(([label, key]) => (
-							<button
-								key={key}
-								type="button"
-								className={`button ${activeTab === key ? "primary" : ""}`}
-								onClick={() => setActiveTab(activeTab === key ? null : (key as typeof activeTab))}
-							>
-								{label}
-							</button>
-						))}
-					</div>
-					<div className="action-group">
-						<span className="action-group-label">Manage</span>
-						{(
-							[
-								["Settle", "settle"],
-								["Refund", "refund"],
-								["Swap", "swap"],
-								["Dispute", "dispute"],
-								["Cancel", "cancel"],
-							] as const
-						).map(([label, key]) => (
-							<button
-								key={key}
-								type="button"
-								className={`button ${activeTab === key ? "primary" : ""}`}
-								onClick={() => setActiveTab(activeTab === key ? null : (key as typeof activeTab))}
-							>
-								{label}
-							</button>
-						))}
-					</div>
-					<div className="action-group">
-						<span className="action-group-label">Account</span>
-						{(
-							[
-								["My offers", "my-offers"],
-								["Telegram", "link-telegram"],
-								["Jury", "jury"],
-								["Compile", "compile"],
-								["Vouch", "vouch"],
-								["Resolve", "resolve-dispute"],
-							] as const
-						).map(([label, key]) => (
-							<button
-								key={key}
-								type="button"
-								className={`button ${activeTab === key ? "primary" : ""}`}
-								onClick={() => setActiveTab(activeTab === key ? null : (key as typeof activeTab))}
-							>
-								{label}
-								{key === "jury" && juryCount > 0 && activeTab !== "jury" && (
-									<span
-										style={{
-											marginLeft: "4px",
-											background: "#ff9800",
-											color: "#000",
-											borderRadius: "50%",
-											padding: "0 5px",
-											fontSize: "11px",
-											fontWeight: "bold",
-										}}
-									>
-										{juryCount}
-									</span>
-								)}
-							</button>
-						))}
-					</div>
-				</div>
-
-				{activeTab && (
-					<div className="panel action-panel">
-						<div className="panel-head">
-							<h3>{tabPanels[activeTab].title}</h3>
-							<button className="button" type="button" onClick={closeTab}>
-								✕
-							</button>
-						</div>
-						{tabPanels[activeTab].content}
+						</a>{" "}
+						for test KAS. Do not use real funds.
 					</div>
 				)}
-			</section>
 
-			<section className="grid lookup-grid lookup-section">
-				<EscrowLookup />
-				<MyEscrows />
-				<VaultLookup />
-				<VaultListPanel />
-				<ReputationLookup />
-				<ReceiptLookup />
-			</section>
-		</main>
+				{pageContent}
+			</main>
+		</div>
+	);
+}
+
+/* ─── Top-level App ─── */
+export default function App() {
+	return (
+		<RouterProvider>
+			<WalletProvider>
+				<ToastProvider>
+					<AppInner />
+				</ToastProvider>
+			</WalletProvider>
+		</RouterProvider>
 	);
 }

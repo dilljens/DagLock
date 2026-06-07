@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 import App from "../App";
 
 beforeAll(() => {
-	// Mock fetch for API calls that happen on mount
 	vi.spyOn(globalThis, "fetch").mockImplementation(() =>
 		Promise.resolve(
 			new Response(JSON.stringify({ status: "ok" }), {
@@ -19,18 +18,27 @@ afterAll(() => {
 });
 
 describe("App", () => {
-	it("renders the hero heading", () => {
+	it("renders the sidebar brand name", () => {
 		render(<App />);
-		expect(screen.getByText("Trustless escrow and atomic swaps on Kaspa.")).toBeInTheDocument();
+		const all = screen.getAllByText("DagLock");
+		expect(all.length).toBeGreaterThanOrEqual(1);
 	});
 
-	it("renders the brand name", () => {
+	it("renders sidebar navigation items", () => {
 		render(<App />);
-		expect(screen.getByText("Kaspa Escrow")).toBeInTheDocument();
+		expect(screen.getByText("Dashboard")).toBeInTheDocument();
+		expect(screen.getByText("Offers")).toBeInTheDocument();
+		expect(screen.getByText("Escrows")).toBeInTheDocument();
 	});
 
-	it("renders wallet status area", () => {
+	it("renders the testnet banner", () => {
 		render(<App />);
-		expect(screen.getByText("No wallet")).toBeInTheDocument();
+		expect(screen.getByText(/TESTNET/)).toBeInTheDocument();
+	});
+
+	it("renders quick action cards on dashboard", () => {
+		render(<App />);
+		expect(screen.getByText("Browse Offers")).toBeInTheDocument();
+		expect(screen.getByText("Check Reputation")).toBeInTheDocument();
 	});
 });
