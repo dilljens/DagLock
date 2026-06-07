@@ -69,6 +69,20 @@ pub fn spawn(
     });
 }
 
+/// Resolve a network string to a NetworkId.
+pub fn parse_network_id(network: &str) -> NetworkId {
+    match network {
+        "mainnet" => NetworkId::new(NetworkType::Mainnet),
+        n if n.starts_with("testnet-") => NetworkId::new(NetworkType::Testnet),
+        "simnet" => NetworkId::new(NetworkType::Simnet),
+        "devnet" => NetworkId::new(NetworkType::Devnet),
+        _ => {
+            warn!("Unknown network '{network}', defaulting to testnet-12");
+            NetworkId::new(NetworkType::Testnet)
+        }
+    }
+}
+
 /// Connect to a Kaspa node via wRPC.
 pub async fn try_connect_wrpc(
     url: &str,
@@ -76,22 +90,7 @@ pub async fn try_connect_wrpc(
 ) -> Result<Arc<kaspa_wrpc_client::KaspaRpcClient>, String> {
     use kaspa_wrpc_client::{KaspaRpcClient, WrpcEncoding};
 
-    let network_id = match network {
-        "mainnet" => NetworkId::new(NetworkType::Mainnet),
-        n if n.starts_with("testnet-") => {
-            let _num: u8 = n
-                .strip_prefix("testnet-")
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(12);
-            NetworkId::new(NetworkType::Testnet)
-        }
-        "simnet" => NetworkId::new(NetworkType::Simnet),
-        "devnet" => NetworkId::new(NetworkType::Devnet),
-        _ => {
-            warn!("Unknown network '{network}', defaulting to testnet-12");
-            NetworkId::new(NetworkType::Testnet)
-        }
-    };
+    let network_id = parse_network_id(network);
 
     let client = KaspaRpcClient::new(
         WrpcEncoding::Borsh,
@@ -114,6 +113,41 @@ pub async fn try_connect_wrpc(
         .connect(Some(options))
         .await
         .map_err(|e| format!("Failed to connect: {e}"))?;
+
+    Ok(client)
+}
+
+/// Auto-discover and connect to a Kaspa node via the public Resolver network.
+/// Uses the Kaspa Public Node Network (PNN) to find an active node.
+pub async fn try_connect_resolver(
+    network: &str,
+) -> Result<Arc<kaspa_wrpc_client::KaspaRpcClient>, String> {
+    use kaspa_wrpc_client::{KaspaRpcClient, Resolver, WrpcEncoding};
+
+    let network_id = parse_network_id(network);
+
+    let resolver = Resolver::default();
+    let client = KaspaRpcClient::new(
+        WrpcEncoding::Borsh,
+        None,
+        Some(resolver),
+        Some(network_id),
+        None,
+    )
+    .map_err(|e| format!("Failed to create wRPC client with resolver: {e}"))?;
+
+    let client = Arc::new(client);
+
+    let options = kaspa_wrpc_client::client::ConnectOptions {
+        block_async_connect: true,
+        connect_timeout: Some(Duration::from_secs(30)),
+        ..Default::default()
+    };
+
+    client
+        .connect(Some(options))
+        .await
+        .map_err(|e| format!("Failed to connect via resolver: {e}"))?;
 
     Ok(client)
 }

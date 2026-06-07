@@ -55,8 +55,9 @@ async fn main() {
     info!("Database ready: {}", args.database_url);
 
     // Initialize on-chain verifier
-    // Uses WrpcVerifier when connected to a Kaspa node via --wrpc-url
-    // Falls back to MockVerifier (always succeeds) when offline
+    // 1) If --wrpc-url is provided, connect to that specific node
+    // 2) If not, try auto-discovery via Kaspa Public Node Network (Resolver)
+    // 3) Fall back to MockVerifier (always succeeds) when offline
     let verifier: Arc<dyn crate::verification::EscrowVerifier> = if let Some(ref wrpc_url) = args.wrpc_url {
         match crate::listener::try_connect_wrpc(wrpc_url, &args.network).await {
             Ok(client) => {
@@ -69,8 +70,17 @@ async fn main() {
             }
         }
     } else {
-        warn!("No --wrpc-url provided — using mock verifier");
-        Arc::new(crate::verification::MockVerifier)
+        // No explicit URL — try auto-discovery via Resolver
+        match crate::listener::try_connect_resolver(&args.network).await {
+            Ok(client) => {
+                info!("wRPC verifier connected via Resolver (auto-discovery)");
+                Arc::new(crate::verification::WrpcVerifier::new(Some(client)))
+            }
+            Err(e) => {
+                warn!("Resolver connection failed: {e} — using mock verifier");
+                Arc::new(crate::verification::MockVerifier)
+            }
+        }
     };
 
     // Initialize signature verifier — chooses mock or real based on --mock-auth
