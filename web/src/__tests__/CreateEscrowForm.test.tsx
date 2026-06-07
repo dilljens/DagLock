@@ -28,7 +28,13 @@ describe("CreateEscrowForm", () => {
 		(api.createEscrow as ReturnType<typeof vi.fn>).mockResolvedValue({
 			id: "esc_abc",
 			amount_sompi: 100_000_000,
+			lock_tx_id: "abc123def456_tx_id",
+			status: "pending_confirmation",
 		});
+
+		(window as any).kasware = {
+			sendKaspa: vi.fn().mockResolvedValue("abc123def456_tx_id"),
+		};
 
 		render(<CreateEscrowForm onDone={onDone} />);
 
@@ -49,6 +55,10 @@ describe("CreateEscrowForm", () => {
 
 	it("shows error on invalid buyer address", async () => {
 		const user = userEvent.setup();
+		(window as any).kasware = {
+			sendKaspa: vi.fn().mockResolvedValue("abc123def456_tx_id"),
+		};
+
 		render(<CreateEscrowForm onDone={onDone} />);
 
 		const amountInput = screen.getByPlaceholderText("100");
@@ -69,6 +79,10 @@ describe("CreateEscrowForm", () => {
 	it("shows error when API fails", async () => {
 		const user = userEvent.setup();
 		(api.createEscrow as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Server error"));
+
+		(window as any).kasware = {
+			sendKaspa: vi.fn().mockResolvedValue("abc123def456_tx_id"),
+		};
 
 		render(<CreateEscrowForm onDone={onDone} />);
 

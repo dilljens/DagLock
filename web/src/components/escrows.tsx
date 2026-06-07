@@ -39,9 +39,22 @@ export function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 		setStatus("loading");
 		setError("");
 		try {
+			// Use KasWare broadcast tx_id if available, fallback to manual
+			let lockTxId = '';
+			let outputIndex = 0;
+
+			if (window.kasware && window.kasware.sendKaspa) {
+				// Broadcast the covenant funding tx via KasWare
+				lockTxId = await window.kasware.sendKaspa(trimmedBuyer, sompi(amountNum));
+			} else {
+				// Fallback: manually input tx_id (kaspawallet CLI flow)
+				lockTxId = prompt('Tx broadcast tx_id (from kaspawallet):') || '';
+				if (!lockTxId) throw new Error('Tx ID required. Use: kaspawallet send --to <covenant_address>');
+			}
+
 			const body: CreateEscrowRequest = {
-				lock_tx_id: crypto.randomUUID(),
-				lock_tx_output_index: 0,
+				lock_tx_id: lockTxId,
+				lock_tx_output_index: outputIndex,
 				buyer_address: trimmedBuyer,
 				amount_sompi: sompi(amountNum),
 				asset_type: assetType,
@@ -76,6 +89,10 @@ export function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 				<div className="row">
 					<span>Amount</span>
 					<strong>{money(result.amount_sompi)}</strong>
+				</div>
+				<div className="row">
+					<span>Lock TX</span>
+					<code>{result.lock_tx_id.slice(0, 32)}…</code>
 				</div>
 				{result.mediator_key && (
 					<div className="row">

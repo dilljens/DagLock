@@ -18,6 +18,9 @@ cargo test -p daglock-contracts -- print_template_hashes --nocapture
 
 # Output will include:
 #   daglock_kas_template_hash=30876e3ea42d0e23bb0980f3fd97ae8807e9c70f
+#   daglock_arbiter_template_hash=c6d10350b51d5fedcc05382d02d8334a783be220
+#   daglock_krc20_template_hash=8a43a8438d183a92bc7b94337c031196ff16725b
+#   daglock_vault_template_hash=d773d10a9a2626986226e4eca528e0cb071b79be
 #   daglock_vault_template_hash=d773d10a9a2626986226e4eca528e0cb071b79be
 ```
 
