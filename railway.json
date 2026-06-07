@@ -4,7 +4,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db",
+    "startCommand": "daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template 8a43a8438d183a92bc7b94337c031196ff16725b --cors-origin https://daglock.com",
     "healthcheckPath": "/v1/health",
     "restartPolicyType": "ON_FAILURE"
   }
