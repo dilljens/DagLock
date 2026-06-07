@@ -22,6 +22,16 @@ import { ReputationLookup, ReceiptLookup } from "./components/lookup";
 
 /* ─── Main App ─── */
 export default function App() {
+	// Onboarding — show modal on first visit
+	const [showOnboarding, setShowOnboarding] = useState(() => {
+		return !localStorage.getItem("daglock.onboarding.seen");
+	});
+
+	function dismissOnboarding() {
+		localStorage.setItem("daglock.onboarding.seen", "1");
+		setShowOnboarding(false);
+	}
+
 	const [health, setHealth] = useState<LoadState<Health>>({ loading: true });
 	const [network, setNetwork] = useState<LoadState<NetworkInfo>>({
 		loading: true,
@@ -325,6 +335,66 @@ export default function App() {
 					))}
 				</div>
 			</section>
+
+			{showOnboarding && (
+				<div
+					className="confirm-overlay"
+					onClick={dismissOnboarding}
+					onKeyDown={(e) => e.key === "Escape" && dismissOnboarding()}
+					role="dialog"
+					aria-modal="true"
+				>
+					{void 0}
+					<div
+						className="confirm-dialog"
+						onClick={(e) => e.stopPropagation()}
+						onKeyDown={(e) => e.key === "Escape" && dismissOnboarding()}
+					>
+						<h3>🚀 Welcome to DagLock</h3>
+						<p style={{ margin: "12px 0", lineHeight: 1.6 }}>
+							To use trustless escrow on Kaspa, you need:
+						</p>
+						<ol
+							style={{
+								margin: "8px 0 12px 20px",
+								paddingLeft: "8px",
+								fontSize: "14px",
+								lineHeight: 2,
+							}}
+						>
+							<li>
+								<strong>KasWare</strong> browser extension —{" "}
+								<a
+									href="https://kasware.xyz"
+									target="_blank"
+									rel="noopener noreferrer"
+									style={{ color: "#53d769" }}
+								>
+									Install here
+								</a>
+							</li>
+							<li>
+								Testnet KAS from the{" "}
+								<a
+									href="https://faucet-tn10.kaspanet.io/"
+									target="_blank"
+									rel="noopener noreferrer"
+									style={{ color: "#53d769" }}
+								>
+									Testnet Faucet
+								</a>
+							</li>
+							<li>Connect your wallet using the button in the header</li>
+							<li>Create an offer or escrow to get started</li>
+						</ol>
+						<div className="confirm-actions">
+							<button className="button primary" type="button" onClick={dismissOnboarding}>
+								Get started
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			<section id="actions" className="actions-section">
 				<SectionTitle

@@ -1,19 +1,17 @@
 # DagLock Development Roadmap
 
-> Updated June 5, 2026. The original plan was written during Phases 0-3. This version reflects what actually shipped and what's left.
+> Updated June 6, 2026. Post-audit revision — critical security and usability issues identified.
 
 **Toccata Mainnet Hard Fork:** Activates at DAA score 474,165,565 (~June 30, 16:15 UTC).
-**DagLock mainnet launch:** Same day.
+**DagLock mainnet launch target:** June 30, 2026 (same day as Toccata).
 
 ---
 
 ## Current State
 
-Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. The code is production-ready. The remaining work before mainnet is:
+Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. However, a comprehensive audit on June 6 identified **7 critical/high security issues** and **7 high-priority usability issues** that must be resolved before mainnet launch. The audit also revealed structural debt that should be addressed.
 
-1. wRPC listener — auto-detect on-chain escrows instead of manual API calls
-2. Testnet feedback — let people break it for 3.5 weeks, fix what they find
-3. Deploy — flip the switch when Toccata activates
+**The code is NOT production-ready until Phase 1 (Critical Security) of the audit fix plan is complete.**
 
 ---
 
@@ -31,11 +29,14 @@ Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. The co
 | Template hash extraction |  Done |
 | Published open-source |  github.com/dilljens/DagLock |
 
-**No remaining work in this phase.**
+**Remaining (from audit):**
+- [ ] **S2: KRC-20 exact fee enforcement in covenant** — currently only boolean check
+- [ ] **S3: KRC-20 KCC-20 output ownership validation** — verify seller receives tokens
+- [ ] **Template hash regeneration** after covenant changes
 
 ---
 
-## Phase 1: Indexer + Counterparty Discovery  (Done)
+## Phase 1: Indexer + Counterparty Discovery  (Mostly Done)
 
 | Task | Status |
 |---|---|
@@ -50,27 +51,38 @@ Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. The co
 | Vouching / Web of Trust |  Done |
 | Identity linking — Telegram handle to Kaspa address |  Done |
 | Covenant compiler API — compile templates via REST |  Done |
-| wRPC listener |  **Stub** — detects nothing, logs only. Needs implementation before mainnet. |
+| wRPC listener |  **Stub** — detects nothing, logs only. **S1: Must implement real UTXO verification** |
 
-**Remaining:**
-- [ ] **wRPC listener** — connect to Kaspa node, auto-detect DagLock UTXOs by template hash, update escrow state. This is the single most important missing piece.
+**Critical Remaining (from audit):**
+- [ ] **S1: Real async WrpcVerifier** — implement `get_utxos_by_outpoints` via wRPC
+- [ ] **S4: Validate trade_hash on escrow creation** (64 hex chars)
+- [ ] **S5: Replay protection for signed messages** (timestamp + nonce)
+- [ ] **A2: Fix migration .ok() silent failures** — use PRAGMA table_info checks
+- [ ] **A8: Template hash verification on create** — reject unknown templates
+- [ ] **A7: OpenAPI spec** — add utoipa annotations
+- [ ] **Q5: Structured request tracing** — request_id, user_address, escrow_id spans
 
 ---
 
-## Phase 2: Telegram Bot + CLI  (Done)
+## Phase 2: Telegram Bot + CLI  (Done but with gaps)
 
 | Task | Status |
 |---|---|
 | Telegram bot — `/create`, `/claim`, `/offers`, `/list`, `/reputation`, `/receipt`, `/dispute`, `/msg`, `/messages`, `/status` |  Done, running |
 | CLI tool — `daglock-cli` with 7 command modules |  Done |
 | Trade link deep links (`t.me/DagLock_bot?start=claim_abc123`) |  Done |
-| KasWare wallet bridge |  Not critical for launch. Bot works offline with signatures supplied manually. |
+| KasWare wallet bridge |  Not implemented |
 
-**Remaining:** Nothing blocking. KasWare bridge is nice-to-have.
+**Critical Remaining (from audit):**
+- [ ] **U1: CLI create uses real wallet keys** — integrate `kaspawallet sign` subprocess
+- [ ] **U3: CLI wallet integration module** — shared signing logic for all commands
+- [ ] **U4: Bot native /create wizard** — grammY conversation flow
+- [ ] **S6: Bot encrypt user addresses at rest** — libsodium with BOT_ENCRYPTION_KEY
+- [ ] **Q8: Bot API retry/backoff** — 3 attempts, exponential backoff
 
 ---
 
-## Phase 3: Web UI  (Done)
+## Phase 3: Web UI  (Done but with gaps)
 
 | Task | Status |
 |---|---|
@@ -85,80 +97,93 @@ Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. The co
 | Vault creation UI |  Done |
 | Telegram linking UI |  Done |
 | Evidence submission UI |  Done |
-| Atomic swap wizard |  **Deferred** — the `swap` entrypoint works in the covenant, but there's no guided UI. Users can do atomic swaps manually with the hash preimage flow. A polished wizard would be nice but isn't blocking launch. |
+| Atomic swap wizard |  **Deferred** — covenant supports it, no guided UI |
 
-**Remaining:** Nothing blocking.
+**Critical Remaining (from audit):**
+- [ ] **U2: Web CreateEscrowForm uses real lock_tx_id** — WASM compile → KasWare sign → broadcast → submit tx_id
+- [ ] **U7: Web onboarding modal** — first-visit: "Need KasWare + testnet KAS + connect wallet"
+- [ ] **Q7: Web API request timeout** — AbortController 30s timeout
+- [ ] **Q2/Q3: Use shared fee constant** — replace all `200` with `FEE_DENOMINATOR`
 
 ---
 
-## Phase 4: Testnet Feedback (June 5 — June 30)
+## Phase 4: Audit Fixes — Critical Security (June 6 — June 20)
 
-**Goal:** Let real users break DagLock on Testnet 12 before mainnet.
+**Goal:** Resolve all CRITICAL/HIGH security findings before mainnet.
+
+| Task | Status | Owner |
+|---|---|---|
+| **0. Shared crate** — `FEE_DENOMINATOR` constant + `validate_trade_hash` |  Not started | |
+| **1. S1: Real async WrpcVerifier** — `get_utxos_by_outpoints` |  Not started | |
+| **2. S2: KRC-20 exact fee enforcement** — covenant change |  Not started | |
+| **3. S3: KRC-20 KCC-20 output ownership validation** |  Not started | |
+| **4. S2/S3 execution tests** — TxScriptEngine for new paths |  Not started | |
+| **5. S4: Validate trade_hash on create** |  Not started | |
+| **6. S5: Replay protection** — timestamp + nonce in auth messages |  Not started | |
+| **7. S6: Bot encrypt user addresses** — libsodium |  Not started | |
+| **8. S7: Dockerfile non-root user** |  Not started | |
+
+**Dependencies:** Task 1 blocks 2, 3, 6. Task 2 blocks 3, 4. Task 0 feeds into 2, 3, 5.
+
+---
+
+## Phase 5: Audit Fixes — Usability & Structure (June 15 — June 28)
+
+**Goal:** Make CLI/web/bot actually usable for real escrow creation; pay down structural debt.
+
+| Task | Status | Phase |
+|---|---|---|
+| **9. U1: CLI real wallet keys** — `kaspawallet sign` subprocess |  Not started | 2 |
+| **10. U2: Web real lock_tx_id flow** — WASM → KasWare → broadcast → submit |  Not started | 2 |
+| **11. U3: CLI wallet module** — shared signing logic |  Not started | 2 |
+| **12. U4: Bot native /create wizard** — grammY conversations |  Not started | 2 |
+| **13. U5: Structured API errors** — ApiErrorCode enum |  Not started | 2 |
+| **14. U6: CoinGecko fallback + caching** — TTL 15min, stale flag |  Not started | 2 |
+| **15. U7: Web onboarding modal** |  Not started | 2 |
+| **16. A1: Async verifier** (done in S1) |  Done in S1 | 1 |
+| **17. A2: Migration idempotency** — PRAGMA checks |  Not started | 3 |
+| **18. A3: Split queries.rs** — 11 modules, incremental |  Not started | 3 |
+| **19. A4: Lifecycle integration tests** — create→lock→settle→receipt |  Not started | 3 |
+| **20. A5: Service layer** — EscrowService |  Not started | 3 |
+| **21. A7: OpenAPI spec** — utoipa + /v1/openapi.json |  Not started | 3 |
+| **22. A8: Template hash verification** on create |  Not started | 1 |
+| **23. Q1: Remove .unwrap() in production** |  Not started | 4 |
+| **24. Q2/Q3: Shared fee constant everywhere** |  Not started | 4 |
+| **25. Q4: TradeHash newtype** with FromStr |  Not started | 4 |
+| **26. Q5: Request tracing** (done with A7) |  Not started | 3 |
+| **27. Q7: Web API timeout** |  Not started | 4 |
+| **28. Q8: Bot retry/backoff** |  Not started | 4 |
+
+---
+
+## Phase 6: Mainnet Launch (June 28 — June 30)
 
 | Task | Status |
 |---|---|
-| Deploy testnet infra (indexer, web, bot) |  This week |
-| Post on Reddit / Telegram with test wallet |  This week |
-| Fix bugs from user feedback | — |
-| Community audit period | — |
-
-**Validation:**
-- 5+ external users complete full escrow flow on TN12
-- Zero covenant vulnerabilities found during testing
-- Feedback collected and prioritized
-
-**Duration:** ~3.5 weeks
+| Deploy mainnet indexer on Railway (staging, dormant) | ~June 28 |
+| Final testnet validation with all fixes | June 28-29 |
+| Swap daglock.com to mainnet API | June 30 |
+| Deploy @DagLock_bot (mainnet) | June 30 |
+| Announce mainnet launch | June 30 |
+| Monitoring — health checks, error alerting | Basic |
 
 ---
 
-## Phase 5: Mainnet Launch (June 30)
-
-**Goal:** Production deployment on Kaspa mainnet, same day as Toccata activates.
-
-| Task | Status |
-|---|---|
-| Deploy mainnet indexer on Railway |  ~June 28 (staging, dormant) |
-| Swap daglock.com to mainnet API |  June 30 |
-| Deploy @DagLock_bot (mainnet) |  June 30 |
-| Announce mainnet launch |  June 30 |
-| Monitoring — health checks, error alerting |  Basic |
-| wRPC listener connecting to a Kaspa mainnet node |  Needs implementation first |
-| Documentation site `docs.daglock.io` |  **Deferred** — README + wiki covers it for now |
-
-**What is NOT planned for mainnet launch:**
--  Volume-based fee tier rebates — not worth building until someone asks for a discount
--  Atomic swap wizard UI — the covenant supports it, no guided UI yet
--  Batch escrow UI — nice for whales, not needed at zero users
--  Price oracle — Phase 6 territory
-
----
-
-## Phase 6: Post-Launch (Q3 2026+)
-
-**Goal:** Build features that real users actually ask for. Nothing on this list is committed — it depends on what the community needs.
+## Phase 7: Post-Launch (Q3 2026+)
 
 | Candidate | Why it might matter |
 |---|---|
-| **wRPC listener** (if not done by launch) | Auto-detect on-chain state |
-| **Atomic swap wizard UI** | Makes cross-token swaps accessible to non-technical users |
-| **Price oracle** (CoinGecko KAS/USD) | Lock in fiat-equivalent rate at escrow creation |
-| **Batch escrow / multi-asset swaps** | "Swap 5000 KAS + 100K NACHO for 200K KASPY" |
-| **Integrator API** | Let other dApps embed DagLock |
-| **Analytics dashboard** | Public volume, fees, stats |
-| **Volume-based fee rebates** | Only if a whale asks |
-| **Cross-chain (BTC)** | If users want it — standard HTLC pattern, ~2-3 weeks work |
-| **KasWare bridge for bot** | Sign from browser instead of manual sigs |
+| Atomic swap wizard UI | Makes cross-token swaps accessible |
+| Price oracle (CoinGecko KAS/USD) | Lock fiat-equivalent rate at creation |
+| Batch escrow / multi-asset swaps | Complex OTC trades |
+| Integrator API | Let other dApps embed DagLock |
+| Analytics dashboard | Public volume, fees, stats |
+| Volume-based fee rebates | Only if a whale asks |
+| Cross-chain (BTC) | Standard HTLC pattern, ~2-3 weeks work |
+| KasWare bridge for bot | Sign from browser instead of manual sigs |
 
 ---
 
-## Things That Were Cut (from original plan)
+## Audit Reference
 
-| Cut | Reason |
-|---|---|
-| Volume-based fee tiers | Zero users = zero need. Covenant stays at 0.5%. If whales show up later, rebates can be added. |
-| Atomic swap wizard UI | The swap entrypoint works. The guided UI is polish, not necessity. |
-| Batch escrow UI | For whales that don't exist yet. |
-| Price oracle | Phase 0-3 shipped without it. No user has asked. |
-| Mobile SDK | Telegram bot covers mobile. |
-| Bug bounty with dollar amounts | No treasury to fund it. Community audit is sufficient pre-launch. |
-| Docker/Prometheus/PagerDuty monitoring | Ship first, monitor when there are users. |
+Full audit findings and 30-task fix plan: `.pi/last-plan.md` and `docs/wiki/_index.md#audit-log`

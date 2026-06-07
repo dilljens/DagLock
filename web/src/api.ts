@@ -3,6 +3,20 @@ if (import.meta.env.DEV) {
 	console.log("[DagLock] API_BASE:", API_BASE);
 }
 
+// Request timeout (30 seconds)
+const REQUEST_TIMEOUT_MS = 30_000;
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+	try {
+		const response = await fetch(url, { ...init, signal: controller.signal });
+		return response;
+	} finally {
+		clearTimeout(timeoutId);
+	}
+}
+
 export type Health = {
 	status: string;
 	version: string;
@@ -266,7 +280,7 @@ export type CreateVaultRequest = {
 };
 
 async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
-	const response = await fetch(API_BASE + path, {
+	const response = await fetchWithTimeout(API_BASE + path, {
 		headers: {
 			"X-Daglock-Address": auth.address,
 			"X-Daglock-Signature": auth.signature,
@@ -281,7 +295,7 @@ async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
 }
 
 async function loadJson<T>(path: string): Promise<T> {
-	const response = await fetch(API_BASE + path);
+	const response = await fetchWithTimeout(API_BASE + path);
 	if (!response.ok) {
 		const body = await response.text();
 		throw new Error(body);
@@ -298,7 +312,7 @@ async function postJson<T>(path: string, body: unknown, auth?: AuthHeaders): Pro
 		headers["X-Daglock-Signature"] = auth.signature;
 		headers["X-Daglock-Message"] = auth.message;
 	}
-	const response = await fetch(API_BASE + path, {
+	const response = await fetchWithTimeout(API_BASE + path, {
 		method: "POST",
 		headers,
 		body: JSON.stringify(body),
@@ -317,7 +331,7 @@ async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
 		headers["X-Daglock-Signature"] = auth.signature;
 		headers["X-Daglock-Message"] = auth.message;
 	}
-	const response = await fetch(API_BASE + path, {
+	const response = await fetchWithTimeout(API_BASE + path, {
 		method: "POST",
 		headers,
 	});

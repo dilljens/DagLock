@@ -51,58 +51,120 @@ fn sha256_hash(data: &[u8]) -> Vec<u8> {
 }
 
 fn compile_krc20(
-    buyer: &Keypair, seller: &Keypair, trade_hash: &[u8],
-    timeout: i64, treasury: &Keypair,
+    buyer: &Keypair,
+    seller: &Keypair,
+    trade_hash: &[u8],
+    timeout: i64,
+    treasury: &Keypair,
 ) -> daglock_contracts::silverscript_lang::compiler::CompiledContract<'static> {
     compile_daglock_krc20(
-        &pubkey_bytes(buyer), &pubkey_bytes(seller), trade_hash, timeout,
+        &pubkey_bytes(buyer),
+        &pubkey_bytes(seller),
+        trade_hash,
+        timeout,
         &pubkey_bytes(treasury),
-        0, 0, &[0u8; 32], &[], &[], &[0u8; 32],
+        0,
+        0,
+        &[0u8; 32],
+        &[],
+        &[],
+        &[0u8; 32],
     )
 }
 
 fn test_release(
-    buyer_sig_valid: bool, seller_sig_valid: bool, fee_paid: bool,
+    buyer_sig_valid: bool,
+    seller_sig_valid: bool,
+    fee_paid: bool,
 ) -> Result<(), kaspa_txscript_errors::TxScriptError> {
     let buyer = random_keypair();
     let seller = random_keypair();
     let treasury = random_keypair();
     let compiled = compile_krc20(&buyer, &seller, &[0u8; 32], 2_000_000_000, &treasury);
 
-    let input_value: u64 = 100_000;
-    let mut outputs = vec![TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&random_keypair())))];
+    let input_value: u64 = 50_000; // DagLockKRC20 UTXO value = fee amount
+    let mut outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&random_keypair())),
+    )];
     if fee_paid {
-        outputs.push(TransactionOutput::new(500, p2pk_script(&pubkey_bytes(&treasury))));
+        // The ENTIRE DagLockKRC20 UTXO value goes to treasury as the fee
+        outputs.push(TransactionOutput::new(
+            input_value,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ));
     }
 
-    let tx = Transaction::new(1, vec![TransactionInput::new(
-        TransactionOutpoint::new(TransactionId::from_bytes([1u8; 32]), 0), vec![], 0, 0u8,
-    )], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let tx = Transaction::new(
+        1,
+        vec![TransactionInput::new(
+            TransactionOutpoint::new(TransactionId::from_bytes([1u8; 32]), 0),
+            vec![],
+            0,
+            0u8,
+        )],
+        outputs,
+        0,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
     let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused);
     let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
 
-    let bs = if buyer_sig_valid { let s = buyer.sign_schnorr(msg); let mut v = Vec::from(s.as_ref()); v.push(SIG_HASH_ALL.to_u8()); v } else { vec![0u8; 65] };
-    let ss = if seller_sig_valid { let s = seller.sign_schnorr(msg); let mut v = Vec::from(s.as_ref()); v.push(SIG_HASH_ALL.to_u8()); v } else { vec![0u8; 65] };
+    let bs = if buyer_sig_valid {
+        let s = buyer.sign_schnorr(msg);
+        let mut v = Vec::from(s.as_ref());
+        v.push(SIG_HASH_ALL.to_u8());
+        v
+    } else {
+        vec![0u8; 65]
+    };
+    let ss = if seller_sig_valid {
+        let s = seller.sign_schnorr(msg);
+        let mut v = Vec::from(s.as_ref());
+        v.push(SIG_HASH_ALL.to_u8());
+        v
+    } else {
+        vec![0u8; 65]
+    };
 
-    mtx.tx.inputs[0].signature_script = compiled.build_sig_script(
-        entrypoints::RELEASE,
-        vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(bs),
-             daglock_contracts::silverscript_lang::ast::Expr::bytes(ss)],
-    ).expect("build_sig_script");
+    mtx.tx.inputs[0].signature_script = compiled
+        .build_sig_script(
+            entrypoints::RELEASE,
+            vec![
+                daglock_contracts::silverscript_lang::ast::Expr::bytes(bs),
+                daglock_contracts::silverscript_lang::ast::Expr::bytes(ss),
+            ],
+        )
+        .expect("build_sig_script");
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     vm.execute()
 }
 
-fn test_swap(preimage_correct: bool, fee_paid: bool) -> Result<(), kaspa_txscript_errors::TxScriptError> {
+fn test_swap(
+    preimage_correct: bool,
+    fee_paid: bool,
+) -> Result<(), kaspa_txscript_errors::TxScriptError> {
     let buyer = random_keypair();
     let seller = random_keypair();
     let treasury = random_keypair();
@@ -110,30 +172,142 @@ fn test_swap(preimage_correct: bool, fee_paid: bool) -> Result<(), kaspa_txscrip
     let trade_hash = sha256_hash(secret);
     let compiled = compile_krc20(&buyer, &seller, &trade_hash, 2_000_000_000, &treasury);
 
-    let input_value: u64 = 100_000;
-    let mut outputs = vec![TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&random_keypair())))];
+    let input_value: u64 = 50_000; // DagLockKRC20 UTXO value = fee amount
+    let mut outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&random_keypair())),
+    )];
     if fee_paid {
-        outputs.push(TransactionOutput::new(500, p2pk_script(&pubkey_bytes(&treasury))));
+        // The ENTIRE DagLockKRC20 UTXO value goes to treasury as the fee
+        outputs.push(TransactionOutput::new(
+            input_value,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ));
     }
 
-    let tx = Transaction::new(1, vec![TransactionInput::new(
-        TransactionOutpoint::new(TransactionId::from_bytes([2u8; 32]), 0), vec![], 0, 0u8,
-    )], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let tx = Transaction::new(
+        1,
+        vec![TransactionInput::new(
+            TransactionOutpoint::new(TransactionId::from_bytes([2u8; 32]), 0),
+            vec![],
+            0,
+            0u8,
+        )],
+        outputs,
+        0,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
-    let secret_use: Vec<u8> = if preimage_correct { secret.to_vec() } else { b"wrong-secret-for-krc20-tx".to_vec() };
-    mtx.tx.inputs[0].signature_script = compiled.build_sig_script(
-        entrypoints::SWAP,
-        vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(secret_use)],
-    ).expect("build_sig_script");
+    let secret_use: Vec<u8> = if preimage_correct {
+        secret.to_vec()
+    } else {
+        b"wrong-secret-for-krc20-tx".to_vec()
+    };
+    mtx.tx.inputs[0].signature_script = compiled
+        .build_sig_script(
+            entrypoints::SWAP,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(
+                secret_use,
+            )],
+        )
+        .expect("build_sig_script");
 
     let reused = SigHashReusedValuesUnsync::new();
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    vm.execute()
+}
+
+fn test_release_wrong_amount() -> Result<(), kaspa_txscript_errors::TxScriptError> {
+    let buyer = random_keypair();
+    let seller = random_keypair();
+    let treasury = random_keypair();
+    let compiled = compile_krc20(&buyer, &seller, &[0u8; 32], 2_000_000_000, &treasury);
+
+    let input_value: u64 = 50_000; // DagLockKRC20 UTXO value
+                                   // WRONG: outputs[1].value = fee + 1 instead of exact input_value
+    let wrong_fee = input_value + 1;
+    let outputs = vec![
+        TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&random_keypair()))),
+        TransactionOutput::new(wrong_fee, p2pk_script(&pubkey_bytes(&treasury))),
+    ];
+
+    let tx = Transaction::new(
+        1,
+        vec![TransactionInput::new(
+            TransactionOutpoint::new(TransactionId::from_bytes([1u8; 32]), 0),
+            vec![],
+            0,
+            0u8,
+        )],
+        outputs,
+        0,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused);
+    let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
+
+    let bs = {
+        let s = buyer.sign_schnorr(msg);
+        let mut v = Vec::from(s.as_ref());
+        v.push(SIG_HASH_ALL.to_u8());
+        v
+    };
+    let ss = {
+        let s = seller.sign_schnorr(msg);
+        let mut v = Vec::from(s.as_ref());
+        v.push(SIG_HASH_ALL.to_u8());
+        v
+    };
+
+    mtx.tx.inputs[0].signature_script = compiled
+        .build_sig_script(
+            entrypoints::RELEASE,
+            vec![
+                daglock_contracts::silverscript_lang::ast::Expr::bytes(bs),
+                daglock_contracts::silverscript_lang::ast::Expr::bytes(ss),
+            ],
+        )
+        .expect("build_sig_script");
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     vm.execute()
 }
 
@@ -145,11 +319,30 @@ fn test_refund(after_timeout: bool) -> Result<(), kaspa_txscript_errors::TxScrip
     let compiled = compile_krc20(&buyer, &seller, &[0u8; 32], timeout, &treasury);
 
     let input_value: u64 = 100_000;
-    let tx = Transaction::new(1, vec![TransactionInput::new(
-        TransactionOutpoint::new(TransactionId::from_bytes([3u8; 32]), 0), vec![], 0, 0u8,
-    )], vec![TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&buyer)))],
-        if after_timeout { timeout as u64 } else { 0 }, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let tx = Transaction::new(
+        1,
+        vec![TransactionInput::new(
+            TransactionOutpoint::new(TransactionId::from_bytes([3u8; 32]), 0),
+            vec![],
+            0,
+            0u8,
+        )],
+        vec![TransactionOutput::new(
+            input_value,
+            p2pk_script(&pubkey_bytes(&buyer)),
+        )],
+        if after_timeout { timeout as u64 } else { 0 },
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -159,16 +352,22 @@ fn test_refund(after_timeout: bool) -> Result<(), kaspa_txscript_errors::TxScrip
     let mut bs = Vec::from(sig_raw.as_ref());
     bs.push(SIG_HASH_ALL.to_u8());
 
-    mtx.tx.inputs[0].signature_script = compiled.build_sig_script(
-        entrypoints::REFUND,
-        vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(bs)],
-    ).expect("build_sig_script");
+    mtx.tx.inputs[0].signature_script = compiled
+        .build_sig_script(
+            entrypoints::REFUND,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(bs)],
+        )
+        .expect("build_sig_script");
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     vm.execute()
 }
 
@@ -180,6 +379,12 @@ fn krc20_release_succeeds_with_both_sigs_and_fee() {
 #[test]
 fn krc20_release_fails_without_fee() {
     assert!(test_release(true, true, false).is_err());
+}
+
+#[test]
+fn krc20_release_fails_with_wrong_fee_amount() {
+    // Test that a fee output with WRONG amount is rejected
+    assert!(test_release_wrong_amount().is_err());
 }
 
 #[test]

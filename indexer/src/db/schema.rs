@@ -45,25 +45,14 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
-    sqlx::query(include_str!("migrations/010_price_locked_offers.sql"))
-        .execute(pool)
-        .await
-        .ok();
+    ensure_offers_price_columns(pool).await?;
+    ensure_escrow_trade_hash(pool).await?;
+    ensure_escrow_market_order_fields(pool).await?;
+    ensure_escrow_price_type(pool).await?;
 
-    sqlx::query(include_str!("migrations/011_add_trade_hash.sql"))
+    sqlx::query(include_str!("migrations/014_auth_nonces.sql"))
         .execute(pool)
-        .await
-        .ok();
-
-    sqlx::query(include_str!("migrations/012_market_order_fields.sql"))
-        .execute(pool)
-        .await
-        .ok();
-
-    sqlx::query(include_str!("migrations/013_price_type_on_escrows.sql"))
-        .execute(pool)
-        .await
-        .ok();
+        .await?;
 
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_price_columns(pool).await?;
@@ -130,6 +119,110 @@ pub async fn ensure_price_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error
     Ok(())
 }
 
+pub async fn ensure_offers_price_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(offers)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("price_type") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN price_type TEXT DEFAULT 'fixed'")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("price_offset") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN price_offset REAL DEFAULT 0.0")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("min_price") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN min_price REAL")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("max_price") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN max_price REAL")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("current_price") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN current_price REAL")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("price_currency") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN price_currency TEXT DEFAULT 'USD'")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("price_updated_at") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN price_updated_at INTEGER")
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn ensure_escrow_trade_hash(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(escrows)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("trade_hash") {
+        sqlx::query("ALTER TABLE escrows ADD COLUMN trade_hash TEXT")
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn ensure_escrow_market_order_fields(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(escrows)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("price_lock_time") {
+        sqlx::query("ALTER TABLE escrows ADD COLUMN price_lock_time INTEGER")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("price_at_settlement") {
+        sqlx::query("ALTER TABLE escrows ADD COLUMN price_at_settlement REAL")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("price_source") {
+        sqlx::query("ALTER TABLE escrows ADD COLUMN price_source TEXT")
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn ensure_escrow_price_type(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(escrows)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("price_type") {
+        sqlx::query("ALTER TABLE escrows ADD COLUMN price_type TEXT")
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
 pub async fn ensure_price_type_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     let rows = sqlx::query("PRAGMA table_info(escrows)")
         .fetch_all(pool)
@@ -188,8 +281,7 @@ pub async fn ensure_lock_tx_id_index(pool: &Pool<Sqlite>) -> Result<(), sqlx::Er
          ON escrows(lock_tx_id, lock_tx_output_index)",
     )
     .execute(pool)
-    .await
-    .ok();
+    .await?;
     Ok(())
 }
 

@@ -4,6 +4,7 @@
 //
 // Run: BOT_TOKEN=xxx node src/index.js
 
+import crypto from "node:crypto";
 import { Bot, InlineKeyboard } from "grammy";
 import { ApiClient } from "./lib/api.js";
 import { readFile, writeFile } from "fs/promises";
@@ -19,7 +20,50 @@ const apiUrl = process.env.INDEXER_URL || "http://localhost:8443";
 const api = new ApiClient(apiUrl);
 const bot = new Bot(token);
 
-// ── User address storage ─────────────────────────────────────────────
+// ── Encryption at rest ──────────────────────────────────────────────
+// Uses AES-256-GCM with a 32-byte key derived from BOT_ENCRYPTION_KEY
+// (base64-encoded). Falls back to DISABLED if no key is set (dev mode).
+const ENCRYPTION_KEY = process.env.BOT_ENCRYPTION_KEY;
+const KEY_BYTES = ENCRYPTION_KEY ? Buffer.from(ENCRYPTION_KEY, "base64") : null;
+const ALGORITHM = "aes-256-gcm";
+
+if (KEY_BYTES && KEY_BYTES.length !== 32) {
+	console.error(
+		"BOT_ENCRYPTION_KEY must decode to 32 bytes (got " + KEY_BYTES.length + ")",
+	);
+	process.exit(1);
+}
+if (!KEY_BYTES) {
+	console.warn(
+		"⚠️  BOT_ENCRYPTION_KEY not set — user data stored in plaintext. Set it with: openssl rand -base64 32",
+	);
+}
+
+function encrypt(text) {
+	if (!KEY_BYTES) return text; // dev mode — store as plaintext
+	const iv = crypto.randomBytes(12); // 96-bit IV for GCM
+	const cipher = crypto.createCipheriv(ALGORITHM, KEY_BYTES, iv);
+	let encrypted = cipher.update(text, "utf-8", "hex");
+	encrypted += cipher.final("hex");
+	const tag = cipher.getAuthTag().toString("hex");
+	return iv.toString("hex") + ":" + tag + ":" + encrypted;
+}
+
+function decrypt(encoded) {
+	if (!KEY_BYTES || !encoded.includes(":")) return encoded; // plaintext fallback
+	const parts = encoded.split(":");
+	if (parts.length !== 3) return encoded;
+	const iv = Buffer.from(parts[0], "hex");
+	const tag = Buffer.from(parts[1], "hex");
+	const encrypted = parts[2];
+	const decipher = crypto.createDecipheriv(ALGORITHM, KEY_BYTES, iv);
+	decipher.setAuthTag(tag);
+	let decrypted = decipher.update(encrypted, "hex", "utf-8");
+	decrypted += decipher.final("utf-8");
+	return decrypted;
+}
+
+// ── User address storage (encrypted at rest) ────────────────────────
 const USERS_FILE = "/tmp/daglock-users.json";
 let users = {};
 
@@ -27,7 +71,20 @@ async function loadUsers() {
 	try {
 		if (existsSync(USERS_FILE)) {
 			const data = await readFile(USERS_FILE, "utf-8");
-			users = JSON.parse(data);
+			// Try parsing — if it fails, data might be corrupted from encryption migration
+			const raw = JSON.parse(data);
+			// Decrypt each entry if needed
+			for (const [id, entry] of Object.entries(raw)) {
+				if (entry.encryptedAddress) {
+					users[id] = {
+						address: decrypt(entry.encryptedAddress),
+						updatedAt: entry.updatedAt,
+					};
+				} else if (entry.address) {
+					// Legacy plaintext entry — keep as-is until next save
+					users[id] = entry;
+				}
+			}
 		}
 	} catch (e) {
 		users = {};
@@ -36,7 +93,15 @@ async function loadUsers() {
 
 async function saveUsers() {
 	try {
-		await writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+		// Encrypt each entry before saving
+		const encrypted = {};
+		for (const [id, entry] of Object.entries(users)) {
+			encrypted[id] = {
+				encryptedAddress: encrypt(entry.address),
+				updatedAt: entry.updatedAt,
+			};
+		}
+		await writeFile(USERS_FILE, JSON.stringify(encrypted, null, 2));
 	} catch (e) {
 		console.error("Failed to save users:", e.message);
 	}

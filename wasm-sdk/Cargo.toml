@@ -23,6 +23,7 @@ kaspa-hashes.workspace = true
 kaspa-consensus-core.workspace = true
 
 daglock-contracts = { path = "../contracts" }
+daglock-shared = { path = "../shared" }
 blake2b_simd.workspace = true
 hex.workspace = true
 

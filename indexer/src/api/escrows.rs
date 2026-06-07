@@ -127,7 +127,7 @@ pub async fn lock_status(
 
     match escrow {
         Some(e) => {
-            let confirmed = state.verifier.verify_utxo_exists(&e).unwrap_or(false);
+            let confirmed = state.verifier.verify_utxo_exists(&e).await.unwrap_or(false);
             Ok(Json(json!({
                 "confirmed": confirmed,
                 "status": e.status,
@@ -344,6 +344,51 @@ pub async fn create(
         }
     }
 
+    // Validate template_hash if provided — must match known DagLock templates
+    if let Some(ref template_hash) = body.template_hash {
+        if !template_hash.is_empty() {
+            let known_hashes = [
+                state.daglock_kas_template.as_deref(),
+                state.daglock_krc20_template.as_deref(),
+            ];
+            let is_known = known_hashes.iter().any(|h| match h {
+                Some(expected) => {
+                    let expected_bytes = hex::decode(expected).unwrap_or_default();
+                    expected_bytes.as_slice() == template_hash.as_slice()
+                }
+                None => false,
+            });
+            if !is_known {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!(ApiError::new(
+                        "unknown_template",
+                        "Template hash does not match any known DagLock covenant. \
+                         Provide a valid template hash from the compiled covenant."
+                    ))),
+                ));
+            }
+        }
+    }
+
+    // Validate trade_hash if provided (must be 64 hex chars = 32 bytes)
+    if let Some(ref trade_hash) = body.trade_hash {
+        if !trade_hash.is_empty() {
+            match daglock_shared::validate_trade_hash(trade_hash) {
+                Ok(_) => {}
+                Err(e) => {
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        Json(json!(ApiError::new(
+                            "invalid_trade_hash",
+                            format!("Invalid trade hash: {e}")
+                        ))),
+                    ));
+                }
+            }
+        }
+    }
+
     // Validate amount range
     if body.amount_sompi > 100_000_000_000_000 {
         // 1M KAS max
@@ -512,22 +557,29 @@ pub async fn settle(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            verify_settle_authorization(&current, &auth, state.sig_verifier.as_ref()).map_err(
-                |e| {
-                    (
-                        StatusCode::FORBIDDEN,
-                        Json(json!(ApiError::new("forbidden", e.to_string()))),
-                    )
-                },
-            )?;
-
-            // Verify escrow can be settled (UTXO exists on-chain)
-            verify_escrow_settleable(&current, state.verifier.as_ref()).map_err(|e| {
+            verify_settle_authorization(
+                &current,
+                &auth,
+                state.sig_verifier.as_ref(),
+                Some(&state.db),
+            )
+            .await
+            .map_err(|e| {
                 (
-                    StatusCode::CONFLICT,
-                    Json(json!(ApiError::new("verification_failed", e.to_string()))),
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new("forbidden", e.to_string()))),
                 )
             })?;
+
+            // Verify escrow can be settled (UTXO exists on-chain)
+            verify_escrow_settleable(&current, state.verifier.as_ref())
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::CONFLICT,
+                        Json(json!(ApiError::new("verification_failed", e.to_string()))),
+                    )
+                })?;
 
             // Atomic update: status + settled_at in one query, only if still active
             let settled = queries::settle_escrow_atomic(&state.db, &id)
@@ -613,22 +665,29 @@ pub async fn refund(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            verify_refund_authorization(&current, &auth, state.sig_verifier.as_ref()).map_err(
-                |e| {
-                    (
-                        StatusCode::FORBIDDEN,
-                        Json(json!(ApiError::new("forbidden", e.to_string()))),
-                    )
-                },
-            )?;
-
-            // Verify escrow can be refunded (UTXO exists on-chain)
-            verify_escrow_refundable(&current, state.verifier.as_ref()).map_err(|e| {
+            verify_refund_authorization(
+                &current,
+                &auth,
+                state.sig_verifier.as_ref(),
+                Some(&state.db),
+            )
+            .await
+            .map_err(|e| {
                 (
-                    StatusCode::CONFLICT,
-                    Json(json!(ApiError::new("verification_failed", e.to_string()))),
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new("forbidden", e.to_string()))),
                 )
             })?;
+
+            // Verify escrow can be refunded (UTXO exists on-chain)
+            verify_escrow_refundable(&current, state.verifier.as_ref())
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::CONFLICT,
+                        Json(json!(ApiError::new("verification_failed", e.to_string()))),
+                    )
+                })?;
 
             // Atomic update: status + refunded_at in one query, only if still active
             let refunded = queries::refund_escrow_atomic(&state.db, &id)

@@ -57,41 +57,37 @@ contract DagLockKRC20(
     // ── Path A: Mutual Release ─────────────────────────────────────
     // Both buyer and seller sign. The KCC-20 branch transitions to
     // seller ownership. A KAS fee goes to treasury.
+    //
+    // Output layout:
+    //   output[0]: Recipient (KCC-20 token output or KAS change)
+    //   output[1]: Treasury fee (must equal this UTXO's input value)
+    //
+    // The DagLockKRC20 UTXO is deployed with KAS value equal to the
+    // protocol fee. The ENTIRE value of this UTXO goes to treasury.
     entrypoint function release(sig buyerSig, sig sellerSig) {
         require(checkSig(buyerSig, buyerPubKey));
         require(checkSig(sellerSig, sellerPubKey));
 
-        // Fee in KAS: output 0 is recipient (KCC-20), output 1 is treasury
-        // The KAS amount for the fee comes from a separate KAS input.
-        // The covenant checks that at least one output pays the treasury.
-        byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
+        // Exact fee enforcement: the DagLockKRC20 UTXO's value IS the fee
+        int feeValue = tx.inputs[this.activeInputIndex].value;
+        require(feeValue > 0);
 
-        // Require that SOME output sends KAS to treasury
-        // (The exact fee amount is enforced off-chain by the app,
-        // since KCC-20 output values are independent of token amounts)
-        bool feePaid = false;
-        int outCount = tx.outputs.length;
-        for(i, 0, outCount, 8) {
-            if(tx.outputs[i].scriptPubKey == byte[](treasuryScript)) {
-                feePaid = true;
-            }
-        }
-        require(feePaid);
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
+        require(tx.outputs[1].value == feeValue);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
     // ── Path B: Atomic Swap ────────────────────────────────────────
     entrypoint function swap(byte[] secret) {
         require(sha256(secret) == tradeHash);
 
+        // Exact fee enforcement: the DagLockKRC20 UTXO's value IS the fee
+        int feeValue = tx.inputs[this.activeInputIndex].value;
+        require(feeValue > 0);
+
         byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
-        bool feePaid = false;
-        int outCount = tx.outputs.length;
-        for(i, 0, outCount, 8) {
-            if(tx.outputs[i].scriptPubKey == byte[](treasuryScript)) {
-                feePaid = true;
-            }
-        }
-        require(feePaid);
+        require(tx.outputs[1].value == feeValue);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
     // ── Path C: Timeout Refund ─────────────────────────────────────

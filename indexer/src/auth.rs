@@ -5,13 +5,35 @@
 //!   - `SchnorrVerifier` — real Kaspa Schnorr signature verification
 //!
 //! Mock auth is rejected on mainnet via a startup safety check.
+//!
+//! # Replay Protection
+//!
+//! Message format (version 2, with replay protection):
+//!   `{action}:{escrow_id}:{timestamp}:{nonce_hex}`
+//!
+//! Message format (version 1, backward compatible):
+//!   `{action}:{escrow_id}`
+//!
+//! Version 2 messages include a Unix timestamp (±5 min window) and a
+//! 20-byte BLAKE2b-160 nonce (40 hex chars). Nonces are stored in the
+//! database to prevent replay. Version 1 messages skip replay checks.
 
 use crate::types::Escrow;
 
 use kaspa_addresses::{Address, Version};
 use kaspa_hashes::{Hash, PersonalMessageSigningHash};
 use secp256k1::XOnlyPublicKey;
+use sqlx::{Pool, Sqlite};
 use tracing::warn;
+
+/// Max clock drift for nonce timestamps in seconds (5 minutes).
+const MAX_CLOCK_DRIFT_SECONDS: i64 = 300;
+
+/// Length of nonce in bytes (BLAKE2b-160 = 20 bytes).
+const NONCE_LENGTH: usize = 20;
+
+/// Length of nonce hex string (40 chars).
+const NONCE_HEX_LENGTH: usize = 40;
 
 /// Errors that can occur during authentication.
 #[derive(Debug, thiserror::Error)]
@@ -24,10 +46,155 @@ pub enum AuthError {
 
     #[error("Unauthorized: {reason}")]
     Unauthorized { reason: String },
+
+    #[error("Replay detected: nonce already used for {action}:{escrow_id}")]
+    ReplayDetected { action: String, escrow_id: String },
+
+    #[error("Invalid message format: {detail}")]
+    InvalidMessage { detail: String },
+
+    #[error("Timestamp outside allowed window: {timestamp} (now: {now}, drift: {drift}s)")]
+    TimestampOutOfWindow {
+        timestamp: i64,
+        now: i64,
+        drift: i64,
+    },
 }
 
 /// Result type for authentication operations.
 pub type AuthResult<T> = Result<T, AuthError>;
+
+/// Parsed auth message with replay protection data.
+#[derive(Debug)]
+pub struct ParsedMessage {
+    /// The action (settle, refund, dispute, cancel)
+    pub action: String,
+    /// The escrow ID
+    pub escrow_id: String,
+    /// The original message string
+    pub full_message: String,
+    /// Replay protection nonce (20 bytes) — None if using legacy format
+    pub nonce: Option<Vec<u8>>,
+    /// Unix timestamp from message — None if using legacy format
+    pub timestamp: Option<i64>,
+}
+
+/// Try to parse a version 2 message: `action:id:ts:nonce_hex`
+/// or fall back to version 1: `action:id`
+fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
+    let parts: Vec<&str> = message.split(':').collect();
+
+    if parts.len() == 4 {
+        // Version 2: action:id:timestamp:nonce_hex
+        let action = parts[0].to_string();
+        let escrow_id = parts[1].to_string();
+
+        // Validate action
+        match action.as_str() {
+            "settle" | "refund" | "dispute" | "cancel" | "evidence" | "vote" | "vouch"
+            | "messages" => {}
+            _ => {
+                return Err(AuthError::InvalidMessage {
+                    detail: format!("Unknown action: {action}"),
+                });
+            }
+        }
+
+        // Parse timestamp
+        let timestamp: i64 = parts[2].parse().map_err(|_| AuthError::InvalidMessage {
+            detail: format!("Invalid timestamp: {}", parts[2]),
+        })?;
+
+        // Check timestamp within window
+        let now = chrono::Utc::now().timestamp();
+        let drift = (now - timestamp).abs();
+        if drift > MAX_CLOCK_DRIFT_SECONDS {
+            return Err(AuthError::TimestampOutOfWindow {
+                timestamp,
+                now,
+                drift,
+            });
+        }
+
+        // Validate nonce hex (must be 40 hex chars = 20 bytes)
+        let nonce_hex = parts[3];
+        if nonce_hex.len() != NONCE_HEX_LENGTH {
+            return Err(AuthError::InvalidMessage {
+                detail: format!(
+                    "Nonce must be {NONCE_HEX_LENGTH} hex chars, got {}",
+                    nonce_hex.len()
+                ),
+            });
+        }
+
+        let nonce = hex::decode(nonce_hex).map_err(|_| AuthError::InvalidMessage {
+            detail: "Nonce is not valid hex".to_string(),
+        })?;
+
+        Ok(ParsedMessage {
+            action,
+            escrow_id,
+            full_message: message.to_string(),
+            nonce: Some(nonce),
+            timestamp: Some(timestamp),
+        })
+    } else if parts.len() == 2 {
+        // Version 1 (legacy): action:id
+        let action = parts[0].to_string();
+        let escrow_id = parts[1].to_string();
+        Ok(ParsedMessage {
+            action,
+            escrow_id,
+            full_message: message.to_string(),
+            nonce: None,
+            timestamp: None,
+        })
+    } else {
+        Err(AuthError::InvalidMessage {
+            detail: format!(
+                "Expected format 'action:id' or 'action:id:timestamp:nonce', got '{}' with {} parts",
+                message,
+                parts.len()
+            ),
+        })
+    }
+}
+
+/// Verify the nonce against the DB (stored or already used).
+async fn verify_nonce(
+    pool: &Pool<Sqlite>,
+    parsed: &ParsedMessage,
+    address: &str,
+) -> AuthResult<()> {
+    if let Some(ref nonce) = parsed.nonce {
+        let action = &parsed.action;
+        let escrow_id = &parsed.escrow_id;
+        let timestamp = parsed.timestamp.unwrap_or(0);
+
+        // Check if nonce already exists (replay attack)
+        let exists = crate::db::queries::check_auth_nonce_exists(pool, nonce)
+            .await
+            .map_err(|e| AuthError::Unauthorized {
+                reason: format!("Nonce check failed: {e}"),
+            })?;
+
+        if exists {
+            return Err(AuthError::ReplayDetected {
+                action: action.clone(),
+                escrow_id: escrow_id.clone(),
+            });
+        }
+
+        // Store the nonce
+        crate::db::queries::store_auth_nonce(pool, nonce, action, escrow_id, address, timestamp)
+            .await
+            .map_err(|e| AuthError::Unauthorized {
+                reason: format!("Failed to store nonce: {e}"),
+            })?;
+    }
+    // Legacy format (no nonce) — skip replay check
+    Ok(())
+}
 
 /// Authentication context extracted from request headers.
 #[derive(Debug, Clone)]
@@ -46,7 +213,7 @@ impl AuthContext {
     /// Expected headers:
     /// - `X-Daglock-Address`: The signer's Kaspa address
     /// - `X-Daglock-Signature`: Hex-encoded 64-byte Schnorr signature
-    /// - `X-Daglock-Message`: The signed message
+    /// - `X-Daglock-Message`: The signed message (format: "action:id" or "action:id:ts:nonce")
     pub fn from_headers(headers: &axum::http::HeaderMap) -> AuthResult<Self> {
         let address = headers
             .get("x-daglock-address")
@@ -243,10 +410,12 @@ pub fn create_verifier(network: &str, mock_auth: bool) -> Box<dyn SignatureVerif
 /// # Authorization Rules
 /// - Only the buyer or seller can settle an escrow
 /// - The caller must prove ownership by signing a message
-pub fn verify_settle_authorization(
+/// - Message format: "settle:escrow_id" (v1) or "settle:escrow_id:ts:nonce" (v2)
+pub async fn verify_settle_authorization(
     escrow: &Escrow,
     auth: &AuthContext,
     verifier: &dyn SignatureVerifier,
+    pool: Option<&Pool<Sqlite>>,
 ) -> AuthResult<()> {
     // Check if the caller is the buyer or seller
     let is_buyer = auth.address == escrow.buyer_address;
@@ -265,21 +434,41 @@ pub fn verify_settle_authorization(
         });
     }
 
-    // Verify signature
-    let expected_message = format!("settle:{}", escrow.id);
-    if auth.message != expected_message {
+    // Parse and validate the message
+    let parsed = parse_message(&auth.message)?;
+
+    // Verify action matches
+    if parsed.action != "settle" {
+        return Err(AuthError::InvalidMessage {
+            detail: format!("Expected action 'settle', got '{}'", parsed.action),
+        });
+    }
+
+    // Verify escrow_id matches
+    if parsed.escrow_id != escrow.id {
         return Err(AuthError::Unauthorized {
             reason: format!(
-                "Invalid message format. Expected '{}', got '{}'",
-                expected_message, auth.message
+                "Message escrow_id '{}' does not match request '{}'",
+                parsed.escrow_id, escrow.id
             ),
         });
     }
 
+    // Verify signature
     if !verifier.verify_signature(&auth.address, &auth.signature, &auth.message)? {
         return Err(AuthError::InvalidSignature {
             address: auth.address.clone(),
         });
+    }
+
+    // Replay protection (only if DB pool is available and nonce is present)
+    if let Some(pool) = pool {
+        verify_nonce(pool, &parsed, &auth.address).await?;
+    } else if parsed.nonce.is_some() {
+        warn!(
+            "Replay protection: nonce provided but no DB pool available for escrow {}",
+            escrow.id
+        );
     }
 
     Ok(())
@@ -290,10 +479,12 @@ pub fn verify_settle_authorization(
 /// # Authorization Rules
 /// - Only the buyer can refund (they deposited the funds)
 /// - The caller must prove ownership by signing a message
-pub fn verify_refund_authorization(
+/// - Message format: "refund:escrow_id" (v1) or "refund:escrow_id:ts:nonce" (v2)
+pub async fn verify_refund_authorization(
     escrow: &Escrow,
     auth: &AuthContext,
     verifier: &dyn SignatureVerifier,
+    pool: Option<&Pool<Sqlite>>,
 ) -> AuthResult<()> {
     // Only the buyer can refund
     if auth.address != escrow.buyer_address {
@@ -305,28 +496,48 @@ pub fn verify_refund_authorization(
         });
     }
 
-    // Verify signature
-    let expected_message = format!("refund:{}", escrow.id);
-    if auth.message != expected_message {
+    // Parse and validate the message
+    let parsed = parse_message(&auth.message)?;
+
+    // Verify action matches
+    if parsed.action != "refund" {
+        return Err(AuthError::InvalidMessage {
+            detail: format!("Expected action 'refund', got '{}'", parsed.action),
+        });
+    }
+
+    // Verify escrow_id matches
+    if parsed.escrow_id != escrow.id {
         return Err(AuthError::Unauthorized {
             reason: format!(
-                "Invalid message format. Expected '{}', got '{}'",
-                expected_message, auth.message
+                "Message escrow_id '{}' does not match request '{}'",
+                parsed.escrow_id, escrow.id
             ),
         });
     }
 
+    // Verify signature
     if !verifier.verify_signature(&auth.address, &auth.signature, &auth.message)? {
         return Err(AuthError::InvalidSignature {
             address: auth.address.clone(),
         });
     }
 
+    // Replay protection (only if DB pool is available and nonce is present)
+    if let Some(pool) = pool {
+        verify_nonce(pool, &parsed, &auth.address).await?;
+    } else if parsed.nonce.is_some() {
+        warn!(
+            "Replay protection: nonce provided but no DB pool available for escrow {}",
+            escrow.id
+        );
+    }
+
     Ok(())
 }
 
 /// Extract auth context from headers and verify a signature.
-/// Returns Ok(()) if the signature is valid.
+/// Returns Ok(AuthContext) if the signature is valid.
 #[allow(dead_code)]
 pub fn verify_auth(
     headers: &axum::http::HeaderMap,
@@ -351,6 +562,32 @@ pub fn verify_auth(
     }
 
     Ok(auth)
+}
+
+/// Generate a nonce for replay-protected messages.
+/// Returns a hex-encoded 20-byte BLAKE2b-160 hash.
+pub fn generate_nonce() -> String {
+    let random_bytes = rand::random::<[u8; 16]>();
+    let timestamp = chrono::Utc::now().timestamp_nanos();
+    let input = [&timestamp.to_le_bytes()[..], &random_bytes[..]].concat();
+    let hash = blake2b_simd::Params::new()
+        .hash_length(NONCE_LENGTH)
+        .hash(&input);
+    hex::encode(hash.as_bytes())
+}
+
+/// Generate a replay-protected message.
+///
+/// # Arguments
+/// * `action` - The action (settle, refund, dispute, cancel)
+/// * `escrow_id` - The escrow identifier
+///
+/// # Returns
+/// * A message string in format: "action:escrow_id:timestamp:nonce_hex"
+pub fn generate_replay_protected_message(action: &str, escrow_id: &str) -> String {
+    let timestamp = chrono::Utc::now().timestamp();
+    let nonce = generate_nonce();
+    format!("{action}:{escrow_id}:{timestamp}:{nonce}")
 }
 
 #[cfg(test)]
@@ -415,12 +652,10 @@ mod tests {
     fn schnorr_verifier_rejects_invalid_inputs() {
         let verifier = SchnorrVerifier::new();
 
-        // Invalid address
         assert!(verifier
             .verify_signature("not-an-address", "abcd", "test")
             .is_err());
 
-        // Invalid hex signature
         assert!(verifier
             .verify_signature(
                 "kaspatest:qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhqrxplya",
@@ -429,7 +664,6 @@ mod tests {
             )
             .is_err());
 
-        // Wrong-length signature (too short)
         assert!(verifier
             .verify_signature(
                 "kaspatest:qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhqrxplya",
@@ -442,7 +676,6 @@ mod tests {
     #[test]
     fn schnorr_verifier_rejects_bad_signature() {
         let verifier = SchnorrVerifier::new();
-        // A valid 64-byte hex that isn't a real signature
         let fake_sig = "ab".repeat(64);
 
         let result = verifier.verify_signature(
@@ -454,7 +687,72 @@ mod tests {
     }
 
     #[test]
-    fn verify_settle_buyer_authorized() {
+    fn parse_message_v1_legacy_format() {
+        let parsed = parse_message("settle:esc_123").unwrap();
+        assert_eq!(parsed.action, "settle");
+        assert_eq!(parsed.escrow_id, "esc_123");
+        assert!(parsed.nonce.is_none());
+        assert!(parsed.timestamp.is_none());
+    }
+
+    #[test]
+    fn parse_message_v2_with_replay_protection() {
+        let nonce_hex = generate_nonce();
+        assert_eq!(nonce_hex.len(), 40);
+        let msg = format!(
+            "settle:esc_123:{}:{}",
+            chrono::Utc::now().timestamp(),
+            nonce_hex
+        );
+        let parsed = parse_message(&msg).unwrap();
+        assert_eq!(parsed.action, "settle");
+        assert_eq!(parsed.escrow_id, "esc_123");
+        assert!(parsed.nonce.is_some());
+        assert_eq!(parsed.nonce.as_ref().unwrap().len(), 20);
+        assert!(parsed.timestamp.is_some());
+    }
+
+    #[test]
+    fn parse_message_invalid_format() {
+        // Too few parts
+        assert!(parse_message("just_action").is_err());
+        // Too many parts (5+)
+        assert!(parse_message("a:b:c:d:e").is_err());
+    }
+
+    #[test]
+    fn parse_message_stale_timestamp() {
+        let nonce_hex = generate_nonce();
+        let old_ts = chrono::Utc::now().timestamp() - 600; // 10 min ago (outside 5 min window)
+        let msg = format!("settle:esc_123:{old_ts}:{nonce_hex}");
+        let result = parse_message(&msg);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Timestamp outside allowed window"));
+    }
+
+    #[test]
+    fn parse_message_invalid_nonce_length() {
+        let ts = chrono::Utc::now().timestamp();
+        let msg = format!("settle:esc_123:{ts}:aabbcc"); // too short
+        let result = parse_message(&msg);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn generate_replay_protected_message_creates_valid_format() {
+        let msg = generate_replay_protected_message("settle", "esc_123");
+        let parsed = parse_message(&msg).unwrap();
+        assert_eq!(parsed.action, "settle");
+        assert_eq!(parsed.escrow_id, "esc_123");
+        assert!(parsed.nonce.is_some());
+        assert!(parsed.timestamp.is_some());
+    }
+
+    #[tokio::test]
+    async fn verify_settle_buyer_authorized() {
         let verifier = MockVerifier::new();
         let escrow = test_escrow();
         let auth = AuthContext {
@@ -463,11 +761,13 @@ mod tests {
             signature: "any_hex".to_string(),
             message: "settle:esc_test".to_string(),
         };
-        assert!(verify_settle_authorization(&escrow, &auth, &verifier).is_ok());
+        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
+            .await
+            .is_ok());
     }
 
-    #[test]
-    fn verify_settle_seller_authorized() {
+    #[tokio::test]
+    async fn verify_settle_seller_authorized() {
         let verifier = MockVerifier::new();
         let escrow = test_escrow();
         let auth = AuthContext {
@@ -476,11 +776,13 @@ mod tests {
             signature: "sig123".to_string(),
             message: "settle:esc_test".to_string(),
         };
-        assert!(verify_settle_authorization(&escrow, &auth, &verifier).is_ok());
+        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
+            .await
+            .is_ok());
     }
 
-    #[test]
-    fn verify_settle_unauthorized_address() {
+    #[tokio::test]
+    async fn verify_settle_unauthorized_address() {
         let verifier = MockVerifier::new();
         let escrow = test_escrow();
         let auth = AuthContext {
@@ -488,11 +790,13 @@ mod tests {
             signature: "sig123".to_string(),
             message: "settle:esc_test".to_string(),
         };
-        assert!(verify_settle_authorization(&escrow, &auth, &verifier).is_err());
+        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
+            .await
+            .is_err());
     }
 
-    #[test]
-    fn verify_refund_buyer_only() {
+    #[tokio::test]
+    async fn verify_refund_buyer_only() {
         let verifier = MockVerifier::new();
         let escrow = test_escrow();
 
@@ -503,7 +807,11 @@ mod tests {
             signature: "sig123".to_string(),
             message: "refund:esc_test".to_string(),
         };
-        assert!(verify_refund_authorization(&escrow, &buyer_auth, &verifier).is_ok());
+        assert!(
+            verify_refund_authorization(&escrow, &buyer_auth, &verifier, None)
+                .await
+                .is_ok()
+        );
 
         // Seller cannot refund
         let seller_auth = AuthContext {
@@ -512,7 +820,28 @@ mod tests {
             signature: "sig123".to_string(),
             message: "refund:esc_test".to_string(),
         };
-        assert!(verify_refund_authorization(&escrow, &seller_auth, &verifier).is_err());
+        assert!(
+            verify_refund_authorization(&escrow, &seller_auth, &verifier, None)
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn verify_settle_with_replay_protected_message() {
+        let verifier = MockVerifier::new();
+        let escrow = test_escrow();
+        let msg = generate_replay_protected_message("settle", "esc_test");
+        let auth = AuthContext {
+            address: "kaspatest:qyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpk58a75"
+                .to_string(),
+            signature: "any_hex".to_string(),
+            message: msg,
+        };
+        // Should succeed (nonce validated against None pool — just logged)
+        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
+            .await
+            .is_ok());
     }
 
     #[test]
@@ -557,9 +886,15 @@ mod tests {
     #[test]
     fn script_hash_address_rejected() {
         let verifier = SchnorrVerifier::new();
-        // ScriptHash address (version 8) — should be rejected since we need PubKey (version 0)
         let result =
             verifier.verify_signature("kaspatest:pq99546ray", "ab".repeat(64).as_str(), "test");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn generate_nonce_produces_20_bytes_hex() {
+        let nonce = generate_nonce();
+        assert_eq!(nonce.len(), 40); // 20 bytes = 40 hex chars
+        assert!(hex::decode(&nonce).is_ok());
     }
 }

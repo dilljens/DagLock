@@ -76,3 +76,44 @@ main.rs (clap dispatch)
 |--------|-----|--------------|
 | indexer | `features/indexer.md` | REST API consumer |
 | contracts | `features/contracts.md` | Transaction assembly |
+
+---
+
+## Audit Findings (2026-06-06)
+
+### High-Priority Usability Issues (Block Real Usage)
+
+| ID | Finding | Location | Fix Required |
+|----|---------|----------|--------------|
+| **U1** | **CLI create uses dummy keys** — Hardcodes `buyer_key = [1u8; 32]`, `seller_key = [2u8; 32]`. Prints unsigned tx but keys are fake. User can't create valid escrows. | `commands/create.rs:17-22` | Remove hardcoded keys. Integrate `kaspawallet sign --transaction <hex>` subprocess. |
+| **U3** | **No wallet integration in CLI** — `assemble_create_escrow()` returns unsigned tx hex but no `kaspawallet sign` invocation or KasWare integration. Manual copy-paste required. | `tx.rs`, `commands/create.rs` | Add `cli/src/wallet.rs` with `sign_with_kaspawallet()`. Use in create, claim, refund, swap, vault withdraw. |
+| **Q1** | **`.unwrap()` in production** — `commands/create.rs:46` unwraps hex decode. | `commands/create.rs:46` | Replace with proper error handling. |
+
+### Code Quality Issues
+
+| ID | Finding | Impact |
+|----|---------|--------|
+| **Q2/Q3** | Magic number `200` in `tx.rs` (fee calculation) — no shared constant | Use `shared::constants::FEE_DENOMINATOR` |
+| **Q4** | `trade_hash` handling — CLI accepts optional string, no validation | Use `shared::validation::validate_trade_hash` |
+
+### Fix Plan (Phase 2 — Usability)
+
+1. **Task 9 (U1):** CLI create with real wallet keys — `kaspawallet sign` subprocess
+2. **Task 11 (U3):** CLI wallet module (`cli/src/wallet.rs`) — shared signing logic for all commands
+3. **Task 25 (Q1):** Remove `.unwrap()` in production code
+4. **Task 26 (Q2/Q3):** Use shared `FEE_DENOMINATOR` constant everywhere
+5. **Task 27 (Q4):** Use `TradeHash` newtype with `FromStr` validation
+
+### Dependencies
+
+- Requires `shared` crate (Phase 0, Task 1) for `FEE_DENOMINATOR` and `validate_trade_hash`
+- Requires `kaspawallet` binary installed on user's system
+- Indexer must have real UTXO verification (S1) for settlement to work end-to-end
+
+### Verification
+
+- [ ] `cargo test -p daglock-cli` passes
+- [ ] Manual: `daglock-cli create --amount 100 --counterparty <addr>` → prompts for wallet → `kaspawallet sign` → broadcasts → settle via CLI
+- [ ] Manual: `daglock-cli swap --id <id> --preimage <hex>` → signs → broadcasts → settles
+- [ ] Manual: `daglock-cli vault withdraw --id <id>` → signs → broadcasts → unlocks
+

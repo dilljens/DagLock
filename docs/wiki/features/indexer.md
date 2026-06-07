@@ -119,3 +119,7 @@ Market-price offers that auto-update via CoinGecko.
 - All SQL queries use bind parameters (no string interpolation)
 - Kaspa address validation on create
 - MockVerifier for dev, WrpcVerifier for production
+
+---
+
+## Audit Findings (2026-06-06)

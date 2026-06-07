@@ -11,7 +11,14 @@ RUN cargo build --release -p daglock-indexer && cp target/release/daglock-indexe
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates sqlite3 curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/bin/daglock-indexer /usr/local/bin/
-RUN mkdir -p /data && chmod 777 /data
+
+# Create non-root user
+RUN groupadd -r daglock && useradd -r -g daglock -m -d /home/daglock daglock
+RUN mkdir -p /data && chown daglock:daglock /data
+
+USER daglock
+WORKDIR /home/daglock
+
 EXPOSE 8443
 ENV RUST_LOG=info
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD curl -sf http://localhost:8443/v1/health || exit 1

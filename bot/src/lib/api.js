@@ -1,4 +1,13 @@
 // DagLock Indexer REST API client for the Telegram bot.
+// Features: request timeout (10s), retry with exponential backoff (3 attempts).
+
+const MAX_RETRIES = 3;
+const REQUEST_TIMEOUT_MS = 10_000;
+const RETRY_DELAYS_MS = [1_000, 2_000, 4_000]; // exponential: 1s, 2s, 4s
+
+function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export class ApiClient {
 	constructor(baseUrl) {
@@ -13,14 +22,74 @@ export class ApiClient {
 			headers["X-Daglock-Message"] = auth.message;
 		}
 		const url = `${this.baseUrl}/v1${path}`;
-		const res = await fetch(url, { headers, ...options });
-		if (!res.ok) {
-			const err = await res
-				.json()
-				.catch(() => ({ error: { message: res.statusText } }));
-			throw new Error(err.error?.message || `HTTP ${res.status}`);
+
+		// Determine if retry is safe (GET = idempotent, POST = not)
+		const method = (options.method || "GET").toUpperCase();
+		const isIdempotent =
+			method === "GET" || method === "HEAD" || method === "OPTIONS";
+
+		for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(
+				() => controller.abort(),
+				REQUEST_TIMEOUT_MS,
+			);
+
+			try {
+				const res = await fetch(url, {
+					headers,
+					signal: controller.signal,
+					...options,
+				});
+				clearTimeout(timeoutId);
+
+				if (res.ok) {
+					return res.json();
+				}
+
+				// Non-2xx — parse error, retry on 5xx if idempotent
+				const errBody = await res
+					.json()
+					.catch(() => ({ error: { message: res.statusText } }));
+				const errMsg = errBody.error?.message || `HTTP ${res.status}`;
+
+				// Retry on 5xx (server errors) and 429 (rate limit) for idempotent requests
+				const shouldRetry =
+					(res.status >= 500 || res.status === 429) &&
+					isIdempotent &&
+					attempt < MAX_RETRIES;
+
+				if (shouldRetry) {
+					const delay = RETRY_DELAYS_MS[attempt] || 5_000;
+					console.warn(
+						`[ApiClient] Retry ${attempt + 1}/${MAX_RETRIES} for ${url} (${res.status}) — waiting ${delay}ms`,
+					);
+					await sleep(delay);
+					continue;
+				}
+
+				throw new Error(errMsg);
+			} catch (err) {
+				clearTimeout(timeoutId);
+
+				// Network or abort errors are retryable for idempotent requests
+				const isNetworkError =
+					err.name === "AbortError" || err.type === "system" || !err.status;
+				const shouldRetry =
+					isNetworkError && isIdempotent && attempt < MAX_RETRIES;
+
+				if (shouldRetry) {
+					const delay = RETRY_DELAYS_MS[attempt] || 5_000;
+					console.warn(
+						`[ApiClient] Retry ${attempt + 1}/${MAX_RETRIES} for ${url} (network error) — waiting ${delay}ms`,
+					);
+					await sleep(delay);
+					continue;
+				}
+
+				throw err;
+			}
 		}
-		return res.json();
 	}
 
 	// ── Escrow endpoints ──────────────────────────────────────────────
