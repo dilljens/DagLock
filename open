@@ -63,14 +63,14 @@ cargo run -p daglock-indexer -- \
 	--host "127.0.0.1" \
 	--port "$INDEXER_PORT" \
 	--daglock-kas-template "30876e3ea42d0e23bb0980f3fd97ae8807e9c70f" \
-	--daglock-krc20-template "8a43a8438d183a92bc7b94337c031196ff16725b" \
+	--daglock-krc20-template "8a43a8438d183a92bc7b94337c031196ff16725b" --no-wrpc \
 	> /tmp/daglock-indexer.log 2>&1 &
 echo $! >> "$PIDFILE"
 echo "  Logs: tail -f /tmp/daglock-indexer.log"
 
 # Wait for indexer to be ready
 echo -n "Waiting for indexer..."
-for i in $(seq 1 30); do
+for i in $(seq 1 15); do
 	if curl -sf "http://127.0.0.1:$INDEXER_PORT/v1/health" > /dev/null 2>&1; then
 		echo " ✓"
 		break

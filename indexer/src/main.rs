@@ -57,28 +57,33 @@ async fn main() {
     // Initialize on-chain verifier
     // 1) If --wrpc-url is provided, connect to that specific node
     // 2) If not, try auto-discovery via Kaspa Public Node Network (Resolver)
-    // 3) Fall back to MockVerifier (always succeeds) when offline
-    let verifier: Arc<dyn crate::verification::EscrowVerifier> = if let Some(ref wrpc_url) = args.wrpc_url {
-        match crate::listener::try_connect_wrpc(wrpc_url, &args.network).await {
-            Ok(client) => {
-                info!("wRPC verifier connected to {wrpc_url}");
-                Arc::new(crate::verification::WrpcVerifier::new(Some(client)))
+    // 3) Use --no-wrpc to skip connection entirely (local dev)
+    // 4) Fall back to MockVerifier (always succeeds) when offline
+    let verifier: Arc<dyn crate::verification::EscrowVerifier> = {
+        if args.no_wrpc {
+            warn!("--no-wrpc set — using mock verifier (offline mode)");
+            Arc::new(crate::verification::MockVerifier)
+        } else if let Some(ref wrpc_url) = args.wrpc_url {
+            match crate::listener::try_connect_wrpc(wrpc_url, &args.network).await {
+                Ok(client) => {
+                    info!("wRPC verifier connected to {wrpc_url}");
+                    Arc::new(crate::verification::WrpcVerifier::new(Some(client)))
+                }
+                Err(e) => {
+                    warn!("Failed to connect wRPC verifier: {e} — using mock verifier");
+                    Arc::new(crate::verification::MockVerifier)
+                }
             }
-            Err(e) => {
-                warn!("Failed to connect wRPC verifier: {e} — using mock verifier");
-                Arc::new(crate::verification::MockVerifier)
-            }
-        }
-    } else {
-        // No explicit URL — try auto-discovery via Resolver
-        match crate::listener::try_connect_resolver(&args.network).await {
-            Ok(client) => {
-                info!("wRPC verifier connected via Resolver (auto-discovery)");
-                Arc::new(crate::verification::WrpcVerifier::new(Some(client)))
-            }
-            Err(e) => {
-                warn!("Resolver connection failed: {e} — using mock verifier");
-                Arc::new(crate::verification::MockVerifier)
+        } else {
+            match crate::listener::try_connect_resolver(&args.network).await {
+                Ok(client) => {
+                    info!("wRPC verifier connected via Resolver (auto-discovery)");
+                    Arc::new(crate::verification::WrpcVerifier::new(Some(client)))
+                }
+                Err(e) => {
+                    warn!("Resolver connection failed: {e} — using mock verifier");
+                    Arc::new(crate::verification::MockVerifier)
+                }
             }
         }
     };

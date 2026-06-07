@@ -12,6 +12,10 @@ pub struct Args {
     #[arg(long)]
     pub wrpc_url: Option<String>,
 
+    /// Skip wRPC connection entirely (local dev).
+    #[arg(long, default_value_t = false)]
+    pub no_wrpc: bool,
+
     #[arg(long, default_value = "testnet-12")]
     pub network: String,
 
