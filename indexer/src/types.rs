@@ -119,6 +119,46 @@ pub struct CreateEscrowRequest {
     pub price_type: Option<String>,
 }
 
+
+/// App registered by an integrator.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct App {
+    pub id: String,
+    pub name: String,
+    pub callback_url: Option<String>,
+    pub webhook_secret: Option<String>,
+    pub created_at: i64,
+    pub owner_address: Address,
+    pub is_active: bool,
+}
+
+/// API key for an app (response only — key_hash never exposed).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiKey {
+    pub key_id: String,
+    pub app_id: String,
+    pub label: String,
+    pub created_at: i64,
+    pub last_used_at: Option<i64>,
+    pub is_active: bool,
+}
+
+/// Register a new app request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterAppRequest {
+    pub name: String,
+    pub callback_url: Option<String>,
+    pub owner_address: Address,
+}
+
+/// Response when creating an app (includes the plaintext key — shown once only).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterAppResponse {
+    pub app: App,
+    pub api_key: String,
+    pub warning: String,
+}
+
 /// Offer record stored in the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Offer {

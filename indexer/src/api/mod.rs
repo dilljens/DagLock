@@ -12,6 +12,7 @@ pub mod receipts;
 pub mod reputation;
 pub mod swap;
 pub mod vaults;
+pub mod apps;
 pub mod vouches;
 
 use crate::auth::SignatureVerifier;
