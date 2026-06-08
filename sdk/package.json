@@ -1,0 +1,24 @@
+{
+  "name": "@daglock/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for DagLock — trustless escrow on Kaspa",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublish": "npm run build"
+  },
+  "keywords": [
+    "kaspa",
+    "escrow",
+    "daglock",
+    "covenant"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cross-fetch": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

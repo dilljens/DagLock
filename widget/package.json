@@ -1,0 +1,17 @@
+{
+  "name": "@daglock/widget",
+  "version": "0.1.0",
+  "description": "Embeddable DagLock escrow widget — drop-in custom elements",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && cp dist/index.js dist/daglock-widget.umd.js",
+    "prepublish": "npm run build"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^6.0.3"
+  }
+}
