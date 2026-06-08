@@ -13,6 +13,7 @@ pub mod reputation;
 pub mod swap;
 pub mod vaults;
 pub mod apps;
+pub mod status;
 pub mod vouches;
 pub mod webhooks;
 
@@ -68,6 +69,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
     Router::new()
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
         .route("/v1/health", get(health))
+        .route("/v1/status", get(status::get))
         .route("/v1/network", get(network::get))
         .route("/v1/network/price", get(network::price))
         .route("/v1/fees/estimate", get(network::fees_estimate))
@@ -92,6 +94,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             "/v1/escrows/:id/messages",
             post(messages::send).get(messages::list),
         )
+        .route("/v1/openapi.json", get(openapi_spec))
         .route("/v1/stats", get(escrows::stats))
         .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))
@@ -116,6 +119,12 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/ws", get(websocket_handler))
         .layer(cors)
         .with_state(state)
+}
+
+/// Serve the OpenAPI spec.
+async fn openapi_spec() -> Json<serde_json::Value> {
+    let spec = include_str!("../../static/openapi.json");
+    Json(serde_json::from_str(spec).unwrap_or_default())
 }
 
 /// WebSocket upgrade handler.

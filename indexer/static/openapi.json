@@ -1,0 +1,157 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DagLock API",
+    "version": "0.1.0",
+    "description": "Trustless escrow and atomic swaps on Kaspa L1. Free API — only the on-chain covenant fee (0.5%) applies."
+  },
+  "servers": [
+    { "url": "https://api.daglock.io/v1", "description": "Production" },
+    { "url": "http://localhost:8543/v1", "description": "Development" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": { "200": { "description": "API is healthy" } }
+      }
+    },
+    "/status": {
+      "get": {
+        "summary": "Public status — uptime, volume, settlement count",
+        "responses": { "200": { "description": "Status response" } }
+      }
+    },
+    "/network": {
+      "get": {
+        "summary": "Network info + template hashes",
+        "responses": { "200": { "description": "Network info" } }
+      }
+    },
+    "/escrows": {
+      "get": {
+        "summary": "List escrows by address",
+        "parameters": [{
+          "name": "address", "in": "query", "required": true, "schema": { "type": "string" }
+        }, {
+          "name": "role", "in": "query", "schema": { "type": "string", "enum": ["buyer", "seller", "all"] }
+        }, {
+          "name": "status", "in": "query", "schema": { "type": "string" }
+        }, {
+          "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }
+        }, {
+          "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 }
+        }],
+        "responses": { "200": { "description": "List of escrows" } }
+      },
+      "post": {
+        "summary": "Create escrow record",
+        "responses": { "201": { "description": "Escrow created" } }
+      }
+    },
+    "/escrows/{id}": {
+      "get": {
+        "summary": "Get escrow by ID",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Escrow details" } }
+      }
+    },
+    "/escrows/{id}/settle": {
+      "post": {
+        "summary": "Settle an escrow (requires auth headers)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Settled" } }
+      }
+    },
+    "/escrows/{id}/refund": {
+      "post": {
+        "summary": "Refund an escrow (buyer only, requires auth)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Refunded" } }
+      }
+    },
+    "/escrows/{id}/dispute": {
+      "post": {
+        "summary": "Dispute an escrow",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Disputed" } }
+      }
+    },
+    "/escrows/{id}/cancel": {
+      "post": {
+        "summary": "Cancel an escrow",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Cancelled" } }
+      }
+    },
+    "/escrows/{id}/swap": {
+      "post": {
+        "summary": "Atomic swap — submit preimage",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Settled via atomic swap" } }
+      }
+    },
+    "/offers": {
+      "get": {
+        "summary": "List offers",
+        "responses": { "200": { "description": "List of offers" } }
+      },
+      "post": {
+        "summary": "Create an offer",
+        "responses": { "201": { "description": "Offer created" } }
+      }
+    },
+    "/offers/{id}/accept": {
+      "post": {
+        "summary": "Accept an offer",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Offer accepted" } }
+      }
+    },
+    "/reputation/{address}": {
+      "get": {
+        "summary": "Get reputation score for an address",
+        "parameters": [{ "name": "address", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Reputation data" } }
+      }
+    },
+    "/receipts/{id}": {
+      "get": {
+        "summary": "Get settlement receipt",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Receipt data" } }
+      }
+    },
+    "/fees/estimate": {
+      "get": {
+        "summary": "Estimate escrow fee",
+        "parameters": [{ "name": "amount_kas", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Fee estimate" } }
+      }
+    },
+    "/stats": {
+      "get": {
+        "summary": "Global aggregate statistics",
+        "responses": { "200": { "description": "Stats" } }
+      }
+    },
+    "/compile": {
+      "post": {
+        "summary": "Compile a covenant template",
+        "responses": { "200": { "description": "Compiled script" } }
+      }
+    },
+    "/apps/register": {
+      "post": {
+        "summary": "Register an app and receive an API key",
+        "responses": { "201": { "description": "App registered, API key returned" } }
+      }
+    },
+    "/swap/generate": {
+      "post": {
+        "summary": "Generate a swap secret + hash for atomic swaps",
+        "responses": { "200": { "description": "Secret + hash" } }
+      }
+    }
+  }
+}
