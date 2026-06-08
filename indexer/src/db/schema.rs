@@ -58,6 +58,10 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
+    sqlx::query(include_str!("migrations/017_create_webhooks.sql"))
+        .execute(pool)
+        .await?;
+
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_price_columns(pool).await?;
     ensure_price_type_column(pool).await?;

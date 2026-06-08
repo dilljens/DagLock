@@ -4,6 +4,7 @@
 //! Used by integration tests and as a dependency for other crates.
 
 pub mod api;
+pub mod services;
 pub mod auth;
 pub mod config;
 pub mod crypto;

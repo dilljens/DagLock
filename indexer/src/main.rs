@@ -10,6 +10,7 @@ mod crypto;
 mod db;
 mod listener;
 mod types;
+mod services;
 mod verification;
 mod websocket;
 

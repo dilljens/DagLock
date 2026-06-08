@@ -14,6 +14,7 @@ pub mod swap;
 pub mod vaults;
 pub mod apps;
 pub mod vouches;
+pub mod webhooks;
 
 use crate::auth::SignatureVerifier;
 use crate::verification::EscrowVerifier;

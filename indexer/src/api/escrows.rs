@@ -14,6 +14,7 @@ use crate::api::AppState;
 use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
 use crate::db::queries;
 use crate::types::*;
+use crate::services::webhooks::{self, WebhookEvent};
 use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
 use crate::websocket::WsEvent;
 // Preimage verification uses SHA-256 via the covenant's trade_hash
@@ -495,6 +496,7 @@ pub async fn create(
         .map_err(|_e| crate::types::internal_error())?;
 
     let _ = state.ws_tx.send(WsEvent::escrow_created(&escrow.id));
+    webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowCreated(&escrow.id));
 
     Ok((StatusCode::CREATED, Json(json!(escrow))))
 }
@@ -605,6 +607,7 @@ pub async fn settle(
             }
 
             let _ = state.ws_tx.send(WsEvent::escrow_settled(&id));
+            webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowSettled(&id));
 
             Ok(Json(json!({ "status": "settled", "escrow_id": id })))
         }
@@ -713,6 +716,7 @@ pub async fn refund(
             }
 
             let _ = state.ws_tx.send(WsEvent::escrow_refunded(&id));
+            webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowRefunded(&id));
 
             Ok(Json(json!({ "status": "refunded", "escrow_id": id })))
         }
@@ -938,6 +942,7 @@ pub async fn cancel(
                 })?;
 
             let _ = state.ws_tx.send(WsEvent::escrow_cancelled(&id));
+            webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowCancelled(&id));
 
             Ok(Json(json!({ "status": "cancelled", "escrow_id": id })))
         }
