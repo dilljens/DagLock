@@ -26,6 +26,11 @@ pub fn daglock_arbiter_source() -> &'static str {
     include_str!("daglock_arbiter.sil")
 }
 
+/// The daglock_vault_softlock.sil source embedded at compile time.
+pub fn daglock_vault_softlock_source() -> &'static str {
+    include_str!("daglock_vault_softlock.sil")
+}
+
 /// The daglock_vault.sil source embedded at compile time.
 pub fn daglock_vault_source() -> &'static str {
     include_str!("daglock_vault.sil")
@@ -150,6 +155,28 @@ pub fn compile_daglock_krc20(
         .expect("daglock_krc20.sil should compile — if this fails, fix the .sil syntax")
 }
 
+/// Compile the DagLock Vault Softlock covenant with the given constructor arguments.
+///
+/// Arguments (in order):
+/// - `owner_key`: 32-byte compressed public key
+/// - `beneficiary_key`: 32-byte compressed public key (zero = open-ended)
+/// - `password_hash`: 32-byte SHA-256 hash of the password
+/// - `timeout`: Unix timestamp (i64)
+pub fn compile_daglock_vault_softlock(
+    owner_key: &[u8],
+    password_hash: &[u8],
+    timeout: i64,
+) -> CompiledContract<'static> {
+    let source = daglock_vault_softlock_source();
+    let args = vec![
+        Expr::bytes(owner_key.to_vec()),
+        Expr::bytes(password_hash.to_vec()),
+        Expr::int(timeout),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_vault_softlock.sil should compile")
+}
+
 /// Extract the template parts and hash from a compiled DagLock contract.
 ///
 /// Returns `(prefix, suffix, template_hash)` where `template_hash` is
@@ -179,6 +206,8 @@ pub mod entrypoints {
     pub const DISPUTE_SELLER_WINS: &str = "disputeSellerWins";
     pub const DISPUTE_BUYER_WINS: &str = "disputeBuyerWins";
     pub const WITHDRAW: &str = "withdraw";
+    pub const WITHDRAW_PASSWORD: &str = "withdrawPassword";
+    pub const WITHDRAW_TIMEOUT: &str = "withdrawTimeout";
 }
 
 #[cfg(test)]
@@ -368,6 +397,11 @@ mod tests {
         let (_, _, krc20_hash) = template_parts_and_hash(&krc20);
         let krc20_hex: String = krc20_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_krc20_template_hash={}", krc20_hex);
+
+        let softlock = compile_daglock_vault_softlock(&zero, &[0u8; 32], 1_700_000_000);
+        let (_, _, softlock_hash) = template_parts_and_hash(&softlock);
+        let softlock_hex: String = softlock_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_vault_softlock_template_hash={}", softlock_hex);
 
         let vault = compile_daglock_vault(&zero, 1_700_000_000);
         let (_, _, vault_hash) = template_parts_and_hash(&vault);

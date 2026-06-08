@@ -251,3 +251,307 @@ fn vault_withdraw_fails_wrong_signature() {
     let result = vm.execute();
     assert!(result.is_err(), "withdraw with wrong sig should fail");
 }
+
+/* ─── Softlock Vault Tests ───────────────────────────────────── */
+
+use sha2::{Digest, Sha256};
+use daglock_contracts::compile_daglock_vault_softlock;
+
+fn sha256_full(password: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(password);
+    let result = hasher.finalize();
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(&result);
+    arr
+}
+
+fn sha256_hash(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let result = hasher.finalize();
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(&result);
+    arr
+}
+
+#[test]
+fn softlock_password_withdraw_succeeds_correct_password() {
+    let owner = random_keypair();
+    let beneficiary = random_keypair();
+    let password = b"my-secure-password-123!";
+    let password_hash = sha256_full(password);
+    let timeout: i64 = 1_600_000_000;
+
+    let compiled = compile_daglock_vault_softlock(
+        &pubkey_bytes(&owner),
+        &password_hash,
+        timeout,
+    );
+
+    let input_value: u64 = 500_000;
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&beneficiary)),
+    )];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([6u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs.clone(),
+        0, // no timelock needed — password path doesn't check time
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::WITHDRAW_PASSWORD,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(password.to_vec())],
+        )
+        .expect("build_sig_script");
+
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(
+        result.is_ok(),
+        "password withdraw with correct password failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn softlock_password_withdraw_fails_wrong_password() {
+    let owner = random_keypair();
+    let beneficiary = random_keypair();
+    let password = b"correct-password";
+    let password_hash = sha256_full(password);
+    let wrong_password = b"wrong-password";
+    let timeout: i64 = 1_600_000_000;
+
+    let compiled = compile_daglock_vault_softlock(
+        &pubkey_bytes(&owner),
+        &password_hash,
+        timeout,
+    );
+
+    let input_value: u64 = 500_000;
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&beneficiary)),
+    )];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([7u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::WITHDRAW_PASSWORD,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(wrong_password.to_vec())],
+        )
+        .expect("build_sig_script");
+
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(
+        result.is_err(),
+        "password withdraw with wrong password should fail"
+    );
+}
+
+#[test]
+fn softlock_timeout_withdraw_succeeds_after_timeout() {
+    let owner = random_keypair();
+    let beneficiary = random_keypair();
+    let password_hash = sha256_full(b"any-password");
+    let timeout: i64 = 1_600_000_000;
+
+    let compiled = compile_daglock_vault_softlock(
+        &pubkey_bytes(&owner),
+        &password_hash,
+        timeout,
+    );
+
+    let input_value: u64 = 500_000;
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&owner)),
+    )];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([8u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs,
+        timeout as u64,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused);
+    let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
+    let sig_raw = owner.sign_schnorr(msg);
+    let mut sig = Vec::with_capacity(65);
+    sig.extend_from_slice(sig_raw.as_ref().as_slice());
+    sig.push(SIG_HASH_ALL.to_u8());
+
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::WITHDRAW_TIMEOUT,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
+        )
+        .expect("build_sig_script");
+
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(
+        result.is_ok(),
+        "softlock timeout withdraw failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn softlock_timeout_withdraw_fails_before_timeout() {
+    let owner = random_keypair();
+    let beneficiary = random_keypair();
+    let password_hash = sha256_full(b"any");
+    let timeout: i64 = 3_000_000_000;
+
+    let compiled = compile_daglock_vault_softlock(
+        &pubkey_bytes(&owner),
+        &password_hash,
+        timeout,
+    );
+
+    let input_value: u64 = 500_000;
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&owner)),
+    )];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([9u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
+    let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused);
+    let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
+    let sig_raw = owner.sign_schnorr(msg);
+    let mut sig = Vec::with_capacity(65);
+    sig.extend_from_slice(sig_raw.as_ref().as_slice());
+    sig.push(SIG_HASH_ALL.to_u8());
+
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::WITHDRAW_TIMEOUT,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
+        )
+        .expect("build_sig_script");
+
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(result.is_err(), "softlock timeout withdraw before timeout should fail");
+}

@@ -1,0 +1,20 @@
+pragma silverscript ^0.1.0;
+
+contract DagLockVaultSoftlock(
+    byte[32] ownerKey,
+    byte[32] passwordHash,
+    int timeout
+) {
+    entrypoint function withdrawPassword(byte[] password) {
+        require(sha256(password) == passwordHash);
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
+    }
+
+    entrypoint function withdrawTimeout(sig ownerSig) {
+        require(tx.time >= timeout);
+        require(checkSig(ownerSig, pubkey(ownerKey)));
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
+    }
+}
