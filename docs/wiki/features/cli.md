@@ -1,6 +1,6 @@
 # CLI
 
-**Source**: `cli/src/`  **Updated**: `2026-06-05`  (10 files)
+**Source**: `cli/src/`  **Updated**: `2026-06-09`  (13 files)
 
 ## What it does
 Command-line power-user tool for DagLock escrow operations. Connects to the indexer REST API for queries and assembles unsigned transactions for signing with kaspawallet or KasWare.

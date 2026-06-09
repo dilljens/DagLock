@@ -23,6 +23,8 @@ Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. Howeve
 | `daglock_krc20.sil` — KRC-20 escrow via ICC pattern |  Done |
 | `daglock_arbiter.sil` — KAS escrow with mediator/jury paths |  Done |
 | `daglock_vault.sil` — time-locked self-custody vault |  Done |
+| `daglock_vault_softlock.sil` — password-recoverable vault with beneficiary |  Done |
+| `daglock_vault_multisig.sil` — multi-sig vault (up to 3-of-3) |  Done |
 | Compilation against `silverc` |  Done |
 | TxScriptEngine unit tests — all paths + negatives |  Done (7+ per covenant) |
 | Script mass benchmarking |  Done |

@@ -1,6 +1,6 @@
 # Web
 
-**Source**: `web/src/`  **Updated**: `2026-06-09`  (14 files)
+**Source**: `web/src/`  **Updated**: `2026-06-09` (rewritten with sidebar nav)  (14 files)
 
 ## What it does
 React + Vite dashboard for browser-based users. Provides escrow creation, claiming, offer board, and reputation views. Communicates with the indexer REST API. Uses Vitest + React Testing Library for component tests, Biome for lint.
@@ -8,7 +8,17 @@ React + Vite dashboard for browser-based users. Provides escrow creation, claimi
 ## Architecture
 ```
 web/src/
-  App.tsx                    Main app: layout, routing, tab management (437 lines)
+  App.tsx                    Main app: layout, routing, tab management
+  router.tsx                 Hash-based client-side router
+  context/WalletContext.tsx   Wallet connection state (auto-fill everywhere)
+  layout/Sidebar.tsx         240px sidebar nav + mobile drawer
+  layout/Toast.tsx            Notification system
+  pages/Dashboard.tsx         Wallet-connected dashboard
+  pages/OffersPage.tsx        Offer board (browse/create/my offers)
+  pages/EscrowsPage.tsx       Escrow lifecycle + create wizard
+  pages/VaultsPage.tsx        Vault management (standard/softlock/multisig)
+  pages/ReputationPage.tsx    Reputation, vouch, identity
+  pages/JuryPage.tsx          Jury system
   api.ts                     REST API client + all TypeScript types
   helpers.tsx                Utility functions (money, sompi, time, badge, errMsg)
   ui.tsx                     Reusable UI primitives (Panel, FormField, LookupResult, etc.)

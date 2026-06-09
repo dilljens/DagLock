@@ -97,11 +97,14 @@
 ```
 DagLock/
   contracts/          (SilverScript covenants + Rust compilation)
-    src/daglock.sil          -- silverscript-lang (compile)
-    src/daglock_krc20.sil    -- silverscript-lang (compile)
-    src/daglock_arbiter.sil  -- daglock.sil + arbiterKey param
-    src/lib.rs               -- blake2b_simd, silverscript-lang
-    tests/                   -- TxScriptEngine execution tests
+    src/daglock.sil                    -- KAS escrow covenant
+    src/daglock_krc20.sil              -- KRC-20 escrow covenant
+    src/daglock_arbiter.sil            -- Arbiter (mediator/jury)
+    src/daglock_vault.sil              -- Standard time-locked vault
+    src/daglock_vault_softlock.sil     -- Password-recoverable vault
+    src/daglock_vault_multisig.sil     -- Multi-sig vault (up to 3-of-3)
+    src/lib.rs                         -- Compilation + template hash
+    tests/                             -- TxScriptEngine execution tests
 
   indexer/            (Rust backend)
     src/main.rs              -- api, config, crypto, db, listener
@@ -164,6 +167,11 @@ DagLock/
 | Add web test | `web/src/__tests__/<Component>.test.tsx` (mock `../api` with `mockApi()`) |
 | Add bot command | `bot/src/index.js` (command handler) |
 | Change fee percentage | `contracts/src/daglock.sil` (hardcoded `inputValue / 200`) |
+| Add vault type | Write new `.sil` file + add `compile_*()` in `contracts/src/lib.rs` |
+| Register API key | `POST /v1/apps/register` |
+| Add webhook | `POST /v1/apps/:id/webhooks` |
+| SDK integration | `npm install @daglock/sdk` |
+| Embed escrow widget | `<script src="https://unpkg.com/@daglock/widget"><daglock-escrow>` |
 | Change template hash logic | `contracts/src/lib.rs` (`template_parts_and_hash()`) |
 | Add authentication | `indexer/src/auth.rs` (SignatureVerifier trait) |
 | Add UTXO verification | `indexer/src/verification.rs` (EscrowVerifier trait) |
@@ -174,7 +182,7 @@ DagLock/
 ## Domain registry
 | Domain | Doc | Files | Purpose |
 |--------|-----|-------|---------|
-| contracts | `features/contracts.md` | 6 | SilverScript covenants + compilation + tests |
+| contracts | `features/contracts.md` | 8 | SilverScript covenants + compilation + tests |
 | indexer | `features/indexer.md` | 24 | REST API, DB, auth, crypto, verification, jury, messages |
 | cli | `features/cli.md` | 8 | Command-line power-user tool |
 | wasm-sdk | `features/wasm-sdk.md` | 1 | Browser/JS SDK for tx assembly |
@@ -206,7 +214,7 @@ DagLock/
 
 | ID | Issue | Severity | Status |
 |----|-------|----------|--------|
-| **S1** | MockVerifier used in production — no real UTXO verification | CRITICAL | ✅ Fixed — async `WrpcVerifier` with `get_utxos_by_addresses()` |
+| **S1** | MockVerifier used in production — no real UTXO verification | CRITICAL | ✅ Fixed — async `WrpcVerifier` with `get_utxos_by_addresses()` | — no real UTXO verification | CRITICAL | ✅ Fixed — async `WrpcVerifier` with `get_utxos_by_addresses()` |
 | **S2** | KRC-20 fee validation only boolean, not exact amount | HIGH | ✅ Fixed — exact `outputs[1].value == inputValue` + treasury script check |
 | **S3** | KRC-20 KCC-20 output ownership validation | HIGH | ⏭️ Closed — multi-sig design prevents (both signers must agree with SIGHASH_ALL) |
 | **S4** | trade_hash not validated on escrow creation | MEDIUM | ✅ Fixed — `daglock_shared::validate_trade_hash()` rejects malformed input |
@@ -249,6 +257,7 @@ DagLock/
 | Q5 | No structured request tracing | ❌ Open |
 | Q6 | Config validation gaps | ❌ Open |
 | Q7 | Web API no request timeout | ✅ Fixed — 30s AbortController on all fetch calls |
+| Q8 | Bot API no retry/backoff | ✅ Fixed — 3 attempts, 1s/2s/4s exponential backoff |
 | Q8 | Bot API no retry/backoff | ✅ Fixed — 3 attempts, 1s/2s/4s exponential backoff |
 
 #### Key Files Changed (Phase 1 + quick wins)
