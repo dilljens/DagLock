@@ -1,19 +1,37 @@
 pragma silverscript ^0.1.0;
 
+// DagLock Vault Softlock — Password-recoverable time-locked KAS storage
+//
+// Two spending paths:
+//   withdrawPassword(password)     — anyone with password can unlock, goes to beneficiaryKey
+//   withdrawTimeout(ownerSig)      — owner reclaims after timeout
+//
+// Password withdraw ALWAYS sends funds to beneficiaryKey. This is enforced
+// by the covenant. Owner timeout sends wherever the owner's signature allows.
+// For "open-ended" mode, set beneficiaryKey = ownerKey.
+
 contract DagLockVaultSoftlock(
     byte[32] ownerKey,
-    byte[32] passwordHash,
-    int timeout
+    byte[32] beneficiaryKey,      // where password withdraw MUST send funds
+    byte[32] passwordHash,         // SHA-256 of password
+    int timeout                    // Unix timestamp
 ) {
     entrypoint function withdrawPassword(byte[] password) {
         require(sha256(password) == passwordHash);
+
         int inputValue = tx.inputs[this.activeInputIndex].value;
+
+        // Password withdraw always restricted to beneficiary
+        byte[34] beneficiaryScript = new ScriptPubKeyP2PK(pubkey(beneficiaryKey));
+        require(tx.outputs[0].scriptPubKey == byte[](beneficiaryScript));
+
         require(tx.outputs[0].value == inputValue);
     }
 
     entrypoint function withdrawTimeout(sig ownerSig) {
         require(tx.time >= timeout);
         require(checkSig(ownerSig, pubkey(ownerKey)));
+
         int inputValue = tx.inputs[this.activeInputIndex].value;
         require(tx.outputs[0].value == inputValue);
     }

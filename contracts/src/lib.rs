@@ -26,6 +26,11 @@ pub fn daglock_arbiter_source() -> &'static str {
     include_str!("daglock_arbiter.sil")
 }
 
+/// The daglock_vault_multisig.sil source embedded at compile time.
+pub fn daglock_vault_multisig_source() -> &'static str {
+    include_str!("daglock_vault_multisig.sil")
+}
+
 /// The daglock_vault_softlock.sil source embedded at compile time.
 pub fn daglock_vault_softlock_source() -> &'static str {
     include_str!("daglock_vault_softlock.sil")
@@ -162,14 +167,34 @@ pub fn compile_daglock_krc20(
 /// - `beneficiary_key`: 32-byte compressed public key (zero = open-ended)
 /// - `password_hash`: 32-byte SHA-256 hash of the password
 /// - `timeout`: Unix timestamp (i64)
+/// Compile the DagLock Vault Multi-sig covenant.
+pub fn compile_daglock_vault_multisig(
+    key1: &[u8],
+    key2: &[u8],
+    key3: &[u8],
+    timeout: i64,
+) -> CompiledContract<'static> {
+    let source = daglock_vault_multisig_source();
+    let args = vec![
+        Expr::bytes(key1.to_vec()),
+        Expr::bytes(key2.to_vec()),
+        Expr::bytes(key3.to_vec()),
+        Expr::int(timeout),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_vault_multisig.sil should compile")
+}
+
 pub fn compile_daglock_vault_softlock(
     owner_key: &[u8],
+    beneficiary_key: &[u8],
     password_hash: &[u8],
     timeout: i64,
 ) -> CompiledContract<'static> {
     let source = daglock_vault_softlock_source();
     let args = vec![
         Expr::bytes(owner_key.to_vec()),
+        Expr::bytes(beneficiary_key.to_vec()),
         Expr::bytes(password_hash.to_vec()),
         Expr::int(timeout),
     ];
@@ -398,10 +423,15 @@ mod tests {
         let krc20_hex: String = krc20_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_krc20_template_hash={}", krc20_hex);
 
-        let softlock = compile_daglock_vault_softlock(&zero, &[0u8; 32], 1_700_000_000);
+        let softlock = compile_daglock_vault_softlock(&zero, &[0u8; 32], &[0u8; 32], 1_700_000_000);
         let (_, _, softlock_hash) = template_parts_and_hash(&softlock);
         let softlock_hex: String = softlock_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_vault_softlock_template_hash={}", softlock_hex);
+
+        let multisig = compile_daglock_vault_multisig(&zero, &zero, &zero, 1_700_000_000);
+        let (_, _, multisig_hash) = template_parts_and_hash(&multisig);
+        let multisig_hex: String = multisig_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_vault_multisig_template_hash={}", multisig_hex);
 
         let vault = compile_daglock_vault(&zero, 1_700_000_000);
         let (_, _, vault_hash) = template_parts_and_hash(&vault);
@@ -419,5 +449,31 @@ mod tests {
             c1.script, c2.script,
             "zero vs non-zero arbiter should differ"
         );
+    }
+
+    #[test]
+    fn multisig_source_is_non_empty() {
+        let src = daglock_vault_multisig_source();
+        assert!(src.contains("contract DagLockVaultMultisig"));
+        assert!(src.contains("entrypoint function withdraw"));
+    }
+
+    #[test]
+    fn compiles_daglock_multisig_with_valid_params() {
+        let pk = [0u8; 32];
+        let compiled = compile_daglock_vault_multisig(&pk, &pk, &pk, 1_700_000_000);
+        assert_eq!(compiled.abi.len(), 1);
+        assert!(!compiled.script.is_empty());
+    }
+
+    #[test]
+    fn multisig_template_hash_is_deterministic() {
+        let pk = [0u8; 32];
+        let c1 = compile_daglock_vault_multisig(&pk, &pk, &pk, 1_700_000_000);
+        let c2 = compile_daglock_vault_multisig(&pk, &pk, &pk, 1_700_000_000);
+        let (_, _, h1) = template_parts_and_hash(&c1);
+        let (_, _, h2) = template_parts_and_hash(&c2);
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 20);
     }
 }

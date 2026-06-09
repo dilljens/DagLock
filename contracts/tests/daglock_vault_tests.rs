@@ -285,6 +285,7 @@ fn softlock_password_withdraw_succeeds_correct_password() {
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
+        &pubkey_bytes(&beneficiary),
         &password_hash,
         timeout,
     );
@@ -358,6 +359,7 @@ fn softlock_password_withdraw_fails_wrong_password() {
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
+        &pubkey_bytes(&beneficiary),
         &password_hash,
         timeout,
     );
@@ -419,6 +421,7 @@ fn softlock_timeout_withdraw_succeeds_after_timeout() {
     let timeout: i64 = 1_600_000_000;
 
     let compiled = compile_daglock_vault_softlock(
+        &pubkey_bytes(&owner),
         &pubkey_bytes(&owner),
         &password_hash,
         timeout,
@@ -497,6 +500,7 @@ fn softlock_timeout_withdraw_fails_before_timeout() {
     let timeout: i64 = 3_000_000_000;
 
     let compiled = compile_daglock_vault_softlock(
+        &pubkey_bytes(&owner),
         &pubkey_bytes(&owner),
         &password_hash,
         timeout,
