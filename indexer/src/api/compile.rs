@@ -253,7 +253,7 @@ fn compile_vault_template(
         ));
     }
 
-    let compiled = daglock_contracts::compile_daglock_vault(&owner, timeout);
+    let compiled = daglock_contracts::compile_daglock_vault(&owner, timeout, &[0u8; 32]);
     Ok(compile_result(&compiled))
 }
 

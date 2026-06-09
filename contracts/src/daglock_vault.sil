@@ -2,24 +2,28 @@ pragma silverscript ^0.1.0;
 
 // DagLock Vault — Time-locked KAS storage
 //
-// Two spending paths:
+// Spending path:
 //   withdraw(sig ownerSig)     — owner reclaims after timeout
 //
-// No fee. No treasury. No counterparty. Pure self-custody time-lock.
-// Constructor parameters use byte[32] (not pubkey) to work around
-// the SilverScript compiler's strict type checking for constructor args.
-// Casts to pubkey happen within the function bodies.
+// 0.1% protocol fee (1/1000) sent to treasury on every withdrawal.
 
 contract DagLockVault(
     byte[32] ownerKey,
-    int timeout               // Unix timestamp before which withdrawal is blocked
+    int timeout,                  // Unix timestamp before which withdrawal is blocked
+    byte[32] treasuryKey          // DagLock fee treasury
 ) {
-    // ── Path A: Timeout Withdraw ─────────────────────────────────
     entrypoint function withdraw(sig ownerSig) {
         require(tx.time >= timeout);
         require(checkSig(ownerSig, pubkey(ownerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
-        require(tx.outputs[0].value == inputValue);
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 }

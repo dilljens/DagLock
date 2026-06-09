@@ -2,37 +2,36 @@ pragma silverscript ^0.1.0;
 
 // DagLock Vault Multi-sig — N-of-M time-locked KAS storage
 //
-// Two modes:
-//   threshold=1: single-signer (like basic vault)
-//   threshold=2: 2-of-2 (two keys, both required)
-//   threshold=3: 3-of-3 (three keys)
-//
-// Key count matches threshold:
-//   threshold=1 → key1 required
-//   threshold=2 → key1 + key2 required
-//   threshold=3 → all 3 keys required
+// Up to 3 signers. All provided keys must sign.
+// 0.1% protocol fee (1/1000) sent to treasury on withdrawal.
 
 contract DagLockVaultMultisig(
     byte[32] key1,
     byte[32] key2,     // zero if unused
     byte[32] key3,     // zero if unused
-    int timeout
+    int timeout,
+    byte[32] treasuryKey
 ) {
     entrypoint function withdraw(sig sig1, sig sig2, sig sig3) {
         require(tx.time >= timeout);
         require(checkSig(sig1, pubkey(key1)));
 
-        // If key2 is provided, it must sign
         if(key2 != byte[32](0)) {
             require(checkSig(sig2, pubkey(key2)));
         }
 
-        // If key3 is provided, it must sign
         if(key3 != byte[32](0)) {
             require(checkSig(sig3, pubkey(key3)));
         }
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
-        require(tx.outputs[0].value == inputValue);
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 }

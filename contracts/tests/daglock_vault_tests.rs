@@ -47,14 +47,21 @@ fn p2pk_script(pubkey: &[u8]) -> ScriptPublicKey {
 fn vault_withdraw_succeeds_after_timeout() {
     let owner = random_keypair();
     let timeout: i64 = 1_600_000_000; // past timestamp
+    let treasury = random_keypair();
 
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout);
+    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
 
     let input_value: u64 = 500_000;
-    let outputs = vec![TransactionOutput::new(
-        input_value,
-        p2pk_script(&pubkey_bytes(&owner)),
-    )];
+    let fee_amount = input_value / 1000;
+    let send_amount = input_value - fee_amount;
+    let outputs = vec![
+        TransactionOutput::new(send_amount,
+            p2pk_script(&pubkey_bytes(&owner)),
+        ),
+        TransactionOutput::new(fee_amount,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ),
+    ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([1u8; 32]), 0),
@@ -119,14 +126,21 @@ fn vault_withdraw_succeeds_after_timeout() {
 fn vault_withdraw_fails_before_timeout() {
     let owner = random_keypair();
     let timeout: i64 = 3_000_000_000; // future timestamp
+    let treasury = random_keypair();
 
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout);
+    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
 
     let input_value: u64 = 500_000;
-    let outputs = vec![TransactionOutput::new(
-        input_value,
-        p2pk_script(&pubkey_bytes(&owner)),
-    )];
+    let fee_amount = input_value / 1000;
+    let send_amount = input_value - fee_amount;
+    let outputs = vec![
+        TransactionOutput::new(send_amount,
+            p2pk_script(&pubkey_bytes(&owner)),
+        ),
+        TransactionOutput::new(fee_amount,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ),
+    ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([2u8; 32]), 0),
@@ -188,14 +202,21 @@ fn vault_withdraw_fails_wrong_signature() {
     let owner = random_keypair();
     let wrong_signer = random_keypair();
     let timeout: i64 = 1_600_000_000;
+    let treasury = random_keypair();
 
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout);
+    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
 
     let input_value: u64 = 500_000;
-    let outputs = vec![TransactionOutput::new(
-        input_value,
-        p2pk_script(&pubkey_bytes(&owner)),
-    )];
+    let fee_amount = input_value / 1000;
+    let send_amount = input_value - fee_amount;
+    let outputs = vec![
+        TransactionOutput::new(send_amount,
+            p2pk_script(&pubkey_bytes(&owner)),
+        ),
+        TransactionOutput::new(fee_amount,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ),
+    ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([3u8; 32]), 0),
@@ -282,19 +303,27 @@ fn softlock_password_withdraw_succeeds_correct_password() {
     let password = b"my-secure-password-123!";
     let password_hash = sha256_full(password);
     let timeout: i64 = 1_600_000_000;
+    let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&beneficiary),
         &password_hash,
         timeout,
+        &pubkey_bytes(&treasury),
     );
 
     let input_value: u64 = 500_000;
-    let outputs = vec![TransactionOutput::new(
-        input_value,
-        p2pk_script(&pubkey_bytes(&beneficiary)),
-    )];
+    let fee_amount = input_value / 1000;
+    let send_amount = input_value - fee_amount;
+    let outputs = vec![
+        TransactionOutput::new(send_amount,
+            p2pk_script(&pubkey_bytes(&beneficiary)),
+        ),
+        TransactionOutput::new(fee_amount,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ),
+    ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([6u8; 32]), 0),
@@ -358,19 +387,27 @@ fn softlock_password_withdraw_fails_wrong_password() {
     let password_hash = sha256_full(password);
     let wrong_password = b"wrong-password";
     let timeout: i64 = 1_600_000_000;
+    let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&beneficiary),
         &password_hash,
         timeout,
+        &pubkey_bytes(&treasury),
     );
 
     let input_value: u64 = 500_000;
-    let outputs = vec![TransactionOutput::new(
-        input_value,
-        p2pk_script(&pubkey_bytes(&beneficiary)),
-    )];
+    let fee_amount = input_value / 1000;
+    let send_amount = input_value - fee_amount;
+    let outputs = vec![
+        TransactionOutput::new(send_amount,
+            p2pk_script(&pubkey_bytes(&beneficiary)),
+        ),
+        TransactionOutput::new(fee_amount,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ),
+    ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([7u8; 32]), 0),
@@ -423,19 +460,27 @@ fn softlock_timeout_withdraw_succeeds_after_timeout() {
     let beneficiary = random_keypair();
     let password_hash = sha256_full(b"any-password");
     let timeout: i64 = 1_600_000_000;
+    let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&owner),
         &password_hash,
         timeout,
+        &pubkey_bytes(&treasury),
     );
 
     let input_value: u64 = 500_000;
-    let outputs = vec![TransactionOutput::new(
-        input_value,
-        p2pk_script(&pubkey_bytes(&owner)),
-    )];
+    let fee_amount = input_value / 1000;
+    let send_amount = input_value - fee_amount;
+    let outputs = vec![
+        TransactionOutput::new(send_amount,
+            p2pk_script(&pubkey_bytes(&owner)),
+        ),
+        TransactionOutput::new(fee_amount,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ),
+    ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([8u8; 32]), 0),
@@ -502,19 +547,27 @@ fn softlock_timeout_withdraw_fails_before_timeout() {
     let beneficiary = random_keypair();
     let password_hash = sha256_full(b"any");
     let timeout: i64 = 3_000_000_000;
+    let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&owner),
         &password_hash,
         timeout,
+        &pubkey_bytes(&treasury),
     );
 
     let input_value: u64 = 500_000;
-    let outputs = vec![TransactionOutput::new(
-        input_value,
-        p2pk_script(&pubkey_bytes(&owner)),
-    )];
+    let fee_amount = input_value / 1000;
+    let send_amount = input_value - fee_amount;
+    let outputs = vec![
+        TransactionOutput::new(send_amount,
+            p2pk_script(&pubkey_bytes(&owner)),
+        ),
+        TransactionOutput::new(fee_amount,
+            p2pk_script(&pubkey_bytes(&treasury)),
+        ),
+    ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([9u8; 32]), 0),

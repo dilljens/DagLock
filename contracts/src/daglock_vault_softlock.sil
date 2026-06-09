@@ -6,26 +6,30 @@ pragma silverscript ^0.1.0;
 //   withdrawPassword(password)     — anyone with password can unlock, goes to beneficiaryKey
 //   withdrawTimeout(ownerSig)      — owner reclaims after timeout
 //
-// Password withdraw ALWAYS sends funds to beneficiaryKey. This is enforced
-// by the covenant. Owner timeout sends wherever the owner's signature allows.
-// For "open-ended" mode, set beneficiaryKey = ownerKey.
+// 0.1% protocol fee (1/1000) sent to treasury on every withdrawal.
 
 contract DagLockVaultSoftlock(
     byte[32] ownerKey,
     byte[32] beneficiaryKey,      // where password withdraw MUST send funds
     byte[32] passwordHash,         // SHA-256 of password
-    int timeout                    // Unix timestamp
+    int timeout,                   // Unix timestamp
+    byte[32] treasuryKey           // DagLock fee treasury
 ) {
     entrypoint function withdrawPassword(byte[] password) {
         require(sha256(password) == passwordHash);
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
 
         // Password withdraw always restricted to beneficiary
         byte[34] beneficiaryScript = new ScriptPubKeyP2PK(pubkey(beneficiaryKey));
         require(tx.outputs[0].scriptPubKey == byte[](beneficiaryScript));
+        require(tx.outputs[0].value == sendAmount);
 
-        require(tx.outputs[0].value == inputValue);
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
     entrypoint function withdrawTimeout(sig ownerSig) {
@@ -33,6 +37,13 @@ contract DagLockVaultSoftlock(
         require(checkSig(ownerSig, pubkey(ownerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
-        require(tx.outputs[0].value == inputValue);
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 }
