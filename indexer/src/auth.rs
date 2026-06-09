@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Authentication module for DagLock API.
 //!
 //! Two modes:
@@ -568,7 +569,7 @@ pub fn verify_auth(
 /// Returns a hex-encoded 20-byte BLAKE2b-160 hash.
 pub fn generate_nonce() -> String {
     let random_bytes = rand::random::<[u8; 16]>();
-    let timestamp = chrono::Utc::now().timestamp_nanos();
+    let timestamp = chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0);
     let input = [&timestamp.to_le_bytes()[..], &random_bytes[..]].concat();
     let hash = blake2b_simd::Params::new()
         .hash_length(NONCE_LENGTH)

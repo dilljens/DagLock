@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Webhook subscription management
 
 use axum::http::StatusCode;

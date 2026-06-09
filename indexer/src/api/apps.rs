@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! App registration and API key management for integrator access.
 
 use axum::http::StatusCode;

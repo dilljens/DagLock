@@ -1,9 +1,9 @@
+#![allow(dead_code)]
 //! Webhook delivery service.
 //!
 //! Dispatches lifecycle events to registered webhook endpoints.
 //! Retries up to 3 times with exponential backoff (1s, 4s, 10s).
 
-use std::sync::Arc;
 use sqlx::{Pool, Sqlite};
 use tracing::{info, warn, error};
 

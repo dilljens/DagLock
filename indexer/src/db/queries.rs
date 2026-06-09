@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Database query functions for the DagLock indexer.
 
 use blake2b_simd::Params;

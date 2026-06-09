@@ -2,9 +2,9 @@
 //!
 //! Provides async verification of UTXO existence via wRPC connection
 //! to a Kaspa node. Falls back to MockVerifier when offline (dev mode).
+use std::sync::Arc;
 
 use async_trait::async_trait;
-use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::types::Escrow;
