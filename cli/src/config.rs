@@ -8,12 +8,14 @@ use tracing::info;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub api_url: String,
+    pub treasury_key: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             api_url: "http://localhost:8543".to_string(),
+            treasury_key: None,
         }
     }
 }

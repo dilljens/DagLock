@@ -5,6 +5,7 @@
 
 mod config;
 mod tx;
+mod wallet;
 
 use clap::{Parser, Subcommand};
 

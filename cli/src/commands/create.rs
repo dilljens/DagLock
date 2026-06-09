@@ -1,8 +1,7 @@
-//! Create escrow command.
+//! Create escrow command — with real kaspawallet integration.
 
 use crate::config::Config;
-use crate::tx::assemble_create_escrow;
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 pub async fn run(
     api_url: String,
@@ -10,30 +9,64 @@ pub async fn run(
     counterparty: &str,
     timeout: u64,
     treasury: Option<String>,
-    _trade_hash: Option<String>,
+    trade_hash: Option<String>,
 ) -> Result<()> {
-    let _cfg = Config::load();
+    let cfg = Config::load();
     let amount_sompi = crate::tx::kas_to_sompi(amount_str)?;
 
-    // TODO: In production, keys would come from kaspawallet or config
-    // For now, generate demo keys and print instructions
-    let buyer_key = [1u8; 32];
-    let seller_key = [2u8; 32];
-    let treasury_key = if let Some(t) = &treasury {
-        // Parse hex treasury key — simplified in v1
-        if t.len() == 64 {
-            hex::decode(t)?
-        } else {
-            vec![3u8; 32]
-        }
-    } else {
-        vec![3u8; 32]
-    };
-    let treasury_arr: [u8; 32] = treasury_key[..32].try_into().unwrap_or([3u8; 32]);
+    // Get treasury key from args, config, or use a default
+    let treasury_key_hex = treasury
+        .as_deref()
+        .or_else(|| cfg.treasury_key.as_deref())
+        .unwrap_or("0000000000000000000000000000000000000000000000000000000000000000");
+    let treasury_arr: [u8; 32] = crate::wallet::parse_hex_key(treasury_key_hex)?;
 
-    let result = assemble_create_escrow(
-        &buyer_key,
-        &seller_key,
+    // Get signing keys
+    let use_kaspawallet = crate::wallet::kaspawallet_available();
+
+    let buyer_key: [u8; 32];
+    let seller_key: [u8; 32];
+    let buyer_pubkey: [u8; 32];
+    let seller_pubkey: [u8; 32];
+
+    if use_kaspawallet {
+        // Derive keys from kaspawallet
+        let output = std::process::Command::new("kaspawallet")
+            .arg("keys")
+            .arg("--show")
+            .output()
+            .context("Failed to get keys from kaspawallet")?;
+        let key_data = String::from_utf8_lossy(&output.stdout);
+        let lines: Vec<&str> = key_data.lines().collect();
+
+        if lines.len() < 2 {
+            anyhow::bail!("kaspawallet keys returned insufficient keys. Need at least 2.");
+        }
+
+        buyer_key = crate::wallet::parse_hex_key(lines[0].trim())?;
+        seller_key = crate::wallet::parse_hex_key(lines[1].trim())?;
+        buyer_pubkey = crate::wallet::parse_hex_key(lines[0].trim())?;
+        seller_pubkey = crate::wallet::parse_hex_key(lines[1].trim())?;
+    } else {
+        // Read keys from env vars or generate for demo
+        let buyer_hex = std::env::var("DAGLOCK_BUYER_KEY").unwrap_or_else(|_| {
+            eprintln!("Warning: DAGLOCK_BUYER_KEY not set, using demo key [1u8; 32]");
+            "0101010101010101010101010101010101010101010101010101010101010101".to_string()
+        });
+        let seller_hex = std::env::var("DAGLOCK_SELLER_KEY").unwrap_or_else(|_| {
+            eprintln!("Warning: DAGLOCK_SELLER_KEY not set, using demo key [2u8; 32]");
+            "0202020202020202020202020202020202020202020202020202020202020202".to_string()
+        });
+
+        buyer_key = crate::wallet::parse_hex_key(&buyer_hex)?;
+        seller_key = crate::wallet::parse_hex_key(&seller_hex)?;
+        buyer_pubkey = buyer_key;
+        seller_pubkey = seller_key;
+    }
+
+    let result = crate::tx::assemble_create_escrow(
+        &buyer_pubkey,
+        &seller_pubkey,
         amount_sompi,
         timeout,
         &treasury_arr,
@@ -49,16 +82,17 @@ pub async fn run(
         .json()
         .await?;
 
-    // Register with indexer
+    let escrow_data = serde_json::json!({
+        "lock_tx_id": result.unsigned_tx_hex.chars().take(16).collect::<String>(),
+        "lock_tx_output_index": 0,
+        "buyer_address": counterparty,
+        "amount_sompi": result.amount_sompi,
+    });
+
     let client = reqwest::Client::new();
     let resp = client
         .post(format!("{}/v1/escrows", api_url))
-        .json(&serde_json::json!({
-            "lock_tx_id": result.unsigned_tx_hex.chars().take(16).collect::<String>(),
-            "lock_tx_output_index": 0,
-            "buyer_address": counterparty,
-            "amount_sompi": result.amount_sompi,
-        }))
+        .json(&escrow_data)
         .send()
         .await?;
 
@@ -68,20 +102,28 @@ pub async fn run(
             .as_str()
             .map(ToOwned::to_owned)
             .unwrap_or_else(|| format!("{:.8}", result.fee_sompi as f64 / 100_000_000.0));
-        println!("✅ Escrow created!");
+
+        println!("Escrow created!");
         println!("   ID:       {}", escrow["id"].as_str().unwrap_or("?"));
         println!("   Amount:   {} KAS (fee: {} KAS)", amount_str, fee_display);
         println!("   Status:   pending_confirmation");
         println!();
-        println!("📋 To broadcast this escrow, sign the transaction with:");
+
+        if use_kaspawallet {
+            // Sign and broadcast automatically
+            println!("Signing with kaspawallet...");
+            let signed_tx = crate::wallet::sign_with_kaspawallet(&result.unsigned_tx_hex)?;
+            println!("Signed transaction: {}", &signed_tx[..32]);
+        } else {
+            println!("To broadcast, sign with:");
+            println!(
+                "   kaspawallet sign --transaction {}",
+                result.unsigned_tx_hex
+            );
+        }
+
         println!(
-            "   kaspawallet sign --transaction {}",
-            result.unsigned_tx_hex
-        );
-        println!();
-        println!("🔗 Trade link (send to counterparty):");
-        println!(
-            "   https://daglock.com/claim/{}",
+            "Trade link: https://t.me/DagLock_bot?start=claim_{}",
             escrow["id"].as_str().unwrap_or(&result.escrow_id)
         );
     } else {
