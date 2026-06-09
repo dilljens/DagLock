@@ -420,6 +420,89 @@ pub struct MessageListResponse {
     pub messages: Vec<EscrowMessage>,
     pub total: i64,
 }
+/// Typed error codes for structured API responses.
+#[derive(Debug, Clone, Copy)]
+pub enum ApiErrorCode {
+    InternalError,
+    InvalidAddress,
+    InvalidAmount,
+    InvalidTradeHash,
+    InvalidTemplate,
+    EscrowNotFound,
+    EscrowNotActive,
+    EscrowAlreadyFinalized,
+    Unauthorized,
+    Forbidden,
+    DuplicateLock,
+    SelfReferential,
+    VerificationFailed,
+    OfferNotFound,
+    OfferNotAvailable,
+    AppNotFound,
+    KeyNotFound,
+    WebhookNotFound,
+    InvalidEvent,
+    InsufficientJurors,
+    PreimageMismatch,
+    InvalidPreimage,
+}
+
+impl ApiErrorCode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::InternalError => "internal_error",
+            Self::InvalidAddress => "invalid_address",
+            Self::InvalidAmount => "invalid_amount",
+            Self::InvalidTradeHash => "invalid_trade_hash",
+            Self::InvalidTemplate => "invalid_template",
+            Self::EscrowNotFound => "escrow_not_found",
+            Self::EscrowNotActive => "escrow_not_active",
+            Self::EscrowAlreadyFinalized => "escrow_already_finalized",
+            Self::Unauthorized => "unauthorized",
+            Self::Forbidden => "forbidden",
+            Self::DuplicateLock => "duplicate_lock",
+            Self::SelfReferential => "self_referential",
+            Self::VerificationFailed => "verification_failed",
+            Self::OfferNotFound => "offer_not_found",
+            Self::OfferNotAvailable => "offer_not_available",
+            Self::AppNotFound => "app_not_found",
+            Self::KeyNotFound => "key_not_found",
+            Self::WebhookNotFound => "webhook_not_found",
+            Self::InvalidEvent => "invalid_event",
+            Self::InsufficientJurors => "insufficient_jurors",
+            Self::PreimageMismatch => "preimage_mismatch",
+            Self::InvalidPreimage => "invalid_preimage",
+        }
+    }
+
+    pub fn msg(self) -> &'static str {
+        match self {
+            Self::InternalError => "An internal error occurred.",
+            Self::InvalidAddress => "Invalid Kaspa address format.",
+            Self::InvalidAmount => "Amount must be positive and within limits.",
+            Self::InvalidTradeHash => "Must be 64 hex characters (32 bytes).",
+            Self::InvalidTemplate => "Not a known DagLock covenant template.",
+            Self::EscrowNotFound => "No escrow found with this ID.",
+            Self::EscrowNotActive => "Escrow is not in an active state.",
+            Self::EscrowAlreadyFinalized => "Escrow is already finalized.",
+            Self::Unauthorized => "Missing or invalid authentication.",
+            Self::Forbidden => "Not authorized for this action.",
+            Self::DuplicateLock => "An escrow already exists for this UTXO.",
+            Self::SelfReferential => "Buyer and seller cannot be the same address.",
+            Self::VerificationFailed => "On-chain verification failed.",
+            Self::OfferNotFound => "Offer not found.",
+            Self::OfferNotAvailable => "Offer is no longer available.",
+            Self::AppNotFound => "App not found.",
+            Self::KeyNotFound => "API key not found.",
+            Self::WebhookNotFound => "Webhook not found.",
+            Self::InvalidEvent => "Invalid event type.",
+            Self::InsufficientJurors => "Not enough registered jurors.",
+            Self::PreimageMismatch => "Preimage does not match trade hash.",
+            Self::InvalidPreimage => "Preimage must be valid hex.",
+        }
+    }
+}
+
 /// API error response.
 #[derive(Debug, Serialize)]
 pub struct ApiError {
