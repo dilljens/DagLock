@@ -111,6 +111,28 @@ function getUserAddress(userId) {
 	return users[userId]?.address;
 }
 
+// In-memory conversation wizard state
+const convState = new Map();
+
+function startConv(userId) {
+	convState.set(userId, { step: "amount", data: {} });
+}
+function getConv(userId) {
+	return convState.get(userId);
+}
+function updateConv(userId, key, value) {
+	const s = convState.get(userId) || { step: "amount", data: {} };
+	s.data[key] = value;
+	convState.set(userId, s);
+}
+function advanceConv(userId, step) {
+	const s = convState.get(userId);
+	if (s) s.step = step;
+}
+function endConv(userId) {
+	convState.delete(userId);
+}
+
 function setUserAddress(userId, address) {
 	users[userId] = { address, updatedAt: Date.now() };
 	saveUsers();
@@ -206,26 +228,15 @@ bot.command("create", async (ctx) => {
 	const address = getUserAddress(ctx.from.id);
 	if (!address) {
 		return await ctx.reply(
-			"⚠️ Please set your address first:\n`/setaddress <kaspa-address>`",
+			"Please set your address first:\n/setaddress <kaspa-address>",
 			{ parse_mode: "Markdown" },
 		);
 	}
-
-	const keyboard = new InlineKeyboard().url(
-		"🌐 Open Web Dashboard",
-		"https://daglock.com",
-	);
-
+	startConv(ctx.from.id);
+	updateConv(ctx.from.id, "address", address);
 	await ctx.reply(
-		"📝 *Create Escrow*\n\n" +
-			"To create an escrow, visit the web dashboard:\n\n" +
-			"1. Click the button below\n" +
-			"2. Connect your wallet\n" +
-			"3. Create an escrow with your address\n\n" +
-			"Your address: `" +
-			address +
-			"`",
-		{ parse_mode: "Markdown", reply_markup: keyboard },
+		"*Create Escrow - Step 1/4*\n\nHow much KAS do you want to escrow?\n\nExample: `100` or `5000.5`",
+		{ parse_mode: "Markdown" },
 	);
 });
 
@@ -580,6 +591,98 @@ bot.command("evidence", async (ctx) => {
 
 // ── Help command ────────────────────────────────────────────────────
 
+// --- Wizard text handler ---
+bot.on("message:text", async (ctx) => {
+	const conv = getConv(ctx.from.id);
+	if (!conv) return;
+
+	const text = ctx.message.text.trim();
+	const step = conv.step;
+
+	try {
+		if (step === "amount") {
+			const num = parseFloat(text);
+			if (isNaN(num) || num <= 0) {
+				return await ctx.reply("Enter a valid amount, e.g. `100`", {
+					parse_mode: "Markdown",
+				});
+			}
+			updateConv(ctx.from.id, "amount", num);
+			advanceConv(ctx.from.id, "counterparty");
+			return await ctx.reply(
+				"*Create Escrow - Step 2/4*\n\nEnter the seller's Kaspa address:\n\nOr type `skip` to create without a seller.",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "counterparty") {
+			if (text !== "skip" && !text.startsWith("kaspa:")) {
+				return await ctx.reply("Enter a `kaspa:` address or `skip`", {
+					parse_mode: "Markdown",
+				});
+			}
+			if (text !== "skip") updateConv(ctx.from.id, "seller", text);
+			advanceConv(ctx.from.id, "timeout");
+			return await ctx.reply(
+				"*Create Escrow - Step 3/4*\n\nChoose a timeout:\n\n`1` - 24 hours\n`3` - 3 days\n`7` - 7 days\n`30` - 30 days",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "timeout") {
+			const days = parseInt(text);
+			if (isNaN(days) || ![1, 3, 7, 30].includes(days)) {
+				return await ctx.reply("Enter `1`, `3`, `7`, or `30`", {
+					parse_mode: "Markdown",
+				});
+			}
+			updateConv(ctx.from.id, "timeoutDays", days);
+			advanceConv(ctx.from.id, "dispute");
+			return await ctx.reply(
+				"*Create Escrow - Step 4/4*\n\nDispute mode:\n\n`standard` - Timeout refund\n`mediator` - Specific mediator\n`jury` - Community vote",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "dispute") {
+			const mode = text.toLowerCase();
+			if (!["standard", "mediator", "jury"].includes(mode)) {
+				return await ctx.reply("Choose `standard`, `mediator`, or `jury`", {
+					parse_mode: "Markdown",
+				});
+			}
+			const data = conv.data;
+			const timeoutSec =
+				Math.floor(Date.now() / 1000) + (data.timeoutDays || 1) * 86400;
+			const sompi = Math.round((data.amount || 0) * 100_000_000);
+			try {
+				const result = await api.createEscrow({
+					lock_tx_id: "pending_" + Date.now(),
+					lock_tx_output_index: 0,
+					buyer_address: data.address,
+					seller_address: data.seller || undefined,
+					amount_sompi: sompi,
+					dispute_mode: mode,
+				});
+				endConv(ctx.from.id);
+				await ctx.reply(
+					"*Escrow Created!*\n\nID: `" +
+						result.id +
+						"`\nAmount: " +
+						data.amount +
+						" KAS\n\nTrade link:\nhttps://t.me/DagLock_bot?start=claim_" +
+						result.id,
+					{ parse_mode: "Markdown" },
+				);
+			} catch (e) {
+				await ctx.reply("Error: " + e.message);
+			}
+		}
+	} catch (e) {
+		await ctx.reply("Error: " + e.message);
+		endConv(ctx.from.id);
+	}
+});
 bot.command("help", async (ctx) => {
 	await ctx.reply(
 		"🔒 *DagLock Bot Help*\n\n" +
