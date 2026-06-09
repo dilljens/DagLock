@@ -75,23 +75,26 @@ pub fn parse_network_id(network: &str) -> NetworkId {
     match network {
         "mainnet" => NetworkId::new(NetworkType::Mainnet),
         n if n.starts_with("testnet-") => {
-            let suffix: u32 = n.strip_prefix("testnet-")
+            let suffix: u32 = n
+                .strip_prefix("testnet-")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(12);
             NetworkId::with_suffix(NetworkType::Testnet, suffix)
-        },
+        }
         n if n.starts_with("simnet-") => {
-            let suffix: u32 = n.strip_prefix("simnet-")
+            let suffix: u32 = n
+                .strip_prefix("simnet-")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0);
             NetworkId::with_suffix(NetworkType::Simnet, suffix)
-        },
+        }
         n if n.starts_with("devnet-") => {
-            let suffix: u32 = n.strip_prefix("devnet-")
+            let suffix: u32 = n
+                .strip_prefix("devnet-")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0);
             NetworkId::with_suffix(NetworkType::Devnet, suffix)
-        },
+        }
         _ => {
             warn!("Unknown network '{network}', defaulting to testnet-12");
             NetworkId::with_suffix(NetworkType::Testnet, 12)
@@ -267,7 +270,8 @@ async fn run_offline_loop(db: Pool<Sqlite>) {
 /// Update market prices for price_locked offers (fetches from CoinGecko).
 #[allow(dead_code)]
 async fn update_market_prices(pool: &Pool<Sqlite>) -> Result<u64, String> {
-    let usd_price = crate::types::fetch_kas_usd_price().await
+    let usd_price = crate::types::fetch_kas_usd_price()
+        .await
         .ok_or_else(|| "Failed to fetch price from CoinGecko".to_string())?;
 
     // Update all market-priced offers

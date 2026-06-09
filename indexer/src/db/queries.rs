@@ -1777,7 +1777,6 @@ pub async fn cleanup_expired_auth_nonces(
     Ok(result.rows_affected())
 }
 
-
 // ── App + API Key Queries (Integrator Access) ───────────────────────
 
 /// Register a new app and generate an API key.
@@ -1788,11 +1787,17 @@ pub async fn register_app(
     callback_url: Option<&str>,
     owner_address: &str,
 ) -> Result<(crate::types::App, String), sqlx::Error> {
-    let app_id = format!("app_{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap());
+    let app_id = format!(
+        "app_{}",
+        uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+    );
     let now = chrono::Utc::now().timestamp();
 
     // Generate a secure API key and hash it
-    let key_plaintext = format!("dl_sk_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
+    let key_plaintext = format!(
+        "dl_sk_{}",
+        uuid::Uuid::new_v4().to_string().replace('-', "")
+    );
     let key_hash = blake2b_simd::Params::new()
         .hash_length(32)
         .hash(key_plaintext.as_bytes())
@@ -1802,7 +1807,7 @@ pub async fn register_app(
     // Insert app
     sqlx::query(
         "INSERT INTO apps (id, name, callback_url, created_at, owner_address, is_active)
-         VALUES (?1, ?2, ?3, ?4, ?5, 1)"
+         VALUES (?1, ?2, ?3, ?4, ?5, 1)",
     )
     .bind(&app_id)
     .bind(name)
@@ -1813,10 +1818,13 @@ pub async fn register_app(
     .await?;
 
     // Insert API key hash
-    let key_id = format!("k_{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap());
+    let key_id = format!(
+        "k_{}",
+        uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+    );
     sqlx::query(
         "INSERT INTO api_keys (id, key_hash, app_id, label, created_at, is_active)
-         VALUES (?1, ?2, ?3, 'default', ?4, 1)"
+         VALUES (?1, ?2, ?3, 'default', ?4, 1)",
     )
     .bind(&key_id)
     .bind(&key_hash)
@@ -1887,7 +1895,10 @@ pub async fn touch_api_key(pool: &Pool<Sqlite>, api_key: &str) -> Result<(), sql
 }
 
 /// Get an app by ID.
-pub async fn get_app(pool: &Pool<Sqlite>, app_id: &str) -> Result<Option<crate::types::App>, sqlx::Error> {
+pub async fn get_app(
+    pool: &Pool<Sqlite>,
+    app_id: &str,
+) -> Result<Option<crate::types::App>, sqlx::Error> {
     let rows = sqlx::query("SELECT * FROM apps WHERE id = ?1")
         .bind(app_id)
         .fetch_all(pool)
@@ -1896,10 +1907,13 @@ pub async fn get_app(pool: &Pool<Sqlite>, app_id: &str) -> Result<Option<crate::
 }
 
 /// List API keys for an app.
-pub async fn list_api_keys(pool: &Pool<Sqlite>, app_id: &str) -> Result<Vec<crate::types::ApiKey>, sqlx::Error> {
+pub async fn list_api_keys(
+    pool: &Pool<Sqlite>,
+    app_id: &str,
+) -> Result<Vec<crate::types::ApiKey>, sqlx::Error> {
     let rows = sqlx::query(
         "SELECT k.id, k.app_id, k.label, k.created_at, k.last_used_at, k.is_active
-         FROM api_keys k WHERE k.app_id = ?1 ORDER BY k.created_at DESC"
+         FROM api_keys k WHERE k.app_id = ?1 ORDER BY k.created_at DESC",
     )
     .bind(app_id)
     .fetch_all(pool)
@@ -1908,7 +1922,11 @@ pub async fn list_api_keys(pool: &Pool<Sqlite>, app_id: &str) -> Result<Vec<crat
 }
 
 /// Revoke an API key (soft delete).
-pub async fn revoke_api_key(pool: &Pool<Sqlite>, key_id: &str, app_id: &str) -> Result<bool, sqlx::Error> {
+pub async fn revoke_api_key(
+    pool: &Pool<Sqlite>,
+    key_id: &str,
+    app_id: &str,
+) -> Result<bool, sqlx::Error> {
     let result = sqlx::query("UPDATE api_keys SET is_active = 0 WHERE id = ?1 AND app_id = ?2")
         .bind(key_id)
         .bind(app_id)
@@ -1939,7 +1957,6 @@ fn row_to_api_key(row: sqlx::sqlite::SqliteRow) -> crate::types::ApiKey {
         is_active: row.try_get("is_active").unwrap_or(1) != 0,
     }
 }
-
 
 #[cfg(test)]
 mod tests {

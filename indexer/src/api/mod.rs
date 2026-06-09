@@ -1,5 +1,6 @@
 //! REST API routes for the DagLock indexer.
 
+pub mod apps;
 pub mod compile;
 pub mod escrows;
 pub mod evidence;
@@ -10,10 +11,9 @@ pub mod network;
 pub mod offers;
 pub mod receipts;
 pub mod reputation;
+pub mod status;
 pub mod swap;
 pub mod vaults;
-pub mod apps;
-pub mod status;
 pub mod vouches;
 pub mod webhooks;
 

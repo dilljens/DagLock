@@ -13,8 +13,8 @@ use crate::api::AppState;
 
 use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
 use crate::db::queries;
-use crate::types::*;
 use crate::services::webhooks::{self, WebhookEvent};
+use crate::types::*;
 use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
 use crate::websocket::WsEvent;
 // Preimage verification uses SHA-256 via the covenant's trade_hash

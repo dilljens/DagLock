@@ -12,8 +12,8 @@ use uuid::Uuid;
 use crate::api::AppState;
 use crate::auth::AuthContext;
 use crate::db::queries;
-use crate::types::*;
 use crate::services::webhooks::{self, WebhookEvent};
+use crate::types::*;
 
 /// POST /v1/offers
 pub async fn create(

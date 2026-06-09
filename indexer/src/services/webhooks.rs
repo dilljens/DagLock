@@ -5,7 +5,7 @@
 //! Retries up to 3 times with exponential backoff (1s, 4s, 10s).
 
 use sqlx::{Pool, Sqlite};
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 /// Event types that can trigger webhooks.
 #[derive(Debug, Clone, Copy)]
@@ -36,10 +36,14 @@ impl WebhookEvent<'_> {
 
     fn id(&self) -> &str {
         match self {
-            Self::EscrowCreated(id) | Self::EscrowSettled(id)
-            | Self::EscrowRefunded(id) | Self::EscrowDisputed(id)
-            | Self::EscrowCancelled(id) | Self::EscrowExpired(id)
-            | Self::OfferCreated(id) | Self::OfferAccepted(id) => id,
+            Self::EscrowCreated(id)
+            | Self::EscrowSettled(id)
+            | Self::EscrowRefunded(id)
+            | Self::EscrowDisputed(id)
+            | Self::EscrowCancelled(id)
+            | Self::EscrowExpired(id)
+            | Self::OfferCreated(id)
+            | Self::OfferAccepted(id) => id,
         }
     }
 
@@ -50,7 +54,8 @@ impl WebhookEvent<'_> {
             "event": event,
             "created_at": chrono::Utc::now().timestamp(),
             "data": { "id": id }
-        }).to_string()
+        })
+        .to_string()
     }
 }
 
@@ -65,7 +70,7 @@ pub fn dispatch(pool: Pool<Sqlite>, event: WebhookEvent<'_>) {
         let hooks = match sqlx::query_as::<_, (String, String)>(
             "SELECT w.id, w.url FROM webhooks w
              INNER JOIN apps a ON a.id = w.app_id
-             WHERE w.event = ?1 AND w.is_active = 1 AND a.is_active = 1"
+             WHERE w.event = ?1 AND w.is_active = 1 AND a.is_active = 1",
         )
         .bind(&event_name)
         .fetch_all(&pool)
@@ -87,7 +92,10 @@ pub fn dispatch(pool: Pool<Sqlite>, event: WebhookEvent<'_>) {
         for (hook_id, url) in &hooks {
             info!("Delivering webhook {event_name} to {url}");
 
-            let delivery_id = format!("whd_{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap());
+            let delivery_id = format!(
+                "whd_{}",
+                uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+            );
             let now = chrono::Utc::now().timestamp();
 
             // Record delivery attempt
@@ -100,10 +108,15 @@ pub fn dispatch(pool: Pool<Sqlite>, event: WebhookEvent<'_>) {
 
             // Send with retries
             for attempt in 0..3 {
-                let delay = match attempt { 0 => 0, 1 => 1, _ => 4 };
+                let delay = match attempt {
+                    0 => 0,
+                    1 => 1,
+                    _ => 4,
+                };
                 tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
 
-                match client.post(url)
+                match client
+                    .post(url)
                     .header("Content-Type", "application/json")
                     .header("X-Daglock-Webhook-Id", &delivery_id)
                     .header("X-Daglock-Webhook-Timestamp", now.to_string())
@@ -126,7 +139,10 @@ pub fn dispatch(pool: Pool<Sqlite>, event: WebhookEvent<'_>) {
                             info!("Webhook {delivery_id} delivered to {url} (HTTP {code})");
                             break;
                         }
-                        warn!("Webhook {delivery_id} got HTTP {code} from {url} (attempt {})", attempt + 1);
+                        warn!(
+                            "Webhook {delivery_id} got HTTP {code} from {url} (attempt {})",
+                            attempt + 1
+                        );
                     }
                     Err(e) => {
                         let _ = sqlx::query(
@@ -135,7 +151,10 @@ pub fn dispatch(pool: Pool<Sqlite>, event: WebhookEvent<'_>) {
                         )
                         .bind(&delivery_id).bind(chrono::Utc::now().timestamp())
                         .execute(&pool).await;
-                        warn!("Webhook {delivery_id} delivery error: {e} (attempt {})", attempt + 1);
+                        warn!(
+                            "Webhook {delivery_id} delivery error: {e} (attempt {})",
+                            attempt + 1
+                        );
                     }
                 }
             }

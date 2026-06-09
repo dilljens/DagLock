@@ -741,18 +741,42 @@ fn arbiter_refund_fails_without_arbiter_sig() {
     let zero_hash = [0u8; 32];
 
     let compiled = compile_daglock_arbiter(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller), &zero_hash, timeout,
-        &pubkey_bytes(&treasury), &pubkey_bytes(&arbiter),
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        &zero_hash,
+        timeout,
+        &pubkey_bytes(&treasury),
+        &pubkey_bytes(&arbiter),
     );
 
     let input_value: u64 = 200_000;
-    let outputs = vec![TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&buyer)))];
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&buyer)),
+    )];
 
     let input = TransactionInput::new(
-        TransactionOutpoint::new(TransactionId::from_bytes([7u8; 32]), 0), vec![], 0, 0u8,
+        TransactionOutpoint::new(TransactionId::from_bytes([7u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
     );
-    let tx = Transaction::new(1, vec![input], outputs.clone(), timeout as u64, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs.clone(),
+        timeout as u64,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -778,11 +802,17 @@ fn arbiter_refund_fails_without_arbiter_sig() {
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
 
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
-    assert!(result.is_err(), "refund without arbiter sig should fail even after timeout");
+    assert!(
+        result.is_err(),
+        "refund without arbiter sig should fail even after timeout"
+    );
 }
-

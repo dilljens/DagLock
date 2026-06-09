@@ -254,8 +254,8 @@ fn vault_withdraw_fails_wrong_signature() {
 
 /* ─── Softlock Vault Tests ───────────────────────────────────── */
 
-use sha2::{Digest, Sha256};
 use daglock_contracts::compile_daglock_vault_softlock;
+use sha2::{Digest, Sha256};
 
 fn sha256_full(password: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
@@ -323,7 +323,9 @@ fn softlock_password_withdraw_succeeds_correct_password() {
     let sigscript = compiled
         .build_sig_script(
             entrypoints::WITHDRAW_PASSWORD,
-            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(password.to_vec())],
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(
+                password.to_vec(),
+            )],
         )
         .expect("build_sig_script");
 
@@ -389,7 +391,9 @@ fn softlock_password_withdraw_fails_wrong_password() {
     let sigscript = compiled
         .build_sig_script(
             entrypoints::WITHDRAW_PASSWORD,
-            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(wrong_password.to_vec())],
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(
+                wrong_password.to_vec(),
+            )],
         )
         .expect("build_sig_script");
 
@@ -557,5 +561,8 @@ fn softlock_timeout_withdraw_fails_before_timeout() {
     let mut vm =
         TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
-    assert!(result.is_err(), "softlock timeout withdraw before timeout should fail");
+    assert!(
+        result.is_err(),
+        "softlock timeout withdraw before timeout should fail"
+    );
 }

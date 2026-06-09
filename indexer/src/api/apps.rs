@@ -70,7 +70,10 @@ pub async fn get_by_id(
         Some(a) => Ok(Json(json!(a))),
         None => Err((
             StatusCode::NOT_FOUND,
-            Json(json!(ApiError::new("app_not_found", format!("No app found with id '{id}'")))),
+            Json(json!(ApiError::new(
+                "app_not_found",
+                format!("No app found with id '{id}'")
+            ))),
         )),
     }
 }
@@ -83,7 +86,10 @@ pub async fn list_keys(
     let keys = queries::list_api_keys(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+            Json(json!(ApiError::new(
+                "internal_error",
+                "An internal error occurred."
+            ))),
         )
     })?;
 
@@ -99,7 +105,10 @@ pub async fn create_key(
     let app = queries::get_app(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+            Json(json!(ApiError::new(
+                "internal_error",
+                "An internal error occurred."
+            ))),
         )
     })?;
 
@@ -111,7 +120,10 @@ pub async fn create_key(
     }
 
     // Generate new key
-    let key_plaintext = format!("dl_sk_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
+    let key_plaintext = format!(
+        "dl_sk_{}",
+        uuid::Uuid::new_v4().to_string().replace('-', "")
+    );
     let key_hash = blake2b_simd::Params::new()
         .hash_length(32)
         .hash(key_plaintext.as_bytes())
@@ -122,7 +134,7 @@ pub async fn create_key(
 
     sqlx::query(
         "INSERT INTO api_keys (key_hash, app_id, label, created_at, is_active)
-         VALUES (?1, ?2, 'additional', ?3, 1)"
+         VALUES (?1, ?2, 'additional', ?3, 1)",
     )
     .bind(&key_hash)
     .bind(&id)
@@ -132,7 +144,10 @@ pub async fn create_key(
     .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", "Failed to create key"))),
+            Json(json!(ApiError::new(
+                "internal_error",
+                "Failed to create key"
+            ))),
         )
     })?;
 
@@ -151,12 +166,17 @@ pub async fn delete_key(
     State(state): State<AppState>,
     Path((app_id, key_id)): Path<(String, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let revoked = queries::revoke_api_key(&state.db, &key_id, &app_id).await.map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new("internal_error", "Failed to revoke key"))),
-        )
-    })?;
+    let revoked = queries::revoke_api_key(&state.db, &key_id, &app_id)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "Failed to revoke key"
+                ))),
+            )
+        })?;
 
     if revoked {
         Ok(Json(json!({ "status": "revoked" })))

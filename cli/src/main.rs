@@ -300,8 +300,15 @@ async fn main() -> anyhow::Result<()> {
                 max_price,
             } => {
                 commands::offer::create(
-                    api_url, &side, &base, &quote, &amount,
-                    price_type, price_offset, min_price, max_price,
+                    api_url,
+                    &side,
+                    &base,
+                    &quote,
+                    &amount,
+                    price_type,
+                    price_offset,
+                    min_price,
+                    max_price,
                 )
                 .await?;
             }

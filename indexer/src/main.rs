@@ -9,8 +9,8 @@ mod config;
 mod crypto;
 mod db;
 mod listener;
-mod types;
 mod services;
+mod types;
 mod verification;
 mod websocket;
 

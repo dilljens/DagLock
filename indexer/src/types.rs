@@ -120,7 +120,6 @@ pub struct CreateEscrowRequest {
     pub price_type: Option<String>,
 }
 
-
 /// App registered by an integrator.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct App {
@@ -545,7 +544,6 @@ pub struct TransferVaultRequest {
     pub signature: String,
 }
 
-
 // ── Shared Helpers ────────────────────────────────────────────────
 
 use axum::http::StatusCode;
@@ -565,7 +563,10 @@ pub fn generate_id(prefix: &str) -> String {
 pub fn internal_error() -> (StatusCode, Json<Value>) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        Json(json!(ApiError::new("internal_error", "An internal error occurred."))),
+        Json(json!(ApiError::new(
+            "internal_error",
+            "An internal error occurred."
+        ))),
     )
 }
 
@@ -606,7 +607,6 @@ pub fn conflict(code: &str, message: &str) -> (StatusCode, Json<Value>) {
 
 /// Standard unauthorized error.
 
-
 /// Fetch KAS/USD price from CoinGecko with 5s timeout.
 /// Returns None if the request fails or price is zero.
 pub async fn fetch_kas_usd_price() -> Option<f64> {
@@ -622,7 +622,11 @@ pub async fn fetch_kas_usd_price() -> Option<f64> {
         .ok()?;
     let price_json: serde_json::Value = resp.json().await.ok()?;
     let price = price_json["kaspa"]["usd"].as_f64()?;
-    if price > 0.0 { Some(price) } else { None }
+    if price > 0.0 {
+        Some(price)
+    } else {
+        None
+    }
 }
 
 pub fn unauthorized(message: &str) -> (StatusCode, Json<Value>) {
