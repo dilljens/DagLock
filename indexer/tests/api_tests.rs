@@ -9,24 +9,8 @@ use sqlx::SqlitePool;
 
 /// Helper to create a test database pool with migrations
 async fn test_pool() -> SqlitePool {
-    let pool = SqlitePool::connect("sqlite::memory:")
-        .await
-        .expect("Failed to create test pool");
-
-    // Run migrations in order
-    sqlx::query(include_str!("../src/db/migrations/001_create_escrows.sql"))
-        .execute(&pool)
-        .await
-        .expect("Failed to run migration 001");
-    sqlx::query(include_str!("../src/db/migrations/002_create_offers.sql"))
-        .execute(&pool)
-        .await
-        .expect("Failed to run migration 002");
-    sqlx::query(include_str!("../src/db/migrations/003_create_indexes.sql"))
-        .execute(&pool)
-        .await
-        .expect("Failed to run migration 003");
-
+    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+    daglock_indexer::db::schema::migrate(&pool).await.unwrap();
     pool
 }
 

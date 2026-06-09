@@ -45,7 +45,7 @@
 | Domain | Run |
 |--------|-----|
 | contracts | `cargo test -p daglock-contracts` |
-| indexer | `cargo test -p daglock-indexer` |
+| indexer | `cargo test -p daglock-indexer` — 36 unit + 4 lifecycle |
 | cli | `cargo test -p daglock-cli` |
 | wasm-sdk | `cargo test -p daglock-wasm-sdk` |
 | web | `cd web && npm test` |
@@ -183,8 +183,8 @@ DagLock/
 | Domain | Doc | Files | Purpose |
 |--------|-----|-------|---------|
 | contracts | `features/contracts.md` | 8 | SilverScript covenants + compilation + tests |
-| indexer | `features/indexer.md` | 24 | REST API, DB, auth, crypto, verification, jury, messages |
-| cli | `features/cli.md` | 8 | Command-line power-user tool |
+| indexer | `features/indexer.md` | 27 | REST API, DB, auth, crypto, verification, jury, messages, webhooks, apps |
+| cli | `features/cli.md` | 10 | Command-line power-user tool |
 | wasm-sdk | `features/wasm-sdk.md` | 1 | Browser/JS SDK for tx assembly |
 | web | `features/web.md` | 14 | React + Vite dashboard |
 | bot | `features/bot.md` | 2 | Telegram bot (Node.js) |
