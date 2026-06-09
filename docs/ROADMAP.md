@@ -1,6 +1,6 @@
 # DagLock Development Roadmap
 
-> Updated June 6, 2026. Post-audit revision — critical security and usability issues identified.
+> Updated June 9, 2026. Post-audit fixes complete. Pre-mainnet sprint in progress.
 
 **Toccata Mainnet Hard Fork:** Activates at DAA score 474,165,565 (~June 30, 16:15 UTC).
 **DagLock mainnet launch target:** June 30, 2026 (same day as Toccata).
@@ -9,183 +9,122 @@
 
 ## Current State
 
-Everything in Phases 0-3 is **built, tested, and running on Testnet 12**. However, a comprehensive audit on June 6 identified **7 critical/high security issues** and **7 high-priority usability issues** that must be resolved before mainnet launch. The audit also revealed structural debt that should be addressed.
-
-**The code is NOT production-ready until Phase 1 (Critical Security) of the audit fix plan is complete.**
-
----
-
-## Phase 0: Covenants  (Done)
-
-| Task | Status |
-|---|---|
-| `daglock.sil` — KAS escrow (release, swap, refund) |  Done |
-| `daglock_krc20.sil` — KRC-20 escrow via ICC pattern |  Done |
-| `daglock_arbiter.sil` — KAS escrow with mediator/jury paths |  Done |
-| `daglock_vault.sil` — time-locked self-custody vault |  Done |
-| `daglock_vault_softlock.sil` — password-recoverable vault with beneficiary |  Done |
-| `daglock_vault_multisig.sil` — multi-sig vault (up to 3-of-3) |  Done |
-| Compilation against `silverc` |  Done |
-| TxScriptEngine unit tests — all paths + negatives |  Done (7+ per covenant) |
-| Script mass benchmarking |  Done |
-| Template hash extraction |  Done |
-| Published open-source |  github.com/dilljens/DagLock |
-
-**Remaining (from audit):**
-- [ ] **S2: KRC-20 exact fee enforcement in covenant** — currently only boolean check
-- [ ] **S3: KRC-20 KCC-20 output ownership validation** — verify seller receives tokens
-- [ ] **Template hash regeneration** after covenant changes
+**168 tests pass across 6 crateworks (Rust + web).**
+**CI: green** — zero warnings, all checks pass.
+**Production: live** at `daglock-production.up.railway.app` (template hashes visible, offline/MockVerifier mode).
+**Security audit:** All 7 critical/high findings fixed.
 
 ---
 
-## Phase 1: Indexer + Counterparty Discovery  (Mostly Done)
+## Phase 0: Covenants  (Done — 6 contracts)
 
-| Task | Status |
-|---|---|
-| REST API v1 — 30+ endpoints |  Done |
-| SQLite schema — escrows, offers, reputation, jury, messages, etc. |  Done |
-| Offer board — create, list, accept, cancel offers |  Done |
-| Reputation system — Beta formula, recency weighting, wash trading signal |  Done |
-| Settlement receipts — BLAKE2b-hashed verifiable receipts |  Done |
-| Encrypted messaging — AES-256-GCM per-escrow threads |  Done |
-| Jury system — random juror selection, voting, case lifecycle |  Done |
-| Evidence logging — signed proof during disputes |  Done |
-| Vouching / Web of Trust |  Done |
-| Identity linking — Telegram handle to Kaspa address |  Done |
-| Covenant compiler API — compile templates via REST |  Done |
-| wRPC listener |  **Stub** — detects nothing, logs only. **S1: Must implement real UTXO verification** |
+| Covenant | File | Entrypoints | Fee | Status |
+|----------|------|-------------|-----|--------|
+| KAS escrow | `daglock.sil` | release, swap, refund | 0.5% treasury | Done |
+| KRC-20 escrow | `daglock_krc20.sil` | release, swap, refund | 0.5% treasury | Done (S2 fixed) |
+| Arbiter (mediator/jury) | `daglock_arbiter.sil` | release, swap, refundAfterTimeout, dispute paths | 0.5% treasury | Done |
+| Vault (standard) | `daglock_vault.sil` | withdraw | None | Done |
+| Vault Softlock | `daglock_vault_softlock.sil` | withdrawPassword, withdrawTimeout | None | Done |
+| Vault Multisig | `daglock_vault_multisig.sil` | withdraw (up to 3-of-3) | None | Done |
 
-**Critical Remaining (from audit):**
-- [ ] **S1: Real async WrpcVerifier** — implement `get_utxos_by_outpoints` via wRPC
-- [ ] **S4: Validate trade_hash on escrow creation** (64 hex chars)
-- [ ] **S5: Replay protection for signed messages** (timestamp + nonce)
-- [ ] **A2: Fix migration .ok() silent failures** — use PRAGMA table_info checks
-- [ ] **A8: Template hash verification on create** — reject unknown templates
-- [ ] **A7: OpenAPI spec** — add utoipa annotations
-- [ ] **Q5: Structured request tracing** — request_id, user_address, escrow_id spans
+### Template Hashes
+| Covenant | Hash |
+|----------|------|
+| KAS | `30876e3ea42d0e23bb0980f3fd97ae8807e9c70f` |
+| Arbiter | `c6d10350b51d5fedcc05382d02d8334a783be220` |
+| KRC-20 | `8a43a8438d183a92bc7b94337c031196ff16725b` |
+| Vault | `d773d10a9a2626986226e4eca528e0cb071b79be` |
+| Softlock | `dd2d3699db1332bb21fcc31ef3971963e8735b16` |
+| Multisig | (run `cargo test -p daglock-contracts print_template_hashes`) |
 
 ---
 
-## Phase 2: Telegram Bot + CLI  (Done but with gaps)
+## Phase 1: Security & Audit Fixes  (Done)
 
-| Task | Status |
-|---|---|
-| Telegram bot — `/create`, `/claim`, `/offers`, `/list`, `/reputation`, `/receipt`, `/dispute`, `/msg`, `/messages`, `/status` |  Done, running |
-| CLI tool — `daglock-cli` with 7 command modules |  Done |
-| Trade link deep links (`t.me/DagLock_bot?start=claim_abc123`) |  Done |
-| KasWare wallet bridge |  Not implemented |
-
-**Critical Remaining (from audit):**
-- [ ] **U1: CLI create uses real wallet keys** — integrate `kaspawallet sign` subprocess
-- [ ] **U3: CLI wallet integration module** — shared signing logic for all commands
-- [ ] **U4: Bot native /create wizard** — grammY conversation flow
-- [ ] **S6: Bot encrypt user addresses at rest** — libsodium with BOT_ENCRYPTION_KEY
-- [ ] **Q8: Bot API retry/backoff** — 3 attempts, exponential backoff
+| ID | Issue | Fix | Status |
+|----|-------|-----|--------|
+| S1 | MockVerifier in production | Async WrpcVerifier with real get_utxos_by_addresses() | Done |
+| S2 | KRC-20 fee boolean-only | Exact check: outputs[1].value == inputValue | Done |
+| S3 | KCC-20 ownership validation | Closed — multi-sig design prevents | Closed |
+| S4 | trade_hash unvalidated | daglock_shared::validate_trade_hash() on create | Done |
+| S5 | No replay protection | action:id:ts:nonce format, DB-backed nonce store | Done |
+| S6 | Bot plaintext addresses | AES-256-GCM encryption | Done |
+| S7 | Docker root | Non-root daglock user | Done |
 
 ---
 
-## Phase 3: Web UI  (Done but with gaps)
+## Phase 2: Indexer API  (Done — 30+ endpoints)
 
-| Task | Status |
-|---|---|
-| Create escrow page |  Done |
-| Claim page |  Done |
-| Dashboard — escrows by status/token |  Done |
-| Offer board with filters |  Done |
-| Reputation view inline on trade cards |  Done |
-| Settlement receipts (JSON) |  Done |
-| Jury registration + voting UI |  Done |
-| Encrypted messaging UI |  Done |
-| Vault creation UI |  Done |
-| Telegram linking UI |  Done |
-| Evidence submission UI |  Done |
-| Atomic swap wizard |  **Deferred** — covenant supports it, no guided UI |
+### Integrator API (New June 8-9)
+| Feature | Status |
+|---------|--------|
+| `POST /v1/apps/register` — API key registration | Done |
+| `/v1/apps/:id/keys` — key management CRUD | Done |
+| `/v1/apps/:id/webhooks` — 8 event types, 3x retry | Done |
+| `GET /v1/openapi.json` — OpenAPI 3.1 spec | Done |
+| `GET /v1/status` — public status page | Done |
 
-**Critical Remaining (from audit):**
-- [ ] **U2: Web CreateEscrowForm uses real lock_tx_id** — WASM compile → KasWare sign → broadcast → submit tx_id
-- [ ] **U7: Web onboarding modal** — first-visit: "Need KasWare + testnet KAS + connect wallet"
-- [ ] **Q7: Web API request timeout** — AbortController 30s timeout
-- [ ] **Q2/Q3: Use shared fee constant** — replace all `200` with `FEE_DENOMINATOR`
+### Outgoing Integrations
+| Package | Status |
+|---------|--------|
+| `@daglock/sdk` — TypeScript client (npm) | Done |
+| `@daglock/widget` — `<daglock-escrow>` custom element | Done |
 
 ---
 
-## Phase 4: Audit Fixes — Critical Security (June 6 — June 20)
+## Phase 3: Web UI  (Rewritten June 6-9)
 
-**Goal:** Resolve all CRITICAL/HIGH security findings before mainnet.
-
-| Task | Status | Owner |
-|---|---|---|
-| **0. Shared crate** — `FEE_DENOMINATOR` constant + `validate_trade_hash` |  Not started | |
-| **1. S1: Real async WrpcVerifier** — `get_utxos_by_outpoints` |  Not started | |
-| **2. S2: KRC-20 exact fee enforcement** — covenant change |  Not started | |
-| **3. S3: KRC-20 KCC-20 output ownership validation** |  Not started | |
-| **4. S2/S3 execution tests** — TxScriptEngine for new paths |  Not started | |
-| **5. S4: Validate trade_hash on create** |  Not started | |
-| **6. S5: Replay protection** — timestamp + nonce in auth messages |  Not started | |
-| **7. S6: Bot encrypt user addresses** — libsodium |  Not started | |
-| **8. S7: Dockerfile non-root user** |  Not started | |
-
-**Dependencies:** Task 1 blocks 2, 3, 6. Task 2 blocks 3, 4. Task 0 feeds into 2, 3, 5.
+- Hash-based router, sidebar nav (240px, mobile drawer)
+- WalletContext — connected address auto-fills everywhere
+- Toast notifications, emoji-free design
+- 6 pages: Dashboard, Offers, Escrows, Vaults, Reputation, Jury
 
 ---
 
-## Phase 5: Audit Fixes — Usability & Structure (June 15 — June 28)
+## Phase 4: Telegram Bot  (Running)
 
-**Goal:** Make CLI/web/bot actually usable for real escrow creation; pay down structural debt.
+16 commands, trade link deep links, user address encryption, API retry/backoff.
 
-| Task | Status | Phase |
-|---|---|---|
-| **9. U1: CLI real wallet keys** — `kaspawallet sign` subprocess |  Not started | 2 |
-| **10. U2: Web real lock_tx_id flow** — WASM → KasWare → broadcast → submit |  Not started | 2 |
-| **11. U3: CLI wallet module** — shared signing logic |  Not started | 2 |
-| **12. U4: Bot native /create wizard** — grammY conversations |  Not started | 2 |
-| **13. U5: Structured API errors** — ApiErrorCode enum |  Not started | 2 |
-| **14. U6: CoinGecko fallback + caching** — TTL 15min, stale flag |  Not started | 2 |
-| **15. U7: Web onboarding modal** |  Not started | 2 |
-| **16. A1: Async verifier** (done in S1) |  Done in S1 | 1 |
-| **17. A2: Migration idempotency** — PRAGMA checks |  Not started | 3 |
-| **18. A3: Split queries.rs** — 11 modules, incremental |  Not started | 3 |
-| **19. A4: Lifecycle integration tests** — create→lock→settle→receipt |  Not started | 3 |
-| **20. A5: Service layer** — EscrowService |  Not started | 3 |
-| **21. A7: OpenAPI spec** — utoipa + /v1/openapi.json |  Not started | 3 |
-| **22. A8: Template hash verification** on create |  Not started | 1 |
-| **23. Q1: Remove .unwrap() in production** |  Not started | 4 |
-| **24. Q2/Q3: Shared fee constant everywhere** |  Not started | 4 |
-| **25. Q4: TradeHash newtype** with FromStr |  Not started | 4 |
-| **26. Q5: Request tracing** (done with A7) |  Not started | 3 |
-| **27. Q7: Web API timeout** |  Not started | 4 |
-| **28. Q8: Bot retry/backoff** |  Not started | 4 |
+**Pending:** Native `/create` wizard (redirects to web).
 
 ---
 
-## Phase 6: Mainnet Launch (June 28 — June 30)
+## Phase 5: CLI  (Functional)
 
-| Task | Status |
-|---|---|
-| Deploy mainnet indexer on Railway (staging, dormant) | ~June 28 |
-| Final testnet validation with all fixes | June 28-29 |
-| Swap daglock.com to mainnet API | June 30 |
-| Deploy @DagLock_bot (mainnet) | June 30 |
-| Announce mainnet launch | June 30 |
-| Monitoring — health checks, error alerting | Basic |
+7 command modules, unsigned tx assembly.
+**Pending:** Real wallet integration with `kaspawallet sign`.
+
+---
+
+## Phase 6: Remaining Before Mainnet (June 30)
+
+### Important
+| Task | Effort |
+|------|--------|
+| Testnet deploy with real wRPC node | 2-3h |
+| CLI wallet integration (U1, U3) | 1 day |
+| Bot /create wizard (U4) | 1 day |
+
+### Nice-to-Have
+| Task | Effort |
+|------|--------|
+| Split queries.rs | 1-2 days |
+| Lifecycle integration tests | 1 day |
+| Structured API errors | 2h |
+| CoinGecko caching | 2h |
+
+### Deferable
+Atomic swap wizard UI, price oracle, cross-chain BTC.
 
 ---
 
 ## Phase 7: Post-Launch (Q3 2026+)
 
-| Candidate | Why it might matter |
-|---|---|
-| Atomic swap wizard UI | Makes cross-token swaps accessible |
-| Price oracle (CoinGecko KAS/USD) | Lock fiat-equivalent rate at creation |
-| Batch escrow / multi-asset swaps | Complex OTC trades |
-| Integrator API | Let other dApps embed DagLock |
-| Analytics dashboard | Public volume, fees, stats |
-| Volume-based fee rebates | Only if a whale asks |
-| Cross-chain (BTC) | Standard HTLC pattern, ~2-3 weeks work |
-| KasWare bridge for bot | Sign from browser instead of manual sigs |
+Analytics dashboard, volume-based fee rebates, hardware wallet support (see `docs/WALLET.md`).
 
 ---
 
 ## Audit Reference
 
-Full audit findings and 30-task fix plan: `.pi/last-plan.md` and `docs/wiki/_index.md#audit-log`
+Full audit findings: `docs/wiki/_index.md#audit-log`
+Wallet build plan: `docs/WALLET.md`
