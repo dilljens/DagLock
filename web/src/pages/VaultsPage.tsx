@@ -15,7 +15,7 @@ export function VaultsPage() {
 	return (
 		<div>
 			<div className="page-header">
-				<h1>🏦 Vaults</h1>
+				<h1><h1> Vaults</h1></h1>
 				<p>Time-locked KAS storage. Only you can withdraw after the timeout.</p>
 			</div>
 			<div className="tab-bar">
@@ -37,7 +37,7 @@ function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
 		<div className="empty-state">
-			<div className="empty-state-icon">🔗</div>
+			<div className="empty-state-icon"></div>
 			<h3>Connect your wallet</h3>
 			<p>Connect KasWare to manage vaults.</p>
 			<button className="button primary" onClick={connect}>Connect Wallet</button>
@@ -55,7 +55,7 @@ function formatVaultType(type: VaultType): string {
 
 function formatVaultStatus(status: VaultStatus): string {
 	const map: Record<VaultStatus, string> = {
-		locked: "🔒 Locked", unlocked: "🔓 Unlocked", expired: "⏰ Expired", transferred: "↗️ Transferred",
+		locked: "Locked", unlocked: "Unlocked", expired: "Expired", transferred: "Transferred",
 	};
 	return map[status] || status;
 }
@@ -87,7 +87,7 @@ function MyVaults({ address }: { address: string }) {
 	if (vaults.error) return <p className="muted error-text">{vaults.error}</p>;
 	if (!vaults.data?.length) return (
 		<div className="empty-state">
-			<div className="empty-state-icon">🏦</div>
+			<div className="empty-state-icon"></div>
 			<h3>No vaults yet</h3>
 			<p>Create your first time-locked vault.</p>
 		</div>
@@ -136,7 +136,7 @@ function WithdrawButton({ vault, address }: { vault: Vault; address: string }) {
 	return (
 		<button className="button primary" disabled={loading} onClick={handleWithdraw}
 			style={{ marginTop: "12px" }}>
-			{loading ? "Withdrawing…" : "🔓 Withdraw"}
+			{loading ? "Withdrawing…" : " Withdraw"}
 		</button>
 	);
 }
@@ -172,7 +172,7 @@ function CreateVault({ address }: { address: string }) {
 
 	if (status === "done") return (
 		<div className="empty-state">
-			<div className="empty-state-icon">✅</div>
+			<div className="empty-state-icon"></div>
 			<h3>Vault created!</h3>
 			<p>ID: <code>{vaultId}</code><br />Locked until timeout expires.</p>
 		</div>

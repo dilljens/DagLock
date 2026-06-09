@@ -106,7 +106,7 @@ export function CreateOfferForm({ onDone }: { onDone: () => void }) {
 						Fee: {fee.toFixed(4)} KAS (0.5%)
 						{n < 1 && (
 							<span style={{ color: "#ff9800", marginLeft: "8px" }}>
-								⚠️ Low amount — fee may be significant
+								 Low amount — fee may be significant
 							</span>
 						)}
 					</p>

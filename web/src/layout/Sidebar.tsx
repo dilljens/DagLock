@@ -4,16 +4,15 @@ import { useWallet } from "../context/WalletContext";
 interface NavItem {
 	route: Route;
 	label: string;
-	icon: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-	{ route: "/", label: "Dashboard", icon: "📊" },
-	{ route: "/offers", label: "Offers", icon: "📋" },
-	{ route: "/escrows", label: "Escrows", icon: "🔒" },
-	{ route: "/vaults", label: "Vaults", icon: "🏦" },
-	{ route: "/reputation", label: "Reputation", icon: "🛡️" },
-	{ route: "/jury", label: "Jury", icon: "⚖️" },
+	{ route: "/", label: "Dashboard",  },
+	{ route: "/offers", label: "Offers",  },
+	{ route: "/escrows", label: "Escrows",  },
+	{ route: "/vaults", label: "Vaults",  },
+	{ route: "/reputation", label: "Reputation",  },
+	{ route: "/jury", label: "Jury" },
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -32,7 +31,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
 			<aside className={`sidebar ${open ? "sidebar--open" : ""}`}>
 				<div className="sidebar-brand">
-					<div className="sidebar-logo">🔗</div>
+					<div className="sidebar-logo"></div>
 					<div>
 						<div className="sidebar-title">DagLock</div>
 						<div className="sidebar-subtitle">Trustless Escrow</div>
@@ -46,7 +45,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 							className={`sidebar-link ${route === item.route ? "sidebar-link--active" : ""}`}
 							onClick={() => handleNav(item.route)}
 						>
-							<span className="sidebar-link-icon">{item.icon}</span>
+							<span className="sidebar-link-icon">{item.label.charAt(0)}</span>
 							<span>{item.label}</span>
 						</button>
 					))}
@@ -73,7 +72,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 						</button>
 					)}
 					{state.network && state.network !== "mainnet" && (
-						<div className="sidebar-network">🧪 {state.network}</div>
+						<div className="sidebar-network"> {state.network}</div>
 					)}
 				</div>
 			</aside>

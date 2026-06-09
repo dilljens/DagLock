@@ -15,7 +15,7 @@ export function ReputationPage() {
 	return (
 		<div>
 			<div className="page-header">
-				<h1>🛡️ Reputation</h1>
+				<h1><h1> Reputation</h1></h1>
 				<p>On-chain trading history, vouches, and identity verification.</p>
 			</div>
 			<div className="tab-bar">
@@ -46,7 +46,7 @@ function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
 		<div className="empty-state">
-			<div className="empty-state-icon">🔗</div>
+			<div className="empty-state-icon"></div>
 			<h3>Connect your wallet</h3>
 			<p>Connect KasWare to manage reputation and vouches.</p>
 			<button className="button primary" onClick={connect}>Connect Wallet</button>
@@ -107,7 +107,7 @@ function ReputationDisplay({ address }: { address: string }) {
 					)}
 					{d.trading_concentration > 0.9 && (
 						<div className="row">
-							<span>⚠️ Wash trading signal</span>
+							<span> Wash trading signal</span>
 							<strong style={{ color: "#ff7b7b" }}>{(d.trading_concentration * 100).toFixed(0)}% with one counterparty</strong>
 						</div>
 					)}
@@ -180,7 +180,7 @@ function VouchSection() {
 
 	if (status === "done") return (
 		<div className="empty-state">
-			<div className="empty-state-icon">🤝</div>
+			<div className="empty-state-icon"></div>
 			<h3>Vouch created!</h3>
 			<p>You vouched for {subject.slice(0, 24)}…</p>
 		</div>
@@ -234,7 +234,7 @@ function IdentitySection() {
 
 	if (status === "done") return (
 		<div className="empty-state">
-			<div className="empty-state-icon">📱</div>
+			<div className="empty-state-icon"></div>
 			<h3>Telegram linked!</h3>
 			<p>@{handle} is now associated with your address.</p>
 		</div>

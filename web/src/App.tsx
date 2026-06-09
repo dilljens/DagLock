@@ -88,7 +88,7 @@ function AppInner() {
 							marginBottom: "16px",
 						}}
 					>
-						🧪 TESTNET — Use{" "}
+						 TESTNET — Use{" "}
 						<a
 							href="https://faucet-tn10.kaspanet.io/"
 							target="_blank"

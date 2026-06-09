@@ -15,7 +15,7 @@ export function JuryPage() {
 	return (
 		<div>
 			<div className="page-header">
-				<h1>⚖️ Jury</h1>
+				<h1><h1>⚖ Jury</h1></h1>
 				<p>Community dispute resolution. Register as a juror, vote on cases.</p>
 			</div>
 			<div className="tab-bar">
@@ -39,7 +39,7 @@ function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
 		<div className="empty-state">
-			<div className="empty-state-icon">🔗</div>
+			<div className="empty-state-icon"></div>
 			<h3>Connect your wallet</h3>
 			<p>Connect KasWare to participate in the jury system.</p>
 			<button className="button primary" onClick={connect}>Connect Wallet</button>
@@ -67,7 +67,7 @@ function MyCases({ address }: { address: string }) {
 	if (cases.error) return <p className="muted error-text">{cases.error}</p>;
 	if (!cases.data?.length) return (
 		<div className="empty-state">
-			<div className="empty-state-icon">⚖️</div>
+			<div className="empty-state-icon">⚖</div>
 			<h3>No active cases</h3>
 			<p>You're not assigned to any jury cases right now.</p>
 		</div>
@@ -165,7 +165,7 @@ function RegisterSection({ address }: { address: string }) {
 
 	if (status === "done") return (
 		<div className="empty-state">
-			<div className="empty-state-icon">✅</div>
+			<div className="empty-state-icon"></div>
 			<h3>Registered as juror!</h3>
 			<p>You'll be assigned to dispute cases when they arise. Stay responsive.</p>
 		</div>
@@ -204,7 +204,7 @@ function CandidatesSection() {
 	if (candidates.error) return <p className="muted error-text">{candidates.error}</p>;
 	if (!candidates.data?.length) return (
 		<div className="empty-state">
-			<div className="empty-state-icon">👥</div>
+			<div className="empty-state-icon"></div>
 			<h3>No registered jurors</h3>
 			<p>Be the first to register!</p>
 		</div>

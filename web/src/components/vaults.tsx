@@ -195,13 +195,13 @@ export function VaultListPanel() {
 	function formatVaultStatus(status: VaultStatus): string {
 		switch (status) {
 			case "locked":
-				return "🔒 Locked";
+				return " Locked";
 			case "unlocked":
-				return "🔓 Unlocked";
+				return " Unlocked";
 			case "expired":
-				return "⏰ Expired";
+				return "Expired";
 			case "transferred":
-				return "↗️ Transferred";
+				return "Transferred";
 			default:
 				return status;
 		}
@@ -297,7 +297,7 @@ export function VaultStatusPanel({
 				<div className="row">
 					<span>Status</span>
 					<strong className={isLocked ? "error-text" : "success-text"}>
-						{isLocked ? "🔒 Locked" : "🔓 Unlocked"}
+						{isLocked ? " Locked" : " Unlocked"}
 					</strong>
 				</div>
 				<div className="row">

@@ -55,7 +55,7 @@ function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
 		<div className="empty-state">
-			<div className="empty-state-icon">🔗</div>
+			<div className="empty-state-icon"></div>
 			<h3>Connect your wallet</h3>
 			<p>Connect KasWare to create and manage offers.</p>
 			<button className="button primary" onClick={connect}>
@@ -88,7 +88,7 @@ function BrowseOffers() {
 		<div>
 			{filtered.length === 0 && (
 				<div className="empty-state">
-					<div className="empty-state-icon">📭</div>
+					<div className="empty-state-icon"></div>
 					<h3>No open offers</h3>
 					<p>Be the first to create one!</p>
 				</div>
@@ -227,7 +227,7 @@ function MyOffers({ address }: { address: string }) {
 			)}
 			{filtered?.length === 0 && !offers.loading && (
 				<div className="empty-state">
-					<div className="empty-state-icon">📭</div>
+					<div className="empty-state-icon"></div>
 					<h3>No offers yet</h3>
 					<p>Create your first offer to start trading.</p>
 				</div>
@@ -299,7 +299,7 @@ function CreateOffer({ address }: { address: string }) {
 	if (status === "done") {
 		return (
 			<div className="empty-state">
-				<div className="empty-state-icon">✅</div>
+				<div className="empty-state-icon"></div>
 				<h3>Offer created!</h3>
 				<p>It's now visible on the public board.</p>
 			</div>

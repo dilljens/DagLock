@@ -106,7 +106,7 @@ export function SignWithWallet({
 				disabled={signing}
 				style={{ fontSize: "12px", padding: "4px 10px" }}
 			>
-				{signing ? "Signing..." : "✍️ Sign with Wallet"}
+				{signing ? "Signing..." : "Sign with Wallet"}
 			</button>
 			{error && (
 				<p className="muted" style={{ fontSize: "12px", color: "#ff7b7b", marginTop: "4px" }}>

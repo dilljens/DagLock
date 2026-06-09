@@ -53,7 +53,7 @@ function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
 		<div className="empty-state">
-			<div className="empty-state-icon">🔗</div>
+			<div className="empty-state-icon"></div>
 			<h3>Connect your wallet</h3>
 			<p>Connect KasWare to create and manage escrows.</p>
 			<button className="button primary" onClick={connect}>
@@ -84,7 +84,7 @@ function MyEscrows({ address }: { address: string }) {
 	if (!escrows.data?.length)
 		return (
 			<div className="empty-state">
-				<div className="empty-state-icon">🔒</div>
+				<div className="empty-state-icon"></div>
 				<h3>No escrows yet</h3>
 				<p>Create your first escrow to start trading trustlessly.</p>
 			</div>
@@ -152,13 +152,13 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 						disabled={!!loading}
 						onClick={() => doAction("settle")}
 					>
-						{loading === "settle" ? "Settling…" : "✅ Settle"}
+						{loading === "settle" ? "Settling…" : " Settle"}
 					</button>
 					<button className="button" disabled={!!loading} onClick={() => doAction("refund")}>
-						{loading === "refund" ? "Refunding…" : "↩️ Refund"}
+						{loading === "refund" ? "Refunding…" : "Refund"}
 					</button>
 					<button className="button" disabled={!!loading} onClick={() => doAction("cancel")}>
-						{loading === "cancel" ? "Cancelling…" : "🛑 Cancel"}
+						{loading === "cancel" ? "Cancelling…" : " Cancel"}
 					</button>
 				</>
 			)}
@@ -167,7 +167,7 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 					Cancel
 				</button>
 			)}
-			{escrow.status === "disputed" && <p className="muted">⚠️ Under dispute</p>}
+			{escrow.status === "disputed" && <p className="muted"> Under dispute</p>}
 		</div>
 	);
 }
@@ -221,7 +221,7 @@ function CreateEscrow({ address }: { address: string }) {
 	if (status === "done" && result) {
 		return (
 			<div className="empty-state">
-				<div className="empty-state-icon">✅</div>
+				<div className="empty-state-icon"></div>
 				<h3>Escrow created!</h3>
 				<p>
 					ID: {result.id}
@@ -287,7 +287,7 @@ function CreateEscrow({ address }: { address: string }) {
 			</FormField>
 			{tradeSecret && (
 				<div style={{ fontSize: "12px", color: "#ff9800", marginTop: "8px" }}>
-					⚠️ Save this secret: <code>{tradeSecret}</code>
+					 Save this secret: <code>{tradeSecret}</code>
 				</div>
 			)}
 			<button
