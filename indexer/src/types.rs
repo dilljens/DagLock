@@ -607,9 +607,27 @@ pub fn conflict(code: &str, message: &str) -> (StatusCode, Json<Value>) {
 
 /// Standard unauthorized error.
 
+/// In-memory price cache with 5-minute TTL.
+use std::sync::Mutex;
+
+static PRICE_CACHE: once_cell::sync::Lazy<Mutex<Option<(f64, i64)>>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(None));
+
 /// Fetch KAS/USD price from CoinGecko with 5s timeout.
-/// Returns None if the request fails or price is zero.
+/// Caches the result for 5 minutes (300 seconds).
+/// Returns None if both API and cache fail.
 pub async fn fetch_kas_usd_price() -> Option<f64> {
+    // Check cache first
+    if let Ok(cache) = PRICE_CACHE.lock() {
+        if let Some((price, ts)) = *cache {
+            let now = chrono::Utc::now().timestamp();
+            if now - ts < 300 {
+                return Some(price);
+            }
+        }
+    }
+
+    // Fetch from API
     use std::time::Duration;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
@@ -622,7 +640,12 @@ pub async fn fetch_kas_usd_price() -> Option<f64> {
         .ok()?;
     let price_json: serde_json::Value = resp.json().await.ok()?;
     let price = price_json["kaspa"]["usd"].as_f64()?;
+
     if price > 0.0 {
+        // Update cache
+        if let Ok(mut cache) = PRICE_CACHE.lock() {
+            *cache = Some((price, chrono::Utc::now().timestamp()));
+        }
         Some(price)
     } else {
         None

@@ -1239,6 +1239,7 @@ dependencies = [
  "kaspa-rpc-core",
  "kaspa-txscript 1.1.1-toc.1 (git+https://github.com/kaspanet/rusty-kaspa?rev=ab4c51af)",
  "kaspa-wrpc-client",
+ "once_cell",
  "prometheus",
  "rand 0.8.6",
  "reqwest",
