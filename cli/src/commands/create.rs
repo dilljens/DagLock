@@ -24,10 +24,7 @@ pub async fn run(
     // Get signing keys
     let use_kaspawallet = crate::wallet::kaspawallet_available();
 
-    let buyer_key: [u8; 32];
-    let seller_key: [u8; 32];
-    let buyer_pubkey: [u8; 32];
-    let seller_pubkey: [u8; 32];
+    let (buyer_pubkey, seller_pubkey): ([u8; 32], [u8; 32]);
 
     if use_kaspawallet {
         // Derive keys from kaspawallet
@@ -43,8 +40,6 @@ pub async fn run(
             anyhow::bail!("kaspawallet keys returned insufficient keys. Need at least 2.");
         }
 
-        buyer_key = crate::wallet::parse_hex_key(lines[0].trim())?;
-        seller_key = crate::wallet::parse_hex_key(lines[1].trim())?;
         buyer_pubkey = crate::wallet::parse_hex_key(lines[0].trim())?;
         seller_pubkey = crate::wallet::parse_hex_key(lines[1].trim())?;
     } else {
@@ -58,10 +53,8 @@ pub async fn run(
             "0202020202020202020202020202020202020202020202020202020202020202".to_string()
         });
 
-        buyer_key = crate::wallet::parse_hex_key(&buyer_hex)?;
-        seller_key = crate::wallet::parse_hex_key(&seller_hex)?;
-        buyer_pubkey = buyer_key;
-        seller_pubkey = seller_key;
+        buyer_pubkey = crate::wallet::parse_hex_key(&buyer_hex)?;
+        seller_pubkey = crate::wallet::parse_hex_key(&seller_hex)?;
     }
 
     let result = crate::tx::assemble_create_escrow(
