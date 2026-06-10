@@ -11,6 +11,7 @@ pub struct CreateEscrowResult {
     pub _template_hash: Vec<u8>,
     pub amount_sompi: i64,
     pub fee_sompi: i64,
+    pub covenant_address: String,
 }
 
 /// Parse a KAS amount string (e.g. "5000" or "5000.5") to sompi (i64).
@@ -37,7 +38,7 @@ pub fn assemble_create_escrow(
     timeout_secs: u64,
     treasury_key: &[u8; 32],
 ) -> anyhow::Result<CreateEscrowResult> {
-    let fee_sompi = amount_sompi / 200;
+    let fee_sompi = amount_sompi / daglock_shared::FEE_DENOMINATOR as i64;
     let zero_hash = [0u8; 32];
     let now = chrono::Utc::now().timestamp();
     let expiration = now + timeout_secs as i64;
@@ -54,18 +55,40 @@ pub fn assemble_create_escrow(
 
     let (_, _, tpl_hash) = daglock_contracts::template_parts_and_hash(&compiled);
 
+    // Compute P2SH covenant address from compiled script
+    let script_hash = blake2b_simd::Params::new()
+        .hash_length(32)
+        .hash(&compiled.script)
+        .as_bytes()
+        .to_vec();
+    let covenant_address: String = kaspa_addresses::Address::new(
+        kaspa_addresses::Prefix::Testnet,
+        kaspa_addresses::Version::ScriptHash,
+        &script_hash,
+    )
+    .into();
+
     Ok(CreateEscrowResult {
         escrow_id,
         unsigned_tx_hex: hex::encode(&compiled.script),
         _template_hash: tpl_hash,
         amount_sompi,
         fee_sompi,
+        covenant_address,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assemble_creates_covenant_address() {
+        let pk = [1u8; 32];
+        let treasury = [0u8; 32];
+        let result = assemble_create_escrow(&pk, &pk, 100_000_000, 86400, &treasury).unwrap();
+        assert!(result.covenant_address.starts_with("kaspatest:p"));
+    }
 
     #[test]
     fn kas_to_sompi_integer() {

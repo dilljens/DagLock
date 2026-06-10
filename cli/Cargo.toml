@@ -20,4 +20,6 @@ rand = "0.8"
 anyhow = "1"
 tokio = { version = "1", features = ["full"] }
 
+kaspa-addresses.workspace = true
 daglock-contracts = { path = "../contracts" }
+daglock-shared = { path = "../shared" }

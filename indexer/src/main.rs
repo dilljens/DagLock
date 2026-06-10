@@ -9,6 +9,7 @@ mod config;
 mod crypto;
 mod db;
 mod listener;
+mod ratelimit;
 mod services;
 mod types;
 mod verification;
@@ -47,6 +48,22 @@ async fn main() {
     // Production safety: refuse mainnet without explicit --allow-mainnet flag
     if args.network == "mainnet" && !args.allow_mainnet {
         panic!("DagLock refuses to start on mainnet without --allow-mainnet flag. Set --allow-mainnet to acknowledge production risk.");
+    }
+
+    // Warn if DAGLOCK_MESSAGE_KEY is not set (messages stored in plaintext)
+    if std::env::var("DAGLOCK_MESSAGE_KEY").is_err() {
+        if args.network == "mainnet" {
+            panic!("DAGLOCK_MESSAGE_KEY environment variable must be set on mainnet. Generate one with: openssl rand -hex 32");
+        }
+        warn!("DAGLOCK_MESSAGE_KEY not set — encrypted messages will use a deterministic dev key. Set DAGLOCK_MESSAGE_KEY=64_hex_chars for production.");
+    }
+
+    // Warn if --mock-auth is used on testnet (insecure, but allowed)
+    if args.mock_auth && args.network != "mainnet" {
+        warn!(
+            "--mock-auth enabled on {}. Any signature will be accepted. Never use this on mainnet.",
+            args.network
+        );
     }
 
     let pool = init_pool(&args.database_url)

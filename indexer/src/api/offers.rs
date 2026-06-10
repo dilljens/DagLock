@@ -18,8 +18,47 @@ use crate::types::*;
 /// POST /v1/offers
 pub async fn create(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<CreateOfferRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    // Verify caller is the creator
+    let auth = AuthContext::from_headers(&headers).map_err(|e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!(ApiError::new("unauthorized", e.to_string()))),
+        )
+    })?;
+    if auth.address != body.creator_address {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "Creator address must match the signed address"
+            ))),
+        ));
+    }
+    // Validate addresses
+    let valid_addr = |a: &str| crate::api::escrows::validate_kaspa_address(a);
+    if !valid_addr(&body.creator_address) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_address",
+                "Invalid creator Kaspa address"
+            ))),
+        ));
+    }
+    if let Some(ref c) = body.counterparty_address {
+        if !valid_addr(c) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new(
+                    "invalid_address",
+                    "Invalid counterparty Kaspa address"
+                ))),
+            ));
+        }
+    }
     let price_type = body.price_type.unwrap_or_else(|| "fixed".to_string());
     let current_price = if price_type == "market" {
         crate::types::fetch_kas_usd_price().await
@@ -105,8 +144,24 @@ pub async fn list(State(state): State<AppState>, Query(params): Query<OfferQuery
 pub async fn accept(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<AcceptOfferRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let auth = AuthContext::from_headers(&headers).map_err(|e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!(ApiError::new("unauthorized", e.to_string()))),
+        )
+    })?;
+    if auth.address != body.counterparty_address {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "Counterparty address must match the signed address"
+            ))),
+        ));
+    }
     // Check offer exists and is proposed
     let offer = queries::get_offer(&state.db, &id).await.map_err(|_e| {
         (

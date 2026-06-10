@@ -66,7 +66,13 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             .allow_headers(Any)
     };
 
+    let rate_limiter = std::sync::Arc::new(crate::ratelimit::RateLimiter::new(30, 60));
+
     Router::new()
+        .route_layer(axum::middleware::from_fn_with_state(
+            rate_limiter.clone(),
+            crate::ratelimit::rate_limit_mw,
+        ))
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
         .route("/v1/health", get(health))
         .route("/v1/status", get(status::get))
@@ -109,6 +115,14 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/vaults/:id/withdraw", post(vaults::withdraw))
         .route("/v1/vaults/:id/transfer", post(vaults::transfer))
         .route("/v1/swap/generate", post(swap::generate))
+        // App management routes (API key required — use X-Daglock-Api-Key header)
+        .route("/v1/apps/register", post(apps::register))
+        .route("/v1/apps/:id", get(apps::get_by_id))
+        .route(
+            "/v1/apps/:id/keys",
+            get(apps::list_keys).post(apps::create_key),
+        )
+        .route("/v1/apps/:id/keys/:key_id", post(apps::delete_key))
         .route("/v1/jury/register", post(jury::register))
         .route("/v1/jury/unregister", post(jury::unregister))
         .route("/v1/jury/cases", get(jury::list_cases))
@@ -118,7 +132,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/jury/candidates", get(jury::list_candidates))
         .route("/v1/ws", get(websocket_handler))
         .layer(cors)
-        .with_state(state)
+        .with_state(state.clone())
 }
 
 /// Serve the OpenAPI spec.
@@ -138,9 +152,14 @@ async fn websocket_handler(
 
 async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> Json<Value> {
     let uptime = state.started_at.elapsed().as_secs();
+
+    // Check database connectivity
+    let db_ok = sqlx::query("SELECT 1").fetch_one(&state.db).await.is_ok();
+
     Json(json!({
-        "status": "ok",
+        "status": if db_ok { "ok" } else { "degraded" },
         "version": "0.1.0",
+        "db_connected": db_ok,
         "node_synced": state.wrpc_url.is_some(),
         "node_daa_score": 0,
         "uptime_seconds": uptime,

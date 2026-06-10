@@ -10,6 +10,7 @@ import { EscrowsPage } from "./pages/EscrowsPage";
 import { VaultsPage } from "./pages/VaultsPage";
 import { ReputationPage } from "./pages/ReputationPage";
 import { JuryPage } from "./pages/JuryPage";
+import { SwapPage } from "./pages/SwapPage";
 
 import { api, type Health, type Stats, type Offer } from "./api";
 import { money } from "./helpers";
@@ -58,6 +59,8 @@ function AppInner() {
 				return <ReputationPage />;
 			case "/jury":
 				return <JuryPage />;
+			case "/swap":
+				return <SwapPage />;
 			default:
 				return <Dashboard health={health} stats={stats} offers={offers} />;
 		}
@@ -88,7 +91,7 @@ function AppInner() {
 							marginBottom: "16px",
 						}}
 					>
-						 TESTNET — Use{" "}
+						TESTNET — Use{" "}
 						<a
 							href="https://faucet-tn10.kaspanet.io/"
 							target="_blank"

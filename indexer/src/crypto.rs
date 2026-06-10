@@ -15,9 +15,10 @@ use tracing::warn;
 
 /// Encrypt a plaintext message. Returns (ciphertext_hex, nonce_hex).
 /// Generates an ephemeral key if DAGLOCK_MESSAGE_KEY is not set (dev mode).
-pub fn encrypt_message(plaintext: &str) -> (String, String) {
+pub fn encrypt_message(plaintext: &str) -> Result<(String, String), String> {
     let key_bytes = load_key();
-    let cipher = Aes256Gcm::new_from_slice(&key_bytes).expect("valid AES-256 key");
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+        .map_err(|e| format!("Failed to create cipher: {e}"))?;
 
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill_bytes(&mut nonce_bytes);
@@ -25,9 +26,9 @@ pub fn encrypt_message(plaintext: &str) -> (String, String) {
 
     let ciphertext = cipher
         .encrypt(nonce, plaintext.as_bytes())
-        .expect("encryption should succeed");
+        .map_err(|e| format!("Encryption failed: {e}"))?;
 
-    (hex::encode(ciphertext), hex::encode(nonce_bytes))
+    Ok((hex::encode(ciphertext), hex::encode(nonce_bytes)))
 }
 
 /// Decrypt a message. Returns None if key is missing, wrong, or data corrupted.

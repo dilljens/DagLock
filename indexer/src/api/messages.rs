@@ -70,7 +70,12 @@ pub async fn send(
     }
 
     // Encrypt
-    let (content_enc, nonce) = crypto::encrypt_message(&body.content);
+    let (content_enc, nonce) = crypto::encrypt_message(&body.content).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!(ApiError::new("internal_error", e))),
+        )
+    })?;
 
     let now = chrono::Utc::now().timestamp();
     let msg = EscrowMessage {
@@ -80,7 +85,7 @@ pub async fn send(
                 .to_string()
                 .split('-')
                 .next()
-                .expect("UUID should have a dash")
+                .unwrap_or_default()
         ),
         escrow_id: escrow_id.clone(),
         sender_address: auth.address.clone(),

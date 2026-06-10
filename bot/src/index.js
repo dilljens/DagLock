@@ -652,31 +652,29 @@ bot.on("message:text", async (ctx) => {
 				});
 			}
 			const data = conv.data;
-			const timeoutSec =
-				Math.floor(Date.now() / 1000) + (data.timeoutDays || 1) * 86400;
-			const sompi = Math.round((data.amount || 0) * 100_000_000);
-			try {
-				const result = await api.createEscrow({
-					lock_tx_id: "pending_" + Date.now(),
-					lock_tx_output_index: 0,
-					buyer_address: data.address,
-					seller_address: data.seller || undefined,
-					amount_sompi: sompi,
-					dispute_mode: mode,
-				});
-				endConv(ctx.from.id);
-				await ctx.reply(
-					"*Escrow Created!*\n\nID: `" +
-						result.id +
-						"`\nAmount: " +
-						data.amount +
-						" KAS\n\nTrade link:\nhttps://t.me/DagLock_bot?start=claim_" +
-						result.id,
-					{ parse_mode: "Markdown" },
-				);
-			} catch (e) {
-				await ctx.reply("Error: " + e.message);
-			}
+			endConv(ctx.from.id);
+
+			// Redirect to web app — the bot cannot sign transactions
+			const webUrl = process.env.WEB_URL || "https://daglock.com";
+			const params = new URLSearchParams({
+				amount: data.amount.toString(),
+				dispute_mode: mode,
+			});
+			if (data.seller) params.set("seller", data.seller);
+			const redirectUrl = `${webUrl}/#/escrows?${params.toString()}`;
+
+			await ctx.reply(
+				"✅ *Escrow params ready!*\n\n" +
+					`Amount: ${data.amount} KAS\n` +
+					`Dispute: ${mode}\n` +
+					(data.seller ? `Seller: \`${data.seller.slice(0, 16)}...\`\n` : "") +
+					"\nTo complete the escrow, you need to:\n" +
+					"1️⃣ Open the web app\n" +
+					"2️⃣ Connect KasWare wallet\n" +
+					"3️⃣ Sign and broadcast the covenant transaction\n\n" +
+					`🔗 [Open DagLock Web App](${redirectUrl})`,
+				{ parse_mode: "Markdown", link_preview_options: { is_disabled: true } },
+			);
 		}
 	} catch (e) {
 		await ctx.reply("Error: " + e.message);

@@ -30,6 +30,8 @@
 ### API modules (indexer/src/api/)
 | Module | Purpose |
 |--------|---------|
+| `apps.rs` | Integrator app registration + API key management |
+| `webhooks.rs` | Webhook dispatch for lifecycle events |
 | `escrows.rs` | CRUD + lifecycle (create, settle, refund, dispute, cancel) |
 | `offers.rs` | Counterparty discovery board |
 | `reputation.rs` | On-chain derived reputation |
@@ -107,16 +109,18 @@ DagLock/
     tests/                             -- TxScriptEngine execution tests
 
   indexer/            (Rust backend)
-    src/main.rs              -- api, config, crypto, db, listener
+    src/main.rs              -- api, config, crypto, db, listener, ratelimit
     src/config.rs            -- argparse + production flags (--allow-mainnet, --cors-origin)
     src/crypto.rs            -- AES-256-GCM message encryption
-    src/auth.rs              -- Schnorr signature verification (real, not mock)
+    src/auth.rs              -- Schnorr signature verification (real, not mock), nonce-based replay protection
     src/verification.rs      -- UTXO verification (WrpcVerifier / MockVerifier)
+    src/ratelimit.rs         -- 30 req/min per-IP rate limiter
     src/websocket.rs         -- WebSocket broadcast
     src/types.rs             -- serde (all shared types)
     src/db/schema.rs         -- sqlx, migrations/ (8+ files)
     src/db/queries.rs        -- all SQL queries + vouch/mediator scoring
-    src/api/                 -- 10 handler modules
+    src/api/                 -- 12 handler modules (apps, compile, escrows, evidence, identity, jury, messages, network, offers, receipts, reputation, status, swap, vaults, vouches, webhooks)
+    src/services/webhooks.rs -- webhook dispatch with exponential backoff retry
     tests/                   -- integration + edge case tests
 
   cli/                (CLI tool)

@@ -7,11 +7,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-	{ route: "/", label: "Dashboard",  },
-	{ route: "/offers", label: "Offers",  },
-	{ route: "/escrows", label: "Escrows",  },
-	{ route: "/vaults", label: "Vaults",  },
-	{ route: "/reputation", label: "Reputation",  },
+	{ route: "/", label: "Dashboard" },
+	{ route: "/offers", label: "Offers" },
+	{ route: "/escrows", label: "Escrows" },
+	{ route: "/swap", label: "Swap" },
+	{ route: "/vaults", label: "Vaults" },
+	{ route: "/reputation", label: "Reputation" },
 	{ route: "/jury", label: "Jury" },
 ];
 

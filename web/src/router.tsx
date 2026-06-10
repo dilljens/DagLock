@@ -7,6 +7,7 @@ export type Route =
 	| "/"
 	| "/offers"
 	| "/escrows"
+	| "/swap"
 	| "/vaults"
 	| "/reputation"
 	| "/jury"
@@ -29,6 +30,7 @@ function hashToRoute(hash: string): Route {
 		"/vaults",
 		"/reputation",
 		"/jury",
+		"/swap",
 		"/settings",
 	];
 	// Support redirects from old-style anchors like #offers → /offers

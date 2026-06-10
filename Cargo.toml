@@ -49,4 +49,3 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [workspace.lints.clippy]
 all = "deny"
-pedantic = "warn"

@@ -99,6 +99,25 @@ pub async fn create(
         ));
     }
 
+    // Validate addresses
+    let valid = crate::api::escrows::validate_kaspa_address(&body.owner_address);
+    if !valid {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "invalid_address", "message": "Invalid owner Kaspa address"})),
+        ));
+    }
+    if let Some(ref b) = body.beneficiary_address {
+        if !crate::api::escrows::validate_kaspa_address(b) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(
+                    json!({"error": "invalid_address", "message": "Invalid beneficiary Kaspa address"}),
+                ),
+            ));
+        }
+    }
+
     // Validate amount
     if body.amount_sompi <= 0 {
         return Err((

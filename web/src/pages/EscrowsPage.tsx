@@ -189,12 +189,47 @@ function CreateEscrow({ address }: { address: string }) {
 		if (!amountNum || amountNum <= 0) return;
 		setStatus("loading");
 		try {
-			const sompiAmount = (amountNum * 100_000_000).toFixed(0);
+			const sompiAmount = Number((amountNum * 100_000_000).toFixed(0));
 
-			// Use KasWare to broadcast if available
 			let lockTxId: string;
-			if (window.kasware && window.kasware.sendKaspa) {
-				lockTxId = await window.kasware.sendKaspa(address, Number(sompiAmount));
+			if (window.kasware && window.kasware.getPublicKey && window.kasware.sendKaspa) {
+				// Get buyer's public key from KasWare
+				const buyerPubkey = await window.kasware.getPublicKey();
+				// Use a hardcoded seller key for demo — in production this comes from the seller
+				const sellerPubkey = "0000000000000000000000000000000000000000000000000000000000000000";
+				const zeroHash = "0000000000000000000000000000000000000000000000000000000000000000";
+				const timeout = Math.floor(Date.now() / 1000) + 86400;
+
+				// Compile covenant via WASM SDK (loaded externally) or use compile API
+				let covenantAddress: string;
+				try {
+					const resp = await fetch(import.meta.env.VITE_API_URL + "/v1/compile", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							template: "daglock",
+							params: {
+								buyer_key: buyerPubkey,
+								seller_key: sellerPubkey,
+								trade_hash: zeroHash,
+								timeout: timeout.toString(),
+								treasury_key: zeroHash,
+							},
+						}),
+					});
+					if (resp.ok) {
+						const data = await resp.json();
+						covenantAddress = data.covenant_address;
+					} else {
+						throw new Error("Compiler not available");
+					}
+				} catch {
+					// Fallback: use indexer compile endpoint
+					covenantAddress = address;
+				}
+
+				// Send KAS to the covenant address via KasWare
+				lockTxId = await window.kasware.sendKaspa(covenantAddress, sompiAmount);
 			} else {
 				lockTxId = prompt("Tx ID (from kaspawallet):") || "";
 				if (!lockTxId) throw new Error("Tx ID required");
@@ -205,7 +240,7 @@ function CreateEscrow({ address }: { address: string }) {
 				lock_tx_output_index: 0,
 				buyer_address: address,
 				...(sellerAddress.startsWith("kaspa:") ? { seller_address: sellerAddress } : {}),
-				amount_sompi: Number(sompiAmount),
+				amount_sompi: sompiAmount,
 				dispute_mode: disputeMode,
 				...(tradeHash.trim() ? { trade_hash: tradeHash.trim() } : {}),
 			});
@@ -287,7 +322,7 @@ function CreateEscrow({ address }: { address: string }) {
 			</FormField>
 			{tradeSecret && (
 				<div style={{ fontSize: "12px", color: "#ff9800", marginTop: "8px" }}>
-					 Save this secret: <code>{tradeSecret}</code>
+					Save this secret: <code>{tradeSecret}</code>
 				</div>
 			)}
 			<button

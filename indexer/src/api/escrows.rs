@@ -279,6 +279,7 @@ pub fn validate_kaspa_address(address: &str) -> bool {
 /// POST /v1/escrows
 pub async fn create(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<CreateEscrowRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
     // Validate required fields
@@ -290,6 +291,25 @@ pub async fn create(
                 "amount must be positive"
             ))),
         ));
+    }
+
+    // Optional auth: verify buyer address if auth headers present
+    if headers.contains_key("x-daglock-address") {
+        let auth = AuthContext::from_headers(&headers).map_err(|e| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(json!(ApiError::new("unauthorized", e.to_string()))),
+            )
+        })?;
+        if auth.address != body.buyer_address {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(json!(ApiError::new(
+                    "forbidden",
+                    "Signed address must match buyer_address"
+                ))),
+            ));
+        }
     }
 
     // Validate buyer address
@@ -340,6 +360,19 @@ pub async fn create(
                 Json(json!(ApiError::new(
                     "invalid_address",
                     "Seller address too long"
+                ))),
+            ));
+        }
+    }
+
+    // Validate mediator_key if provided
+    if let Some(ref med) = body.mediator_key {
+        if !med.is_empty() && !validate_kaspa_address(med) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new(
+                    "invalid_address",
+                    "Invalid mediator Kaspa address"
                 ))),
             ));
         }
@@ -559,19 +592,14 @@ pub async fn settle(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            verify_settle_authorization(
-                &current,
-                &auth,
-                state.sig_verifier.as_ref(),
-                Some(&state.db),
-            )
-            .await
-            .map_err(|e| {
-                (
-                    StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new("forbidden", e.to_string()))),
-                )
-            })?;
+            verify_settle_authorization(&current, &auth, state.sig_verifier.as_ref(), &state.db)
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::FORBIDDEN,
+                        Json(json!(ApiError::new("forbidden", e.to_string()))),
+                    )
+                })?;
 
             // Verify escrow can be settled (UTXO exists on-chain)
             verify_escrow_settleable(&current, state.verifier.as_ref())
@@ -668,19 +696,14 @@ pub async fn refund(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            verify_refund_authorization(
-                &current,
-                &auth,
-                state.sig_verifier.as_ref(),
-                Some(&state.db),
-            )
-            .await
-            .map_err(|e| {
-                (
-                    StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new("forbidden", e.to_string()))),
-                )
-            })?;
+            verify_refund_authorization(&current, &auth, state.sig_verifier.as_ref(), &state.db)
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::FORBIDDEN,
+                        Json(json!(ApiError::new("forbidden", e.to_string()))),
+                    )
+                })?;
 
             // Verify escrow can be refunded (UTXO exists on-chain)
             verify_escrow_refundable(&current, state.verifier.as_ref())
@@ -734,6 +757,7 @@ pub async fn refund(
 pub async fn dispute(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<DisputeRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
@@ -766,6 +790,25 @@ pub async fn dispute(
             ))
         }
         Some(current) => {
+            // Verify caller is authorized (buyer or seller with valid signature)
+            let auth = AuthContext::from_headers(&headers).map_err(|e| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!(ApiError::new("unauthorized", e.to_string()))),
+                )
+            })?;
+            if auth.address != current.buyer_address
+                && current.seller_address.as_deref() != Some(&auth.address)
+            {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new(
+                        "forbidden",
+                        "Only escrow parties can dispute"
+                    ))),
+                ));
+            }
+
             let is_jury = body.mode.as_deref() == Some("jury");
             queries::mark_escrow_disputed(&state.db, &id, body.reason.as_str())
                 .await

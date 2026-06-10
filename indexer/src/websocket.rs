@@ -74,20 +74,20 @@ pub async fn handle_socket(
         event: "connected".to_string(),
         data: json!({ "message": "Connected to DagLock real-time updates" }),
     };
-    if let Err(e) = socket
-        .send(Message::Text(serde_json::to_string(&msg).unwrap()))
-        .await
-    {
-        warn!("Failed to send connection message: {}", e);
-        return;
+    if let Ok(json_str) = serde_json::to_string(&msg) {
+        if let Err(e) = socket.send(Message::Text(json_str)).await {
+            warn!("Failed to send connection message: {}", e);
+            return;
+        }
     }
 
     // Forward broadcast events to WebSocket client
     while let Ok(event) = rx.recv().await {
-        let json = serde_json::to_string(&event).unwrap();
-        if let Err(e) = socket.send(Message::Text(json)).await {
-            warn!("WebSocket send error: {}", e);
-            break;
+        if let Ok(json_str) = serde_json::to_string(&event) {
+            if let Err(e) = socket.send(Message::Text(json_str)).await {
+                warn!("WebSocket send error: {}", e);
+                break;
+            }
         }
     }
 

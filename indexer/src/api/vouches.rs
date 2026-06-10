@@ -83,7 +83,7 @@ pub async fn create(
                 .to_string()
                 .split('-')
                 .next()
-                .expect("UUID should have a dash")
+                .unwrap_or_default()
         ),
         voucher_address: auth.address,
         subject_address: body.subject_address,

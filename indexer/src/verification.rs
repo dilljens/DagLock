@@ -216,8 +216,10 @@ impl EscrowVerifier for WrpcVerifier {
                 }
             }
             None => {
-                warn!("WrpcVerifier: no wRPC client available — skipping UTXO check");
-                Ok(true)
+                warn!("WrpcVerifier: no wRPC client available — failing UTXO check");
+                Err(VerificationError::Other(
+                    "No wRPC client connected. Cannot verify UTXO existence.".to_string(),
+                ))
             }
         }
     }

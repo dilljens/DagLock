@@ -1,6 +1,6 @@
 # Web
 
-**Source**: `web/src/`  **Updated**: `2026-06-09` (rewritten with sidebar nav)  (14 files)
+**Source**: `web/src/`  **Updated**: `2026-06-09` (rewritten with sidebar nav)  (15 files)
 
 ## What it does
 React + Vite dashboard for browser-based users. Provides escrow creation, claiming, offer board, and reputation views. Communicates with the indexer REST API. Uses Vitest + React Testing Library for component tests, Biome for lint.
@@ -19,6 +19,7 @@ web/src/
   pages/VaultsPage.tsx        Vault management (standard/softlock/multisig)
   pages/ReputationPage.tsx    Reputation, vouch, identity
   pages/JuryPage.tsx          Jury system
+  pages/SwapPage.tsx          Atomic swap wizard (Generate/Submit/How-it-Works)
   api.ts                     REST API client + all TypeScript types
   helpers.tsx                Utility functions (money, sompi, time, badge, errMsg)
   ui.tsx                     Reusable UI primitives (Panel, FormField, LookupResult, etc.)
@@ -46,12 +47,14 @@ web/src/
     CreateEscrowForm.test.tsx Escrow creation tests
     EscrowActionForm.test.tsx Settle/cancel/refund/dispute + ConfirmDialog tests
     SwapForm.test.tsx        Atomic swap tests
+    SwapPage.test.tsx         SwapPage wizard tests
     DisputeWithEvidenceForm.test.tsx Dispute flow tests
 ```
 
 ## Key functions / components
 | Name | Kind | File | Purpose |
 |------|------|------|---------|
+| `SwapPage` | component | `pages/SwapPage.tsx` | Atomic swap wizard: Generate secret/hash, Submit preimage, How it works |
 | `App` | component | `App.tsx` | Main app: layout, tab routing, data loading |
 | `api` | module | `api.ts` | REST API client (fetch wrappers + types) |
 | `mockApi` | helper | `__tests__/helpers.ts` | Factory for mocked API in tests |
@@ -67,6 +70,7 @@ web/src/
 | `jury.tsx` | `JuryPanel`, `ResolveDisputePanel`, `VouchPanel` | Dispute resolution |
 | `identity.tsx` | `LinkTelegramForm` | Telegram verification |
 | `lookup.tsx` | `ReputationLookup`, `ReceiptLookup` | Simple lookup panels |
+| `SwapPage` | page | `pages/SwapPage.tsx` | Atomic swap wizard with 3 tabs (Generate, Submit, How it Works) |
 | `compile.tsx` | `CompileCovenantForm` | Dev tool |
 
 ## Data flow
@@ -83,6 +87,7 @@ web/src/
 - Destructive actions (cancel, refund, dispute) show `ConfirmDialog` before submitting
 - `EscrowActionForm` auth: settle requires `X-Daglock-*` headers, cancel/refund/dispute go through ConfirmDialog flow
 - **Jury badge**: `WalletStatus` fires `onConnect(address)` callback. `App` fetches `GET /v1/jury/cases/active/:address` on connect and shows an orange badge count on the Jury button if the user has unread cases
+- **Swap page**: Three tab wizard at `#/swap`. Generate tab creates secret/hash pairs via `api.generateSwap()` with copy-to-clipboard. Submit tab settles hash-locked escrows via `api.swapEscrow()`. How it Works tab provides protocol walkthrough. Sidebar shows "Swap" link between Escrows and Vaults.
 
 ## Testing strategy
 | Aspect | Approach |
@@ -91,7 +96,7 @@ web/src/
 | Environment | jsdom (via vitest config) |
 | Mocking | `mockApi()` factory in `__tests__/helpers.ts`, `vi.mock("../api")` per test file |
 | Global mocks | `window.kasware` mocked in `setup.ts` |
-| Coverage | 26 tests across 6 files: App smoke, CreateOffer, CreateEscrow, EscrowAction (settle/cancel/refund/dispute), Swap, Dispute |
+| Coverage | 36 tests across 7 files: App smoke, CreateOffer, CreateEscrow, EscrowAction (settle/cancel/refund/dispute), Swap, SwapPage, Dispute |
 | Run | `cd web && npm test` |
 | Lint | `cd web && npm run lint` (Biome) |
 | Build | `cd web && npm run build` (tsc + vite) |

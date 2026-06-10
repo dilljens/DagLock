@@ -64,6 +64,20 @@ pub fn compile_escrow(
     // Extract template hash
     let (prefix, suffix, template_hash) = template_parts_and_hash(&compiled);
 
+    // Compute P2SH covenant address
+    let script_hash = blake2b_simd::Params::new()
+        .hash_length(32)
+        .hash(&compiled.script)
+        .as_bytes()
+        .to_vec();
+    let covenant_address: String = kaspa_addresses::Address::new(
+        // Infer prefix from timeout (> 2025 = real timestamp, otherwise dev)
+        kaspa_addresses::Prefix::Testnet,
+        kaspa_addresses::Version::ScriptHash,
+        &script_hash,
+    )
+    .into();
+
     // Generate escrow ID from script hash
     let escrow_id = blake2b_simd::Params::new()
         .hash_length(8)
@@ -79,9 +93,52 @@ pub fn compile_escrow(
         "entrypoints": ["release", "swap", "refund"],
         "prefix": hex::encode(&prefix),
         "suffix": hex::encode(&suffix),
+        "covenant_address": covenant_address,
     });
 
     serde_json::to_string(&result).map_err(|e| JsError::new(&format!("Serialization error: {}", e)))
+}
+
+/// Compute the P2SH covenant address from a compiled escrow script.
+///
+/// # Arguments
+/// * `script_hex` - Hex-encoded compiled covenant script (from `compile_escrow`)
+/// * `network` - Network prefix: "mainnet", "testnet-12", or "devnet"
+///
+/// # Returns
+/// The P2SH address string (e.g. "kaspa:pq...")
+#[wasm_bindgen]
+pub fn compute_covenant_address(script_hex: &str, network: &str) -> Result<String, JsError> {
+    let script =
+        hex::decode(script_hex).map_err(|e| JsError::new(&format!("Invalid script hex: {}", e)))?;
+
+    if script.is_empty() {
+        return Err(JsError::new("Script cannot be empty"));
+    }
+
+    // Compute BLAKE2b-256 hash of the script (Kaspa's P2SH hash)
+    let script_hash = blake2b_simd::Params::new()
+        .hash_length(32)
+        .hash(&script)
+        .as_bytes()
+        .to_vec();
+
+    // Determine network prefix
+    let prefix = match network {
+        "mainnet" => kaspa_addresses::Prefix::Mainnet,
+        "testnet-10" | "testnet-11" | "testnet-12" => kaspa_addresses::Prefix::Testnet,
+        _ => {
+            // Default to testnet for dev/simnet
+            kaspa_addresses::Prefix::Testnet
+        }
+    };
+
+    // Create P2SH address
+    let address =
+        kaspa_addresses::Address::new(prefix, kaspa_addresses::Version::ScriptHash, &script_hash);
+
+    let address_str: String = address.into();
+    Ok(address_str)
 }
 
 /// Verify that a script matches a DagLock template hash.
@@ -122,7 +179,7 @@ pub fn verify_template_match(script_hex: &str, template_hash_hex: &str) -> Resul
 /// JSON string with: `{ amount_sompi, fee_sompi, fee_percentage }`
 #[wasm_bindgen]
 pub fn calculate_fee(amount_sompi: i64) -> Result<String, JsError> {
-    let fee_sompi = amount_sompi / 200;
+    let fee_sompi = amount_sompi / daglock_shared::FEE_DENOMINATOR as i64;
 
     let result = serde_json::json!({
         "amount_sompi": amount_sompi,
@@ -147,6 +204,23 @@ mod tests {
         assert!(!json["script"].as_str().unwrap().is_empty());
         assert!(!json["template_hash"].as_str().unwrap().is_empty());
         assert!(json["escrow_id"].as_str().unwrap().starts_with("esc_"));
+    }
+
+    #[test]
+    fn compute_covenant_address_testnet() {
+        // Use a known script (empty zero-pubkey compile)
+        let zero_key = "0000000000000000000000000000000000000000000000000000000000000000";
+        let compile_result =
+            compile_escrow(zero_key, zero_key, zero_key, 1_700_000_000, zero_key).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&compile_result).unwrap();
+        let script_hex = json["script"].as_str().unwrap();
+
+        let address = compute_covenant_address(script_hex, "testnet-12").unwrap();
+        assert!(
+            address.starts_with("kaspatest:p"),
+            "P2SH address should start with kaspatest:p, got {}",
+            address
+        );
     }
 
     #[test]

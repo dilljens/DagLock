@@ -120,7 +120,7 @@ pub async fn submit_evidence(
                 .to_string()
                 .split('-')
                 .next()
-                .expect("UUID should have a dash")
+                .unwrap_or_default()
         ),
         escrow_id: id,
         submitted_by: auth.address,

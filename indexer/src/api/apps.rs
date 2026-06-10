@@ -11,6 +11,67 @@ use serde_json::{json, Value};
 use crate::api::AppState;
 use crate::db::queries;
 use crate::types::*;
+/// Verify X-Daglock-Api-Key header and return app_id on success.
+async fn verify_api_key(
+    state: &AppState,
+    headers: &axum::http::HeaderMap,
+) -> Result<String, (StatusCode, Json<Value>)> {
+    let api_key = headers
+        .get("x-daglock-api-key")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(json!(ApiError::new(
+                    "unauthorized",
+                    "X-Daglock-Api-Key header required."
+                ))),
+            )
+        })?;
+
+    let key_hash = blake2b_simd::Params::new()
+        .hash_length(32)
+        .hash(api_key.as_bytes())
+        .as_bytes()
+        .to_vec();
+
+    let app_id: Option<String> = sqlx::query_scalar(
+        "SELECT a.id FROM apps a
+         INNER JOIN api_keys k ON k.app_id = a.id
+         WHERE k.key_hash = ?1 AND k.is_active = 1 AND a.is_active = 1",
+    )
+    .bind(&key_hash)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!(ApiError::new(
+                "internal_error",
+                "Failed to verify API key"
+            ))),
+        )
+    })?;
+
+    match app_id {
+        Some(id) => {
+            // Touch last_used_at
+            let _ = sqlx::query("UPDATE api_keys SET last_used_at = ?1 WHERE key_hash = ?2")
+                .bind(chrono::Utc::now().timestamp())
+                .bind(&key_hash)
+                .execute(&state.db)
+                .await;
+            Ok(id)
+        }
+        None => Err((
+            StatusCode::UNAUTHORIZED,
+            Json(json!(ApiError::new(
+                "unauthorized",
+                "Invalid or revoked API key"
+            ))),
+        )),
+    }
+}
 
 /// POST /v1/apps/register
 pub async fn register(
@@ -21,6 +82,16 @@ pub async fn register(
         return Err((
             StatusCode::BAD_REQUEST,
             Json(json!(ApiError::new("invalid_name", "App name is required"))),
+        ));
+    }
+    // Validate owner address
+    if !crate::api::escrows::validate_kaspa_address(&body.owner_address) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_address",
+                "Invalid owner Kaspa address"
+            ))),
         ));
     }
 
@@ -55,7 +126,20 @@ pub async fn register(
 pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    // API key auth required
+    let _caller_app_id = verify_api_key(&state, &headers).await?;
+    // Verify caller owns this app
+    if _caller_app_id != id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "API key does not belong to this app"
+            ))),
+        ));
+    }
     let app = queries::get_app(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -82,7 +166,19 @@ pub async fn get_by_id(
 pub async fn list_keys(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    // API key auth required
+    let _caller_app_id = verify_api_key(&state, &headers).await?;
+    if _caller_app_id != id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "API key does not belong to this app"
+            ))),
+        ));
+    }
     let keys = queries::list_api_keys(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -100,7 +196,19 @@ pub async fn list_keys(
 pub async fn create_key(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    // API key auth required
+    let _caller_app_id = verify_api_key(&state, &headers).await?;
+    if _caller_app_id != id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "API key does not belong to this app"
+            ))),
+        ));
+    }
     // Verify app exists
     let app = queries::get_app(&state.db, &id).await.map_err(|_e| {
         (
@@ -165,7 +273,19 @@ pub async fn create_key(
 pub async fn delete_key(
     State(state): State<AppState>,
     Path((app_id, key_id)): Path<(String, String)>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    // API key auth required
+    let _caller_app_id = verify_api_key(&state, &headers).await?;
+    if _caller_app_id != app_id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "API key does not belong to this app"
+            ))),
+        ));
+    }
     let revoked = queries::revoke_api_key(&state.db, &key_id, &app_id)
         .await
         .map_err(|_e| {

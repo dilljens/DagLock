@@ -45,7 +45,7 @@ pub async fn fees_estimate(
         .cloned()
         .unwrap_or_else(|| "0".to_string());
     let amount_value = amount_kas.parse::<f64>().unwrap_or(0.0);
-    let fee_kas = amount_value / 200.0;
+    let fee_kas = amount_value / daglock_shared::FEE_DENOMINATOR as f64;
 
     Json(json!(FeeEstimate {
         amount_kas,

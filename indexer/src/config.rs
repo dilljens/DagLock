@@ -45,7 +45,7 @@ pub struct Args {
 
     /// Use mock authentication (any hex string passes).
     /// For dev/testnet only — panics if used with --network mainnet.
-    #[arg(long, default_value_t = true)]
+    #[arg(long, default_value_t = false)]
     pub mock_auth: bool,
 
     /// Canonical treasury public key (64 hex chars).

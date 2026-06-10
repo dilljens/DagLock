@@ -416,7 +416,7 @@ pub async fn verify_settle_authorization(
     escrow: &Escrow,
     auth: &AuthContext,
     verifier: &dyn SignatureVerifier,
-    pool: Option<&Pool<Sqlite>>,
+    pool: &Pool<Sqlite>,
 ) -> AuthResult<()> {
     // Check if the caller is the buyer or seller
     let is_buyer = auth.address == escrow.buyer_address;
@@ -462,15 +462,8 @@ pub async fn verify_settle_authorization(
         });
     }
 
-    // Replay protection (only if DB pool is available and nonce is present)
-    if let Some(pool) = pool {
-        verify_nonce(pool, &parsed, &auth.address).await?;
-    } else if parsed.nonce.is_some() {
-        warn!(
-            "Replay protection: nonce provided but no DB pool available for escrow {}",
-            escrow.id
-        );
-    }
+    // Replay protection
+    verify_nonce(pool, &parsed, &auth.address).await?;
 
     Ok(())
 }
@@ -485,7 +478,7 @@ pub async fn verify_refund_authorization(
     escrow: &Escrow,
     auth: &AuthContext,
     verifier: &dyn SignatureVerifier,
-    pool: Option<&Pool<Sqlite>>,
+    pool: &Pool<Sqlite>,
 ) -> AuthResult<()> {
     // Only the buyer can refund
     if auth.address != escrow.buyer_address {
@@ -524,15 +517,8 @@ pub async fn verify_refund_authorization(
         });
     }
 
-    // Replay protection (only if DB pool is available and nonce is present)
-    if let Some(pool) = pool {
-        verify_nonce(pool, &parsed, &auth.address).await?;
-    } else if parsed.nonce.is_some() {
-        warn!(
-            "Replay protection: nonce provided but no DB pool available for escrow {}",
-            escrow.id
-        );
-    }
+    // Replay protection
+    verify_nonce(pool, &parsed, &auth.address).await?;
 
     Ok(())
 }
@@ -595,6 +581,12 @@ pub fn generate_replay_protected_message(action: &str, escrow_id: &str) -> Strin
 mod tests {
     use super::*;
     use crate::types::*;
+
+    async fn test_pool() -> sqlx::SqlitePool {
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+        crate::db::schema::migrate(&pool).await.unwrap();
+        pool
+    }
 
     fn test_escrow() -> Escrow {
         Escrow {
@@ -762,9 +754,11 @@ mod tests {
             signature: "any_hex".to_string(),
             message: "settle:esc_test".to_string(),
         };
-        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
-            .await
-            .is_ok());
+        assert!(
+            verify_settle_authorization(&escrow, &auth, &verifier, &test_pool().await)
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -777,9 +771,11 @@ mod tests {
             signature: "sig123".to_string(),
             message: "settle:esc_test".to_string(),
         };
-        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
-            .await
-            .is_ok());
+        assert!(
+            verify_settle_authorization(&escrow, &auth, &verifier, &test_pool().await)
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -791,9 +787,11 @@ mod tests {
             signature: "sig123".to_string(),
             message: "settle:esc_test".to_string(),
         };
-        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
-            .await
-            .is_err());
+        assert!(
+            verify_settle_authorization(&escrow, &auth, &verifier, &test_pool().await)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -809,7 +807,7 @@ mod tests {
             message: "refund:esc_test".to_string(),
         };
         assert!(
-            verify_refund_authorization(&escrow, &buyer_auth, &verifier, None)
+            verify_refund_authorization(&escrow, &buyer_auth, &verifier, &test_pool().await)
                 .await
                 .is_ok()
         );
@@ -822,7 +820,7 @@ mod tests {
             message: "refund:esc_test".to_string(),
         };
         assert!(
-            verify_refund_authorization(&escrow, &seller_auth, &verifier, None)
+            verify_refund_authorization(&escrow, &seller_auth, &verifier, &test_pool().await)
                 .await
                 .is_err()
         );
@@ -839,10 +837,11 @@ mod tests {
             signature: "any_hex".to_string(),
             message: msg,
         };
-        // Should succeed (nonce validated against None pool — just logged)
-        assert!(verify_settle_authorization(&escrow, &auth, &verifier, None)
-            .await
-            .is_ok());
+        assert!(
+            verify_settle_authorization(&escrow, &auth, &verifier, &test_pool().await)
+                .await
+                .is_ok()
+        );
     }
 
     #[test]

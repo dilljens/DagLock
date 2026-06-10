@@ -9,7 +9,7 @@ pub async fn run(
     counterparty: &str,
     timeout: u64,
     treasury: Option<String>,
-    trade_hash: Option<String>,
+    _trade_hash: Option<String>,
 ) -> Result<()> {
     let cfg = Config::load();
     let amount_sompi = crate::tx::kas_to_sompi(amount_str)?;
@@ -17,7 +17,7 @@ pub async fn run(
     // Get treasury key from args, config, or use a default
     let treasury_key_hex = treasury
         .as_deref()
-        .or_else(|| cfg.treasury_key.as_deref())
+        .or(cfg.treasury_key.as_deref())
         .unwrap_or("0000000000000000000000000000000000000000000000000000000000000000");
     let treasury_arr: [u8; 32] = crate::wallet::parse_hex_key(treasury_key_hex)?;
 
@@ -83,7 +83,7 @@ pub async fn run(
         .await?;
 
     let escrow_data = serde_json::json!({
-        "lock_tx_id": result.unsigned_tx_hex.chars().take(16).collect::<String>(),
+        "lock_tx_id": "pending_fund_me",
         "lock_tx_output_index": 0,
         "buyer_address": counterparty,
         "amount_sompi": result.amount_sompi,
@@ -122,6 +122,14 @@ pub async fn run(
             );
         }
 
+        println!();
+        println!("Covenant address: {}", result.covenant_address);
+        println!("Send funds to this address using:");
+        println!(
+            "   kaspawallet send --to {} --amount {} --priority normal",
+            result.covenant_address, amount_str
+        );
+        println!();
         println!(
             "Trade link: https://t.me/DagLock_bot?start=claim_{}",
             escrow["id"].as_str().unwrap_or(&result.escrow_id)
