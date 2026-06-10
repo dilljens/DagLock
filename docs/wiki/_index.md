@@ -14,7 +14,9 @@
 | Indexer entry | `indexer/src/main.rs` |
 | REST API routes | `indexer/src/api/mod.rs` |
 | DB schema + migrations | `indexer/src/db/schema.rs` |
-| Authentication (real Schnorr sigs) | `indexer/src/auth.rs` |
+| Authentication + replay protection | `indexer/src/auth.rs` |
+| Rate limiter (30 req/min per IP) | `indexer/src/ratelimit.rs` |
+| API key middleware | `indexer/src/api/apps.rs` |
 | UTXO verification | `indexer/src/verification.rs` |
 | Message encryption (AES-256-GCM) | `indexer/src/crypto.rs` |
 | wRPC listener | `indexer/src/listener.rs` |
@@ -47,11 +49,11 @@
 | Domain | Run |
 |--------|-----|
 | contracts | `cargo test -p daglock-contracts` |
-| indexer | `cargo test -p daglock-indexer` — 36 unit + 4 lifecycle |
+| indexer | `cargo test -p daglock-indexer` — 39 unit + 12 integration |
 | cli | `cargo test -p daglock-cli` |
 | wasm-sdk | `cargo test -p daglock-wasm-sdk` |
 | web | `cd web && npm test` |
-| bot | `cd bot && npm test` |
+| bot | `cd bot && npm test` — command handlers |
 | simulation | `python3 scripts/simulation.py --trades 30 --bots 3` |
 
 ### Domain one-liners
@@ -94,6 +96,7 @@
 | `cd bot && node src/index.js` | `bot/src/index.js` | Telegram bot |
 | `docker run daglock/indexer` | `Dockerfile` | Production containerized deployment |
 | `python3 scripts/simulation.py` | `scripts/simulation.py` | Generate trades + verify reputation |
+| Pre-flight checklist | `docs/manual-verification-plan.md` | 16 checks before testnet/mainnet deploy |
 
 ## Topology
 ```
@@ -178,6 +181,9 @@ DagLock/
 | Embed escrow widget | `<script src="https://unpkg.com/@daglock/widget"><daglock-escrow>` |
 | Change template hash logic | `contracts/src/lib.rs` (`template_parts_and_hash()`) |
 | Add authentication | `indexer/src/auth.rs` (SignatureVerifier trait) |
+| Change rate limit | `indexer/src/ratelimit.rs` (RateLimiter struct, max_requests/window_secs) |
+| Register API key | `POST /v1/apps/register` |
+| Add webhook | `POST /v1/apps/:id/webhooks` |
 | Add UTXO verification | `indexer/src/verification.rs` (EscrowVerifier trait) |
 | Change message encryption | `indexer/src/crypto.rs` (AES-256-GCM, DAGLOCK_MESSAGE_KEY) |
 | Change jury rules | `indexer/src/api/jury.rs` |

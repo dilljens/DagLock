@@ -15,15 +15,21 @@ DagLock exposes a programmatic REST API for partners and integrators. No signup 
 
 Register your project to get API keys for higher rate limits and webhook access.
 
+**All management endpoints require `X-Daglock-Api-Key` header.** The key is SHA-256 hashed on storage — plaintext can't be recovered.
+
+**Cross-app access is forbidden** — a key from App A cannot access App B's resources.
+
+**Registration is unauthenticated** (you need to register before you have a key).
+
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/v1/apps/register` | Register a new app. Returns `{ app, api_key, warning }` |
-| GET | `/v1/apps/:id` | Get app details (requires API key auth) |
-| GET | `/v1/apps/:id/keys` | List API keys for an app |
-| POST | `/v1/apps/:id/keys` | Generate additional API key |
-| DELETE | `/v1/apps/:id/keys/:key_id` | Revoke an API key |
+| GET | `/v1/apps/:id` | Get app details | `X-Daglock-Api-Key` required |
+| GET | `/v1/apps/:id/keys` | List API keys for an app | `X-Daglock-Api-Key` required |
+| POST | `/v1/apps/:id/keys` | Generate additional key | `X-Daglock-Api-Key` required |
+| DELETE | `/v1/apps/:id/keys/:key_id` | Revoke an API key | `X-Daglock-Api-Key` required |
 
-**Headers:** `X-Daglock-Api-Key <key>` for authenticated requests.
+**Headers:** `X-Daglock-Api-Key <key>` for all management requests.
 
 **Example:**
 ```bash
@@ -277,7 +283,7 @@ The indexer no longer fabricates lock transaction IDs. Every escrow references a
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/v1/health` | No | Health check |
+| GET | `/v1/health` | No | Health check — pings DB, returns `db_connected` status |
 | GET | `/v1/status` | No | Platform status + uptime |
 | GET | `/v1/network` | No | Network info (DAA, difficulty) |
 | GET | `/v1/network/price` | No | KAS/USD price |
@@ -292,6 +298,33 @@ The indexer no longer fabricates lock transaction IDs. Every escrow references a
 | POST | `/v1/vouches/:id` | Yes | Revoke a vouch |
 | POST | `/v1/identity` | Yes | Link Telegram handle |
 | GET | `/v1/ws` | No | WebSocket real-time feed |
+
+---
+
+## Rate Limiting (v0.3.1)
+
+All API endpoints have per-IP rate limiting via a custom Axum middleware.
+
+### Configuration
+- **30 requests per minute** per IP (configurable via `RateLimiter::new(max_requests, window_secs)`)
+- Window resets fully after 60 seconds
+- Different IPs have independent counters
+- Uses `X-Forwarded-For` header for IP detection (works behind reverse proxy)
+
+### When Exceeded
+```json
+HTTP 429 Too Many Requests
+{
+  "error": "rate_limited",
+  "message": "Rate limit exceeded. Max 30 requests per 60 seconds."
+}
+```
+
+### Key Files
+| File | Purpose |
+|------|---------|
+| `indexer/src/ratelimit.rs` | `RateLimiter` struct + Axum middleware |
+| `indexer/src/api/mod.rs` | Wired via `.route_layer()` on the main router |
 
 ---
 
@@ -311,6 +344,10 @@ The indexer no longer fabricates lock transaction IDs. Every escrow references a
 - All SQL queries use bind parameters (no string interpolation)
 - Kaspa address validation on create
 - Replay protection mandatory on all authenticated actions
+- Rate limiting: 30 req/min per IP, returns HTTP 429
+- API keys: `X-Daglock-Api-Key` required for app management, SHA-256 hashed at rest
+- Address validation on all endpoints accepting Kaspa addresses
+- `DAGLOCK_MESSAGE_KEY` checked at startup — panics on mainnet if unset
 - MockVerifier for dev, WrpcVerifier for production
 - Panics on startup if `--mock-auth` is combined with `--network mainnet`
 
