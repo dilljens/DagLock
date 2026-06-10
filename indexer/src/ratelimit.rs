@@ -1,4 +1,7 @@
 //! Simple per-IP request rate limiter using axum::middleware::from_fn.
+//!
+//! Tracks requests per IP with a sliding window counter.
+//! Returns HTTP 429 Too Many Requests when exceeded.
 
 use axum::{
     http::Request,
@@ -74,7 +77,6 @@ pub async fn rate_limit_mw(
     req: Request<axum::body::Body>,
     next: Next,
 ) -> Response {
-    // Extract IP from X-Forwarded-For or remote addr
     let ip = req
         .headers()
         .get("x-forwarded-for")
@@ -86,5 +88,45 @@ pub async fn rate_limit_mw(
     match state.check(ip) {
         Ok(()) => next.run(req).await,
         Err(resp) => resp,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[test]
+    fn allows_requests_under_limit() {
+        let limiter = RateLimiter::new(5, 60);
+        let ip = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
+        for _ in 0..5 {
+            assert!(limiter.check(ip).is_ok(), "should allow up to 5");
+        }
+    }
+
+    #[test]
+    fn blocks_request_over_limit() {
+        let limiter = RateLimiter::new(3, 60);
+        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+        for _ in 0..3 {
+            assert!(limiter.check(ip).is_ok());
+        }
+        assert!(limiter.check(ip).is_err(), "4th request should be blocked");
+    }
+
+    #[test]
+    fn different_ips_have_independent_counters() {
+        let limiter = RateLimiter::new(2, 60);
+        let ip_a = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
+        let ip_b = IpAddr::V4(Ipv4Addr::new(2, 2, 2, 2));
+
+        assert!(limiter.check(ip_a).is_ok());
+        assert!(limiter.check(ip_a).is_ok());
+        assert!(limiter.check(ip_a).is_err(), "IP A should be blocked");
+
+        assert!(limiter.check(ip_b).is_ok(), "IP B should still be allowed");
+        assert!(limiter.check(ip_b).is_ok());
+        assert!(limiter.check(ip_b).is_err(), "IP B should also be blocked");
     }
 }
