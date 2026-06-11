@@ -174,7 +174,7 @@ pub async fn try_connect_resolver(
 }
 
 /// Run the online loop with automatic reconnection on connection drop.
-async fn run_online_loop_with_reconnect(
+pub async fn run_online_loop_with_reconnect(
     client: Arc<kaspa_wrpc_client::KaspaRpcClient>,
     db: Pool<Sqlite>,
     kas_hash: Option<Vec<u8>>,

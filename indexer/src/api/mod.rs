@@ -71,12 +71,6 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
     let rate_limiter = std::sync::Arc::new(crate::ratelimit::RateLimiter::new(30, 60));
 
     Router::new()
-        .route_layer(axum::middleware::from_fn_with_state(
-            rate_limiter.clone(),
-            crate::ratelimit::rate_limit_mw,
-        ))
-        .layer(axum::middleware::from_fn(request_id_middleware))
-        .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
         .route("/v1/health", get(health))
         .route("/v1/status", get(status::get))
         .route("/v1/network", get(network::get))
@@ -136,6 +130,12 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/jury/candidates", get(jury::list_candidates))
         .route("/v1/ws", get(websocket_handler))
         .layer(cors)
+        .layer(axum::middleware::from_fn(request_id_middleware))
+        .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
+        .route_layer(axum::middleware::from_fn_with_state(
+            rate_limiter.clone(),
+            crate::ratelimit::rate_limit_mw,
+        ))
         .with_state(state.clone())
 }
 
