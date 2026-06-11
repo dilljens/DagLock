@@ -152,112 +152,18 @@ pub async fn atomic_swap(
     Path(id): Path<String>,
     Json(body): Json<AtomicSwapRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new(
-                "internal_error",
-                "An internal error occurred."
-            ))),
-        )
-    })?;
-
-    match escrow {
-        Some(current)
-            if !matches!(
-                current.status,
-                EscrowStatus::Active | EscrowStatus::PendingConfirmation
-            ) =>
-        {
-            Err((
-                StatusCode::CONFLICT,
-                Json(json!(ApiError::new(
-                    "escrow_not_active",
-                    "Escrow is not in an active state"
-                ))),
-            ))
-        }
-        Some(current) => {
-            let preimage_bytes = hex::decode(&body.preimage).map_err(|_| {
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!(ApiError::new(
-                        "invalid_preimage",
-                        "Preimage must be valid hex"
-                    ))),
-                )
-            })?;
-
-            if preimage_bytes.is_empty() || preimage_bytes.len() > 1024 {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    Json(json!(ApiError::new(
-                        "invalid_preimage",
-                        "Preimage must be 1-1024 bytes"
-                    ))),
-                ));
-            }
-
-            // Compute SHA-256 of preimage to match covenant's trade_hash check
-            use sha2::{Digest, Sha256};
-            let mut sha_hasher = Sha256::new();
-            sha_hasher.update(&preimage_bytes);
-            let preimage_hash = sha_hasher.finalize();
-            let preimage_hash_hex = hex::encode(preimage_hash);
-            tracing::info!(
-                "Atomic swap: escrow {} preimage hash {}",
-                id,
-                preimage_hash_hex
-            );
-
-            // Verify preimage matches the stored trade_hash (if set) — BEFORE settling
-            if let Some(ref expected_hash) = current.trade_hash {
-                if !expected_hash.is_empty() && preimage_hash_hex != *expected_hash {
-                    return Err((
-                        StatusCode::FORBIDDEN,
-                        Json(json!(ApiError::new(
-                            "preimage_mismatch",
-                            "Preimage does not match trade hash"
-                        ))),
-                    ));
-                }
-            }
-
-            // Now settle — verification passed
-            let settled = queries::settle_escrow_atomic(&state.db, &id)
-                .await
-                .map_err(|_e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new(
-                            "internal_error",
-                            "An internal error occurred."
-                        ))),
-                    )
-                })?;
-
-            if !settled {
-                return Err((
-                    StatusCode::CONFLICT,
-                    Json(json!(ApiError::new(
-                        "escrow_already_finalized",
-                        "Escrow was already settled"
-                    ))),
-                ));
-            }
-
-            Ok(Json(
-                json!({"status": "settled", "escrow_id": id, "method": "atomic_swap"}),
-            ))
-        }
-        None => Err((
-            StatusCode::NOT_FOUND,
-            Json(json!(ApiError::new(
-                "escrow_not_found",
-                format!("No escrow found with id '{id}'")
-            ))),
-        )),
-    }
+    let svc = crate::services::escrow_service::EscrowService::new(
+        state.db.clone(),
+        &state.ws_tx,
+        state.sig_verifier.clone(),
+        state.verifier.clone(),
+    );
+    svc.atomic_swap(&id, &body.preimage)
+        .await
+        .map(|_| {
+            Json(json!({"status": "settled", "escrow_id": id, "method": "atomic_swap"}))
+        })
+        .map_err(service_error)
 }
 
 pub fn validate_kaspa_address(address: &str) -> bool {
@@ -556,97 +462,16 @@ pub async fn settle(
     Path(id): Path<String>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new(
-                "internal_error",
-                "An internal error occurred. Please try again later."
-            ))),
-        )
-    })?;
-
-    match escrow {
-        Some(current)
-            if matches!(
-                current.status,
-                EscrowStatus::Settled
-                    | EscrowStatus::Refunded
-                    | EscrowStatus::Cancelled
-                    | EscrowStatus::Expired
-            ) =>
-        {
-            Err((
-                StatusCode::CONFLICT,
-                Json(json!(ApiError::new(
-                    "escrow_already_finalized",
-                    "Escrow is already finalized"
-                ))),
-            ))
-        }
-        Some(current) => {
-            // Verify caller is authorized (buyer or seller with valid signature)
-            let auth = AuthContext::from_headers(&headers).map_err(|e| {
-                (
-                    StatusCode::UNAUTHORIZED,
-                    Json(json!(ApiError::new("unauthorized", e.to_string()))),
-                )
-            })?;
-            verify_settle_authorization(&current, &auth, state.sig_verifier.as_ref(), &state.db)
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::FORBIDDEN,
-                        Json(json!(ApiError::new("forbidden", e.to_string()))),
-                    )
-                })?;
-
-            // Verify escrow can be settled (UTXO exists on-chain)
-            verify_escrow_settleable(&current, state.verifier.as_ref())
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::CONFLICT,
-                        Json(json!(ApiError::new("verification_failed", e.to_string()))),
-                    )
-                })?;
-
-            // Atomic update: status + settled_at in one query, only if still active
-            let settled = queries::settle_escrow_atomic(&state.db, &id)
-                .await
-                .map_err(|_e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new(
-                            "internal_error",
-                            "An internal error occurred. Please try again later."
-                        ))),
-                    )
-                })?;
-
-            if !settled {
-                return Err((
-                    StatusCode::CONFLICT,
-                    Json(json!(ApiError::new(
-                        "escrow_already_finalized",
-                        "Escrow was already settled or is no longer active"
-                    ))),
-                ));
-            }
-
-            let _ = state.ws_tx.send(WsEvent::escrow_settled(&id));
-            webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowSettled(&id));
-
-            Ok(Json(json!({ "status": "settled", "escrow_id": id })))
-        }
-        None => Err((
-            StatusCode::NOT_FOUND,
-            Json(json!(ApiError::new(
-                "escrow_not_found",
-                format!("No escrow found with id '{id}'")
-            ))),
-        )),
-    }
+    let svc = crate::services::escrow_service::EscrowService::new(
+        state.db.clone(),
+        &state.ws_tx,
+        state.sig_verifier.clone(),
+        state.verifier.clone(),
+    );
+    svc.settle(&id, &headers)
+        .await
+        .map(|_| Json(json!({ "status": "settled", "escrow_id": id })))
+        .map_err(service_error)
 }
 
 /// POST /v1/escrows/{id}/refund
@@ -660,97 +485,16 @@ pub async fn refund(
     Path(id): Path<String>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new(
-                "internal_error",
-                "An internal error occurred. Please try again later."
-            ))),
-        )
-    })?;
-
-    match escrow {
-        Some(current)
-            if matches!(
-                current.status,
-                EscrowStatus::Settled
-                    | EscrowStatus::Refunded
-                    | EscrowStatus::Cancelled
-                    | EscrowStatus::Expired
-            ) =>
-        {
-            Err((
-                StatusCode::CONFLICT,
-                Json(json!(ApiError::new(
-                    "escrow_already_finalized",
-                    "Escrow is already finalized"
-                ))),
-            ))
-        }
-        Some(current) => {
-            // Verify caller is authorized (buyer only with valid signature)
-            let auth = AuthContext::from_headers(&headers).map_err(|e| {
-                (
-                    StatusCode::UNAUTHORIZED,
-                    Json(json!(ApiError::new("unauthorized", e.to_string()))),
-                )
-            })?;
-            verify_refund_authorization(&current, &auth, state.sig_verifier.as_ref(), &state.db)
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::FORBIDDEN,
-                        Json(json!(ApiError::new("forbidden", e.to_string()))),
-                    )
-                })?;
-
-            // Verify escrow can be refunded (UTXO exists on-chain)
-            verify_escrow_refundable(&current, state.verifier.as_ref())
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::CONFLICT,
-                        Json(json!(ApiError::new("verification_failed", e.to_string()))),
-                    )
-                })?;
-
-            // Atomic update: status + refunded_at in one query, only if still active
-            let refunded = queries::refund_escrow_atomic(&state.db, &id)
-                .await
-                .map_err(|_e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new(
-                            "internal_error",
-                            "An internal error occurred. Please try again later."
-                        ))),
-                    )
-                })?;
-
-            if !refunded {
-                return Err((
-                    StatusCode::CONFLICT,
-                    Json(json!(ApiError::new(
-                        "escrow_already_finalized",
-                        "Escrow was already refunded or is no longer active"
-                    ))),
-                ));
-            }
-
-            let _ = state.ws_tx.send(WsEvent::escrow_refunded(&id));
-            webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowRefunded(&id));
-
-            Ok(Json(json!({ "status": "refunded", "escrow_id": id })))
-        }
-        None => Err((
-            StatusCode::NOT_FOUND,
-            Json(json!(ApiError::new(
-                "escrow_not_found",
-                format!("No escrow found with id '{id}'")
-            ))),
-        )),
-    }
+    let svc = crate::services::escrow_service::EscrowService::new(
+        state.db.clone(),
+        &state.ws_tx,
+        state.sig_verifier.clone(),
+        state.verifier.clone(),
+    );
+    svc.refund(&id, &headers)
+        .await
+        .map(|_| Json(json!({ "status": "refunded", "escrow_id": id })))
+        .map_err(service_error)
 }
 
 /// POST /v1/escrows/{id}/dispute
@@ -921,68 +665,33 @@ pub async fn cancel(
     Path(id): Path<String>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new(
-                "internal_error",
-                "An internal error occurred. Please try again later."
-            ))),
-        )
-    })?;
-
-    match escrow {
-        Some(current)
-            if matches!(
-                current.status,
-                EscrowStatus::Settled
-                    | EscrowStatus::Refunded
-                    | EscrowStatus::Cancelled
-                    | EscrowStatus::Expired
-            ) =>
-        {
-            Err((
-                StatusCode::CONFLICT,
-                Json(json!(ApiError::new(
-                    "escrow_already_finalized",
-                    "Escrow cannot be cancelled"
-                ))),
-            ))
-        }
-        Some(current) => {
-            let auth = AuthContext::from_headers(&headers).map_err(|e| {
-                (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", e.to_string()))))
-            })?;
-            verify_cancel_authorization(&current, &auth, state.sig_verifier.as_ref(), &state.db).await.map_err(|e| {
-                (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", e.to_string()))))
-            })?;
-            queries::mark_escrow_cancelled(&state.db, &id)
-                .await
-                .map_err(|_e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!(ApiError::new(
-                            "internal_error",
-                            "An internal error occurred. Please try again later."
-                        ))),
-                    )
-                })?;
-
-            let _ = state.ws_tx.send(WsEvent::escrow_cancelled(&id));
-            webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowCancelled(&id));
-
-            Ok(Json(json!({ "status": "cancelled", "escrow_id": id })))
-        }
-        None => Err((
-            StatusCode::NOT_FOUND,
-            Json(json!(ApiError::new(
-                "escrow_not_found",
-                format!("No escrow found with id '{id}'")
-            ))),
-        )),
-    }
+    let svc = crate::services::escrow_service::EscrowService::new(
+        state.db.clone(),
+        &state.ws_tx,
+        state.sig_verifier.clone(),
+        state.verifier.clone(),
+    );
+    svc.cancel(&id, &headers)
+        .await
+        .map(|_| Json(json!({ "status": "cancelled", "escrow_id": id })))
+        .map_err(service_error)
 }
 #[derive(Deserialize)]
 pub struct AtomicSwapRequest {
     pub preimage: String,
+}
+
+/// Convert a service error to an HTTP error response.
+fn service_error(e: crate::services::escrow_service::ServiceError) -> (StatusCode, Json<Value>) {
+    use crate::services::escrow_service::ServiceError;
+    let (status, message) = match &e {
+        ServiceError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+        ServiceError::InvalidInput(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+        ServiceError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg.clone()),
+        ServiceError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.clone()),
+        ServiceError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
+        ServiceError::VerificationFailed(msg) => (StatusCode::CONFLICT, msg.clone()),
+        ServiceError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+    };
+    (status, Json(json!(ApiError::new(e.error_code(), message))))
 }
