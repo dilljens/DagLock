@@ -50,23 +50,30 @@ pub async fn list_escrows_by_address(
     let role = role.unwrap_or("all");
     let status = status.unwrap_or("all");
 
-    // Build WHERE clause with consistent bind positions
+    // Build WHERE clause — use unnumbered `?` for positional binding
     let where_clause = match role {
-        "buyer" => "buyer_address = ?1",
-        "seller" => "seller_address = ?1",
-        _ => "(buyer_address = ?1 OR seller_address = ?1)",
+        "buyer" => "buyer_address = ?",
+        "seller" => "seller_address = ?",
+        _ => "(buyer_address = ? OR seller_address = ?)",
     };
 
     let status_clause = if status != "all" {
-        " AND status = ?2"
+        " AND status = ?"
     } else {
         ""
     };
-    let sql = format!("SELECT * FROM escrows WHERE {where_clause}{status_clause} ORDER BY created_at DESC LIMIT ?3 OFFSET ?4");
+
+    let sql = format!(
+        "SELECT * FROM escrows WHERE {where_clause}{status_clause} ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    );
     let count_sql = format!("SELECT COUNT(*) FROM escrows WHERE {where_clause}{status_clause}");
 
-    // Execute data query
+    // Execute data query — bind in order: address (1x or 2x for "all"), status, limit, offset
     let mut query = sqlx::query(&sql).bind(address);
+    if role == "all" {
+        // Bind address twice for the OR clause
+        query = query.bind(address);
+    }
     if status != "all" {
         query = query.bind(status);
     }
@@ -74,6 +81,9 @@ pub async fn list_escrows_by_address(
 
     // Execute count query
     let mut count_query = sqlx::query_as::<_, (i64,)>(&count_sql).bind(address);
+    if role == "all" {
+        count_query = count_query.bind(address);
+    }
     if status != "all" {
         count_query = count_query.bind(status);
     }

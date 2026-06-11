@@ -10,6 +10,7 @@
 //!
 //! Falls back to offline reconciliation mode if wRPC connection fails.
 
+use kaspa_rpc_core::RpcBlock;
 use kaspa_wrpc_client::prelude::{NetworkId, NetworkType, RpcApi};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use tokio::time::interval;
 use tracing::{error, info, warn};
 
 use crate::db::queries;
+use crate::types::EscrowStatus;
 
 /// Spawn the wRPC block listener background task.
 ///
@@ -187,16 +189,18 @@ async fn run_online_loop_with_reconnect(
 }
 
 /// Run the listener loop with an active wRPC connection.
-/// Uses polling to check DAA score and detect new blocks.
+/// Uses polling to check DAA score, detect new blocks, and scan for DagLock UTXOs.
 async fn run_online_loop(
     client: Arc<kaspa_wrpc_client::KaspaRpcClient>,
     db: Pool<Sqlite>,
-    _kas_hash: Option<Vec<u8>>,
-    _krc20_hash: Option<Vec<u8>>,
+    kas_hash: Option<Vec<u8>>,
+    krc20_hash: Option<Vec<u8>>,
 ) {
     let mut last_daa_score: i64 = 0;
+    let mut last_processed_hash: Option<kaspa_hashes::Hash> = None;
     let mut heartbeat_count: u64 = 0;
     let mut price_update_count: u64 = 0;
+    let mut scanned_count: u64 = 0;
 
     info!("Starting wRPC online listener loop (polling)...");
 
@@ -209,6 +213,50 @@ async fn run_online_loop(
                 if daa_score > last_daa_score && last_daa_score > 0 {
                     let new_blocks = daa_score - last_daa_score;
                     info!("DAA progressed: {last_daa_score} → {daa_score} (+{new_blocks} blocks)");
+
+                    // Scan new blocks for DagLock template hash matches
+                    if kas_hash.is_some() || krc20_hash.is_some() {
+                        // On first run, start from the current tip
+                        if last_processed_hash.is_none() {
+                            if let Some(tip) = info.tip_hashes.first() {
+                                last_processed_hash = Some(*tip);
+                                info!("Initializing block scan from tip: {tip}");
+                            }
+                        }
+
+                        if let Some(low_hash) = last_processed_hash {
+                            match client
+                                .get_blocks(Some(low_hash), true, true)
+                                .await
+                            {
+                                Ok(response) => {
+                                    let block_count = response.blocks.len();
+                                    for block in &response.blocks {
+                                        scan_block_for_escrows(
+                                            block,
+                                            &db,
+                                            kas_hash.as_deref(),
+                                            krc20_hash.as_deref(),
+                                            &mut scanned_count,
+                                        )
+                                        .await;
+                                    }
+                                    // Update last_processed_hash to the latest block hash
+                                    if let Some(last_hash) = response.block_hashes.last() {
+                                        last_processed_hash = Some(*last_hash);
+                                    }
+                                    if block_count > 0 {
+                                        info!(
+                                            "Scanned {block_count} block(s), activated {scanned_count} escrow(s) total"
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    warn!("Failed to fetch blocks: {e}");
+                                }
+                            }
+                        }
+                    }
                 }
                 last_daa_score = daa_score;
 
@@ -243,6 +291,79 @@ async fn run_online_loop(
         }
 
         tokio::time::sleep(Duration::from_secs(10)).await;
+    }
+}
+
+/// Scan a block's transaction outputs for DagLock template hash matches.
+/// When a match is found, look up the escrow by lock_tx_id and activate it.
+async fn scan_block_for_escrows(
+    block: &RpcBlock,
+    db: &Pool<Sqlite>,
+    kas_hash: Option<&[u8]>,
+    krc20_hash: Option<&[u8]>,
+    activated_count: &mut u64,
+) {
+    for tx in &block.transactions {
+        let tx_id_str = tx
+            .verbose_data
+            .as_ref()
+            .map(|vd| format!("{}", vd.transaction_id))
+            .unwrap_or_default();
+
+        if tx_id_str.is_empty() {
+            continue;
+        }
+
+        // Scan each output for template hash matches
+        for (output_index, output) in tx.outputs.iter().enumerate() {
+            let script = output.script_public_key.script();
+            if let Some(asset_type) = check_template_match(script, kas_hash, krc20_hash) {
+                // Found a DagLock output — try to activate the corresponding escrow
+                match queries::try_find_escrow_by_lock_tx(db, &tx_id_str).await {
+                    Ok(Some(escrow_id)) => {
+                        // Check current status before updating
+                        match queries::get_escrow(db, &escrow_id).await {
+                            Ok(Some(escrow))
+                                if escrow.status == EscrowStatus::PendingConfirmation =>
+                            {
+                                match queries::update_escrow_status_only(
+                                    db,
+                                    &escrow_id,
+                                    "active",
+                                )
+                                .await
+                                {
+                                    Ok(()) => {
+                                        *activated_count += 1;
+                                        info!(
+                                            "Activated escrow {escrow_id} — lock tx {tx_id_str} output {output_index} matches {asset_type} template"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        warn!("Failed to activate escrow {escrow_id}: {e}");
+                                    }
+                                }
+                            }
+                            Ok(Some(_)) => {
+                                // Already active/settled — skip
+                            }
+                            Ok(None) => {
+                                warn!("Escrow {escrow_id} not found in DB after lock tx match");
+                            }
+                            Err(e) => {
+                                warn!("Failed to get escrow {escrow_id}: {e}");
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        // No escrow found for this tx_id — not a DagLock escrow
+                    }
+                    Err(e) => {
+                        warn!("Failed to look up escrow for tx {tx_id_str}: {e}");
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -304,7 +425,6 @@ async fn update_market_prices(pool: &Pool<Sqlite>) -> Result<u64, String> {
 }
 
 /// Check if a script matches any DagLock template hash by computing its BLAKE2b-160 hash.
-#[allow(dead_code)]
 pub fn check_template_match(
     script: &[u8],
     kas_hash: Option<&[u8]>,
@@ -388,7 +508,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(dead_code)]
     fn check_template_match_returns_none_for_unknown_script() {
         let script = vec![0x01, 0x02, 0x03];
         let result = check_template_match(&script, None, None);
@@ -396,7 +515,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(dead_code)]
     fn check_template_match_detects_kas_hash() {
         let script = vec![0xaa, 0xbb, 0xcc];
         let hash = blake2b_simd::Params::new()
@@ -409,7 +527,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(dead_code)]
     fn check_template_match_detects_krc20_hash() {
         let script = vec![0xdd, 0xee, 0xff];
         let hash = blake2b_simd::Params::new()
