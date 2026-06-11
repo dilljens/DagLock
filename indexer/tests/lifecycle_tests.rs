@@ -375,30 +375,32 @@ async fn test_list_escrows_by_address() {
     queries::insert_escrow(&pool, &e2).await.unwrap();
     queries::insert_escrow(&pool, &e3).await.unwrap();
 
-    // Verify inserts via direct get
+    // Verify inserts
     assert!(queries::get_escrow(&pool, "esc_a1").await.unwrap().is_some());
-    assert!(queries::get_escrow(&pool, "esc_a2").await.unwrap().is_some());
-    assert!(queries::get_escrow(&pool, "esc_a3").await.unwrap().is_some());
 
-    // Verify buyer1 has 2 escrows via direct SQL
-    // (list_escrows_by_address has a pre-existing numbered-param bug with ?3/?4)
-    let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1",
-    )
-    .bind("kaspa:buyer1")
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert_eq!(count, 2, "buyer1 should have 2 escrows");
+    // Test list_escrows_by_address with the fixed SQL params
+    let (results, count) =
+        queries::list_escrows_by_address(&pool, "kaspa:buyer1", None, None, 10, 0)
+            .await
+            .unwrap();
+    assert_eq!(count, 2, "buyer1 should have 2 escrows (count)");
+    assert_eq!(results.len(), 2, "buyer1 should have 2 escrows (results)");
 
-    let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1",
-    )
-    .bind("kaspa:other")
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert_eq!(count, 1, "other should have 1 escrow");
+    let (results, count) =
+        queries::list_escrows_by_address(&pool, "kaspa:other", None, None, 10, 0)
+            .await
+            .unwrap();
+    assert_eq!(count, 1, "other should have 1 escrow (count)");
+    assert_eq!(results.len(), 1, "other should have 1 escrow (results)");
+
+    // Test with status filter
+    let (results, count) =
+        queries::list_escrows_by_address(&pool, "kaspa:buyer1", None, Some("active"), 10, 0)
+            .await
+            .unwrap();
+    assert_eq!(count, 1, "buyer1 should have 1 active escrow");
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].status, EscrowStatus::Active);
 }
 
 // ─── Stats ──────────────────────────────────────────────────────

@@ -190,6 +190,24 @@ pub fn calculate_fee(amount_sompi: i64) -> Result<String, JsError> {
     serde_json::to_string(&result).map_err(|e| JsError::new(&format!("Serialization error: {}", e)))
 }
 
+/// Convert a KAS amount string (e.g. "5000" or "5000.5") to sompi.
+///
+/// # Arguments
+/// * `amount_str` - KAS amount as a decimal string
+///
+/// # Returns
+/// Amount in sompi (i64)
+#[wasm_bindgen]
+pub fn kas_to_sompi(amount_str: &str) -> Result<u64, JsError> {
+    daglock_shared::kas_to_sompi(amount_str).map_err(|e| JsError::new(&format!("{}", e)))
+}
+
+/// Validate a trade hash (must be 64 hex chars).
+#[wasm_bindgen]
+pub fn validate_trade_hash(hash_hex: &str) -> Result<bool, JsError> {
+    Ok(daglock_shared::validate_trade_hash(hash_hex).is_ok())
+}
+
 /// Compile a DagLock Vault covenant.
 #[wasm_bindgen]
 pub fn compile_vault(owner_key: &str, timeout: i64, treasury_key: &str) -> Result<String, JsError> {
