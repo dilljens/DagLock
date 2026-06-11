@@ -45,23 +45,18 @@ async fn main() {
 
     info!("Starting DagLock Indexer v{}", env!("CARGO_PKG_VERSION"));
 
-    // Production safety: refuse mainnet without explicit --allow-mainnet flag
-    if args.network == "mainnet" && !args.allow_mainnet {
-        panic!("DagLock refuses to start on mainnet without --allow-mainnet flag. Set --allow-mainnet to acknowledge production risk.");
-    }
+    // Centralized config validation (panics on invalid config)
+    args.validate();
 
     // Warn if DAGLOCK_MESSAGE_KEY is not set (messages stored in plaintext)
     if std::env::var("DAGLOCK_MESSAGE_KEY").is_err() {
-        if args.network == "mainnet" {
-            panic!("DAGLOCK_MESSAGE_KEY environment variable must be set on mainnet. Generate one with: openssl rand -hex 32");
-        }
         warn!("DAGLOCK_MESSAGE_KEY not set — encrypted messages will use a deterministic dev key. Set DAGLOCK_MESSAGE_KEY=64_hex_chars for production.");
     }
 
     // Warn if --mock-auth is used on testnet (insecure, but allowed)
-    if args.mock_auth && args.network != "mainnet" {
+    if args.mock_auth {
         warn!(
-            "--mock-auth enabled on {}. Any signature will be accepted. Never use this on mainnet.",
+            "--mock-auth enabled on {}. Any signature will be accepted. Never use on mainnet.",
             args.network
         );
     }
@@ -121,6 +116,8 @@ async fn main() {
         wrpc_url: args.wrpc_url.clone(),
         daglock_kas_template: args.daglock_kas_template.clone(),
         daglock_krc20_template: args.daglock_krc20_template.clone(),
+        daglock_vault_softlock_template: args.daglock_vault_softlock_template.clone(),
+        daglock_vault_multisig_template: args.daglock_vault_multisig_template.clone(),
         verifier,
         sig_verifier,
         ws_tx,
@@ -129,12 +126,19 @@ async fn main() {
 
     if let Some(wrpc_url) = state.wrpc_url.clone() {
         listener::spawn(
-            wrpc_url,
+            wrpc_url.clone(),
             state.db.clone(),
             state.network.clone(),
             state.daglock_kas_template.clone(),
             state.daglock_krc20_template.clone(),
         );
+        if args.auto_sweep_vaults {
+            let sweep_wrpc = match crate::listener::try_connect_wrpc(&wrpc_url, &args.network).await {
+                Ok(c) => Some(c),
+                Err(e) => { warn!("Vault sweep wRPC connection failed: {}", e); None }
+            };
+            listener::spawn_vault_sweeper(state.db.clone(), sweep_wrpc, state.treasury_pubkey.clone());
+        }
     }
 
     let app = build_router(state, &args.cors_origin);

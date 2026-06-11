@@ -37,6 +37,8 @@ pub struct AppState {
     pub wrpc_url: Option<String>,
     pub daglock_kas_template: Option<String>,
     pub daglock_krc20_template: Option<String>,
+    pub daglock_vault_softlock_template: Option<String>,
+    pub daglock_vault_multisig_template: Option<String>,
     /// On-chain verification service.
     /// Uses MockVerifier for now; replace with WrpcVerifier when wRPC is ready.
     pub verifier: Arc<dyn EscrowVerifier>,
@@ -93,8 +95,8 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             post(evidence::submit_evidence).get(evidence::list_evidence),
         )
         .route(
-            "/v1/escrows/:id/resolve-dispute",
-            post(evidence::resolve_dispute),
+            "/v1/escrows/:id/log-dispute-outcome",
+            post(evidence::log_dispute_outcome),
         )
         .route(
             "/v1/escrows/:id/messages",
@@ -113,6 +115,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/vaults", get(vaults::list).post(vaults::create))
         .route("/v1/vaults/:id", get(vaults::get_by_id))
         .route("/v1/vaults/:id/withdraw", post(vaults::withdraw))
+        .route("/v1/vaults/:id/password-withdraw", post(vaults::password_withdraw))
         .route("/v1/vaults/:id/transfer", post(vaults::transfer))
         .route("/v1/swap/generate", post(swap::generate))
         // App management routes (API key required — use X-Daglock-Api-Key header)

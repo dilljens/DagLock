@@ -98,7 +98,7 @@ Detected conventions. Match these so new code fits in.
 **Rule**: Background tasks receive owned data (`String`, `Pool<Sqlite>` clone). No references across spawn boundaries.
 
 ### Atomic operations
-**Pattern**: Single query with `WHERE status = 'active'`  **Example**: `indexer/src/db/queries.rs`
+**Pattern**: Single query with `WHERE status = 'active'`  **Example**: `indexer/src/db/queries/escrows.rs`
 **Rule**: Lifecycle transitions must be atomic to prevent race conditions.
 
 ### Authentication
@@ -118,7 +118,7 @@ Detected conventions. Match these so new code fits in.
 **Rule**: Top N*2 by reliability score -> random N from pool. Threshold varies by escrow value: 2/3 (<10K KAS), 3/5 (10K-100K), 5/9 (>100K). 72h timeout defaults to seller_wins.
 
 ### Vouch scoring (EigenTrust-lite)
-**Pattern**: Weighted average of voucher reputations  **Example**: `indexer/src/db/queries.rs` `calculate_vouch_score()`
+**Pattern**: Weighted average of voucher reputations  **Example**: `indexer/src/db/queries/vouches.rs` `calculate_vouch_score()`
 **Rule**: Each vouch contributes `voucher_score / 5.0` weight. Vouchers with 0 trades get score=1.0, weight=0.2. Vouches expire after 6 months.
 
 ### Route definition
@@ -138,7 +138,7 @@ Detected conventions. Match these so new code fits in.
 **Rule**: All address inputs must be trimmed, validated on blur with green/red feedback. Destructive actions (cancel, refund, dispute) require a confirmation dialog.
 
 ### Offer expiry
-**Pattern**: `expires_at` timestamp on offers, auto-expired by reconciliation loop  **Example**: `indexer/src/db/queries.rs` `reconcile_expired_offers()`
+**Pattern**: `expires_at` timestamp on offers, auto-expired by reconciliation loop  **Example**: `indexer/src/db/queries/offers.rs` `reconcile_expired_offers()`
 **Rule**: Offer creation form includes an expiry dropdown (24h/3d/7d/30d). The background listener marks expired offers automatically.
 
 ### Dispute mode

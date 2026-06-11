@@ -245,6 +245,8 @@ pub mod entrypoints {
     pub const WITHDRAW: &str = "withdraw";
     pub const WITHDRAW_PASSWORD: &str = "withdrawPassword";
     pub const WITHDRAW_TIMEOUT: &str = "withdrawTimeout";
+    pub const SWEEP: &str = "sweep";
+    pub const EMERGENCY_REFUND: &str = "emergencyRefund";
 }
 
 #[cfg(test)]
@@ -370,7 +372,7 @@ mod tests {
         let zero = [0u8; 32];
         let compiled = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &zero);
 
-        assert_eq!(compiled.abi.len(), 5);
+        assert_eq!(compiled.abi.len(), 6);
         let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"release"));
         assert!(names.contains(&"swap"));
@@ -435,7 +437,8 @@ mod tests {
         let krc20_hex: String = krc20_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_krc20_template_hash={}", krc20_hex);
 
-        let softlock = compile_daglock_vault_softlock(&zero, &[0u8; 32], &[0u8; 32], 1_700_000_000, &zero);
+        let softlock =
+            compile_daglock_vault_softlock(&zero, &[0u8; 32], &[0u8; 32], 1_700_000_000, &zero);
         let (_, _, softlock_hash) = template_parts_and_hash(&softlock);
         let softlock_hex: String = softlock_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_vault_softlock_template_hash={}", softlock_hex);
@@ -474,7 +477,7 @@ mod tests {
     fn compiles_daglock_multisig_with_valid_params() {
         let pk = [0u8; 32];
         let compiled = compile_daglock_vault_multisig(&pk, &pk, &pk, 1_700_000_000, &pk);
-        assert_eq!(compiled.abi.len(), 1);
+        assert_eq!(compiled.abi.len(), 2);
         assert!(!compiled.script.is_empty());
     }
 

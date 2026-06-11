@@ -2,16 +2,28 @@ pragma silverscript ^0.1.0;
 
 // DagLock Vault — Time-locked KAS storage
 //
-// Spending path:
-//   withdraw(sig ownerSig)     — owner reclaims after timeout
+// Two spending paths:
+//   withdraw(sig ownerSig)     — owner reclaims after timeout (requires signature)
+//   sweep()                     — anyone can sweep after timeout, funds go to owner
 //
-// 0.1% protocol fee (1/1000) sent to treasury on every withdrawal.
+// Fee model: 0.1% (1/1000) on every withdrawal. The vault owner pays
+// the fee (it is deducted from their withdrawal). This is lower than
+// the 0.5% escrow fee because vaults are self-custody infrastructure,
+// not trade facilitation.
+// The sweep() path prevents lost vaults: if the owner loses their key,
+// anyone can broadcast sweep() after timeout to return funds to the owner.
+//
+// The sweep() path prevents lost vaults: if the owner loses their key,
+// anyone can broadcast sweep() after timeout to return funds to the owner.
+// The sweeping party cannot redirect funds — output[0] is hardcoded to
+// the owner's P2PK address.
 
 contract DagLockVault(
     byte[32] ownerKey,
     int timeout,                  // Unix timestamp before which withdrawal is blocked
     byte[32] treasuryKey          // DagLock fee treasury
 ) {
+    // ── Path A: Owner Withdraw ─────────────────────────────────
     entrypoint function withdraw(sig ownerSig) {
         require(tx.time >= timeout);
         require(checkSig(ownerSig, pubkey(ownerKey)));
@@ -20,6 +32,23 @@ contract DagLockVault(
         int feeAmount = inputValue / 1000;
         int sendAmount = inputValue - feeAmount;
 
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path B: Public Sweep ───────────────────────────────────
+    entrypoint function sweep() {
+        require(tx.time >= timeout);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        byte[34] ownerScript = new ScriptPubKeyP2PK(pubkey(ownerKey));
+        require(tx.outputs[0].scriptPubKey == byte[](ownerScript));
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));

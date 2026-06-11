@@ -9,11 +9,18 @@ pragma silverscript ^0.1.0;
 //   disputeSellerWins(...)                 — mediator + seller, seller gets paid
 //   disputeBuyerWins(...)                  — mediator + buyer, buyer gets refund
 //
-// Mediator fee is set per-dispute as entrypoint argument, not fixed
-// at deploy time. This keeps the template hash stable.
+// Fee model: 0.5% (1/200) on release and swap paths — same as basic escrow.
+// On dispute paths, the 0.5% protocol fee still applies (output[1]=treasury).
+// The party receiving output[0] economically pays. On timeout refund, no fee.
+// Mediator fee is a separate output (output[2]) set per-dispute as entrypoint
+// argument — NOT fixed at deploy time. This keeps the template hash stable.
 //
 // If arbiterKey is all-zeroes, dispute paths are unreachable (cannot
 // forge the mediator's signature).
+//
+// Sixth path: emergencyRefund(buyerSig) — buyer can reclaim solo after
+// timeout + 30 days. This is a backstop if the mediator disappears.
+// The 30-day grace period gives the mediator time to act. No fee.
 
 contract DagLockArbiter(
     byte[32] buyerKey,
@@ -112,5 +119,17 @@ contract DagLockArbiter(
         byte[34] mediatorScript = new ScriptPubKeyP2PK(pubkey(arbiterKey));
         require(tx.outputs[2].value == mediatorFee);
         require(tx.outputs[2].scriptPubKey == byte[](mediatorScript));
+    }
+
+    // ── Path F: Emergency Refund ────────────────────────────────
+    // Buyer can reclaim solo after timeout + 30 days.
+    // No mediator signature needed. No fee.
+    // This prevents funds from being stuck if the mediator disappears.
+    entrypoint function emergencyRefund(sig buyerSig) {
+        require(tx.time >= timeout + 2592000);  // timeout + 30 days
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
     }
 }

@@ -19,7 +19,7 @@ Project-specific terms and acronyms.
 | **DAA score** | Difficulty-Adjusted Average score (Kaspa block height) | Expiration logic |
 | **sompi** | Smallest unit of KAS (10^-8) | Amounts in API types |
 | **Treasury** | DagLock fee address -- receives 0.5% on settlement | `treasuryKey` in covenant |
-| **Beta reputation** | Academic standard (Josang 2002): (successes+1)/(total+2) | `indexer/src/db/queries.rs` |
+| **Beta reputation** | Academic standard (Josang 2002): (successes+1)/(total+2) | `indexer/src/db/queries/reputation.rs` |
 | **Recency weighting** | Last 90 days weighted 2x in reputation formula | `calculate_reputation_score()` |
 | **Wash trading signal** | trading_concentration: fraction of volume with single counterparty | Reputation response |
 | **Vouching** | Web of Trust: vouch for an address's reliability | `indexer/src/api/vouches.rs` |
@@ -27,7 +27,7 @@ Project-specific terms and acronyms.
 | **Evidence** | Signed proof submitted during a dispute | `indexer/src/api/evidence.rs` |
 | **Dispute mode** | How an escrow handles disputes: standard/mediator/jury | `indexer/src/types.rs`, create escrow form |
 | **Escrow messaging** | Encrypted chat thread tied to an escrow (AES-256-GCM) | `indexer/src/api/messages.rs` |
-| **Wash trading** | trading_concentration metric: fraction of volume with a single counterparty | Reputation response, `queries.rs` |
+| **Wash trading** | trading_concentration metric: fraction of volume with a single counterparty | Reputation response, `queries/reputation.rs` |
 | **Mediator** | Optional third-party dispute resolver (single person) | `contracts/src/daglock_arbiter.sil` |
 | **Toccata** | Kaspa mainnet hard fork (June 5-20, 2026) | `docs/ROADMAP.md` |
 | **KasWare** | Kaspa web extension wallet | Browser signing integration |

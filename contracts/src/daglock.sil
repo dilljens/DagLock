@@ -7,6 +7,12 @@ pragma silverscript ^0.1.0;
 //   swap(secret)                   — hash preimage reveals for atomic swap
 //   refund(buyerSig)               — depositor reclaims after timeout
 //
+// Fee model: 0.5% (1/200) deducted from output[0] toward treasury.
+// The party receiving output[0] (seller on release, swap recipient)
+// economically pays the fee. Both parties consent by signing SIGHASH_ALL
+// after reviewing the outputs. On refund, no fee is paid (service not
+// completed).
+//
 // Constructor parameters use byte[32] (not pubkey) to work around
 // the SilverScript compiler's strict type checking for constructor args.
 // Casts to pubkey happen within the function bodies.

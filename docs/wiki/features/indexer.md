@@ -162,7 +162,7 @@ This outputs:
 | `verification.rs` | `WrpcVerifier`, `MockVerifier`, `EscrowVerifier` trait |
 | `main.rs` | Wires `WrpcVerifier` when `--wrpc-url` is set |
 | `listener.rs` | DAA polling for expiry, market price updates |
-| `db/queries.rs` | `try_find_escrow_by_lock_tx()`, `update_escrow_status_only()` |
+| `db/queries/escrows.rs` | `try_find_escrow_by_lock_tx()`, `update_escrow_status_only()` |
 
 ## wRPC Listener (v0.2.0)
 

@@ -21,42 +21,32 @@ pub async fn run(
         .unwrap_or("0000000000000000000000000000000000000000000000000000000000000000");
     let treasury_arr: [u8; 32] = crate::wallet::parse_hex_key(treasury_key_hex)?;
 
-    // Get signing keys
-    let use_kaspawallet = crate::wallet::kaspawallet_available();
-
-    let (buyer_pubkey, seller_pubkey): ([u8; 32], [u8; 32]);
-
-    if use_kaspawallet {
-        // Derive keys from kaspawallet
-        let output = std::process::Command::new("kaspawallet")
-            .arg("keys")
-            .arg("--show")
-            .output()
-            .context("Failed to get keys from kaspawallet")?;
-        let key_data = String::from_utf8_lossy(&output.stdout);
-        let lines: Vec<&str> = key_data.lines().collect();
-
-        if lines.len() < 2 {
-            anyhow::bail!("kaspawallet keys returned insufficient keys. Need at least 2.");
-        }
-
-        buyer_pubkey = crate::wallet::parse_hex_key(lines[0].trim())?;
-        seller_pubkey = crate::wallet::parse_hex_key(lines[1].trim())?;
-    } else {
-        // Read keys from env vars or generate for demo
-        let buyer_hex = std::env::var("DAGLOCK_BUYER_KEY").unwrap_or_else(|_| {
-            eprintln!("Warning: DAGLOCK_BUYER_KEY not set, using demo key [1u8; 32]");
-            "0101010101010101010101010101010101010101010101010101010101010101".to_string()
-        });
-        let seller_hex = std::env::var("DAGLOCK_SELLER_KEY").unwrap_or_else(|_| {
-            eprintln!("Warning: DAGLOCK_SELLER_KEY not set, using demo key [2u8; 32]");
-            "0202020202020202020202020202020202020202020202020202020202020202".to_string()
-        });
-
-        buyer_pubkey = crate::wallet::parse_hex_key(&buyer_hex)?;
-        seller_pubkey = crate::wallet::parse_hex_key(&seller_hex)?;
+    // Require kaspawallet — no dummy key fallback
+    if !crate::wallet::kaspawallet_available() {
+        anyhow::bail!(
+            "kaspawallet is required for creating escrows.\n\
+             Install it from: https://kaspa.org/wallets\n\
+             Then run: kaspawallet keys --show"
+        );
     }
 
+    // Derive keys from kaspawallet
+    let output = std::process::Command::new("kaspawallet")
+        .arg("keys")
+        .arg("--show")
+        .output()
+        .context("Failed to get keys from kaspawallet")?;
+    let key_data = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = key_data.lines().collect();
+
+    if lines.len() < 2 {
+        anyhow::bail!("kaspawallet keys returned insufficient keys. Need at least 2.");
+    }
+
+    let buyer_pubkey = crate::wallet::parse_hex_key(lines[0].trim())?;
+    let seller_pubkey = crate::wallet::parse_hex_key(lines[1].trim())?;
+
+    // Compile covenant to get the covenant address
     let result = crate::tx::assemble_create_escrow(
         &buyer_pubkey,
         &seller_pubkey,
@@ -65,21 +55,36 @@ pub async fn run(
         &treasury_arr,
     )?;
 
-    let fee_preview: serde_json::Value = reqwest::Client::new()
-        .get(format!(
-            "{}/v1/fees/estimate?amount_kas={}",
-            api_url, amount_str
-        ))
-        .send()
-        .await?
-        .json()
-        .await?;
+    println!("Covenant address: {}", result.covenant_address);
+    println!();
+    println!("Step 1: Send {} KAS to the covenant address:", amount_str);
+    println!(
+        "   kaspawallet send --to {} --amount {} --priority normal",
+        result.covenant_address, amount_str
+    );
+    println!();
+    println!("Step 2: Copy the transaction ID from kaspawallet output above.");
+    println!();
 
+    // Prompt for the lock transaction ID
+    print!("Enter lock transaction ID: ");
+    use std::io::Write;
+    std::io::stdout().flush()?;
+    let mut lock_tx_id = String::new();
+    std::io::stdin().read_line(&mut lock_tx_id)?;
+    let lock_tx_id = lock_tx_id.trim().to_string();
+
+    if lock_tx_id.is_empty() {
+        anyhow::bail!("Lock transaction ID is required.");
+    }
+
+    // Create escrow on indexer with the real lock_tx_id
     let escrow_data = serde_json::json!({
-        "lock_tx_id": "pending_fund_me",
+        "lock_tx_id": lock_tx_id,
         "lock_tx_output_index": 0,
         "buyer_address": counterparty,
         "amount_sompi": result.amount_sompi,
+        "seller_address": lines[0].trim(),
     });
 
     let client = reqwest::Client::new();
@@ -87,41 +92,19 @@ pub async fn run(
         .post(format!("{}/v1/escrows", api_url))
         .json(&escrow_data)
         .send()
-        .await?;
+        .await
+        .context("Failed to connect to indexer")?;
 
     if resp.status().is_success() {
         let escrow: serde_json::Value = resp.json().await?;
-        let fee_display = fee_preview["fee_kas"]
-            .as_str()
-            .map(ToOwned::to_owned)
-            .unwrap_or_else(|| format!("{:.8}", result.fee_sompi as f64 / 100_000_000.0));
+        let fee_display = format!("{:.8}", result.fee_sompi as f64 / 100_000_000.0);
 
+        println!();
         println!("Escrow created!");
         println!("   ID:       {}", escrow["id"].as_str().unwrap_or("?"));
         println!("   Amount:   {} KAS (fee: {} KAS)", amount_str, fee_display);
         println!("   Status:   pending_confirmation");
-        println!();
-
-        if use_kaspawallet {
-            // Sign and broadcast automatically
-            println!("Signing with kaspawallet...");
-            let signed_tx = crate::wallet::sign_with_kaspawallet(&result.unsigned_tx_hex)?;
-            println!("Signed transaction: {}", &signed_tx[..32]);
-        } else {
-            println!("To broadcast, sign with:");
-            println!(
-                "   kaspawallet sign --transaction {}",
-                result.unsigned_tx_hex
-            );
-        }
-
-        println!();
-        println!("Covenant address: {}", result.covenant_address);
-        println!("Send funds to this address using:");
-        println!(
-            "   kaspawallet send --to {} --amount {} --priority normal",
-            result.covenant_address, amount_str
-        );
+        println!("   Lock TX:  {}", lock_tx_id);
         println!();
         println!(
             "Trade link: https://t.me/DagLock_bot?start=claim_{}",

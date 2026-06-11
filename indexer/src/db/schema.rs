@@ -69,6 +69,7 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_mediator_key_column(pool).await?;
     ensure_dispute_outcome_columns(pool).await?;
     ensure_lock_tx_id_index(pool).await?;
+    ensure_vault_sweep_columns(pool).await?;
 
     Ok(())
 }
@@ -290,6 +291,18 @@ pub async fn ensure_lock_tx_id_index(pool: &Pool<Sqlite>) -> Result<(), sqlx::Er
     )
     .execute(pool)
     .await?;
+    Ok(())
+}
+
+pub async fn ensure_vault_sweep_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(vaults)").fetch_all(pool).await?;
+    let existing: std::collections::HashSet<String> = rows.into_iter().filter_map(|row| row.try_get::<String, _>("name").ok()).collect();
+    if !existing.contains("owner_pubkey_hex") {
+        sqlx::query("ALTER TABLE vaults ADD COLUMN owner_pubkey_hex TEXT").execute(pool).await?;
+    }
+    if !existing.contains("sweep_tx_id") {
+        sqlx::query("ALTER TABLE vaults ADD COLUMN sweep_tx_id TEXT").execute(pool).await?;
+    }
     Ok(())
 }
 

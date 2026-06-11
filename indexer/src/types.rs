@@ -589,6 +589,10 @@ pub struct Vault {
     pub created_at: i64,
     pub unlocked_at: Option<i64>,
     pub expires_at: Option<i64>,
+    /// Hex-encoded 32-byte owner public key (for indexer auto-sweep).
+    pub owner_pubkey_hex: Option<String>,
+    /// Transaction ID of the sweep broadcast (for idempotency).
+    pub sweep_tx_id: Option<String>,
 }
 
 /// Create vault request.
@@ -601,6 +605,7 @@ pub struct CreateVaultRequest {
     pub timeout: i64,
     pub lock_tx_id: Option<String>,
     pub lock_tx_output_index: Option<i64>,
+    pub owner_pubkey_hex: Option<String>,
 }
 
 /// Vault list response.

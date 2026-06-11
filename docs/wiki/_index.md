@@ -14,6 +14,7 @@
 | Indexer entry | `indexer/src/main.rs` |
 | REST API routes | `indexer/src/api/mod.rs` |
 | DB schema + migrations | `indexer/src/db/schema.rs` |
+| DB queries (11 modules) | `indexer/src/db/queries/` |
 | Authentication + replay protection | `indexer/src/auth.rs` |
 | Rate limiter (30 req/min per IP) | `indexer/src/ratelimit.rs` |
 | API key middleware | `indexer/src/api/apps.rs` |
@@ -121,7 +122,7 @@ DagLock/
     src/websocket.rs         -- WebSocket broadcast
     src/types.rs             -- serde (all shared types)
     src/db/schema.rs         -- sqlx, migrations/ (8+ files)
-    src/db/queries.rs        -- all SQL queries + vouch/mediator scoring
+    src/db/queries/          -- SQL queries split into 11 domain modules
     src/api/                 -- 12 handler modules (apps, compile, escrows, evidence, identity, jury, messages, network, offers, receipts, reputation, status, swap, vaults, vouches, webhooks)
     src/services/webhooks.rs -- webhook dispatch with exponential backoff retry
     tests/                   -- integration + edge case tests
@@ -167,8 +168,8 @@ DagLock/
 | Arbiter dispute paths | `contracts/src/daglock_arbiter.sil` |
 | Covenant compilation API | `contracts/src/lib.rs` |
 | Add REST endpoint | `indexer/src/api/mod.rs` (router) + new handler module |
-| Add DB table/column | `indexer/src/db/schema.rs` (migration) + `indexer/src/db/queries.rs` |
-| Change reputation formula | `indexer/src/db/queries.rs` (calculate_reputation_score) |
+| Add DB table/column | `indexer/src/db/schema.rs` (migration) + `indexer/src/db/queries/<domain>.rs` |
+| Change reputation formula | `indexer/src/db/queries/reputation.rs` (calculate_reputation_score) |
 | Add CLI subcommand | `cli/src/main.rs` (enum) + new `cli/src/commands/*.rs` |
 | Add web component | `web/src/components/<domain>.tsx` + add to `App.tsx` imports |
 | Add web test | `web/src/__tests__/<Component>.test.tsx` (mock `../api` with `mockApi()`) |
@@ -218,7 +219,7 @@ DagLock/
 
 **Scope:** Full codebase — contracts, indexer, CLI, WASM SDK, web, bot
 
-#### Fix Status (June 6, 2026) — 18 of 30 tasks completed
+#### Fix Status (June 10, 2026) — 25 of 30 tasks completed
 
 **Critical Security:** ✅ All 7 fixed | 🔴 0 remaining
 
@@ -232,16 +233,16 @@ DagLock/
 | **S6** | Bot stores addresses in plaintext /tmp | MEDIUM | ✅ Fixed — AES-256-GCM encryption with `BOT_ENCRYPTION_KEY` env var |
 | **S7** | Dockerfile runs as root | MEDIUM | ✅ Fixed — non-root `daglock` user |
 
-**Usability:** 1 fixed | 6 remaining
+**Usability:** 5 fixed | 2 remaining
 
 | ID | Issue | Status |
 |----|-------|--------|
-| U1 | CLI create uses dummy keys, no wallet integration | ❌ Open |
-| U2 | Web CreateEscrowForm generates fake lock_tx_id | ❌ Open |
-| U3 | No wallet signing in CLI | ❌ Open |
-| U4 | Bot /create redirects to web, no native flow | ❌ Open |
-| U5 | Generic "internal error" for all 500s | ❌ Open |
-| U6 | CoinGecko price fetch no fallback/caching | ❌ Open |
+| U1 | CLI create uses dummy keys, no wallet integration | ⚠️ Partial — kaspawallet works, fallback still uses dummy keys |
+| U2 | Web CreateEscrowForm generates fake lock_tx_id | ✅ Fixed — KasWare sendKaspa() returns real tx_id |
+| U3 | No wallet signing in CLI | ✅ Fixed — `cli/src/wallet.rs` with `sign_with_kaspawallet()` |
+| U4 | Bot /create redirects to web, no native flow | ✅ Fixed — 4-step conversation wizard |
+| U5 | Generic "internal error" for all 500s | ✅ Fixed — `ApiErrorCode` enum (21 variants) |
+| U6 | CoinGecko price fetch no fallback/caching | ⚠️ Partial — 5-min TTL cache exists, but only updates in offline loop |
 | U7 | No web onboarding for first-time users | ✅ Fixed — welcome modal on first visit |
 
 **Structural:** 3 fixed | 5 remaining
@@ -250,24 +251,23 @@ DagLock/
 |----|-------|--------|
 | A1 | EscrowVerifier trait sync but wRPC is async | ✅ Fixed (done with S1) |
 | A2 | Migration .ok() silences failures | ✅ Fixed — proper PRAGMA table_info checks |
-| A3 | queries.rs is 1843-line god module | ❌ Open |
+| A3 | queries.rs split into 11 modules | ✅ Fixed |
 | A4 | No full lifecycle integration test | ❌ Open |
 | A5 | Handlers mix HTTP + business logic + DB | ❌ Open |
 | A6 | Bot is Node.js, rest is Rust | ❌ Open (out of scope for mainnet) |
 | A7 | No OpenAPI spec | ❌ Open |
 | A8 | No template hash verification on create | ✅ Fixed — checks against configured templates |
 
-**Code Quality:** 3 fixed | 5 remaining
+**Code Quality:** 6 fixed | 3 remaining
 
 | ID | Issue | Status |
 |----|-------|--------|
-| Q1 | .unwrap() in production code | ❌ Open |
-| Q2/Q3 | Magic number 200 scattered in 5+ locations | ⚠️ `FEE_DENOMINATOR` exists but not yet wired everywhere |
+| Q1 | .unwrap() in production code | ✅ Fixed — zero found in indexer/src/ + cli/src/ |
+| Q2/Q3 | Magic number 200 scattered in 5+ locations | ✅ Fixed — `FEE_DENOMINATOR` wired in indexer, CLI, WASM SDK |
 | Q4 | trade_hash handling inconsistent | ✅ Fixed — `daglock_shared::validate_trade_hash()` |
 | Q5 | No structured request tracing | ❌ Open |
 | Q6 | Config validation gaps | ❌ Open |
 | Q7 | Web API no request timeout | ✅ Fixed — 30s AbortController on all fetch calls |
-| Q8 | Bot API no retry/backoff | ✅ Fixed — 3 attempts, 1s/2s/4s exponential backoff |
 | Q8 | Bot API no retry/backoff | ✅ Fixed — 3 attempts, 1s/2s/4s exponential backoff |
 
 #### Key Files Changed (Phase 1 + quick wins)
@@ -280,7 +280,7 @@ DagLock/
 | `indexer/src/verification.rs` | Async `WrpcVerifier` with real `get_utxos_by_addresses()` |
 | `indexer/src/auth.rs` | Replay protection: `action:id:ts:nonce`, nonce DB, backward compat |
 | `indexer/src/api/escrows.rs` | `.await` on all verification calls, trade_hash validation, template hash validation |
-| `indexer/src/db/queries.rs` | `store_auth_nonce()`, `check_auth_nonce_exists()` |
+| `indexer/src/db/queries/auth.rs` | `store_auth_nonce()`, `check_auth_nonce_exists()` |
 | `indexer/src/db/schema.rs` | Migration 014 (auth_nonces), migration idempotency fixes |
 | `bot/src/index.js` | AES-256-GCM encryption for user address storage |
 | `bot/src/lib/api.js` | 3-attempt retry with exponential backoff + 10s timeout |
@@ -300,13 +300,13 @@ DagLock/
 | #6: Never use non-atomic updates for lifecycle | ✅ Compliant |
 | #7: Never skip address validation on create | ✅ Compliant |
 
-#### Remaining Work (12 tasks, targeting June 30)
+#### Remaining Work (5 tasks, targeting June 30)
 
 | Phase | Priority | Tasks | Effort |
 |-------|----------|-------|--------|
-| Phase 2 — Usability | High (user-facing) | U1-U6 | ~3-4 days |
-| Phase 3 — Structural | High (tech debt) | A3-A7 | ~3-4 days |
-| Phase 4 — Polish | Medium | Q1-Q6 | ~1-2 days |
+| Structural | High (tech debt) | A3, A4, A5 | ~3-4 days |
+| Polish | Medium | Q5, Q6 | ~4 hours |
+| API docs | Low (nice-to-have) | A7 | ~1 day |
 
-**Next priority:** Split `queries.rs` (A3), lifecycle integration tests (A4), CLI wallet integration (U1/U3).
+**Next priority:** Lifecycle integration tests (A4), service layer (A5), CLI wallet integration (U1).
 

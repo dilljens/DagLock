@@ -82,7 +82,7 @@ pub struct ParsedMessage {
 
 /// Try to parse a version 2 message: `action:id:ts:nonce_hex`
 /// or fall back to version 1: `action:id`
-fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
+pub(crate) fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
     let parts: Vec<&str> = message.split(':').collect();
 
     if parts.len() == 4 {
@@ -162,7 +162,7 @@ fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
 }
 
 /// Verify the nonce against the DB (stored or already used).
-async fn verify_nonce(
+pub(crate) async fn verify_nonce(
     pool: &Pool<Sqlite>,
     parsed: &ParsedMessage,
     address: &str,
@@ -525,6 +525,26 @@ pub async fn verify_refund_authorization(
 
 /// Extract auth context from headers and verify a signature.
 /// Returns Ok(AuthContext) if the signature is valid.
+
+/// Verify that the caller is authorized to cancel the escrow.
+pub async fn verify_cancel_authorization(
+    escrow: &Escrow,
+    auth: &AuthContext,
+    verifier: &dyn SignatureVerifier,
+    pool: &Pool<Sqlite>,
+) -> AuthResult<()> {
+    let is_buyer = auth.address == escrow.buyer_address;
+    let is_seller = escrow.seller_address.as_ref().map(|s| auth.address == *s).unwrap_or(false);
+    if !is_buyer && !is_seller {
+        return Err(AuthError::Unauthorized { reason: format!("Address {} is not the buyer or seller for escrow {}", auth.address, escrow.id) });
+    }
+    let parsed = parse_message(&auth.message)?;
+    if parsed.action != "cancel" { return Err(AuthError::InvalidMessage { detail: format!("Expected action 'cancel', got '{}'", parsed.action) }); }
+    if parsed.escrow_id != escrow.id { return Err(AuthError::Unauthorized { reason: format!("Message escrow_id '{}' does not match request '{}'", parsed.escrow_id, escrow.id) }); }
+    if !verifier.verify_signature(&auth.address, &auth.signature, &auth.message)? { return Err(AuthError::InvalidSignature { address: auth.address.clone() }); }
+    verify_nonce(pool, &parsed, &auth.address).await?;
+    Ok(())
+}
 #[allow(dead_code)]
 pub fn verify_auth(
     headers: &axum::http::HeaderMap,

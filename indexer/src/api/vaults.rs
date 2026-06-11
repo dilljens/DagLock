@@ -9,9 +9,8 @@ use serde_json::{json, Value};
 use crate::api::AppState;
 use crate::auth::AuthContext;
 use crate::db::queries;
-use crate::types::{
-    CreateVaultRequest, TransferVaultRequest, VaultListResponse, VaultStatus, WithdrawVaultRequest,
-};
+use crate::types::*;
+use sha2::{Digest, Sha256};
 
 /// GET /v1/vaults?owner=...
 pub async fn list(
@@ -126,6 +125,17 @@ pub async fn create(
         ));
     }
 
+    // Validate vault type has a matching covenant template configured
+    let template_configured = match body.vault_type {
+        VaultType::Time => true,
+        VaultType::Beneficiary => state.daglock_vault_softlock_template.is_some(),
+        VaultType::Multisig => state.daglock_vault_multisig_template.is_some(),
+        VaultType::Deadman | VaultType::Inheritance => { return Err((StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "not_implemented", "message": format!("Vault type '{:?}' does not have a covenant yet. Available: Time, Beneficiary, Multisig", body.vault_type)})))); }
+    };
+    if !template_configured {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "template_not_configured", "message": format!("Vault type '{:?}' requires a template hash configured server-side (--daglock-vault-{}-template)", body.vault_type, match body.vault_type { VaultType::Beneficiary => "softlock", VaultType::Multisig => "multisig", _ => "unknown" })}))));
+    }
+
     // Validate timeout is in the future
     let now = chrono::Utc::now().timestamp();
     if body.timeout <= now {
@@ -154,6 +164,8 @@ pub async fn create(
         created_at: now,
         unlocked_at: None,
         expires_at: None,
+        owner_pubkey_hex: body.owner_pubkey_hex.clone(),
+        sweep_tx_id: None,
     };
 
     queries::insert_vault(&state.db, &vault)
@@ -264,9 +276,44 @@ pub async fn withdraw(
     })))
 }
 
+/// POST /v1/vaults/:id/password-withdraw
+///
+/// Withdraw from a beneficiary (softlock) vault using a password.
+pub async fn password_withdraw(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    JsonBody(body): JsonBody<PasswordWithdrawRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let vault = queries::get_vault(&state.db, &id).await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "database_error", "message": format!("{e}")})))
+    })?.ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})))
+    })?;
+    if vault.vault_type != VaultType::Beneficiary {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "invalid_type", "message": "Only Beneficiary vaults support password withdrawal"}))));
+    }
+    if vault.status != VaultStatus::Locked {
+        return Err((StatusCode::CONFLICT, Json(json!({"error": "invalid_status", "message": format!("Vault is already {:?}", vault.status)}))));
+    }
+    let mut hasher = Sha256::new();
+    hasher.update(body.password.as_bytes());
+    let password_hash = hex::encode(hasher.finalize());
+    queries::update_vault_status(&state.db, &id, "unlocked").await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "database_error", "message": format!("{e}")})))
+    })?;
+    Ok(Json(json!({"status": "unlocked", "vault_id": id, "password_hash": password_hash, "message": "Vault unlocked via password. The beneficiary must broadcast the on-chain withdrawPassword() transaction."})))
+}
+
+#[derive(serde::Deserialize)]
+pub struct PasswordWithdrawRequest {
+    pub password: String,
+}
+
 /// POST /v1/vaults/:id/transfer
 ///
 /// Transfer vault ownership to a beneficiary. Requires auth headers.
+/// NOTE: This only updates the beneficiary address in the indexer database.
+/// The on-chain covenant is immutable.
 pub async fn transfer(
     State(state): State<AppState>,
     Path(id): Path<String>,

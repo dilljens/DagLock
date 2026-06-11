@@ -196,6 +196,7 @@ async fn run_online_loop(
 ) {
     let mut last_daa_score: i64 = 0;
     let mut heartbeat_count: u64 = 0;
+    let mut price_update_count: u64 = 0;
 
     info!("Starting wRPC online listener loop (polling)...");
 
@@ -214,6 +215,20 @@ async fn run_online_loop(
                 // Reconcile expired escrows
                 if let Err(e) = queries::reconcile_expired_escrows(&db, daa_score).await {
                     warn!("Escrow reconciliation failed: {e}");
+                }
+
+                // Update market prices every 15 minutes (90 cycles at 10s)
+                price_update_count += 1;
+                if price_update_count >= 90 {
+                    price_update_count = 0;
+                    match update_market_prices(&db).await {
+                        Ok(n) => {
+                            if n > 0 {
+                                info!("Updated prices for {n} market-priced offers");
+                            }
+                        }
+                        Err(e) => warn!("Price update failed: {e}"),
+                    }
                 }
 
                 heartbeat_count += 1;
@@ -316,6 +331,58 @@ pub fn check_template_match(
     None
 }
 
+
+
+/// Spawn the vault auto-sweep background loop.
+#[allow(dead_code)]
+pub fn spawn_vault_sweeper(
+    db: Pool<Sqlite>,
+    _wrpc_client: Option<Arc<kaspa_wrpc_client::KaspaRpcClient>>,
+    treasury_pubkey_hex: Option<String>,
+) {
+    if _wrpc_client.is_none() {
+        warn!("Vault auto-sweep disabled: no wRPC connection available.");
+        return;
+    }
+    if treasury_pubkey_hex.is_none() {
+        warn!("Vault auto-sweep disabled: no treasury pubkey configured.");
+        return;
+    }
+
+    let treasury_key = match hex::decode(treasury_pubkey_hex.unwrap()) {
+        Ok(k) if k.len() == 32 => k,
+        _ => { error!("Invalid treasury pubkey hex for vault sweep"); return; }
+    };
+
+    tokio::spawn(async move {
+        info!("Vault auto-sweep loop started (30s interval)");
+        let mut ticker = interval(Duration::from_secs(30));
+        loop {
+            ticker.tick().await;
+            match queries::find_sweepable_vaults(&db).await {
+                Ok(vaults) => {
+                    for (id, _owner_addr, amount_sompi, owner_pubkey_hex) in &vaults {
+                        info!("Vault {} can be swept: {} sompi past timeout", id, amount_sompi);
+                        if let Some(owner_pk_hex) = owner_pubkey_hex {
+                            if let Ok(owner_key) = hex::decode(owner_pk_hex) {
+                                if owner_key.len() == 32 && treasury_key.len() == 32 {
+                                    let compiled = daglock_contracts::compile_daglock_vault(&owner_key, 0, &treasury_key);
+                                    let fee_amount = *amount_sompi as u64 / 1000;
+                                    let send_amount = *amount_sompi as u64 - fee_amount;
+                                    if let Ok(sigscript) = compiled.build_sig_script(daglock_contracts::entrypoints::SWEEP, vec![]) {
+                                        info!("Sweep tx ready for vault {} (send: {}, fee: {}, sigscript: {} bytes)", id, send_amount, fee_amount, sigscript.len());
+                                        let _ = queries::mark_vault_swept(&db, id, "sweep_pending").await;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => { warn!("Vault sweep query failed: {}", e); }
+            }
+        }
+    });
+}
 #[cfg(test)]
 mod tests {
     use super::*;

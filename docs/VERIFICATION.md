@@ -18,10 +18,11 @@ cargo test -p daglock-contracts -- print_template_hashes --nocapture
 
 # Output will include:
 #   daglock_kas_template_hash=30876e3ea42d0e23bb0980f3fd97ae8807e9c70f
-#   daglock_arbiter_template_hash=c6d10350b51d5fedcc05382d02d8334a783be220
+#   daglock_arbiter_template_hash=d6aea010040d361049483c62da2e6b35f6dc256c
 #   daglock_krc20_template_hash=8a43a8438d183a92bc7b94337c031196ff16725b
-#   daglock_vault_template_hash=d773d10a9a2626986226e4eca528e0cb071b79be
-#   daglock_vault_template_hash=d773d10a9a2626986226e4eca528e0cb071b79be
+#   daglock_vault_softlock_template_hash=ed57b9da957beaac387a0baa9a23c8c54d186964
+#   daglock_vault_multisig_template_hash=caf0b46ea425159b80af81436fc8f8cfd4e62afa
+#   daglock_vault_template_hash=b338c514b1ef79bf1b0739814bc0d567e8461cfb
 ```
 
 Compare the output template hash with the one claimed by the indexer at `/v1/network`. If they match, the bytecode is identical.

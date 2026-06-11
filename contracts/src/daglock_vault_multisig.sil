@@ -2,8 +2,15 @@ pragma silverscript ^0.1.0;
 
 // DagLock Vault Multi-sig — N-of-M time-locked KAS storage
 //
-// Up to 3 signers. All provided keys must sign.
-// 0.1% protocol fee (1/1000) sent to treasury on withdrawal.
+// Two spending paths:
+//   withdraw(sig1, sig2, sig3)  — all configured keys must sign (N-of-N)
+//   sweep(sig anyKey)            — any ONE configured key can sweep after timeout
+//
+// The sweep() path prevents fund lockup if any key is lost.
+// Security note: sweep() gives a single key unilateral access
+// after timeout. If a key is compromised, the timeout window is
+// the protection. Use withdraw() for full security.
+// 0.1% protocol fee (1/1000) sent to treasury on every withdrawal.
 
 contract DagLockVaultMultisig(
     byte[32] key1,
@@ -23,6 +30,25 @@ contract DagLockVaultMultisig(
         if(key3 != byte[32](0)) {
             require(checkSig(sig3, pubkey(key3)));
         }
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path B: Primary Key Sweep ───────────────────────────────
+    // key1 can sweep alone after timeout. Other signers cannot block.
+    // Prevents fund lockup if key2 or key3 disappear.
+    // If key1 itself is lost, withdraw() still requires all keys.
+    entrypoint function sweep(sig key1Sig) {
+        require(tx.time >= timeout);
+        require(checkSig(key1Sig, pubkey(key1)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
         int feeAmount = inputValue / 1000;

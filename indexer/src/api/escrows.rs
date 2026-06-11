@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::api::AppState;
 
-use crate::auth::{verify_refund_authorization, verify_settle_authorization, AuthContext};
+use crate::auth::{parse_message, verify_cancel_authorization, verify_nonce, verify_refund_authorization, verify_settle_authorization, AuthContext};
 use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
@@ -797,17 +797,26 @@ pub async fn dispute(
                     Json(json!(ApiError::new("unauthorized", e.to_string()))),
                 )
             })?;
-            if auth.address != current.buyer_address
-                && current.seller_address.as_deref() != Some(&auth.address)
-            {
+            let is_buyer = auth.address == current.buyer_address;
+            let is_seller = current.seller_address.as_deref() == Some(&auth.address);
+            if !is_buyer && !is_seller {
                 return Err((
                     StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new(
-                        "forbidden",
-                        "Only escrow parties can dispute"
-                    ))),
+                    Json(json!(ApiError::new("forbidden", "Only escrow parties can dispute"))),
                 ));
             }
+            let parsed = parse_message(&auth.message).map_err(|e| {
+                (StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_message", e.to_string()))))
+            })?;
+            if parsed.action != "dispute" || parsed.escrow_id != id {
+                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("invalid_message", "Message must be 'dispute:{id}:ts:nonce'")))));
+            }
+            if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message).unwrap_or(false) {
+                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature for dispute")))));
+            }
+            verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
+                (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", e.to_string()))))
+            })?;
 
             let is_jury = body.mode.as_deref() == Some("jury");
             queries::mark_escrow_disputed(&state.db, &id, body.reason.as_str())
@@ -854,13 +863,16 @@ pub async fn dispute(
                     ));
                 }
 
-                // Score-weighted random selection: take top N by reliability_score
-                // For now, pick the top N jurors (simple approach — can be randomized later)
-                let selected: Vec<String> = eligible
-                    .iter()
-                    .take(juror_count as usize)
-                    .map(|j| j.address.clone())
-                    .collect();
+                // Random selection: take top N*2 by reliability_score → randomly pick N
+                let candidate_pool: Vec<_> = eligible.iter().take((juror_count as usize).saturating_mul(2).min(eligible.len())).collect();
+                let pool_size = candidate_pool.len();
+                let needed = (juror_count as usize).min(pool_size);
+                let mut indices: Vec<usize> = (0..pool_size).collect();
+                for i in (pool_size - needed..pool_size).rev() {
+                    let j = rand::random::<usize>() % (i + 1);
+                    indices.swap(i, j);
+                }
+                let selected: Vec<String> = indices[pool_size - needed..].iter().map(|&i| candidate_pool[i].address.clone()).collect();
 
                 let case_id =
                     queries::create_jury_case(&state.db, &id, juror_count, threshold, &selected)
@@ -938,40 +950,12 @@ pub async fn cancel(
             ))
         }
         Some(current) => {
-            // Verify caller is authorized (buyer or seller with valid signature)
-            let auth = AuthContext::from_headers(&headers).map_err(|_e| {
-                (
-                    StatusCode::UNAUTHORIZED,
-                    Json(json!(ApiError::new(
-                        "unauthorized",
-                        "X-Daglock-* headers required"
-                    ))),
-                )
+            let auth = AuthContext::from_headers(&headers).map_err(|e| {
+                (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", e.to_string()))))
             })?;
-            if !state
-                .sig_verifier
-                .verify_signature(&auth.address, &auth.signature, &format!("cancel:{}", id))
-                .unwrap_or(false)
-            {
-                return Err((
-                    StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new(
-                        "forbidden",
-                        "Invalid signature for cancel"
-                    ))),
-                ));
-            }
-            if auth.address != current.buyer_address
-                && current.seller_address.as_deref() != Some(&auth.address)
-            {
-                return Err((
-                    StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new(
-                        "forbidden",
-                        "Only escrow parties can cancel"
-                    ))),
-                ));
-            }
+            verify_cancel_authorization(&current, &auth, state.sig_verifier.as_ref(), &state.db).await.map_err(|e| {
+                (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", e.to_string()))))
+            })?;
             queries::mark_escrow_cancelled(&state.db, &id)
                 .await
                 .map_err(|_e| {

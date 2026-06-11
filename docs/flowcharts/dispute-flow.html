@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>DagLock Dispute Resolution State Machine</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 20px;
+        background: #0d1117;
+        color: #c9d1d9;
+      }
+      h1 {
+        color: #58a6ff;
+        border-bottom: 1px solid #30363d;
+        padding-bottom: 10px;
+      }
+      a {
+        color: #58a6ff;
+      }
+      .back {
+        margin-bottom: 16px;
+        display: block;
+        color: #8b949e;
+        text-decoration: none;
+      }
+      .params {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 16px;
+        margin: 20px 0;
+      }
+      .params h3 {
+        margin: 0 0 12px 0;
+        color: #58a6ff;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html" class="back">← Back to index</a>
+    <h1>Dispute Resolution State Machine</h1>
+    <p style="color: #8b949e">
+      Three dispute modes: standard, mediator, jury. Each has different on-chain
+      covenant paths and indexer states.
+    </p>
+
+    <div class="params">
+      <h3>State Colors</h3>
+      <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px">
+        <div>
+          <span
+            style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background: #238636;
+              border-radius: 3px;
+            "
+          ></span>
+          Active / success
+        </div>
+        <div>
+          <span
+            style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background: #da3633;
+              border-radius: 3px;
+            "
+          ></span>
+          Dispute / error
+        </div>
+        <div>
+          <span
+            style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background: #8957e5;
+              border-radius: 3px;
+            "
+          ></span>
+          Indexer-only state
+        </div>
+        <div>
+          <span
+            style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background: #f0883e;
+              border-radius: 3px;
+            "
+          ></span>
+          Decision point
+        </div>
+        <div>
+          <span
+            style="
+              display: inline-block;
+              width: 12px;
+              height: 12px;
+              background: #9e6a03;
+              border-radius: 3px;
+            "
+          ></span>
+          Timeout/expiry
+        </div>
+      </div>
+    </div>
+
+    <pre class="mermaid">
+stateDiagram-v2
+  state "Escrow Active" as ACTIVE
+  state "Disputed" as DISPUTED
+
+  state "Standard Mode" as STD {
+    [*] --> STD_WAIT : buyer or seller disputes
+    STD_WAIT --> STD_SETTLE : parties co-sign release()
+    STD_WAIT --> STD_REFUND : timeout reached → buyer calls refund()
+    STD_SETTLE : Settled ✅
+    STD_REFUND : Refunded ↩️
+  }
+
+  state "Mediator Mode" as MED {
+    [*] --> MED_EVIDENCE : dispute raised
+    MED_EVIDENCE --> MED_LOG : parties + mediator exchange evidence
+    MED_LOG --> MED_SELLER : mediator signs disputeSellerWins
+    MED_LOG --> MED_BUYER : mediator signs disputeBuyerWins
+    MED_LOG --> MED_TIMEOUT : timeout → refundAfterTimeout
+    MED_SELLER : Seller paid (minus fees)
+    MED_BUYER : Buyer refunded (minus fees)
+    MED_TIMEOUT : Mediator + buyer co-sign refund
+  }
+
+  state "Jury Mode" as JURY {
+    [*] --> SELECTING : top N*2 jurors → random N
+    SELECTING --> VOTING : case opened (3/5/9 jurors)
+    VOTING --> VERDICT_SELLER : threshold reached
+    VOTING --> VERDICT_BUYER : threshold reached
+    VOTING --> VERDICT_SELLER : 72h timeout → seller_wins default
+    VERDICT_SELLER : Verdict: seller_wins
+    VERDICT_BUYER : Verdict: buyer_wins
+  }
+
+  ACTIVE --> DISPUTED : dispute raised
+  DISPUTED --> STD : mode=standard
+  DISPUTED --> MED : mode=mediator / mediator_key set
+  DISPUTED --> JURY : mode=jury
+
+  note right of ACTIVE
+    Escrow can be in PendingConfirmation
+    or Active status when dispute is raised
+  end note
+
+  note right of JURY
+    72h timeout defaults to seller_wins.
+    Treasury executes on-chain verdict
+    via disputeSellerWins/disputeBuyerWins.
+  end note
+</pre
+    >
+
+    <h2>Comparison Table</h2>
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+      <tr style="background: #161b22; border-bottom: 2px solid #30363d">
+        <th style="text-align: left; padding: 8px">Aspect</th>
+        <th style="text-align: left; padding: 8px">Standard</th>
+        <th style="text-align: left; padding: 8px">Mediator</th>
+        <th style="text-align: left; padding: 8px">Jury</th>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Who decides</td>
+        <td style="padding: 8px">Nobody (timeout)</td>
+        <td style="padding: 8px">Single trusted mediator</td>
+        <td style="padding: 8px">N-person panel (3/5/9)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Covenant</td>
+        <td style="padding: 8px"><code>daglock.sil</code></td>
+        <td style="padding: 8px"><code>daglock_arbiter.sil</code></td>
+        <td style="padding: 8px"><code>daglock_arbiter.sil</code></td>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Arbiter key</td>
+        <td style="padding: 8px">n/a</td>
+        <td style="padding: 8px">Mediator's pubkey</td>
+        <td style="padding: 8px">Treasury pubkey</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Timeout path</td>
+        <td style="padding: 8px">Buyer alone (fastest)</td>
+        <td style="padding: 8px">Mediator + buyer co-sign</td>
+        <td style="padding: 8px">Treasure + buyer co-sign</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Dispute resolution</td>
+        <td style="padding: 8px">None (mutual or timeout)</td>
+        <td style="padding: 8px">disputeSellerWins/disputeBuyerWins</td>
+        <td style="padding: 8px">Same, treasury executes verdict</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Mediator fee</td>
+        <td style="padding: 8px">n/a</td>
+        <td style="padding: 8px">Set per dispute (runtime arg)</td>
+        <td style="padding: 8px">n/a</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Juror minimums</td>
+        <td style="padding: 8px">n/a</td>
+        <td style="padding: 8px">n/a</td>
+        <td style="padding: 8px">10 trades, 3.0+ score</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #30363d">
+        <td style="padding: 8px">Default on timeout</td>
+        <td style="padding: 8px">Buyer refunded</td>
+        <td style="padding: 8px">Mediator must co-sign</td>
+        <td style="padding: 8px">72h → seller_wins</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px">Vote options</td>
+        <td style="padding: 8px">n/a</td>
+        <td style="padding: 8px">n/a (mediator decides alone)</td>
+        <td style="padding: 8px">seller_wins / buyer_wins</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::api::AppState;
-use crate::auth::AuthContext;
+use crate::auth::{parse_message, verify_nonce, AuthContext};
 use crate::db::queries;
 use crate::types::*;
 
@@ -55,7 +55,7 @@ pub async fn submit_evidence(
         ));
     }
 
-    // Extract authenticated address
+    // Extract authenticated address and parse message for replay protection
     let auth = AuthContext::from_headers(&headers).map_err(|_e| {
         (
             StatusCode::UNAUTHORIZED,
@@ -65,12 +65,24 @@ pub async fn submit_evidence(
             ))),
         )
     })?;
-
-    // Verify signature — proves the caller owns the claimed address
-    let expected_msg = format!("evidence:{}", id);
+    let parsed = parse_message(&auth.message).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new("invalid_message", e.to_string()))),
+        )
+    })?;
+    if parsed.action != "evidence" || parsed.escrow_id != id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "invalid_message",
+                "Message must be 'evidence:{id}:ts:nonce'"
+            ))),
+        ));
+    }
     if !state
         .sig_verifier
-        .verify_signature(&auth.address, &auth.signature, &expected_msg)
+        .verify_signature(&auth.address, &auth.signature, &auth.message)
         .unwrap_or(false)
     {
         return Err((
@@ -81,6 +93,14 @@ pub async fn submit_evidence(
             ))),
         ));
     }
+    verify_nonce(&state.db, &parsed, &auth.address)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!(ApiError::new("forbidden", e.to_string()))),
+            )
+        })?;
 
     // Verify the submitter is one of the escrow parties
     if auth.address != escrow.buyer_address
@@ -169,7 +189,7 @@ pub async fn list_evidence(
 ///
 /// Resolve a dispute with an outcome.
 /// Requires authentication headers.
-pub async fn resolve_dispute(
+pub async fn log_dispute_outcome(
     State(state): State<AppState>,
     Path(id): Path<String>,
     headers: axum::http::HeaderMap,
@@ -229,7 +249,7 @@ pub async fn resolve_dispute(
     })?;
 
     // Verify signature — proves the caller owns the claimed address
-    let expected_msg = format!("resolve:{}", id);
+    let expected_msg = format!("log-outcome:{}", id);
     if !state
         .sig_verifier
         .verify_signature(&auth.address, &auth.signature, &expected_msg)

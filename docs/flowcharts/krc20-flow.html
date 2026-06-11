@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>DagLock KRC-20 Escrow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 20px;
+        background: #0d1117;
+        color: #c9d1d9;
+      }
+      h1 {
+        color: #58a6ff;
+        border-bottom: 1px solid #30363d;
+        padding-bottom: 10px;
+      }
+      a {
+        color: #58a6ff;
+      }
+      .back {
+        margin-bottom: 16px;
+        display: block;
+        color: #8b949e;
+        text-decoration: none;
+      }
+      .params {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 16px;
+        margin: 20px 0;
+      }
+      .params h3 {
+        margin: 0 0 12px 0;
+        color: #58a6ff;
+      }
+      .params td {
+        padding: 4px 16px 4px 0;
+        vertical-align: top;
+      }
+      .params .field {
+        color: #79c0ff;
+        font-family: monospace;
+      }
+      .params .type {
+        color: #8b949e;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="index.html" class="back">← Back to index</a>
+    <h1>DagLock KRC-20 Escrow (<code>daglock_krc20.sil</code>)</h1>
+    <div class="params">
+      <h3>Constructor Parameters</h3>
+      <table>
+        <tr>
+          <td class="field">buyerPubKey</td>
+          <td class="type">pubkey</td>
+          <td>Buyer's public key</td>
+        </tr>
+        <tr>
+          <td class="field">sellerPubKey</td>
+          <td class="type">pubkey</td>
+          <td>Seller's public key</td>
+        </tr>
+        <tr>
+          <td class="field">tradeHash</td>
+          <td class="type">byte[32]</td>
+          <td>SHA-256 of swap secret</td>
+        </tr>
+        <tr>
+          <td class="field">timeout</td>
+          <td class="type">int</td>
+          <td>Unix timestamp for refund</td>
+        </tr>
+        <tr>
+          <td class="field">treasuryPubKey</td>
+          <td class="type">pubkey</td>
+          <td>Treasury public key</td>
+        </tr>
+        <tr>
+          <td class="field">kcc20*</td>
+          <td class="type">multiple</td>
+          <td>KCC-20 template metadata (prefix, suffix, hash, covenant ID)</td>
+        </tr>
+      </table>
+    </div>
+    <pre class="mermaid">
+flowchart LR
+  subgraph ICC["Inter-Covenant Communication"]
+    direction TB
+    I1["Input A: KCC-20 branch<br/>(token UTXO)"] --> CHK{checkSigs()<br/>verifies<br/>OpInputCovenantId<br/>== DagLock ID}
+    I2["Input B: DagLockKRC20<br/>(fee UTXO)"] --> CHK
+    CHK -->|"OK"| OUT[Token transfer allowed]
+  end
+
+  subgraph Paths["DagLockKRC20 Spend Paths"]
+    A["release<br/><b>buyerSig + sellerSig</b>"] --> OA["Outputs:<br/>out[0] → token recipient<br/>out[1] → treasury: fee = input value"]
+    B["swap<br/><b>secret</b>"] --> OB["Outputs:<br/>out[0] → token recipient<br/>out[1] → treasury: fee = input value"]
+    C["refund<br/><b>buyerSig</b>"] --> OC["KCC-20 branch returns to buyer<br/>No fee"]
+  end
+
+  A & B & C --> ICC
+
+  style A fill:#238636,color:#fff
+  style B fill:#1f6feb,color:#fff
+  style C fill:#9e6a03,color:#fff
+</pre>
+    <h2>Architecture</h2>
+    <p>The KRC-20 covenant uses <b>Inter-Covenant Communication (ICC)</b>:</p>
+    <ol>
+      <li>DagLockKRC20 is deployed first → gets covenant ID D</li>
+      <li>A KCC-20 branch is created with <code>ownerIdentifier = D</code></li>
+      <li>
+        Settlement requires <b>two UTXO inputs</b>: the token branch + the
+        DagLock fee gate
+      </li>
+      <li>
+        KCC-20's <code>checkSigs()</code> verifies the DagLock covenant
+        authorizes the transfer
+      </li>
+      <li>
+        DagLockKRC20 does NOT track token balances — KCC-20 handles token
+        conservation
+      </li>
+    </ol>
+    <h2>Output Layout</h2>
+    <ul>
+      <li><b>output[0]:</b> Token recipient (KCC-20 branch output)</li>
+      <li>
+        <b>output[1]:</b> Treasury — receives <code>inputValue</code> of the
+        DagLockKRC20 UTXO (exact fee)
+      </li>
+    </ul>
+    <p>
+      The DagLockKRC20 UTXO's KAS value IS the fee. It's deployed with exactly
+      the protocol fee amount.
+    </p>
+  </body>
+</html>
