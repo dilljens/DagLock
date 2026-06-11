@@ -75,6 +75,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             rate_limiter.clone(),
             crate::ratelimit::rate_limit_mw,
         ))
+        .layer(axum::middleware::from_fn(request_id_middleware))
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
         .route("/v1/health", get(health))
         .route("/v1/status", get(status::get))
@@ -167,4 +168,26 @@ async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> 
         "node_daa_score": 0,
         "uptime_seconds": uptime,
     }))
+}
+
+/// Middleware that generates a request ID and adds it to the tracing span and response headers.
+async fn request_id_middleware(
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let request_id = uuid::Uuid::new_v4().to_string();
+    let short_id = request_id[..8].to_string();
+
+    // Add request_id to tracing span
+    let span = tracing::info_span!("request", request_id = %short_id);
+    let _guard = span.enter();
+
+    let mut response = next.run(req).await;
+
+    // Add X-Request-Id header to response
+    if let Ok(value) = axum::http::HeaderValue::from_str(&request_id) {
+        response.headers_mut().insert("x-request-id", value);
+    }
+
+    response
 }
