@@ -140,6 +140,7 @@ pub async fn try_connect_wrpc(
 
 /// Auto-discover and connect to a Kaspa node via the public Resolver network.
 /// Uses the Kaspa Public Node Network (PNN) to find an active node.
+/// Uses JSON encoding (Borsh is only for same-codebase inter-process communication).
 pub async fn try_connect_resolver(
     network: &str,
 ) -> Result<Arc<kaspa_wrpc_client::KaspaRpcClient>, String> {
@@ -149,7 +150,7 @@ pub async fn try_connect_resolver(
 
     let resolver = Resolver::default();
     let client = KaspaRpcClient::new(
-        WrpcEncoding::Borsh,
+        WrpcEncoding::SerdeJson,
         None,
         Some(resolver),
         Some(network_id),
@@ -161,13 +162,14 @@ pub async fn try_connect_resolver(
 
     let options = kaspa_wrpc_client::client::ConnectOptions {
         block_async_connect: true,
-        connect_timeout: Some(Duration::from_secs(30)),
+        connect_timeout: Some(Duration::from_secs(15)),
         ..Default::default()
     };
 
-    client
-        .connect(Some(options))
+    // Wrap with timeout to fail fast if resolver is unresponsive
+    tokio::time::timeout(Duration::from_secs(20), client.connect(Some(options)))
         .await
+        .map_err(|_| "Resolver connection timed out after 20s".to_string())?
         .map_err(|e| format!("Failed to connect via resolver: {e}"))?;
 
     Ok(client)
