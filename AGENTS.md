@@ -91,6 +91,54 @@
 
 ---
 
+## Deployment
+
+### Current Setup (June 2026)
+
+| Component | Platform | Status | URL |
+|-----------|----------|--------|-----|
+| Indexer | Railway | ✅ Running (`--no-wrpc`) | `daglock-indexer.up.railway.app` |
+| Bot | Railway | ✅ Running | `@DagLock_bot` on Telegram |
+| Web UI | Cloudflare Pages | ✅ Running | `daglock.com` |
+| Kaspa Node | Not deployed | ❌ Needed | — |
+
+**Limitation:** Indexer runs with `--no-wrpc` — no block scanning, no UTXO verification. Escrows stay at `pending_confirmation`.
+
+### Target Setup: VPS + Railway (Option B)
+
+```
+┌──────────────────────────────────────┐
+│  Hetzner VPS ($5/mo)                │
+│  kaspad (testnet-12)                │
+│  wRPC on :16610                     │
+└──────────────┬───────────────────────┘
+               │ wRPC
+┌──────────────▼───────────────────────┐
+│  Railway (free tier)                 │
+│  daglock-indexer --wrpc-url ws://... │
+│  daglock-bot                         │
+│  SQLite volume                       │
+└──────────────────────────────────────┘
+```
+
+**Setup guide:** `docs/DEPLOYMENT-VPS-RAILWAY.md`
+
+### Why Not a Local Node?
+
+- Public resolver nodes (kaspa.stream/red/green/blue) are down (wRPC v2 migration)
+- 6GB laptop RAM is tight for kaspad + indexer
+- 2GB Pi 4 insufficient for kaspad
+- VPS is the most reliable option ($5/mo)
+
+### Template Hashes (Testnet-12)
+
+| Covenant | Hash |
+|----------|------|
+| KAS | `30876e3ea42d0e23bb0980f3fd97ae8807e9c70f` |
+| KRC-20 | `8a43a8438d183a92bc7b94337c031196ff16725b` |
+
+---
+
 ## Repository Structure
 
 ```

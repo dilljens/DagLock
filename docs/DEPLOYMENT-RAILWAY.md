@@ -219,3 +219,30 @@ Once deployed, users can test everything without running anything:
 6. Link Telegram handles
 
 The only thing that doesn't work without a Kaspa node is automatic on-chain UTXO detection. But the entire UX — offers, reputation, messaging, jury, vouching — works fully against the indexer. This is enough for testnet feedback.
+
+---
+
+## Current Deployment Status (June 2026)
+
+**Live on Railway:** https://railway.com/project/c7d6dc68-7bab-4a60-a026-b404d810b94a
+
+| Service | Status | Notes |
+|---------|--------|-------|
+| Indexer | ✅ Running | `--no-wrpc` mode (no block scanning) |
+| Bot | ✅ Running | Telegram bot, connects to indexer |
+
+**What works:** Escrow creation, offer board, reputation, jury, messaging, bot commands.
+**What doesn't:** Listener UTXO scanning (escrows stuck at `pending_confirmation`). Requires a wRPC connection to a kaspa node.
+
+### Current Start Command
+```
+daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template 8a43a8438d183a92bc7b94337c031196ff16725b --cors-origin https://daglock.com --no-wrpc
+```
+
+### What's Missing
+- `--wrpc-url` — no connection to a kaspa node
+- `--no-wrpc` flag disables all on-chain verification
+- Resolver nodes (kaspa.stream/red/green/blue) are down (wRPC v2 migration in progress)
+
+### Next Step: VPS + Railway Split (Option B)
+See `DEPLOYMENT-VPS-RAILWAY.md` for the plan to add a kaspad node on a VPS and connect it to the Railway indexer.
