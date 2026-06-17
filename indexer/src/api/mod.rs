@@ -68,7 +68,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             .allow_headers(Any)
     };
 
-    let rate_limiter = std::sync::Arc::new(crate::ratelimit::RateLimiter::new(30, 60));
+    let rate_limiter = std::sync::Arc::new(crate::ratelimit::RateLimiter::new());
 
     Router::new()
         .route("/v1/health", get(health))
