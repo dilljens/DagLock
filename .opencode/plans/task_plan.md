@@ -22,5 +22,8 @@
 ## Deferred (low priority)
 
 - CSS modules refactor (tech debt only)
-- Onboarding wizard (nice-to-have)
 - Mobile responsiveness refinements (works on phones)
+
+## Skipped
+
+- Onboarding wizard — redundant with dashboard hero + feature cards
