@@ -295,13 +295,22 @@ pub async fn ensure_lock_tx_id_index(pool: &Pool<Sqlite>) -> Result<(), sqlx::Er
 }
 
 pub async fn ensure_vault_sweep_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
-    let rows = sqlx::query("PRAGMA table_info(vaults)").fetch_all(pool).await?;
-    let existing: std::collections::HashSet<String> = rows.into_iter().filter_map(|row| row.try_get::<String, _>("name").ok()).collect();
+    let rows = sqlx::query("PRAGMA table_info(vaults)")
+        .fetch_all(pool)
+        .await?;
+    let existing: std::collections::HashSet<String> = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect();
     if !existing.contains("owner_pubkey_hex") {
-        sqlx::query("ALTER TABLE vaults ADD COLUMN owner_pubkey_hex TEXT").execute(pool).await?;
+        sqlx::query("ALTER TABLE vaults ADD COLUMN owner_pubkey_hex TEXT")
+            .execute(pool)
+            .await?;
     }
     if !existing.contains("sweep_tx_id") {
-        sqlx::query("ALTER TABLE vaults ADD COLUMN sweep_tx_id TEXT").execute(pool).await?;
+        sqlx::query("ALTER TABLE vaults ADD COLUMN sweep_tx_id TEXT")
+            .execute(pool)
+            .await?;
     }
     Ok(())
 }

@@ -213,56 +213,109 @@ pub fn validate_trade_hash(hash_hex: &str) -> Result<bool, JsError> {
 pub fn compile_vault(owner_key: &str, timeout: i64, treasury_key: &str) -> Result<String, JsError> {
     let owner = parse_hex32(owner_key, "owner_key")?;
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
-    Ok(compile_result_json(&daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury)))
+    Ok(compile_result_json(
+        &daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury),
+    ))
 }
 
 /// Compile a DagLock Vault Softlock covenant.
 #[wasm_bindgen]
-pub fn compile_vault_softlock(owner_key: &str, beneficiary_key: &str, password_hash: &str, timeout: i64, treasury_key: &str) -> Result<String, JsError> {
+pub fn compile_vault_softlock(
+    owner_key: &str,
+    beneficiary_key: &str,
+    password_hash: &str,
+    timeout: i64,
+    treasury_key: &str,
+) -> Result<String, JsError> {
     let owner = parse_hex32(owner_key, "owner_key")?;
     let beneficiary = parse_hex32(beneficiary_key, "beneficiary_key")?;
     let password = parse_hex32(password_hash, "password_hash")?;
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
-    Ok(compile_result_json(&daglock_contracts::compile_daglock_vault_softlock(&owner, &beneficiary, &password, timeout, &treasury)))
+    Ok(compile_result_json(
+        &daglock_contracts::compile_daglock_vault_softlock(
+            &owner,
+            &beneficiary,
+            &password,
+            timeout,
+            &treasury,
+        ),
+    ))
 }
 
 /// Compile a DagLock Vault Multi-sig covenant.
 #[wasm_bindgen]
-pub fn compile_vault_multisig(key1: &str, key2: &str, key3: &str, timeout: i64, treasury_key: &str) -> Result<String, JsError> {
+pub fn compile_vault_multisig(
+    key1: &str,
+    key2: &str,
+    key3: &str,
+    timeout: i64,
+    treasury_key: &str,
+) -> Result<String, JsError> {
     let k1 = parse_hex32(key1, "key1")?;
     let k2 = parse_hex32(key2, "key2")?;
     let k3 = parse_hex32(key3, "key3")?;
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
-    Ok(compile_result_json(&daglock_contracts::compile_daglock_vault_multisig(&k1, &k2, &k3, timeout, &treasury)))
+    Ok(compile_result_json(
+        &daglock_contracts::compile_daglock_vault_multisig(&k1, &k2, &k3, timeout, &treasury),
+    ))
 }
 
 /// Compile a DagLock Arbiter covenant.
 #[wasm_bindgen]
-pub fn compile_arbiter(buyer_key: &str, seller_key: &str, trade_hash: &str, timeout: i64, treasury_key: &str, arbiter_key: &str) -> Result<String, JsError> {
+pub fn compile_arbiter(
+    buyer_key: &str,
+    seller_key: &str,
+    trade_hash: &str,
+    timeout: i64,
+    treasury_key: &str,
+    arbiter_key: &str,
+) -> Result<String, JsError> {
     let buyer = parse_hex32(buyer_key, "buyer_key")?;
     let seller = parse_hex32(seller_key, "seller_key")?;
     let trade = parse_hex32(trade_hash, "trade_hash")?;
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
     let arbiter = parse_hex32(arbiter_key, "arbiter_key")?;
-    Ok(compile_result_json(&daglock_contracts::compile_daglock_arbiter(&buyer, &seller, &trade, timeout, &treasury, &arbiter)))
+    Ok(compile_result_json(
+        &daglock_contracts::compile_daglock_arbiter(
+            &buyer, &seller, &trade, timeout, &treasury, &arbiter,
+        ),
+    ))
 }
 
 fn parse_hex32(hex_str: &str, name: &str) -> Result<Vec<u8>, JsError> {
-    let bytes = hex::decode(hex_str).map_err(|e| JsError::new(&format!("Invalid {}: {}", name, e)))?;
-    if bytes.len() != 32 { return Err(JsError::new(&format!("{} must be 32 bytes (64 hex chars)", name))); }
+    let bytes =
+        hex::decode(hex_str).map_err(|e| JsError::new(&format!("Invalid {}: {}", name, e)))?;
+    if bytes.len() != 32 {
+        return Err(JsError::new(&format!(
+            "{} must be 32 bytes (64 hex chars)",
+            name
+        )));
+    }
     Ok(bytes)
 }
 
-fn compile_result_json(compiled: &daglock_contracts::silverscript_lang::compiler::CompiledContract) -> String {
+fn compile_result_json(
+    compiled: &daglock_contracts::silverscript_lang::compiler::CompiledContract,
+) -> String {
     let (p, s, template_hash) = template_parts_and_hash(compiled);
-    let script_hash = blake2b_simd::Params::new().hash_length(32).hash(&compiled.script).as_bytes().to_vec();
-    let covenant_address: String = kaspa_addresses::Address::new(kaspa_addresses::Prefix::Testnet, kaspa_addresses::Version::ScriptHash, &script_hash).into();
+    let script_hash = blake2b_simd::Params::new()
+        .hash_length(32)
+        .hash(&compiled.script)
+        .as_bytes()
+        .to_vec();
+    let covenant_address: String = kaspa_addresses::Address::new(
+        kaspa_addresses::Prefix::Testnet,
+        kaspa_addresses::Version::ScriptHash,
+        &script_hash,
+    )
+    .into();
     let entrypoint_names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
     serde_json::to_string(&serde_json::json!({
         "script": hex::encode(&compiled.script), "template_hash": hex::encode(&template_hash),
         "covenant_address": covenant_address, "entrypoints": entrypoint_names,
         "prefix": hex::encode(&p), "suffix": hex::encode(&s),
-    })).unwrap_or_else(|_| "{}".to_string())
+    }))
+    .unwrap_or_else(|_| "{}".to_string())
 }
 
 #[cfg(test)]
@@ -320,6 +373,10 @@ mod tests {
         let result = compile_arbiter(zero, zero, zero, 1_700_000_000, zero, one);
         assert!(result.is_ok());
         let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
-        assert!(json["entrypoints"].as_array().unwrap().iter().any(|e| e.as_str() == Some("disputeSellerWins")));
+        assert!(json["entrypoints"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e.as_str() == Some("disputeSellerWins")));
     }
 }

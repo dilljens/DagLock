@@ -70,7 +70,10 @@ async fn test_create_settle_receipt() {
         .unwrap();
     assert!(settled, "settle should succeed");
 
-    let got = queries::get_escrow(&pool, "esc_001").await.unwrap().unwrap();
+    let got = queries::get_escrow(&pool, "esc_001")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.status, EscrowStatus::Settled);
     assert!(got.settled_at.is_some());
 
@@ -94,7 +97,10 @@ async fn test_create_refund() {
         .unwrap();
     assert!(refunded, "refund should succeed");
 
-    let got = queries::get_escrow(&pool, "esc_002").await.unwrap().unwrap();
+    let got = queries::get_escrow(&pool, "esc_002")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.status, EscrowStatus::Refunded);
     assert!(got.refunded_at.is_some());
 }
@@ -109,7 +115,10 @@ async fn test_atomic_swap_with_trade_hash() {
 
     queries::insert_escrow(&pool, &escrow).await.unwrap();
 
-    let got = queries::get_escrow(&pool, "esc_swap").await.unwrap().unwrap();
+    let got = queries::get_escrow(&pool, "esc_swap")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.trade_hash, Some("a".repeat(64)));
 
     let settled = queries::settle_escrow_atomic(&pool, "esc_swap")
@@ -117,7 +126,10 @@ async fn test_atomic_swap_with_trade_hash() {
         .unwrap();
     assert!(settled);
 
-    let got = queries::get_escrow(&pool, "esc_swap").await.unwrap().unwrap();
+    let got = queries::get_escrow(&pool, "esc_swap")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.status, EscrowStatus::Settled);
 }
 
@@ -134,7 +146,10 @@ async fn test_dispute_jury_verdict() {
         .await
         .unwrap();
 
-    let got = queries::get_escrow(&pool, "esc_dispute").await.unwrap().unwrap();
+    let got = queries::get_escrow(&pool, "esc_dispute")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.status, EscrowStatus::Disputed);
     assert_eq!(
         got.dispute_reason,
@@ -142,10 +157,18 @@ async fn test_dispute_jury_verdict() {
     );
 
     // Register 4 jurors
-    queries::register_juror(&pool, "kaspa:juror1").await.unwrap();
-    queries::register_juror(&pool, "kaspa:juror2").await.unwrap();
-    queries::register_juror(&pool, "kaspa:juror3").await.unwrap();
-    queries::register_juror(&pool, "kaspa:juror4").await.unwrap();
+    queries::register_juror(&pool, "kaspa:juror1")
+        .await
+        .unwrap();
+    queries::register_juror(&pool, "kaspa:juror2")
+        .await
+        .unwrap();
+    queries::register_juror(&pool, "kaspa:juror3")
+        .await
+        .unwrap();
+    queries::register_juror(&pool, "kaspa:juror4")
+        .await
+        .unwrap();
 
     let juror_addrs: Vec<String> = vec![
         "kaspa:juror1".into(),
@@ -203,7 +226,10 @@ async fn test_double_settle_rejected() {
         .unwrap();
     assert!(!second, "double settle should return false");
 
-    let got = queries::get_escrow(&pool, "esc_double").await.unwrap().unwrap();
+    let got = queries::get_escrow(&pool, "esc_double")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.status, EscrowStatus::Settled);
 }
 
@@ -220,7 +246,10 @@ async fn test_cancel_escrow() {
         .await
         .unwrap();
 
-    let got = queries::get_escrow(&pool, "esc_cancel").await.unwrap().unwrap();
+    let got = queries::get_escrow(&pool, "esc_cancel")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.status, EscrowStatus::Cancelled);
     assert!(got.cancelled_at.is_some());
 }
@@ -307,7 +336,10 @@ async fn test_vault_create_and_update() {
         .await
         .unwrap();
 
-    let got = queries::get_vault(&pool, "vault_001").await.unwrap().unwrap();
+    let got = queries::get_vault(&pool, "vault_001")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(got.status, VaultStatus::Unlocked);
 }
 
@@ -376,7 +408,10 @@ async fn test_list_escrows_by_address() {
     queries::insert_escrow(&pool, &e3).await.unwrap();
 
     // Verify inserts
-    assert!(queries::get_escrow(&pool, "esc_a1").await.unwrap().is_some());
+    assert!(queries::get_escrow(&pool, "esc_a1")
+        .await
+        .unwrap()
+        .is_some());
 
     // Test list_escrows_by_address with the fixed SQL params
     let (results, count) =
@@ -420,8 +455,12 @@ async fn test_stats_after_lifecycle() {
     queries::insert_escrow(&pool, &e2).await.unwrap();
     queries::insert_escrow(&pool, &e3).await.unwrap();
 
-    queries::settle_escrow_atomic(&pool, "esc_s1").await.unwrap();
-    queries::refund_escrow_atomic(&pool, "esc_s2").await.unwrap();
+    queries::settle_escrow_atomic(&pool, "esc_s1")
+        .await
+        .unwrap();
+    queries::refund_escrow_atomic(&pool, "esc_s2")
+        .await
+        .unwrap();
 
     let stats = queries::get_stats(&pool).await.unwrap();
     assert_eq!(stats.total_escrows, 3);
@@ -478,12 +517,14 @@ async fn test_vouch_lifecycle() {
 async fn test_jury_registration() {
     let pool = test_pool().await;
 
-    queries::register_juror(&pool, "kaspa:juror_a").await.unwrap();
-    queries::register_juror(&pool, "kaspa:juror_b").await.unwrap();
-
-    let jurors = queries::list_eligible_jurors_simple(&pool)
+    queries::register_juror(&pool, "kaspa:juror_a")
         .await
         .unwrap();
+    queries::register_juror(&pool, "kaspa:juror_b")
+        .await
+        .unwrap();
+
+    let jurors = queries::list_eligible_jurors_simple(&pool).await.unwrap();
     assert!(jurors.len() >= 2);
 
     let juror = queries::get_juror(&pool, "kaspa:juror_a").await.unwrap();
@@ -520,9 +561,7 @@ async fn test_message_insert_and_list() {
         .await
         .unwrap();
 
-    let messages = queries::list_messages_raw(&pool, "esc_msg")
-        .await
-        .unwrap();
+    let messages = queries::list_messages_raw(&pool, "esc_msg").await.unwrap();
     assert_eq!(messages.len(), 1);
 
     let count = queries::count_messages(&pool, "esc_msg").await.unwrap();

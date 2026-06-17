@@ -133,11 +133,19 @@ async fn main() {
             state.daglock_krc20_template.clone(),
         );
         if args.auto_sweep_vaults {
-            let sweep_wrpc = match crate::listener::try_connect_wrpc(&wrpc_url, &args.network).await {
+            let sweep_wrpc = match crate::listener::try_connect_wrpc(&wrpc_url, &args.network).await
+            {
                 Ok(c) => Some(c),
-                Err(e) => { warn!("Vault sweep wRPC connection failed: {}", e); None }
+                Err(e) => {
+                    warn!("Vault sweep wRPC connection failed: {}", e);
+                    None
+                }
             };
-            listener::spawn_vault_sweeper(state.db.clone(), sweep_wrpc, state.treasury_pubkey.clone());
+            listener::spawn_vault_sweeper(
+                state.db.clone(),
+                sweep_wrpc,
+                state.treasury_pubkey.clone(),
+            );
         }
     } else if !args.no_wrpc {
         // No explicit URL — try resolver auto-discovery for the listener too
@@ -146,17 +154,31 @@ async fn main() {
                 info!("Listener connecting via Resolver (auto-discovery)");
                 let db = state.db.clone();
                 let network = state.network.clone();
-                let kas_hash = state.daglock_kas_template.as_ref().and_then(|h| hex::decode(h).ok());
-                let krc20_hash = state.daglock_krc20_template.as_ref().and_then(|h| hex::decode(h).ok());
+                let kas_hash = state
+                    .daglock_kas_template
+                    .as_ref()
+                    .and_then(|h| hex::decode(h).ok());
+                let krc20_hash = state
+                    .daglock_krc20_template
+                    .as_ref()
+                    .and_then(|h| hex::decode(h).ok());
                 let resolved_url = "resolver://auto".to_string();
                 tokio::spawn(async move {
                     crate::listener::run_online_loop_with_reconnect(
-                        client, db, kas_hash, krc20_hash, &resolved_url, &network,
-                    ).await;
+                        client,
+                        db,
+                        kas_hash,
+                        krc20_hash,
+                        &resolved_url,
+                        &network,
+                    )
+                    .await;
                 });
             }
             Err(e) => {
-                warn!("Resolver connection failed for listener: {e} — running without block scanning");
+                warn!(
+                    "Resolver connection failed for listener: {e} — running without block scanning"
+                );
             }
         }
     }

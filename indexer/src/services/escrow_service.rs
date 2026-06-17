@@ -5,9 +5,8 @@
 //! layer for validation, auth checks, DB updates, and side effects.
 
 use crate::auth::{
-    self, parse_message, verify_cancel_authorization, verify_nonce,
-    verify_refund_authorization, verify_settle_authorization, AuthContext,
-    SignatureVerifier,
+    self, parse_message, verify_cancel_authorization, verify_nonce, verify_refund_authorization,
+    verify_settle_authorization, AuthContext, SignatureVerifier,
 };
 use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
@@ -202,8 +201,8 @@ impl<'a> EscrowService<'a> {
     ) -> Result<(), ServiceError> {
         let current = self.get_active_escrow(id).await?;
 
-        let auth =
-            AuthContext::from_headers(headers).map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
+        let auth = AuthContext::from_headers(headers)
+            .map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
         verify_settle_authorization(&current, &auth, self.sig_verifier.as_ref(), &self.db)
             .await
             .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
@@ -237,8 +236,8 @@ impl<'a> EscrowService<'a> {
     ) -> Result<(), ServiceError> {
         let current = self.get_active_escrow(id).await?;
 
-        let auth =
-            AuthContext::from_headers(headers).map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
+        let auth = AuthContext::from_headers(headers)
+            .map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
         verify_refund_authorization(&current, &auth, self.sig_verifier.as_ref(), &self.db)
             .await
             .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
@@ -274,8 +273,8 @@ impl<'a> EscrowService<'a> {
     ) -> Result<DisputeResponse, ServiceError> {
         let current = self.get_disputable_escrow(id).await?;
 
-        let auth =
-            AuthContext::from_headers(headers).map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
+        let auth = AuthContext::from_headers(headers)
+            .map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
         let is_buyer = auth.address == current.buyer_address;
         let is_seller = current.seller_address.as_deref() == Some(&auth.address);
         if !is_buyer && !is_seller {
@@ -348,9 +347,7 @@ impl<'a> EscrowService<'a> {
                 threshold,
             })
         } else {
-            let _ = self
-                .ws_tx
-                .send(WsEvent::escrow_disputed(id, reason));
+            let _ = self.ws_tx.send(WsEvent::escrow_disputed(id, reason));
             Ok(DisputeResponse::Standard)
         }
     }
@@ -365,8 +362,8 @@ impl<'a> EscrowService<'a> {
     ) -> Result<(), ServiceError> {
         let current = self.get_active_escrow(id).await?;
 
-        let auth =
-            AuthContext::from_headers(headers).map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
+        let auth = AuthContext::from_headers(headers)
+            .map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
         verify_cancel_authorization(&current, &auth, self.sig_verifier.as_ref(), &self.db)
             .await
             .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
@@ -386,8 +383,8 @@ impl<'a> EscrowService<'a> {
     pub async fn atomic_swap(&self, id: &str, preimage_hex: &str) -> Result<(), ServiceError> {
         let current = self.get_settleable_escrow(id).await?;
 
-        let preimage_bytes =
-            hex::decode(preimage_hex).map_err(|_| ServiceError::InvalidInput("Preimage must be valid hex".into()))?;
+        let preimage_bytes = hex::decode(preimage_hex)
+            .map_err(|_| ServiceError::InvalidInput("Preimage must be valid hex".into()))?;
 
         if preimage_bytes.is_empty() || preimage_bytes.len() > 1024 {
             return Err(ServiceError::InvalidInput(
@@ -432,7 +429,10 @@ impl<'a> EscrowService<'a> {
             .ok_or_else(|| ServiceError::NotFound(format!("No escrow found with id '{id}'")))?;
 
         match escrow.status {
-            EscrowStatus::Settled | EscrowStatus::Refunded | EscrowStatus::Cancelled | EscrowStatus::Expired => {
+            EscrowStatus::Settled
+            | EscrowStatus::Refunded
+            | EscrowStatus::Cancelled
+            | EscrowStatus::Expired => {
                 Err(ServiceError::Conflict("Escrow is already finalized".into()))
             }
             _ => Ok(escrow),

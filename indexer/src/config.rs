@@ -34,7 +34,6 @@ pub struct Args {
     #[arg(long)]
     pub daglock_vault_multisig_template: Option<String>,
 
-
     #[arg(long, default_value = "info")]
     pub log_level: String,
 
@@ -79,9 +78,9 @@ impl Args {
         // Log level must be valid
         match self.log_level.to_lowercase().as_str() {
             "error" | "warn" | "info" | "debug" | "trace" => {}
-            other => panic!(
-                "Invalid log level: '{other}'. Expected: error, warn, info, debug, trace"
-            ),
+            other => {
+                panic!("Invalid log level: '{other}'. Expected: error, warn, info, debug, trace")
+            }
         }
 
         // Port must be > 0
@@ -92,9 +91,7 @@ impl Args {
         // DB type must be sqlite or postgres
         match self.db_type.as_str() {
             "sqlite" | "postgres" => {}
-            other => panic!(
-                "Invalid db type: '{other}'. Expected: sqlite, postgres"
-            ),
+            other => panic!("Invalid db type: '{other}'. Expected: sqlite, postgres"),
         }
 
         // Treasury pubkey format: 64 hex chars if provided

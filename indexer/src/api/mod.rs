@@ -110,7 +110,10 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/vaults", get(vaults::list).post(vaults::create))
         .route("/v1/vaults/:id", get(vaults::get_by_id))
         .route("/v1/vaults/:id/withdraw", post(vaults::withdraw))
-        .route("/v1/vaults/:id/password-withdraw", post(vaults::password_withdraw))
+        .route(
+            "/v1/vaults/:id/password-withdraw",
+            post(vaults::password_withdraw),
+        )
         .route("/v1/vaults/:id/transfer", post(vaults::transfer))
         .route("/v1/swap/generate", post(swap::generate))
         // App management routes (API key required — use X-Daglock-Api-Key header)

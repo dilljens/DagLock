@@ -11,7 +11,10 @@ use uuid::Uuid;
 
 use crate::api::AppState;
 
-use crate::auth::{parse_message, verify_cancel_authorization, verify_nonce, verify_refund_authorization, verify_settle_authorization, AuthContext};
+use crate::auth::{
+    parse_message, verify_cancel_authorization, verify_nonce, verify_refund_authorization,
+    verify_settle_authorization, AuthContext,
+};
 use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
@@ -160,9 +163,7 @@ pub async fn atomic_swap(
     );
     svc.atomic_swap(&id, &body.preimage)
         .await
-        .map(|_| {
-            Json(json!({"status": "settled", "escrow_id": id, "method": "atomic_swap"}))
-        })
+        .map(|_| Json(json!({"status": "settled", "escrow_id": id, "method": "atomic_swap"})))
         .map_err(service_error)
 }
 
@@ -546,21 +547,48 @@ pub async fn dispute(
             if !is_buyer && !is_seller {
                 return Err((
                     StatusCode::FORBIDDEN,
-                    Json(json!(ApiError::new("forbidden", "Only escrow parties can dispute"))),
+                    Json(json!(ApiError::new(
+                        "forbidden",
+                        "Only escrow parties can dispute"
+                    ))),
                 ));
             }
             let parsed = parse_message(&auth.message).map_err(|e| {
-                (StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_message", e.to_string()))))
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!(ApiError::new("invalid_message", e.to_string()))),
+                )
             })?;
             if parsed.action != "dispute" || parsed.escrow_id != id {
-                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("invalid_message", "Message must be 'dispute:{id}:ts:nonce'")))));
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new(
+                        "invalid_message",
+                        "Message must be 'dispute:{id}:ts:nonce'"
+                    ))),
+                ));
             }
-            if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message).unwrap_or(false) {
-                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature for dispute")))));
+            if !state
+                .sig_verifier
+                .verify_signature(&auth.address, &auth.signature, &auth.message)
+                .unwrap_or(false)
+            {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new(
+                        "forbidden",
+                        "Invalid signature for dispute"
+                    ))),
+                ));
             }
-            verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
-                (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", e.to_string()))))
-            })?;
+            verify_nonce(&state.db, &parsed, &auth.address)
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::FORBIDDEN,
+                        Json(json!(ApiError::new("forbidden", e.to_string()))),
+                    )
+                })?;
 
             let is_jury = body.mode.as_deref() == Some("jury");
             queries::mark_escrow_disputed(&state.db, &id, body.reason.as_str())
@@ -608,7 +636,10 @@ pub async fn dispute(
                 }
 
                 // Random selection: take top N*2 by reliability_score → randomly pick N
-                let candidate_pool: Vec<_> = eligible.iter().take((juror_count as usize).saturating_mul(2).min(eligible.len())).collect();
+                let candidate_pool: Vec<_> = eligible
+                    .iter()
+                    .take((juror_count as usize).saturating_mul(2).min(eligible.len()))
+                    .collect();
                 let pool_size = candidate_pool.len();
                 let needed = (juror_count as usize).min(pool_size);
                 let mut indices: Vec<usize> = (0..pool_size).collect();
@@ -616,7 +647,10 @@ pub async fn dispute(
                     let j = rand::random::<usize>() % (i + 1);
                     indices.swap(i, j);
                 }
-                let selected: Vec<String> = indices[pool_size - needed..].iter().map(|&i| candidate_pool[i].address.clone()).collect();
+                let selected: Vec<String> = indices[pool_size - needed..]
+                    .iter()
+                    .map(|&i| candidate_pool[i].address.clone())
+                    .collect();
 
                 let case_id =
                     queries::create_jury_case(&state.db, &id, juror_count, threshold, &selected)

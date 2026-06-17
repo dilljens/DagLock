@@ -130,10 +130,22 @@ pub async fn create(
         VaultType::Time => true,
         VaultType::Beneficiary => state.daglock_vault_softlock_template.is_some(),
         VaultType::Multisig => state.daglock_vault_multisig_template.is_some(),
-        VaultType::Deadman | VaultType::Inheritance => { return Err((StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "not_implemented", "message": format!("Vault type '{:?}' does not have a covenant yet. Available: Time, Beneficiary, Multisig", body.vault_type)})))); }
+        VaultType::Deadman | VaultType::Inheritance => {
+            return Err((
+                StatusCode::NOT_IMPLEMENTED,
+                Json(
+                    json!({"error": "not_implemented", "message": format!("Vault type '{:?}' does not have a covenant yet. Available: Time, Beneficiary, Multisig", body.vault_type)}),
+                ),
+            ));
+        }
     };
     if !template_configured {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "template_not_configured", "message": format!("Vault type '{:?}' requires a template hash configured server-side (--daglock-vault-{}-template)", body.vault_type, match body.vault_type { VaultType::Beneficiary => "softlock", VaultType::Multisig => "multisig", _ => "unknown" })}))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                json!({"error": "template_not_configured", "message": format!("Vault type '{:?}' requires a template hash configured server-side (--daglock-vault-{}-template)", body.vault_type, match body.vault_type { VaultType::Beneficiary => "softlock", VaultType::Multisig => "multisig", _ => "unknown" })}),
+            ),
+        ));
     }
 
     // Validate timeout is in the future
@@ -284,24 +296,50 @@ pub async fn password_withdraw(
     Path(id): Path<String>,
     JsonBody(body): JsonBody<PasswordWithdrawRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let vault = queries::get_vault(&state.db, &id).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "database_error", "message": format!("{e}")})))
-    })?.ok_or_else(|| {
-        (StatusCode::NOT_FOUND, Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})))
-    })?;
+    let vault = queries::get_vault(&state.db, &id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})),
+            )
+        })?;
     if vault.vault_type != VaultType::Beneficiary {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "invalid_type", "message": "Only Beneficiary vaults support password withdrawal"}))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                json!({"error": "invalid_type", "message": "Only Beneficiary vaults support password withdrawal"}),
+            ),
+        ));
     }
     if vault.status != VaultStatus::Locked {
-        return Err((StatusCode::CONFLICT, Json(json!({"error": "invalid_status", "message": format!("Vault is already {:?}", vault.status)}))));
+        return Err((
+            StatusCode::CONFLICT,
+            Json(
+                json!({"error": "invalid_status", "message": format!("Vault is already {:?}", vault.status)}),
+            ),
+        ));
     }
     let mut hasher = Sha256::new();
     hasher.update(body.password.as_bytes());
     let password_hash = hex::encode(hasher.finalize());
-    queries::update_vault_status(&state.db, &id, "unlocked").await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "database_error", "message": format!("{e}")})))
-    })?;
-    Ok(Json(json!({"status": "unlocked", "vault_id": id, "password_hash": password_hash, "message": "Vault unlocked via password. The beneficiary must broadcast the on-chain withdrawPassword() transaction."})))
+    queries::update_vault_status(&state.db, &id, "unlocked")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?;
+    Ok(Json(
+        json!({"status": "unlocked", "vault_id": id, "password_hash": password_hash, "message": "Vault unlocked via password. The beneficiary must broadcast the on-chain withdrawPassword() transaction."}),
+    ))
 }
 
 #[derive(serde::Deserialize)]

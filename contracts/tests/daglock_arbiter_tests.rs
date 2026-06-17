@@ -827,18 +827,42 @@ fn emergency_refund_succeeds_after_grace_period() {
     let grace_expiry = timeout + 2_592_000; // timeout + 30 days, also past
 
     let compiled = compile_daglock_arbiter(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller), &[0u8; 32],
-        timeout, &pubkey_bytes(&treasury), &pubkey_bytes(&arbiter),
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        &[0u8; 32],
+        timeout,
+        &pubkey_bytes(&treasury),
+        &pubkey_bytes(&arbiter),
     );
 
     let input_value: u64 = 1_000_000;
-    let outputs = vec![TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&buyer)))];
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&buyer)),
+    )];
 
     let input = TransactionInput::new(
-        TransactionOutpoint::new(TransactionId::from_bytes([20u8; 32]), 0), vec![], 0, 0u8,
+        TransactionOutpoint::new(TransactionId::from_bytes([20u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
     );
-    let tx = Transaction::new(1, vec![input], outputs, grace_expiry as u64, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs,
+        grace_expiry as u64,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -849,20 +873,30 @@ fn emergency_refund_succeeds_after_grace_period() {
     sig.extend_from_slice(sig_raw.as_ref().as_slice());
     sig.push(SIG_HASH_ALL.to_u8());
 
-    let sigscript = compiled.build_sig_script(
-        entrypoints::EMERGENCY_REFUND,
-        vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
-    ).expect("build_sig_script");
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::EMERGENCY_REFUND,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
+        )
+        .expect("build_sig_script");
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let reused = SigHashReusedValuesUnsync::new();
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
-    assert!(result.is_ok(), "emergency refund after grace should succeed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "emergency refund after grace should succeed: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -875,18 +909,42 @@ fn emergency_refund_fails_during_grace_period() {
     let still_in_grace: i64 = timeout + 1; // 1 second after timeout, still well within 30-day grace
 
     let compiled = compile_daglock_arbiter(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller), &[0u8; 32],
-        timeout, &pubkey_bytes(&treasury), &pubkey_bytes(&arbiter),
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        &[0u8; 32],
+        timeout,
+        &pubkey_bytes(&treasury),
+        &pubkey_bytes(&arbiter),
     );
 
     let input_value: u64 = 1_000_000;
-    let outputs = vec![TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&buyer)))];
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&buyer)),
+    )];
 
     let input = TransactionInput::new(
-        TransactionOutpoint::new(TransactionId::from_bytes([21u8; 32]), 0), vec![], 0, 0u8,
+        TransactionOutpoint::new(TransactionId::from_bytes([21u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
     );
-    let tx = Transaction::new(1, vec![input], outputs, still_in_grace as u64, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let tx = Transaction::new(
+        1,
+        vec![input],
+        outputs,
+        still_in_grace as u64,
+        Default::default(),
+        0,
+        vec![],
+    );
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, compiled.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -897,18 +955,27 @@ fn emergency_refund_fails_during_grace_period() {
     sig.extend_from_slice(sig_raw.as_ref().as_slice());
     sig.push(SIG_HASH_ALL.to_u8());
 
-    let sigscript = compiled.build_sig_script(
-        entrypoints::EMERGENCY_REFUND,
-        vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
-    ).expect("build_sig_script");
+    let sigscript = compiled
+        .build_sig_script(
+            entrypoints::EMERGENCY_REFUND,
+            vec![daglock_contracts::silverscript_lang::ast::Expr::bytes(sig)],
+        )
+        .expect("build_sig_script");
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let reused = SigHashReusedValuesUnsync::new();
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
-    assert!(result.is_err(), "emergency refund during 30-day grace should fail");
+    assert!(
+        result.is_err(),
+        "emergency refund during 30-day grace should fail"
+    );
 }

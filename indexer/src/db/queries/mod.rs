@@ -9,8 +9,8 @@ pub mod jury;
 pub mod messages;
 pub mod offers;
 pub mod reputation;
-pub mod vouches;
 pub mod vaults;
+pub mod vouches;
 
 pub use apps::*;
 pub use auth::*;
@@ -21,8 +21,8 @@ pub use jury::*;
 pub use messages::*;
 pub use offers::*;
 pub use reputation::*;
-pub use vouches::*;
 pub use vaults::*;
+pub use vouches::*;
 
 #[cfg(test)]
 mod tests {

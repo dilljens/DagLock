@@ -19,10 +19,12 @@ async fn test_pool() -> SqlitePool {
         .execute(&pool)
         .await
         .expect("Failed to run migration 003");
-    sqlx::query(include_str!("../src/db/migrations/004_create_dispute_evidence.sql"))
-        .execute(&pool)
-        .await
-        .expect("Failed to run migration 004");
+    sqlx::query(include_str!(
+        "../src/db/migrations/004_create_dispute_evidence.sql"
+    ))
+    .execute(&pool)
+    .await
+    .expect("Failed to run migration 004");
 
     pool
 }
@@ -342,12 +344,24 @@ async fn test_full_lifecycle_create_refund() {
 pub async fn ensure_dispute_columns(pool: &sqlx::SqlitePool) {
     // Ensure schema has lifecycle columns (migration ensure functions work
     // but in-memory tests may need these explicitly)
-    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_outcome TEXT").execute(pool).await;
-    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_resolved_at INTEGER").execute(pool).await;
-    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN disputed_at INTEGER").execute(pool).await;
-    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_reason TEXT").execute(pool).await;
-    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN mediator_key TEXT").execute(pool).await;
-    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_mode TEXT DEFAULT 'standard'").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_outcome TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_resolved_at INTEGER")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN disputed_at INTEGER")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_reason TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN mediator_key TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE escrows ADD COLUMN dispute_mode TEXT DEFAULT 'standard'")
+        .execute(pool)
+        .await;
 }
 
 async fn test_full_lifecycle_dispute_evidence() {

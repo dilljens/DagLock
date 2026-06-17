@@ -160,7 +160,9 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
         .unwrap_or(None);
 
     // Fetch vouch stats
-    let vouches_received = super::vouches::count_vouches_for_subject(pool, address).await.unwrap_or(0);
+    let vouches_received = super::vouches::count_vouches_for_subject(pool, address)
+        .await
+        .unwrap_or(0);
 
     // Fetch mediator stats
     let mediator_stats = get_mediator_stats(pool, address).await.unwrap_or(None);
@@ -171,8 +173,12 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
     let trading_concentration = calculate_trading_concentration(pool, address)
         .await
         .unwrap_or(0.0);
-    let vouches_given = super::vouches::count_vouches_by_voucher(pool, address).await.unwrap_or(0);
-    let vouch_score = super::vouches::calculate_vouch_score(pool, address).await.unwrap_or(None);
+    let vouches_given = super::vouches::count_vouches_by_voucher(pool, address)
+        .await
+        .unwrap_or(0);
+    let vouch_score = super::vouches::calculate_vouch_score(pool, address)
+        .await
+        .unwrap_or(None);
 
     Ok(Reputation {
         address: address.to_string(),

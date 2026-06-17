@@ -227,10 +227,7 @@ async fn run_online_loop(
                         }
 
                         if let Some(low_hash) = last_processed_hash {
-                            match client
-                                .get_blocks(Some(low_hash), true, true)
-                                .await
-                            {
+                            match client.get_blocks(Some(low_hash), true, true).await {
                                 Ok(response) => {
                                     let block_count = response.blocks.len();
                                     for block in &response.blocks {
@@ -328,12 +325,8 @@ async fn scan_block_for_escrows(
                             Ok(Some(escrow))
                                 if escrow.status == EscrowStatus::PendingConfirmation =>
                             {
-                                match queries::update_escrow_status_only(
-                                    db,
-                                    &escrow_id,
-                                    "active",
-                                )
-                                .await
+                                match queries::update_escrow_status_only(db, &escrow_id, "active")
+                                    .await
                                 {
                                     Ok(()) => {
                                         *activated_count += 1;
@@ -453,8 +446,6 @@ pub fn check_template_match(
     None
 }
 
-
-
 /// Spawn the vault auto-sweep background loop.
 #[allow(dead_code)]
 pub fn spawn_vault_sweeper(
@@ -473,7 +464,10 @@ pub fn spawn_vault_sweeper(
 
     let treasury_key = match hex::decode(treasury_pubkey_hex.unwrap()) {
         Ok(k) if k.len() == 32 => k,
-        _ => { error!("Invalid treasury pubkey hex for vault sweep"); return; }
+        _ => {
+            error!("Invalid treasury pubkey hex for vault sweep");
+            return;
+        }
     };
 
     tokio::spawn(async move {
@@ -484,23 +478,36 @@ pub fn spawn_vault_sweeper(
             match queries::find_sweepable_vaults(&db).await {
                 Ok(vaults) => {
                     for (id, _owner_addr, amount_sompi, owner_pubkey_hex) in &vaults {
-                        info!("Vault {} can be swept: {} sompi past timeout", id, amount_sompi);
+                        info!(
+                            "Vault {} can be swept: {} sompi past timeout",
+                            id, amount_sompi
+                        );
                         if let Some(owner_pk_hex) = owner_pubkey_hex {
                             if let Ok(owner_key) = hex::decode(owner_pk_hex) {
                                 if owner_key.len() == 32 && treasury_key.len() == 32 {
-                                    let compiled = daglock_contracts::compile_daglock_vault(&owner_key, 0, &treasury_key);
+                                    let compiled = daglock_contracts::compile_daglock_vault(
+                                        &owner_key,
+                                        0,
+                                        &treasury_key,
+                                    );
                                     let fee_amount = *amount_sompi as u64 / 1000;
                                     let send_amount = *amount_sompi as u64 - fee_amount;
-                                    if let Ok(sigscript) = compiled.build_sig_script(daglock_contracts::entrypoints::SWEEP, vec![]) {
+                                    if let Ok(sigscript) = compiled.build_sig_script(
+                                        daglock_contracts::entrypoints::SWEEP,
+                                        vec![],
+                                    ) {
                                         info!("Sweep tx ready for vault {} (send: {}, fee: {}, sigscript: {} bytes)", id, send_amount, fee_amount, sigscript.len());
-                                        let _ = queries::mark_vault_swept(&db, id, "sweep_pending").await;
+                                        let _ = queries::mark_vault_swept(&db, id, "sweep_pending")
+                                            .await;
                                     }
                                 }
                             }
                         }
                     }
                 }
-                Err(e) => { warn!("Vault sweep query failed: {}", e); }
+                Err(e) => {
+                    warn!("Vault sweep query failed: {}", e);
+                }
             }
         }
     });

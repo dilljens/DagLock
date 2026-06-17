@@ -102,12 +102,14 @@ pub async fn mark_vault_swept(
     id: &str,
     sweep_tx_id: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE vaults SET status = 'unlocked', sweep_tx_id = ?1, unlocked_at = ?2 WHERE id = ?3")
-        .bind(sweep_tx_id)
-        .bind(chrono::Utc::now().timestamp())
-        .bind(id)
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "UPDATE vaults SET status = 'unlocked', sweep_tx_id = ?1, unlocked_at = ?2 WHERE id = ?3",
+    )
+    .bind(sweep_tx_id)
+    .bind(chrono::Utc::now().timestamp())
+    .bind(id)
+    .execute(pool)
+    .await?;
     Ok(())
 }
 
