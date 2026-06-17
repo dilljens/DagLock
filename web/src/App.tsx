@@ -15,6 +15,7 @@ import { VaultsPage } from "./pages/VaultsPage";
 import { ReputationPage } from "./pages/ReputationPage";
 import { JuryPage } from "./pages/JuryPage";
 import { SwapPage } from "./pages/SwapPage";
+import { DocsPage } from "./pages/DocsPage";
 
 import { api } from "./api";
 import { useWebSocket } from "./hooks/useWebSocket";
@@ -74,6 +75,8 @@ function AppInner() {
 					return <JuryPage />;
 				case "/swap":
 					return <SwapPage />;
+				case "/docs":
+					return <DocsPage />;
 				default:
 					return <Dashboard stats={stats} />;
 			}

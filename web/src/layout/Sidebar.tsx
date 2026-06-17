@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
 	{ route: "/vaults", label: "Vaults" },
 	{ route: "/reputation", label: "Reputation" },
 	{ route: "/jury", label: "Jury" },
+	{ route: "/docs", label: "Docs" },
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {

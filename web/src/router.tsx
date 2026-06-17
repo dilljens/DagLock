@@ -11,7 +11,7 @@ export type Route =
 	| "/vaults"
 	| "/reputation"
 	| "/jury"
-	| "/settings";
+	| "/docs";
 
 interface RouterContextValue {
 	route: Route;
@@ -31,7 +31,7 @@ function hashToRoute(hash: string): Route {
 		"/reputation",
 		"/jury",
 		"/swap",
-		"/settings",
+		"/docs",
 	];
 	// Support redirects from old-style anchors like #offers → /offers
 	if (path.startsWith("#")) return hashToRoute(path);

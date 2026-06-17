@@ -57,16 +57,46 @@ export function Dashboard({ stats }: DashboardProps) {
 						</a>
 					)}
 				</div>
+
+				{/* What is DagLock — feature cards */}
+				<h2 style={{ marginTop: "36px", marginBottom: "4px" }}>What is DagLock?</h2>
+				<p className="muted" style={{ marginTop: 0, marginBottom: "20px" }}>
+					Three ways to use Kaspa's covenant system without writing SilverScript yourself.
+				</p>
+				<div className="feature-cards">
+					<div className="feature-card">
+						<div className="feature-card-icon">🤝</div>
+						<h3>Trustless Escrow</h3>
+						<p>Lock KAS or KRC-20 tokens in a SilverScript covenant. Only the buyer or seller can settle — neither can steal.</p>
+					</div>
+					<div className="feature-card">
+						<div className="feature-card-icon">🏦</div>
+						<h3>Time-Locked Vaults</h3>
+						<p>Self-custody storage with configurable timeouts. Standard, password-recoverable, or multi-sig vaults.</p>
+					</div>
+					<div className="feature-card">
+						<div className="feature-card-icon">🔄</div>
+						<h3>Atomic Swaps</h3>
+						<p>Cross-asset trades via hash preimage. Both parties commit funds, then reveal the secret to settle.</p>
+					</div>
+				</div>
+
+				<h2 style={{ margin: "36px 0 12px" }}>Get Started</h2>
 				<div className="action-grid">
-					<div className="action-card" onClick={() => navigate("/")}>
-						<span className="action-card-icon"></span>
+					<div className="action-card" onClick={() => navigate("/offers")}>
+						<span className="action-card-icon">📋</span>
 						<span className="action-card-label">Browse Offers</span>
 						<span className="action-card-desc">View open offers from the community</span>
 					</div>
-					<div className="action-card" onClick={() => navigate("/reputation")}>
-						<span className="action-card-icon"></span>
-						<span className="action-card-label">Check Reputation</span>
-						<span className="action-card-desc">Look up any address's trading history</span>
+					<div className="action-card" onClick={() => navigate("/escrows")}>
+						<span className="action-card-icon">🔒</span>
+						<span className="action-card-label">Create Escrow</span>
+						<span className="action-card-desc">Lock funds in a trustless covenant</span>
+					</div>
+					<div className="action-card" onClick={() => navigate("/docs")}>
+						<span className="action-card-icon">📖</span>
+						<span className="action-card-label">Developer Docs</span>
+						<span className="action-card-desc">API reference, CLI, bot, integrations</span>
 					</div>
 				</div>
 			</div>
