@@ -330,3 +330,21 @@ pub(crate) fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
         price_type,
     }
 }
+
+/// Count escrows created by an address in the last N seconds.
+/// Used for daily creation caps to prevent spam.
+pub async fn count_escrows_by_buyer_recent(
+    pool: &Pool<Sqlite>,
+    buyer_address: &str,
+    within_seconds: i64,
+) -> Result<i64, sqlx::Error> {
+    let cutoff = chrono::Utc::now().timestamp() - within_seconds;
+    let row = sqlx::query(
+        "SELECT COUNT(*) as cnt FROM escrows WHERE buyer_address = ?1 AND created_at >= ?2",
+    )
+    .bind(buyer_address)
+    .bind(cutoff)
+    .fetch_one(pool)
+    .await?;
+    row.try_get("cnt")
+}

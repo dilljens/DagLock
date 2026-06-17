@@ -361,6 +361,21 @@ pub async fn create(
     }
 
     let fee_sompi = body.amount_sompi / 200; // 0.5%
+    let buyer_address = &body.buyer_address;
+
+    // Rate limit: max 50 escrows per address per day
+    let recent_count = queries::count_escrows_by_buyer_recent(&state.db, buyer_address, 86400)
+        .await
+        .map_err(|_e| crate::types::internal_error())?;
+    if recent_count >= 50 {
+        return Err((
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(json!(ApiError::new(
+                "rate_limited",
+                "Max 50 escrows per day per address"
+            ))),
+        ));
+    }
 
     let escrow = Escrow {
         id: format!(
@@ -375,7 +390,7 @@ pub async fn create(
         lock_tx_output_index: body.lock_tx_output_index,
         status: EscrowStatus::PendingConfirmation,
         asset_type: body.asset_type.unwrap_or_else(|| "KAS".to_string()),
-        buyer_address: body.buyer_address,
+        buyer_address: buyer_address.clone(),
         seller_address: body.seller_address,
         amount_sompi: body.amount_sompi,
         fee_sompi,

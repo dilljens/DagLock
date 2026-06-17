@@ -321,3 +321,21 @@ fn row_to_offer(row: sqlx::sqlite::SqliteRow) -> Offer {
         price_updated_at: row.try_get("price_updated_at").ok().flatten(),
     }
 }
+
+/// Count offers created by an address in the last N seconds.
+/// Used for daily creation caps to prevent spam.
+pub async fn count_offers_by_creator_recent(
+    pool: &Pool<Sqlite>,
+    creator_address: &str,
+    within_seconds: i64,
+) -> Result<i64, sqlx::Error> {
+    let cutoff = chrono::Utc::now().timestamp() - within_seconds;
+    let row = sqlx::query(
+        "SELECT COUNT(*) as cnt FROM offers WHERE creator_address = ?1 AND created_at >= ?2 AND status = 'proposed'",
+    )
+    .bind(creator_address)
+    .bind(cutoff)
+    .fetch_one(pool)
+    .await?;
+    row.try_get("cnt")
+}

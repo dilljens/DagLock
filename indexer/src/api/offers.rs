@@ -66,12 +66,36 @@ pub async fn create(
         None
     };
 
+    let creator_address = &body.creator_address;
+
+    // Rate limit: max 50 offers per address per day
+    let recent_count = queries::count_offers_by_creator_recent(&state.db, creator_address, 86400)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "An internal error occurred."
+                ))),
+            )
+        })?;
+    if recent_count >= 50 {
+        return Err((
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(json!(ApiError::new(
+                "rate_limited",
+                "Max 50 offers per day per address"
+            ))),
+        ));
+    }
+
     let offer = Offer {
         id: format!(
             "off_{}",
             Uuid::new_v4().to_string().split('-').next().unwrap()
         ),
-        creator_address: body.creator_address,
+        creator_address: creator_address.clone(),
         side: body.side,
         base_asset: body.base_asset,
         quote_asset: body.quote_asset,
