@@ -102,10 +102,10 @@ describe("EscrowActionForm", () => {
 				expect(screen.getByText(/Are you sure you want to cancel/)).toBeInTheDocument();
 			});
 
-			// Click the confirm button (second "Cancel" button in dialog)
-			const dialog = screen.getByText("Cancel escrow").closest(".confirm-dialog") as HTMLElement;
-			const cancelBtns = within(dialog).getAllByRole("button", { name: "Cancel" });
-			await user.click(cancelBtns[1]);
+			// The dialog has two "Cancel" buttons: dismiss + confirm.
+			// Find all "Cancel" buttons and click the LAST one (confirm, primary style).
+			const allCancelBtns = screen.getAllByRole("button", { name: "Cancel" });
+			await user.click(allCancelBtns[allCancelBtns.length - 1]);
 
 			await waitFor(() => {
 				expect(api.cancelEscrow).toHaveBeenCalledWith("esc_1");
@@ -114,7 +114,7 @@ describe("EscrowActionForm", () => {
 
 		it("dismisses ConfirmDialog on cancel", async () => {
 			const user = userEvent.setup();
-			render(<EscrowActionForm action="cancel" />);
+			const { container } = render(<EscrowActionForm action="cancel" />);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -126,10 +126,13 @@ describe("EscrowActionForm", () => {
 				expect(screen.getByText(/Are you sure you want to cancel/)).toBeInTheDocument();
 			});
 
-			// Click the first Cancel button in the dialog (the dismiss button)
-			const dialog = screen.getByText("Cancel escrow").closest(".confirm-dialog") as HTMLElement;
-			const cancelBtns = within(dialog).getAllByRole("button", { name: "Cancel" });
-			await user.click(cancelBtns[0]);
+			// Find the dismiss button inside the Radix Dialog Portal (rendered in document.body).
+			// The dismiss button is the one that is NOT of class "button primary".
+			const dialog = document.querySelector('[role="dialog"]');
+			expect(dialog).not.toBeNull();
+			const dismissBtn = dialog!.querySelector(".button:not(.primary)");
+			expect(dismissBtn).not.toBeNull();
+			await user.click(dismissBtn!);
 
 			await waitFor(() => {
 				expect(screen.queryByText(/Are you sure you want to cancel/)).not.toBeInTheDocument();

@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import { useRouter, RouterProvider } from "./router";
 import { useWallet, WalletProvider } from "./context/WalletContext";
 import { ToastProvider, useToast } from "./layout/Toast";
 import { Sidebar } from "./layout/Sidebar";
 
+import { ErrorBoundary } from "./components/error-boundary";
 import { Dashboard } from "./pages/Dashboard";
 import { OffersPage } from "./pages/OffersPage";
 import { EscrowsPage } from "./pages/EscrowsPage";
@@ -47,24 +49,27 @@ function AppInner() {
 	useEffect(() => setSidebarOpen(false), [route]);
 
 	const pageContent = (() => {
-		switch (route) {
-			case "/":
-				return <Dashboard health={health} stats={stats} offers={offers} />;
-			case "/offers":
-				return <OffersPage />;
-			case "/escrows":
-				return <EscrowsPage />;
-			case "/vaults":
-				return <VaultsPage />;
-			case "/reputation":
-				return <ReputationPage />;
-			case "/jury":
-				return <JuryPage />;
-			case "/swap":
-				return <SwapPage />;
-			default:
-				return <Dashboard health={health} stats={stats} offers={offers} />;
-		}
+		const page = (() => {
+			switch (route) {
+				case "/":
+					return <Dashboard health={health} stats={stats} offers={offers} />;
+				case "/offers":
+					return <OffersPage />;
+				case "/escrows":
+					return <EscrowsPage />;
+				case "/vaults":
+					return <VaultsPage />;
+				case "/reputation":
+					return <ReputationPage />;
+				case "/jury":
+					return <JuryPage />;
+				case "/swap":
+					return <SwapPage />;
+				default:
+					return <Dashboard health={health} stats={stats} offers={offers} />;
+			}
+		})();
+		return <ErrorBoundary key={route}>{page}</ErrorBoundary>;
 	})();
 
 	return (
@@ -124,12 +129,14 @@ function AppInner() {
 /* ─── Top-level App ─── */
 export default function App() {
 	return (
-		<RouterProvider>
-			<WalletProvider>
-				<ToastProvider>
-					<AppInner />
-				</ToastProvider>
-			</WalletProvider>
-		</RouterProvider>
+		<Tooltip.Provider delayDuration={400}>
+			<RouterProvider>
+				<WalletProvider>
+					<ToastProvider>
+						<AppInner />
+					</ToastProvider>
+				</WalletProvider>
+			</RouterProvider>
+		</Tooltip.Provider>
 	);
 }

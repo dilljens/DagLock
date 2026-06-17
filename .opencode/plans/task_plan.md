@@ -17,6 +17,7 @@
 - [ ] 1.3 — Transaction confirmation celebration animation
 - [x] 1.4 — Consistent number formatting (moneyCompact, formatKas, locale-aware)
 - [x] 1.5 — Design token system (CSS variables: colors, spacing, typography, shadows)
+- [x] 1.3 — Enhanced toast animations (motion AnimatePresence + icon ring)
 
 ## Phase 2: Accessibility & Interaction
 

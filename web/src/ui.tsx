@@ -153,28 +153,68 @@ export function ConfirmDialog({
 	onCancel: () => void;
 }) {
 	return (
-		<div
-			className="confirm-overlay"
-			onClick={onCancel}
-			onKeyDown={(e) => e.key === "Escape" && onCancel()}
-		>
-			<div
-				className="confirm-dialog"
-				onClick={(e) => e.stopPropagation()}
-				onKeyDown={(e) => e.key === "Escape" && onCancel()}
-			>
-				<h3>{title}</h3>
-				<p>{message}</p>
-				<div className="confirm-actions">
-					<button className="button" type="button" onClick={onCancel}>
-						Cancel
-					</button>
-					<button className="button primary" type="button" onClick={onConfirm}>
-						{confirmLabel}
-					</button>
-				</div>
+		<ConfirmDialogInner title={title} message={message} confirmLabel={confirmLabel} onConfirm={onConfirm} onCancel={onCancel} />
+	);
+}
+
+/* ─── Radix Dialog wrapper ─── */
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+
+export function Dialog({
+	open,
+	onOpenChange,
+	title,
+	description,
+	children,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	title: string;
+	description?: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+			<DialogPrimitive.Portal>
+				<DialogPrimitive.Overlay className="dialog-overlay" />
+				<DialogPrimitive.Content className="dialog-content" aria-describedby={description ? "dialog-desc" : undefined}>
+					<DialogPrimitive.Title className="dialog-title">{title}</DialogPrimitive.Title>
+					{description && <DialogPrimitive.Description id="dialog-desc" className="dialog-description">{description}</DialogPrimitive.Description>}
+					{children}
+					<DialogPrimitive.Close asChild>
+						<button className="dialog-close" aria-label="Close">✕</button>
+					</DialogPrimitive.Close>
+				</DialogPrimitive.Content>
+			</DialogPrimitive.Portal>
+		</DialogPrimitive.Root>
+	);
+}
+
+/* Backward-compatible ConfirmDialog using Radix */
+function ConfirmDialogInner({
+	title,
+	message,
+	confirmLabel,
+	onConfirm,
+	onCancel,
+}: {
+	title: string;
+	message: string;
+	confirmLabel: string;
+	onConfirm: () => void;
+	onCancel: () => void;
+}) {
+	return (
+		<Dialog open={true} onOpenChange={(open) => { if (!open) onCancel(); }} title={title} description={message}>
+			<div className="confirm-actions" style={{ marginTop: 20 }}>
+				<DialogPrimitive.Close asChild>
+					<button className="button" type="button">Cancel</button>
+				</DialogPrimitive.Close>
+				<button className="button primary" type="button" onClick={onConfirm}>
+					{confirmLabel}
+				</button>
 			</div>
-		</div>
+		</Dialog>
 	);
 }
 
