@@ -16,9 +16,38 @@ export function ReputationPage() {
 	return (
 		<div>
 			<div className="page-header">
-				<h1><h1> Reputation</h1></h1>
+				<h1> Reputation</h1>
 				<p>On-chain trading history, vouches, and identity verification.</p>
 			</div>
+
+			{/* How reputation works — collapsible */}
+			<details className="panel" style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}>
+				<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
+					 How Reputation Works
+				</summary>
+				<div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
+					<p style={{ margin: "0 0 8px" }}>
+						DagLock uses the <strong>Beta reputation system</strong> (Josang 2002), an academic standard for
+						binary-satisfaction reputation. Your score starts at <strong>1.0</strong> (new address) and grows
+						toward <strong>5.0</strong> as you complete trades.
+					</p>
+					<p style={{ margin: "0 0 8px" }}>
+						<strong>What affects your score:</strong>
+					</p>
+					<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
+						<li><strong>Settled trades</strong> — increase your score (weighted 2x for the last 90 days)</li>
+						<li><strong>Refunds</strong> — neutral (you didn't fail, you just didn't complete)</li>
+						<li><strong>Disputes</strong> — decrease your score (dispute rate &gt; 5% starts to hurt)</li>
+						<li><strong>Trading volume</strong> — logarithmic bonus for high-volume addresses</li>
+						<li><strong>Account age</strong> — small bonus for long-standing addresses (up to 2 years)</li>
+						<li><strong>Vouches</strong> — weighted by the vouch giver's own reputation (EigenTrust-lite)</li>
+					</ul>
+					<p style={{ margin: 0 }}>
+						<strong>Wash trading signal:</strong> If &gt;90% of your volume is with a single counterparty,
+						a warning appears. This is not penalized in the score — it's informational for other traders.
+					</p>
+				</div>
+			</details>
 			<div className="tab-bar">
 				{wallet.connected && (
 					<button className={`tab-btn ${tab === "my-reputation" ? "tab-btn--active" : ""}`}

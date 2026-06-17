@@ -31,6 +31,11 @@ export function Footer() {
 						style={{ color: "var(--color-text-secondary)", textDecoration: "underline" }}>
 						@DagLock_bot
 					</a>
+					<span>·</span>
+					<a href="https://github.com/dilljens/DagLock/issues" target="_blank" rel="noopener noreferrer"
+						style={{ color: "var(--color-text-secondary)", textDecoration: "underline" }}>
+						Report Bug
+					</a>
 				</div>
 				<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
 					{state.network && (

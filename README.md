@@ -1,22 +1,44 @@
-# DagLock 🔒⛓️
+# DagLock — Trustless Escrow on Kaspa
 
-> ⚠️ **Testnet phase.** DagLock is deployed on Kaspa Testnet 12 for testing. Covenants activate on mainnet with the Toccata hard fork (June 5, 2026). Do not send real KAS yet.
+> **Testnet live at [daglock.com](https://daglock.com).** Mainnet launch June 30, 2026 (Toccata hard fork).
 
-**Trustless escrow & atomic swaps on Kaspa L1 via SilverScript covenants.**
+**Trustless escrow, atomic swaps, and time-locked vaults on Kaspa L1 via SilverScript covenants.**
 
 Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptographic conditions are met. No intermediaries. No admin keys. No custodial risk.
 
 ---
 
+## Quick Links
+
+| Surface | URL | What you can do |
+|---------|-----|-----------------|
+| **Web dashboard** | [daglock.com](https://daglock.com) | Create offers & escrows, check reputation, vaults, jury, docs |
+| **API** | [api.daglock.com](https://api.daglock.com) | REST API (19+ endpoints). [OpenAPI spec](https://api.daglock.com/v1/openapi.json) |
+| **Telegram bot** | [@DagLock_bot](https://t.me/DagLock_bot) | Full bot — `/create`, `/offers`, `/swap`, `/vaults`, `/reputation` |
+| **CLI** | `cargo install --git ... daglock-cli` | Power-user terminal tool — create, claim, status, reputation |
+| **Docs** | `/#/docs` on daglock.com | API reference, CLI guide, bot commands, integration guide |
+
+---
+
 ## For Users
 
-**Try it now:**
+### What DagLock offers
 
-- **Web app:** Visit [daglock.com](https://daglock.com) — no installation needed
-- **Telegram bot:** Message [@DagLock_bot](https://t.me/DagLock_bot) on Telegram — see [BOT-README.md](docs/BOT-README.md) for commands
-- **CLI:** `cargo install --git https://github.com/dilljens/DagLock daglock-cli` — see [CLI-README.md](docs/CLI-README.md) for commands
+| Feature | Description | Fee |
+|---------|-------------|-----|
+| **Escrow** | Lock KAS or KRC-20 tokens in a covenant. Only buyer or seller can settle. | 0.5% on settlement |
+| **Atomic Swaps** | Cross-asset trades via hash preimage. Both parties commit funds, then reveal the secret. | 0.5% on settlement |
+| **Vaults** | Time-locked self-custody. Standard, softlock (password-recoverable), or multisig (2-of-3). | 0.1% on withdrawal |
+| **Reputation** | On-chain derived scores based on trade history, vouching, and identity verification. | Free |
+| **Jury** | Community dispute resolution via randomly selected jurors. | Free |
+| **Messaging** | Encrypted chat tied to each escrow (AES-256-GCM). | Free |
 
-**Create escrows, check reputation, find counterparties, and resolve disputes — all without trusting a middleman.**
+### Getting started
+
+1. Install [KasWare](https://kasware.xyz) browser extension
+2. Get testnet KAS from the [faucet](https://faucet-tn10.kaspanet.io/)
+3. Open [daglock.com](https://daglock.com) and connect your wallet
+4. Browse offers or create your first escrow
 
 ---
 
@@ -27,55 +49,42 @@ Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptog
 ```bash
 # Prerequisites: Rust 1.85+, Node 22+
 
-# 1. Start the indexer
-cargo run -p daglock-indexer
+# 1. Build and start the indexer
+cargo run -p daglock-indexer -- --network testnet-12
 
 # 2. Start the web UI (separate terminal)
-cd web && npm install && npm run dev
+cd web && npm ci && npm run dev
 
 # 3. Open http://localhost:5173
 
-# 4. Generate test data
+# 4. Generate test reputation data
 python3 scripts/simulation.py --trades 20 --bots 2
 ```
 
-### Features
+### Architecture
 
-| Surface | What you can do |
-|---------|----------------|
-| **Web dashboard** | Create offers & escrows, check reputation, send messages, vote on jury cases, link Telegram |
-| **Telegram bot** | Same features from chat — `/create`, `/offers`, `/reputation`, `/msg`, `/jury` |
-| **CLI** | Power-user terminal tool — create, claim, status, reputation, message, receipt |
-| **REST API** | 30+ endpoints for programmatic access. See [API.md](docs/API.md) |
-| **Covenant templates** | Compile and deploy any DagLock covenant from the UI or API — no SilverScript knowledge needed |
-
----
-
-## Covenant Templates
-
-DagLock lets you compile and deploy covenants without running the SilverScript compiler yourself. This is the main way wallets, bots, and other applications integrate DagLock.
-
-| Template | What it does | Use case |
-|----------|-------------|----------|
-| **daglock** | KAS escrow: buyer+seller release, timeout refund, atomic swap | Standard OTC trades |
-| **daglock_arbiter** | KAS escrow + optional mediator or jury resolution | High-value trades with dispute protection |
-| **daglock_vault** | Time-locked self-custody vault (withdraw after timeout) | Personal savings, inheritance, cold storage |
-
-**From the web UI:** Open the **Compile covenant** tab in the Actions panel. Pick a template, fill in the params, click Compile. You get the compiled bytecode and deploy address immediately — no terminal needed.
-
-**From the API:**
-```bash
-curl -X POST https://api.daglock.io/v1/compile \
-  -H "Content-Type: application/json" \
-  -d '{"template":"daglock_vault","params":{"owner_key":"<64 hex chars>","timeout":"2000000000"}}'
 ```
-Returns the compiled script, template hash, ABI, and prefix/suffix for UTXO detection.
+daglock.com (Cloudflare Pages)
+  → API calls to api.daglock.com
+    → Cloudflare proxy → nginx → daglock-indexer :8443
+      → wRPC to local kaspad :16610 (same VPS)
+      → Telegram bot + trade bot also on same VPS
 
-**In your own code:**
-```rust
-use daglock_contracts::compile_daglock_vault;
-let compiled = compile_daglock_vault(&owner_key, timeout);
+All on one Hetzner CX23 ($5/mo)
 ```
+
+### Covenant Templates
+
+| Template | File | Use case |
+|----------|------|----------|
+| **KAS Escrow** | `daglock.sil` | Standard OTC trades, atomic swaps |
+| **KRC-20 Escrow** | `daglock_krc20.sil` | Token-for-KAS escrow with ICC pattern |
+| **Arbiter** | `daglock_arbiter.sil` | Escrow with mediator or jury dispute resolution |
+| **Vault (standard)** | `daglock_vault.sil` | Time-locked self-custody (withdraw after timeout) |
+| **Vault (softlock)** | `daglock_vault_softlock.sil` | Password-recoverable vault |
+| **Vault (multisig)** | `daglock_vault_multisig.sil` | 2-of-3 multi-signature vault |
+
+All fees (0.5% escrow, 0.1% vault) are enforced by the covenant itself — DagLock cannot change or waive them.
 
 ---
 
@@ -84,19 +93,21 @@ let compiled = compile_daglock_vault(&owner_key, timeout);
 ```
 daglock/
 ├── contracts/     SilverScript covenant source (.sil) + compiler tests
-├── indexer/       Rust daemon — wRPC listener + REST API (30+ endpoints)
+├── indexer/       Rust daemon — wRPC listener + REST API (19+ endpoints)
 ├── cli/           Command-line tool for power users
 ├── bot/           Telegram bot (@DagLock_bot)
 ├── wasm-sdk/      WASM bindings for browser wallet integration
-├── web/           React + Vite dashboard (full action UI)
+├── web/           React + Vite dashboard (8 pages, 40 tests)
+├── shared/        Shared Rust crate (constants + validation)
+├── scripts/       Dev tooling (simulation, deploy, key generation, trade bot)
 ├── docs/          Architecture, protocol, API, roadmap, security
-├── scripts/       Dev tooling (simulation, deploy, key generation)
 ├── Dockerfile     Multi-stage production build
 └── LICENSE        AGPL v3
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 
+---
 
 ## Documentation
 
@@ -104,23 +115,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, component relationships, data flow |
 | [PROTOCOL.md](docs/PROTOCOL.md) | Covenant semantics, tx structure, parameter encoding |
-| [API.md](docs/API.md) | Indexer REST API reference |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, component relationships, data flow |
-| [PROTOCOL.md](docs/PROTOCOL.md) | Covenant semantics, tx structure, parameter encoding |
 | [API.md](docs/API.md) | Indexer REST API reference (30+ endpoints) |
-| [ROADMAP.md](docs/ROADMAP.md) | Phased delivery timeline |
 | [SECURITY.md](docs/SECURITY.md) | Threat model, audit checklist |
-| [KRC20-TESTNET.md](docs/KRC20-TESTNET.md) | KRC-20 testnet deployment guide |
+| [ROADMAP.md](docs/ROADMAP.md) | Phased delivery timeline |
 | [WIKI](docs/wiki/_index.md) | AI-optimized codebase map |
-
-## Integrations
-
-| What | How |
-|------|-----|
-| **KasWare wallet** | Connect via KasWare browser extension — web UI detects it automatically |
-| **Kaspium mobile** | Scan QR codes from the web UI to sign transactions |
-| **Custom wallets** | POST /v1/compile returns bytecode + address. Submit via any Kaspa transaction builder |
-| **KRC-20 tokens** | Deploy KRC-20 escrows following [KRC20-TESTNET.md](docs/KRC20-TESTNET.md) |
+| [AGENTS.md](AGENTS.md) | Full project context for AI coding agents |
 
 ---
 
@@ -128,14 +127,14 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 
 | Phase | Status | What |
 |-------|--------|------|
-| 0 | ✅ | KAS + KRC-20 + Arbiter covenants written, compiled, tested |
-| 1 | ✅ | Indexer with REST API, offers board, reputation system |
-| 2 | ✅ | Telegram bot, CLI tool, encrypted messaging |
-| 3 | ✅ | Web dashboard with full action UI |
-| 4 | ⏳ | KRC-20 community launch (NACHO, KASPY) |
-| 5 | 🔜 | Mainnet deployment (Toccata hard fork: June 5, 2026) |
+| 0 | ✅ | KAS + KRC-20 + Arbiter + Vault covenants written, compiled, tested |
+| 1 | ✅ | Indexer with REST API, offers board, reputation system, auth |
+| 2 | ✅ | Telegram bot, CLI tool, encrypted messaging, replay protection |
+| 3 | ✅ | Web dashboard redesign (8 pages, skeletons, animations, Radix UI) |
+| 4 | ✅ | Production hardening (rate tiers, daily caps, WebSocket, TanStack Query) |
+| 5 | 🔜 | **Mainnet deployment — June 30, 2026** (Toccata hard fork) |
 
-See [ROADMAP.md](docs/ROADMAP.md) for the full timeline.
+---
 
 ## License
 
