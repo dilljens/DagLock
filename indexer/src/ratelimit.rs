@@ -106,7 +106,11 @@ pub async fn rate_limit_mw(
         .map(|v| !v.is_empty())
         .unwrap_or(false);
 
-    let max_requests = if has_api_key { API_KEY_MAX } else { DEFAULT_MAX };
+    let max_requests = if has_api_key {
+        API_KEY_MAX
+    } else {
+        DEFAULT_MAX
+    };
 
     match state.check(ip, max_requests) {
         Ok(()) => next.run(req).await,
@@ -135,7 +139,10 @@ mod tests {
         for _ in 0..3 {
             assert!(limiter.check(ip, 3).is_ok());
         }
-        assert!(limiter.check(ip, 3).is_err(), "4th request should be blocked");
+        assert!(
+            limiter.check(ip, 3).is_err(),
+            "4th request should be blocked"
+        );
     }
 
     #[test]
@@ -148,9 +155,15 @@ mod tests {
         assert!(limiter.check(ip_a, 2).is_ok());
         assert!(limiter.check(ip_a, 2).is_err(), "IP A should be blocked");
 
-        assert!(limiter.check(ip_b, 2).is_ok(), "IP B should still be allowed");
+        assert!(
+            limiter.check(ip_b, 2).is_ok(),
+            "IP B should still be allowed"
+        );
         assert!(limiter.check(ip_b, 2).is_ok());
-        assert!(limiter.check(ip_b, 2).is_err(), "IP B should also be blocked");
+        assert!(
+            limiter.check(ip_b, 2).is_err(),
+            "IP B should also be blocked"
+        );
     }
 
     #[test]
@@ -162,14 +175,23 @@ mod tests {
         for _ in 0..30 {
             assert!(limiter.check(ip, 30).is_ok());
         }
-        assert!(limiter.check(ip, 30).is_err(), "31st default should be blocked");
+        assert!(
+            limiter.check(ip, 30).is_err(),
+            "31st default should be blocked"
+        );
 
         // API key tier: should start fresh for new window (can't test in same window)
         // Just verify the higher limit is accepted
         let ip2 = IpAddr::V4(Ipv4Addr::new(5, 6, 7, 8));
         for _ in 0..300 {
-            assert!(limiter.check(ip2, 300).is_ok(), "should allow 300 with API key");
+            assert!(
+                limiter.check(ip2, 300).is_ok(),
+                "should allow 300 with API key"
+            );
         }
-        assert!(limiter.check(ip2, 300).is_err(), "301st API key should be blocked");
+        assert!(
+            limiter.check(ip2, 300).is_err(),
+            "301st API key should be blocked"
+        );
     }
 }
