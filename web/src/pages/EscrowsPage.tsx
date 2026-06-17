@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, type AuthHeaders, type Escrow } from "../api";
+import { useRouter } from "../router";
 import { money, badge } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
 import { SignWithWallet } from "../components/wallet";
+import { EmptyState } from "../components/empty-state";
 
 type Tab = "my-escrows" | "create" | "lookup";
 
@@ -52,19 +54,18 @@ export function EscrowsPage() {
 function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Connect your wallet</h3>
-			<p>Connect KasWare to create and manage escrows.</p>
-			<button className="button primary" onClick={connect}>
-				Connect Wallet
-			</button>
-		</div>
+		<EmptyState
+			icon="👛"
+			title="Connect your wallet"
+			description="Connect KasWare to create and manage escrows."
+			action={{ label: "Connect Wallet", onClick: connect }}
+		/>
 	);
 }
 
 /* ─── My Escrows ─── */
 function MyEscrows({ address }: { address: string }) {
+	const { navigate } = useRouter();
 	const [escrows, setEscrows] = useState<LoadState<Escrow[]>>({ loading: true });
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -83,11 +84,12 @@ function MyEscrows({ address }: { address: string }) {
 	if (escrows.error) return <p className="muted error-text">{escrows.error}</p>;
 	if (!escrows.data?.length)
 		return (
-			<div className="empty-state">
-				<div className="empty-state-icon"></div>
-				<h3>No escrows yet</h3>
-				<p>Create your first escrow to start trading trustlessly.</p>
-			</div>
+			<EmptyState
+				icon="🤝"
+				title="No escrows found"
+				description="Create your first escrow to start trading trustlessly."
+				action={{ label: "Create Escrow", onClick: () => navigate("/escrows?tab=create") }}
+			/>
 		);
 
 	return (
@@ -255,15 +257,11 @@ function CreateEscrow({ address }: { address: string }) {
 
 	if (status === "done" && result) {
 		return (
-			<div className="empty-state">
-				<div className="empty-state-icon"></div>
-				<h3>Escrow created!</h3>
-				<p>
-					ID: {result.id}
-					<br />
-					Status: {result.status}
-				</p>
-			</div>
+			<EmptyState
+				icon="✅"
+				title="Escrow created!"
+				description={`ID: ${result.id} | Status: ${result.status}`}
+			/>
 		);
 	}
 

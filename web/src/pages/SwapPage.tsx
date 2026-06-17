@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField } from "../ui";
+import { EmptyState } from "../components/empty-state";
 
 type Tab = "generate" | "submit" | "how-to";
 
@@ -48,14 +49,12 @@ export function SwapPage() {
 function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Connect your wallet</h3>
-			<p>Connect KasWare to submit preimages and settle atomic swaps.</p>
-			<button className="button primary" onClick={connect}>
-				Connect Wallet
-			</button>
-		</div>
+		<EmptyState
+			icon="👛"
+			title="Connect your wallet"
+			description="Connect KasWare to submit preimages and settle atomic swaps."
+			action={{ label: "Connect Wallet", onClick: connect }}
+		/>
 	);
 }
 
@@ -230,24 +229,21 @@ function SubmitPreimage({ address: _address }: { address: string }) {
 
 	if (status === "done") {
 		return (
-			<div className="empty-state">
-				<div className="empty-state-icon"></div>
-				<h3>Swap settled!</h3>
-				<p>Preimage hash: {result}</p>
-				<button
-					className="button"
-					style={{ marginTop: "12px" }}
-					onClick={() => {
+			<EmptyState
+				icon="✅"
+				title="Preimage submitted!"
+				description={`Preimage hash: ${result}`}
+				action={{
+					label: "Settle Another",
+					onClick: () => {
 						setStatus("idle");
 						setEscrowId("");
 						setPreimage("");
 						setResult(null);
 						setExpectedHash(null);
-					}}
-				>
-					Settle Another
-				</button>
-			</div>
+					},
+				}}
+			/>
 		);
 	}
 

@@ -4,6 +4,7 @@ import { money, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonStats } from "../ui";
+import { EmptyState } from "../components/empty-state";
 
 type Tab = "lookup" | "my-reputation" | "vouch" | "identity";
 
@@ -45,12 +46,12 @@ export function ReputationPage() {
 function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Connect your wallet</h3>
-			<p>Connect KasWare to manage reputation and vouches.</p>
-			<button className="button primary" onClick={connect}>Connect Wallet</button>
-		</div>
+		<EmptyState
+			icon="👛"
+			title="Connect your wallet"
+			description="Connect KasWare to manage reputation and vouches."
+			action={{ label: "Connect Wallet", onClick: connect }}
+		/>
 	);
 }
 
@@ -179,11 +180,11 @@ function VouchSection() {
 	}
 
 	if (status === "done") return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Vouch created!</h3>
-			<p>You vouched for {subject.slice(0, 24)}…</p>
-		</div>
+		<EmptyState
+			icon="✅"
+			title="Vouch created!"
+			description={`You vouched for ${subject.slice(0, 24)}…`}
+		/>
 	);
 
 	return (
@@ -233,11 +234,11 @@ function IdentitySection() {
 	}
 
 	if (status === "done") return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Telegram linked!</h3>
-			<p>@{handle} is now associated with your address.</p>
-		</div>
+		<EmptyState
+			icon="✅"
+			title="Telegram linked!"
+			description={`@${handle} is now associated with your address.`}
+		/>
 	);
 
 	return (

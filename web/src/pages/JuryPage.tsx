@@ -4,6 +4,7 @@ import { badge, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
+import { EmptyState } from "../components/empty-state";
 
 type Tab = "my-cases" | "register" | "candidates";
 
@@ -38,12 +39,12 @@ export function JuryPage() {
 function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Connect your wallet</h3>
-			<p>Connect KasWare to participate in the jury system.</p>
-			<button className="button primary" onClick={connect}>Connect Wallet</button>
-		</div>
+		<EmptyState
+			icon="👛"
+			title="Connect your wallet"
+			description="Connect KasWare to participate in the jury system."
+			action={{ label: "Connect Wallet", onClick: connect }}
+		/>
 	);
 }
 
@@ -66,11 +67,11 @@ function MyCases({ address }: { address: string }) {
 	if (cases.loading) return <SkeletonTable rows={5} />;
 	if (cases.error) return <p className="muted error-text">{cases.error}</p>;
 	if (!cases.data?.length) return (
-		<div className="empty-state">
-			<div className="empty-state-icon">⚖</div>
-			<h3>No active cases</h3>
-			<p>You're not assigned to any jury cases right now.</p>
-		</div>
+		<EmptyState
+			icon="⚖"
+			title="No active cases"
+			description="You're not assigned to any jury cases right now."
+		/>
 	);
 
 	return (
@@ -164,11 +165,11 @@ function RegisterSection({ address }: { address: string }) {
 	}
 
 	if (status === "done") return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Registered as juror!</h3>
-			<p>You'll be assigned to dispute cases when they arise. Stay responsive.</p>
-		</div>
+		<EmptyState
+			icon="✅"
+			title="Vote submitted!"
+			description="You'll be assigned to dispute cases when they arise. Stay responsive."
+		/>
 	);
 
 	return (
@@ -203,11 +204,11 @@ function CandidatesSection() {
 	if (candidates.loading) return <SkeletonTable rows={5} />;
 	if (candidates.error) return <p className="muted error-text">{candidates.error}</p>;
 	if (!candidates.data?.length) return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>No registered jurors</h3>
-			<p>Be the first to register!</p>
-		</div>
+		<EmptyState
+			icon="👤"
+			title="No jurors registered"
+			description="Be the first to register!"
+		/>
 	);
 
 	return (

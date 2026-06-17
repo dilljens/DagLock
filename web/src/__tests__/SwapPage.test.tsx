@@ -115,7 +115,7 @@ describe("SwapPage", () => {
 		await user.click(submitBtn);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Swap settled!/)).toBeInTheDocument();
+			expect(screen.getByText(/Preimage submitted!/)).toBeInTheDocument();
 		});
 	});
 

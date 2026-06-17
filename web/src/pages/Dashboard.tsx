@@ -156,11 +156,11 @@ export function Dashboard({ stats }: DashboardProps) {
 				</article>
 			))}
 			{settledCount > 0 && !escrows.loading && (
-				<div className="empty-state" style={{ marginTop: "12px" }}>
-					<div className="empty-state-icon"></div>
-					<h3>{settledCount} settled escrows</h3>
-					<p>Tap to close the dashboard empty state.</p>
-				</div>
+				<EmptyState
+					icon="📊"
+					title={`${settledCount} settled escrows`}
+					description="Tap to close the dashboard empty state."
+				/>
 			)}
 		</div>
 	);

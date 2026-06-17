@@ -30,13 +30,13 @@
 ## Phase 3: Data & Performance UX
 
 - [x] 3.1 — TanStack Query (health/stats/offers useQuery + QueryClientProvider)
-- [x] 3.2 — React Hook Form + Zod (shared schemas, VaultForm migration)
-- [ ] 3.3 — WebSocket real-time updates
+- [x] 3.2 — React Hook Form + Zod (shared schemas, VaultForm migration; remaining forms use manual validation)
+- [x] 3.3 — WebSocket real-time updates (useWebSocket hook, auto-reconnect, query invalidation)
 - [ ] 3.4 — Loading/error/success state components
 
 ## Phase 4: Design System & Consistency
 
 - [ ] 4.1 — CSS modules refactor (split styles.css)
-- [ ] 4.2 — Better empty states (illustrations + CTAs)
+- [x] 4.2 — Better empty states (EmptyState component, dashboard/offers/vaults updated)
 - [ ] 4.3 — Onboarding wizard for first-time users
 - [ ] 4.4 — Mobile responsiveness refinements
