@@ -1,6 +1,6 @@
 # Indexer
 
-**Source**: `indexer/src/`  **Updated**: `2026-06-09`  (30+ files)
+**Source**: `indexer/src/`  **Updated**: `2026-06-16`  (45 src files + 3 test files)
 
 ## What it does
 Rust backend serving the DagLock REST API. Handles escrow lifecycle (create, settle, refund, dispute), offer board, reputation, vaults, jury, encrypted messaging, app registration, webhook dispatch, and WebSocket real-time updates. Uses SQLite or PostgreSQL via SQLx.
@@ -161,7 +161,12 @@ This outputs:
 |------|---------|
 | `verification.rs` | `WrpcVerifier`, `MockVerifier`, `EscrowVerifier` trait |
 | `main.rs` | Wires `WrpcVerifier` when `--wrpc-url` is set |
-| `listener.rs` | DAA polling for expiry, market price updates |
+| `listener.rs` | DAA polling for expiry, market price updates, UTXO scanning |
+| `config.rs` | CLI args + `Config::validate()` startup validation |
+| `auth.rs` | Signature verification + replay protection |
+| `api/mod.rs` | Router + `request_id_middleware` (UUID v4 tracing) |
+| `services/escrow_service.rs` | Business logic: create/settle/refund/dispute/cancel/atomic_swap |
+| `services/webhooks.rs` | Webhook dispatch with exponential backoff |
 | `db/queries/escrows.rs` | `try_find_escrow_by_lock_tx()`, `update_escrow_status_only()` |
 
 ## wRPC Listener (v0.2.0)
@@ -340,7 +345,7 @@ HTTP 429 Too Many Requests
 - Dev: `*` via `--cors-origin *`
 
 ### Best Practices
-- No `.unwrap()` in production code — all panics removed (2026-06-09 audit)
+- No `.unwrap()` in production code — all panics removed (2026-06-16 verified)
 - All SQL queries use bind parameters (no string interpolation)
 - Kaspa address validation on create
 - Replay protection mandatory on all authenticated actions
@@ -350,6 +355,10 @@ HTTP 429 Too Many Requests
 - `DAGLOCK_MESSAGE_KEY` checked at startup — panics on mainnet if unset
 - MockVerifier for dev, WrpcVerifier for production
 - Panics on startup if `--mock-auth` is combined with `--network mainnet`
+- **Request tracing:** UUID v4 `request_id` on every request, `X-Request-Id` response header, structured span logging
+- **Service layer:** Business logic extracted from HTTP handlers into `EscrowService` (create/settle/refund/dispute/cancel/atomic_swap)
+- **Config validation:** `Config::validate()` panics on invalid startup combinations
+- **Lifecycle tests:** 17 integration tests covering full escrow/offer/vault/dispute flows
 
 ---
 

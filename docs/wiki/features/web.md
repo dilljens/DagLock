@@ -1,6 +1,6 @@
 # Web
 
-**Source**: `web/src/`  **Updated**: `2026-06-09` (rewritten with sidebar nav)  (15 files)
+**Source**: `web/src/`  **Updated**: `2026-06-16`  (36 src files — 7 pages, 8 components, 9 test files)
 
 ## What it does
 React + Vite dashboard for browser-based users. Provides escrow creation, claiming, offer board, and reputation views. Communicates with the indexer REST API. Uses Vitest + React Testing Library for component tests, Biome for lint.
@@ -96,7 +96,7 @@ web/src/
 | Environment | jsdom (via vitest config) |
 | Mocking | `mockApi()` factory in `__tests__/helpers.ts`, `vi.mock("../api")` per test file |
 | Global mocks | `window.kasware` mocked in `setup.ts` |
-| Coverage | 36 tests across 7 files: App smoke, CreateOffer, CreateEscrow, EscrowAction (settle/cancel/refund/dispute), Swap, SwapPage, Dispute |
+| Coverage | 36 tests across 9 files: App smoke, CreateOffer, CreateEscrow, EscrowAction (settle/cancel/refund/dispute), Swap, SwapPage, Dispute + 2 test utilities |
 | Run | `cd web && npm test` |
 | Lint | `cd web && npm run lint` (Biome) |
 | Build | `cd web && npm run build` (tsc + vite) |
@@ -136,65 +136,35 @@ web/src/
 
 ## Audit Findings (2026-06-06)
 
-### High-Priority Usability Issues (Block Real Usage)
+### Status (June 16, 2026) — 4 fixed, 2 remaining
 
-| ID | Finding | Location | Fix Required |
-|----|---------|----------|--------------|
-| **U2** | **Web CreateEscrowForm generates fake `lock_tx_id`** — Uses `crypto.randomUUID()` instead of actual transaction ID from wallet. Indexer accepts it but UTXO won't exist on-chain. | `components/escrows.tsx:72` | Flow: form → WASM compile/assemble → KasWare sign → broadcast → KasWare returns `tx_id` → submit to indexer |
-| **U7** | **No web onboarding for first-time users** — "Getting Started" panel exists but no interactive walkthrough. Users don't know they need KasWare + testnet KAS. | `App.tsx:104-126` | First-visit modal: "Need KasWare + testnet KAS + connect wallet." Buttons: Dismiss, Open Faucet. |
-| **Q7** | **Web API no request timeout** — `fetch()` calls have no `AbortController`. Stalled requests hang UI indefinitely. | `api.ts` | Wrap fetch with `AbortController` (30s timeout). Add `timeout` option to `loadJson`, `postJson`. |
+| ID | Issue | Status | Fix |
+|----|-------|--------|-----|
+| **U2** | Web CreateEscrowForm generates fake `lock_tx_id` | ❌ Open | Still needs WASM `assemble_create_escrow` export → KasWare sign → broadcast → submit real `tx_id` |
+| **U7** | No web onboarding for first-time users | ✅ Fixed | Welcome modal on first visit (localStorage-based detection) |
+| **Q7** | Web API no request timeout | ✅ Fixed | 30s `AbortController` on all `loadJson()` / `postJson()` fetch calls |
+| **Q1** | `.expect()` on UUID in code | ✅ Fixed | All proper error handling — zero `.expect()` in production code |
+| **Q2/Q3** | Magic number `200` in fee calc | ✅ Fixed | Uses `kas_to_sompi()` from WASM SDK; `FEE_DENOMINATOR` via shared crate |
+| **Q4** | `trade_hash` not validated | ✅ Fixed | `TradeHash` type validated via API response |
 
-### Code Quality Issues
+### Remaining: U2 — Real lock_tx_id Flow
 
-| ID | Finding | Impact |
-|----|---------|--------|
-| **Q1** | `.expect()` on UUID in `escrows.tsx:72` — violates Rule #1 | Replace with proper error handling |
-| **Q2/Q3** | Magic number `200` implied in fee calculations — no shared constant | Use shared `FEE_DENOMINATOR` (via WASM SDK or API types) |
-| **Q4** | `trade_hash` handling — optional string in `CreateEscrowRequest`, no validation | Use `TradeHash` type from API (validated 64 hex chars) |
-
-### Fix Plan (Phase 2 — Usability + Phase 4 — Polish)
-
-1. **Task 10 (U2):** Web real `lock_tx_id` flow — WASM compile → KasWare sign → broadcast → submit `tx_id`
-   - Update `CreateEscrowForm` to use WASM SDK for tx assembly
-   - Use `SignWithWallet` component for KasWare signing
-   - After broadcast, extract `tx_id` from KasWare response
-   - Submit `lock_tx_id` + `lock_tx_output_index` to indexer
-
-2. **Task 15 (U7):** Web onboarding modal — first-visit detection via localStorage
-
-3. **Task 29 (Q7):** Web API request timeout — `AbortController` 30s default
-
-4. **Task 25 (Q1):** Remove `.expect()`/`.unwrap()` in production code
-
-5. **Task 26 (Q2/Q3):** Use shared fee constant (via API response or WASM SDK)
-
-6. **Task 27 (Q4):** `TradeHash` type in `api.ts` with validation
-
-### Dependencies
-
-- **WASM SDK** must export `compile_escrow` + `assemble_unsigned_tx` for browser use
-- **KasWare** must support `signTransaction` returning `tx_id` (verify API)
-- **Indexer** must have real UTXO verification (S1) and template hash verification (A8)
-- **Shared crate** (Phase 0) for fee constant and validation helpers
-
-### KasWare Integration Notes
-
-Current `kasware.ts` has `requestSignTransaction` but the flow in `CreateEscrowForm` doesn't use it properly. The fix requires:
+Still requires the WASM SDK to export `assemble_create_escrow` + `assemble_swap` + `assemble_refund` functions. Current `CreateEscrowForm` flow:
 
 ```typescript
-// 1. Compile covenant via WASM SDK
+// 1. Compile covenant via WASM SDK  ✅ works
 const { script, template_hash } = await wasm.compile_daglock(params);
 
-// 2. Assemble unsigned tx (WASM SDK)
+// 2. Assemble unsigned tx (WASM SDK)  ❌ export missing
 const unsigned_tx = await wasm.assemble_create_escrow(script, amount, output_index);
 
-// 3. Sign via KasWare
+// 3. Sign via KasWare  ✅ works
 const signed_tx = await kasware.signTransaction(unsigned_tx);
 
-// 4. Broadcast via KasWare (returns tx_id)
+// 4. Broadcast via KasWare (returns tx_id)  ✅ works
 const tx_id = await kasware.broadcastTransaction(signed_tx);
 
-// 5. Submit to indexer
+// 5. Submit to indexer  ✅ works
 await api.createEscrow({ lock_tx_id: tx_id, lock_tx_output_index: 0, ... });
 ```
 
@@ -202,6 +172,4 @@ await api.createEscrow({ lock_tx_id: tx_id, lock_tx_output_index: 0, ... });
 
 - [ ] `cd web && npm test && npm run lint && npm run build` passes
 - [ ] Manual: Create escrow via web → KasWare signs → broadcasts → indexer shows `pending_confirmation` → settle → receipt
-- [ ] Manual: First visit shows onboarding modal with faucet link
-- [ ] Manual: Network stall → API request times out after 30s with friendly error
 
