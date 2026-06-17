@@ -88,7 +88,7 @@ function MyEscrows({ address }: { address: string }) {
 				icon="🤝"
 				title="No escrows found"
 				description="Create your first escrow to start trading trustlessly."
-				action={{ label: "Create Escrow", onClick: () => navigate("/escrows?tab=create") }}
+				action={{ label: "Create Escrow", onClick: () => navigate("/escrows") }}
 			/>
 		);
 
