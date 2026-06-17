@@ -4,6 +4,7 @@ import { useRouter } from "../router";
 import { useWallet } from "../context/WalletContext";
 import { money } from "../helpers";
 import type { LoadState } from "../helpers";
+import { SkeletonTable } from "../ui";
 
 interface DashboardProps {
 	health: LoadState<Health>;
@@ -129,7 +130,7 @@ export function Dashboard({ health, stats, offers }: DashboardProps) {
 
 			{/* My active escrows */}
 			<h3 style={{ margin: "24px 0 12px" }}>Active Escrows</h3>
-			{escrows.loading && <p className="muted">Loading escrows…</p>}
+			{escrows.loading && <SkeletonTable rows={4} />}
 			{activeEscrows.length === 0 && !escrows.loading && (
 				<div className="empty-state">
 					<div className="empty-state-icon"></div>

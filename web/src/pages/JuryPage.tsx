@@ -3,7 +3,7 @@ import { api, type AuthHeaders, type JuryCase, type JurorRegistration } from "..
 import { badge, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
-import { FormField } from "../ui";
+import { FormField, SkeletonTable } from "../ui";
 
 type Tab = "my-cases" | "register" | "candidates";
 
@@ -63,7 +63,7 @@ function MyCases({ address }: { address: string }) {
 
 	useEffect(() => { load(); }, [load]);
 
-	if (cases.loading) return <p className="muted">Loading cases…</p>;
+	if (cases.loading) return <SkeletonTable rows={5} />;
 	if (cases.error) return <p className="muted error-text">{cases.error}</p>;
 	if (!cases.data?.length) return (
 		<div className="empty-state">
@@ -200,7 +200,7 @@ function CandidatesSection() {
 			.catch((e) => setCandidates({ error: e.message, loading: false }));
 	}
 
-	if (candidates.loading) return <p className="muted">Loading candidates…</p>;
+	if (candidates.loading) return <SkeletonTable rows={5} />;
 	if (candidates.error) return <p className="muted error-text">{candidates.error}</p>;
 	if (!candidates.data?.length) return (
 		<div className="empty-state">

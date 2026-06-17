@@ -4,7 +4,7 @@ import { money, sompi, relativeTime, badge } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
-import { FormField } from "../ui";
+import { FormField, SkeletonOffers, SkeletonTable } from "../ui";
 import { SignWithWallet } from "../components/wallet";
 
 type Tab = "browse" | "my-offers" | "create";
@@ -81,7 +81,7 @@ function BrowseOffers() {
 			.catch((e) => setOffers({ error: e.message, loading: false }));
 	}
 
-	if (offers.loading) return <p className="muted">Loading offers…</p>;
+	if (offers.loading) return <SkeletonOffers />;
 	if (offers.error) return <p className="muted error-text">{offers.error}</p>;
 
 	return (
@@ -209,7 +209,7 @@ function MyOffers({ address }: { address: string }) {
 
 	return (
 		<div>
-			{offers.loading && <p className="muted">Loading…</p>}
+			{offers.loading && <SkeletonOffers />}
 			{offers.error && <p className="muted error-text">{offers.error}</p>}
 			{filtered && filtered.length > 0 && (
 				<div className="action-tabs" style={{ marginBottom: "12px" }}>

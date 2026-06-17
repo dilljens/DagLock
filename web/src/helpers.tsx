@@ -6,11 +6,29 @@ export type LoadState<T> = {
 	loading: boolean;
 };
 
+/** Format sompi to KAS with locale-aware grouping and smart decimal places. */
 export function money(value: number | string | undefined): string {
 	if (value === undefined) return "—";
-	const numeric = typeof value === "string" ? Number.parseFloat(value) : value / 100_000_000;
-	if (!Number.isFinite(numeric)) return "—";
-	return `${numeric.toFixed(4)} KAS`;
+	const sompiVal = typeof value === "string" ? Number.parseFloat(value) : value;
+	const kas = sompiVal / 100_000_000;
+	if (!Number.isFinite(kas)) return "—";
+	// Smart decimal places: 2 for round amounts, up to 8 for small amounts
+	const decimals = kas >= 1 ? 2 : kas >= 0.001 ? 4 : 8;
+	return `${kas.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: 8 })} KAS`;
+}
+
+/** Format sompi to compact form (1.2M KAS, 500K KAS, etc.) for dashboards. */
+export function moneyCompact(value: number | undefined): string {
+	if (!value) return "—";
+	const kas = value / 100_000_000;
+	if (kas >= 1_000_000) return `${(kas / 1_000_000).toFixed(1)}M KAS`;
+	if (kas >= 1_000) return `${(kas / 1_000).toFixed(1)}K KAS`;
+	return money(value);
+}
+
+/** Format a KAS decimal string (not sompi) with commas. */
+export function formatKas(kas: number): string {
+	return kas.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
 }
 
 export function sompi(kas: number): number {

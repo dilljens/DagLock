@@ -3,7 +3,7 @@ import { api, type Reputation } from "../api";
 import { money, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
-import { FormField } from "../ui";
+import { FormField, SkeletonStats } from "../ui";
 
 type Tab = "lookup" | "my-reputation" | "vouch" | "identity";
 
@@ -64,7 +64,7 @@ function ReputationDisplay({ address }: { address: string }) {
 			.catch((e) => setState({ error: e.message, loading: false }));
 	}
 
-	if (state.loading) return <p className="muted">Loading reputation…</p>;
+	if (state.loading) return <SkeletonStats />;
 	if (state.error) return <p className="muted error-text">{state.error}</p>;
 	if (!state.data) return <p className="muted">No data</p>;
 

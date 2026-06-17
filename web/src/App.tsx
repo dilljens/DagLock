@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter, RouterProvider } from "./router";
 import { useWallet, WalletProvider } from "./context/WalletContext";
 import { ToastProvider, useToast } from "./layout/Toast";
@@ -104,7 +105,17 @@ function AppInner() {
 					</div>
 				)}
 
-				{pageContent}
+				<AnimatePresence mode="wait">
+					<motion.div
+						key={route}
+						initial={{ opacity: 0, y: 12 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -12 }}
+						transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+					>
+						{pageContent}
+					</motion.div>
+				</AnimatePresence>
 			</main>
 		</div>
 	);

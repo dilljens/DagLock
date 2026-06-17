@@ -3,7 +3,7 @@ import { api, type Vault, type VaultType, type VaultStatus } from "../api";
 import { money, time, sompi, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
-import { FormField } from "../ui";
+import { FormField, SkeletonTable } from "../ui";
 
 type Tab = "my-vaults" | "create" | "lookup";
 
@@ -83,7 +83,7 @@ function MyVaults({ address }: { address: string }) {
 
 	useEffect(() => { load(); }, [load]);
 
-	if (vaults.loading) return <p className="muted">Loading vaults…</p>;
+	if (vaults.loading) return <SkeletonTable rows={5} />;
 	if (vaults.error) return <p className="muted error-text">{vaults.error}</p>;
 	if (!vaults.data?.length) return (
 		<div className="empty-state">

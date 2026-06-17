@@ -26,16 +26,68 @@ export function LookupResult<T>({
 	error,
 	data,
 	render,
+	skeleton,
 }: {
 	loading: boolean;
 	error?: string;
 	data?: T;
 	render: (data: T) => React.ReactNode;
+	skeleton?: React.ReactNode;
 }) {
-	if (loading) return <p className="muted">Loading…</p>;
+	if (loading) return skeleton || <div className="skeleton-card"><div className="skeleton" style={{ height: 48 }} /></div>;
 	if (error) return <p className="muted error-text">{error}</p>;
-	if (!data) return <p className="muted">Enter an ID to inspect live state.</p>;
+	if (!data) return <p className="muted" style={{ textAlign: "center", padding: "32px 0" }}>Enter an ID to inspect live state.</p>;
 	return <div className="result">{render(data)}</div>;
+}
+
+export function SkeletonStats() {
+	return (
+		<div className="skeleton-stats">
+			{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton" />)}
+		</div>
+	);
+}
+
+export function SkeletonOffers() {
+	return (
+		<div className="skeleton-offers">
+			{Array.from({ length: 3 }).map((_, i) => (
+				<div key={i} className="skeleton-card">
+					<div className="skeleton-row">
+						<div className="skeleton skeleton-text">
+							<div className="skeleton" />
+							<div className="skeleton" />
+						</div>
+					</div>
+					<div className="skeleton-text">
+						<div className="skeleton" style={{ width: "80%" }} />
+						<div className="skeleton" style={{ width: "50%" }} />
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
+
+export function SkeletonTable({ rows = 5 }: { rows?: number }) {
+	return (
+		<div className="skeleton-table">
+			{Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton" />)}
+		</div>
+	);
+}
+
+export function SkeletonHero() {
+	return (
+		<div className="hero" style={{ height: 180 }}>
+			<div className="skeleton-text" style={{ gap: 12 }}>
+				<div className="skeleton" style={{ height: 32, width: "40%" }} />
+				<div className="skeleton" style={{ height: 16, width: "70%" }} />
+				<div className="skeleton" style={{ height: 16, width: "50%" }} />
+			</div>
+			<div className="skeleton" style={{ width: 140, height: 48, borderRadius: 999 }} />
+		</div>
+	);
 }
 
 export function FormField({ label, children }: { label: string; children: React.ReactNode }) {

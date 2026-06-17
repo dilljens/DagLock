@@ -4,7 +4,7 @@ import { money, badge } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
-import { FormField } from "../ui";
+import { FormField, SkeletonTable } from "../ui";
 import { SignWithWallet } from "../components/wallet";
 
 type Tab = "my-escrows" | "create" | "lookup";
@@ -78,7 +78,7 @@ function MyEscrows({ address }: { address: string }) {
 
 	if (escrows.loading) {
 		load();
-		return <p className="muted">Loading escrows…</p>;
+		return <SkeletonTable rows={5} />;
 	}
 	if (escrows.error) return <p className="muted error-text">{escrows.error}</p>;
 	if (!escrows.data?.length)
