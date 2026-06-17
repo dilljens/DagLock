@@ -5,6 +5,7 @@ import { useWallet } from "../context/WalletContext";
 import { money } from "../helpers";
 import type { LoadState } from "../helpers";
 import { SkeletonTable, SkeletonStats } from "../ui";
+import { EmptyState } from "../components/empty-state";
 
 interface DashboardProps {
 	stats?: Stats;
@@ -130,14 +131,12 @@ export function Dashboard({ stats }: DashboardProps) {
 			<h3 style={{ margin: "24px 0 12px" }}>Active Escrows</h3>
 			{escrows.loading && <SkeletonTable rows={4} />}
 			{activeEscrows.length === 0 && !escrows.loading && (
-				<div className="empty-state">
-					<div className="empty-state-icon"></div>
-					<h3>No active escrows</h3>
-					<p>Create your first escrow to start trading trustlessly.</p>
-					<button className="button primary" onClick={() => navigate("/escrows")}>
-						Create Escrow
-					</button>
-				</div>
+				<EmptyState
+					icon="🤝"
+					title="No active escrows"
+					description="Create your first escrow to start trading trustlessly."
+					action={{ label: "Create Escrow", onClick: () => navigate("/escrows") }}
+				/>
 			)}
 			{activeEscrows.slice(0, 5).map((e) => (
 				<article

@@ -29,8 +29,8 @@
 
 ## Phase 3: Data & Performance UX
 
-- [ ] 3.1 — TanStack Query for all API data fetching
-- [ ] 3.2 — React Hook Form + Zod for all forms
+- [x] 3.1 — TanStack Query (health/stats/offers useQuery + QueryClientProvider)
+- [x] 3.2 — React Hook Form + Zod (shared schemas, VaultForm migration)
 - [ ] 3.3 — WebSocket real-time updates
 - [ ] 3.4 — Loading/error/success state components
 

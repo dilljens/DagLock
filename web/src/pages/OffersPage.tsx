@@ -5,6 +5,7 @@ import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonOffers, SkeletonTable } from "../ui";
+import { EmptyState } from "../components/empty-state";
 import { SignWithWallet } from "../components/wallet";
 
 type Tab = "browse" | "my-offers" | "create";
@@ -54,14 +55,12 @@ export function OffersPage() {
 function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Connect your wallet</h3>
-			<p>Connect KasWare to create and manage offers.</p>
-			<button className="button primary" onClick={connect}>
-				Connect Wallet
-			</button>
-		</div>
+		<EmptyState
+			icon="🔗"
+			title="Connect your wallet"
+			description="Connect KasWare to create and manage offers."
+			action={{ label: "Connect Wallet", onClick: connect }}
+		/>
 	);
 }
 

@@ -1132,27 +1132,35 @@ code {
 	justify-content: center;
 	padding: 48px 24px;
 	text-align: center;
-	border: 1px dashed var(--border);
-	border-radius: var(--card-radius);
-	background: var(--card-bg);
+	border: 1px dashed var(--color-border);
+	border-radius: var(--radius-lg);
+	background: var(--color-bg-card);
+	transition: border-color var(--duration-fast);
+}
+
+.empty-state:hover {
+	border-color: rgba(83, 215, 105, 0.25);
 }
 
 .empty-state-icon {
-	font-size: 48px;
-	margin-bottom: 12px;
-	opacity: 0.6;
+	font-size: 40px;
+	margin-bottom: 8px;
+	opacity: 0.5;
+	line-height: 1;
 }
 
 .empty-state h3 {
 	margin: 0 0 6px;
 	font-size: 16px;
+	color: var(--color-text);
 }
 
 .empty-state p {
-	margin: 0 0 16px;
-	color: var(--muted);
+	margin: 0 0 20px;
+	color: var(--color-text-secondary);
 	font-size: 13px;
-	max-width: 320px;
+	max-width: 340px;
+	line-height: 1.5;
 }
 
 /* ─── Radix Dialog ─── */

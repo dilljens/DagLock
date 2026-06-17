@@ -17,6 +17,7 @@ import { JuryPage } from "./pages/JuryPage";
 import { SwapPage } from "./pages/SwapPage";
 
 import { api } from "./api";
+import { useWebSocket } from "./hooks/useWebSocket";
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -49,6 +50,9 @@ function AppInner() {
 		queryFn: () => api.offers().then((d) => d.offers),
 		staleTime: 15_000,
 	});
+
+	// Real-time updates via WebSocket
+	useWebSocket();
 
 	// Close sidebar on route change
 	useEffect(() => setSidebarOpen(false), [route]);
