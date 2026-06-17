@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useEffect } from "react";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useRouter, RouterProvider } from "./router";
@@ -15,35 +16,39 @@ import { ReputationPage } from "./pages/ReputationPage";
 import { JuryPage } from "./pages/JuryPage";
 import { SwapPage } from "./pages/SwapPage";
 
-import { api, type Health, type Stats, type Offer } from "./api";
-import { money } from "./helpers";
-import type { LoadState } from "./helpers";
+import { api } from "./api";
+
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			staleTime: 30_000,
+			retry: 2,
+			refetchOnWindowFocus: false,
+		},
+	},
+});
 
 /* ─── Inner app (has access to router + wallet) ─── */
 function AppInner() {
 	const { route } = useRouter();
 	const { state: wallet } = useWallet();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const [health, setHealth] = useState<LoadState<Health>>({ loading: true });
-	const [stats, setStats] = useState<LoadState<Stats>>({ loading: true });
-	const [offers, setOffers] = useState<LoadState<Offer[]>>({ loading: true });
 
-	useEffect(() => {
-		void Promise.all([
-			api
-				.health()
-				.then((d) => setHealth({ data: d, loading: false }))
-				.catch((e) => setHealth({ error: e.message, loading: false })),
-			api
-				.stats()
-				.then((d) => setStats({ data: d, loading: false }))
-				.catch((e) => setStats({ error: e.message, loading: false })),
-			api
-				.offers()
-				.then((d) => setOffers({ data: d.offers, loading: false }))
-				.catch((e) => setOffers({ error: e.message, loading: false })),
-		]);
-	}, []);
+	const { data: health, isLoading: healthLoading } = useQuery({
+		queryKey: ["health"],
+		queryFn: () => api.health(),
+	});
+
+	const { data: stats } = useQuery({
+		queryKey: ["stats"],
+		queryFn: () => api.stats(),
+	});
+
+	const { data: offers, isLoading: offersLoading } = useQuery({
+		queryKey: ["offers"],
+		queryFn: () => api.offers().then((d) => d.offers),
+		staleTime: 15_000,
+	});
 
 	// Close sidebar on route change
 	useEffect(() => setSidebarOpen(false), [route]);
@@ -52,7 +57,7 @@ function AppInner() {
 		const page = (() => {
 			switch (route) {
 				case "/":
-					return <Dashboard health={health} stats={stats} offers={offers} />;
+					return <Dashboard stats={stats} />;
 				case "/offers":
 					return <OffersPage />;
 				case "/escrows":
@@ -66,7 +71,7 @@ function AppInner() {
 				case "/swap":
 					return <SwapPage />;
 				default:
-					return <Dashboard health={health} stats={stats} offers={offers} />;
+					return <Dashboard stats={stats} />;
 			}
 		})();
 		return <ErrorBoundary key={route}>{page}</ErrorBoundary>;
@@ -129,14 +134,16 @@ function AppInner() {
 /* ─── Top-level App ─── */
 export default function App() {
 	return (
-		<Tooltip.Provider delayDuration={400}>
-			<RouterProvider>
-				<WalletProvider>
-					<ToastProvider>
-						<AppInner />
-					</ToastProvider>
-				</WalletProvider>
-			</RouterProvider>
-		</Tooltip.Provider>
+		<QueryClientProvider client={queryClient}>
+			<Tooltip.Provider delayDuration={400}>
+				<RouterProvider>
+					<WalletProvider>
+						<ToastProvider>
+							<AppInner />
+						</ToastProvider>
+					</WalletProvider>
+				</RouterProvider>
+			</Tooltip.Provider>
+		</QueryClientProvider>
 	);
 }

@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { api, type Vault, type VaultType, type VaultStatus } from "../api";
 import { money, time, sompi, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
+import { z } from "zod";
+import { CreateVaultSchema } from "../validation";
 
 type Tab = "my-vaults" | "create" | "lookup";
 
@@ -142,23 +146,31 @@ function WithdrawButton({ vault, address }: { vault: Vault; address: string }) {
 }
 
 function CreateVault({ address }: { address: string }) {
-	const [amount, setAmount] = useState("");
-	const [timeoutDays, setTimeoutDays] = useState("30");
 	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 	const [vaultId, setVaultId] = useState("");
 	const { notify } = useToast();
 
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		const amountNum = Number.parseFloat(amount);
-		if (!amountNum || amountNum <= 0) return;
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<z.infer<typeof CreateVaultSchema>>({
+		resolver: zodResolver(CreateVaultSchema),
+		defaultValues: {
+			owner_address: address,
+			amount_sompi: 0,
+			timeout_days: 30,
+		},
+	});
+
+	async function onSubmit(data: z.infer<typeof CreateVaultSchema>) {
 		setStatus("loading");
 		try {
-			const timeoutSec = Math.floor(Date.now() / 1000) + (Number.parseInt(timeoutDays) || 30) * 86400;
+			const timeoutSec = Math.floor(Date.now() / 1000) + data.timeout_days * 86400;
 			const vault = await api.createVault({
-				owner_address: address,
-				vault_type: "time",
-				amount_sompi: sompi(amountNum),
+				owner_address: data.owner_address,
+				vault_type: "time" as const,
+				amount_sompi: data.amount_sompi,
 				timeout: timeoutSec,
 			});
 			setVaultId(vault.id);
@@ -179,24 +191,31 @@ function CreateVault({ address }: { address: string }) {
 	);
 
 	return (
-		<form className="form form-stacked" onSubmit={handleSubmit}>
+		<form className="form form-stacked" onSubmit={handleSubmit(onSubmit)}>
 			<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
 				Owner: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 			</div>
 			<FormField label="Amount (KAS)">
-				<input type="number" step="any" value={amount}
-					onChange={(e) => setAmount(e.target.value)} placeholder="100" />
+				<input
+					type="number"
+					step="any"
+					placeholder="100"
+					{...register("amount_sompi", { valueAsNumber: true })}
+				/>
+				{errors.amount_sompi && <span className="input-feedback error">{errors.amount_sompi.message}</span>}
 			</FormField>
 			<FormField label="Lock duration">
-				<select value={timeoutDays} onChange={(e) => setTimeoutDays(e.target.value)}>
-					<option value="1">1 day</option>
-					<option value="7">7 days</option>
-					<option value="30">30 days</option>
-					<option value="90">90 days</option>
-					<option value="365">1 year</option>
+				<select {...register("timeout_days", { valueAsNumber: true })}>
+					<option value={1}>1 day</option>
+					<option value={7}>7 days</option>
+					<option value={30}>30 days</option>
+					<option value={90}>90 days</option>
+					<option value={365}>1 year</option>
 				</select>
+				{errors.timeout_days && <span className="input-feedback error">{errors.timeout_days.message}</span>}
 			</FormField>
-			<button className="button primary" type="submit" disabled={status === "loading"}>
+			<input type="hidden" {...register("owner_address")} />
+			<button className="button primary" type="submit" disabled={isSubmitting || status === "loading"}>
 				{status === "loading" ? "Creating…" : "Create Vault"}
 			</button>
 		</form>

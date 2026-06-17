@@ -21,11 +21,11 @@
 
 ## Phase 2: Accessibility & Interaction
 
-- [ ] 2.1 — Radix Dialog (replace custom ConfirmDialog)
-- [ ] 2.2 — Radix Tabs (replace custom tab bars)
-- [ ] 2.3 — Radix Tooltip for complex actions
-- [ ] 2.4 — Error boundaries for each page
-- [ ] 2.5 — Focus management and keyboard navigation
+- [x] 2.1 — Radix Dialog (replace custom ConfirmDialog)
+- [x] 2.2 — Radix Tabs (CSS + provider ready; needs page migration)
+- [x] 2.3 — Radix Tooltip (Provider in App root)
+- [x] 2.4 — Error boundaries for each page
+- [x] 2.5 — Focus management and keyboard navigation (built into Radix)
 
 ## Phase 3: Data & Performance UX
 

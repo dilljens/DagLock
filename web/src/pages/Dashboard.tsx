@@ -1,18 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
-import { api, type Health, type Stats, type Offer, type Escrow } from "../api";
+import { api, type Stats, type Escrow } from "../api";
 import { useRouter } from "../router";
 import { useWallet } from "../context/WalletContext";
 import { money } from "../helpers";
 import type { LoadState } from "../helpers";
-import { SkeletonTable } from "../ui";
+import { SkeletonTable, SkeletonStats } from "../ui";
 
 interface DashboardProps {
-	health: LoadState<Health>;
-	stats: LoadState<Stats>;
-	offers: LoadState<Offer[]>;
+	stats?: Stats;
 }
 
-export function Dashboard({ health, stats, offers }: DashboardProps) {
+export function Dashboard({ stats }: DashboardProps) {
 	const { navigate } = useRouter();
 	const { state: wallet, connect } = useWallet();
 	const [escrows, setEscrows] = useState<LoadState<Escrow[]>>({ loading: false });
@@ -81,7 +79,7 @@ export function Dashboard({ health, stats, offers }: DashboardProps) {
 	);
 	const settledCount = myEscrows.filter((e) => e.status === "settled").length;
 
-	const s = stats.data;
+	const s = stats;
 	const highlights = [
 		["Escrows", s?.total_escrows ?? "—"],
 		["Active", s?.active_escrows ?? "—"],
