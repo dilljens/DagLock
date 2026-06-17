@@ -151,19 +151,19 @@ redis.set_ex(cache_key, serialize(&offers), 30).await?;
 
 ---
 
-## Implementation Checklist
+## Implementation Status
 
-### Priority 1 (Before announcing testnet publicly)
-- [ ] 1.1 — nginx `client_max_body_size 1m` on VPS
-- [ ] 1.2 — Daily creation cap (50 escrows, 50 offers per address)
-- [ ] 1.3 — Message/evidence max length enforcement
+### Priority 1 (Completed June 17)
+- [x] 1.1 — nginx `client_max_body_size 1m` on VPS
+- [x] 1.2 — Daily creation cap (50 escrows, 50 offers per address)
+- [x] 1.3 — Message/evidence max length enforcement (already existed: 1024 msg, 100KB evidence)
 
-### Priority 2 (Before mainnet launch, June 30)
-- [ ] 2.1 — SQLite pool tuning (max 10 connections)
-- [ ] 2.2 — API key rate limit tiers
-- [ ] 2.3 — Offer expiry enforcement
+### Priority 2 (Completed June 17)
+- [x] 2.1 — SQLite pool tuning (max 10 connections, min 2, 5s acquire timeout)
+- [x] 2.2 — API key rate limit tiers (30 req/min default, 300 req/min with X-Daglock-Api-Key)
+- [ ] 2.3 — Offer expiry enforcement (pending — trade bot handles cleanup client-side)
 
-### Priority 3 (Post-launch Q3 2026)
+### Priority 3 (Post-launch Q3 2026 — deferred)
 - [ ] 3.1 — Postgres migration
 - [ ] 3.2 — Redis caching
 - [ ] 3.3 — Permanent IP ban list

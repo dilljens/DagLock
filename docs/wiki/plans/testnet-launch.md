@@ -1,10 +1,8 @@
 # Testnet Launch Plan
 
-**Status:** Not started
+**Status:** ✅ Completed (June 17, 2026)
 
-**Date:** 2026-06-16
-
-**Target:** Fully functional testnet on Railway + Hetzner VPS, then announce to Kaspa community.
+**Note:** All phases completed. Indexer, kaspad, bot, and trade bot all running on a single Hetzner CX23 VPS ($5/mo). Web UI at daglock.com, API at api.daglock.com.
 
 ---
 

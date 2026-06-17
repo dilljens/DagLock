@@ -96,13 +96,14 @@
 ## Entry points
 | Trigger | File | Description |
 |----------|------|-------------|
+| Browser | `https://daglock.com` | Web UI (Cloudflare Pages, free tier) |
+| API | `https://api.daglock.com` | REST API (VPS, proxied via Cloudflare) |
+| Telegram | `@DagLock_bot` | Bot on Hetzner VPS |
 | `cargo run -p daglock-indexer` | `indexer/src/main.rs` | Start REST API + optional wRPC listener |
 | `cargo run -p daglock-cli -- <cmd>` | `cli/src/main.rs` | CLI subcommand dispatch |
 | `cd web && npm run dev` | `web/src/App.tsx` | Vite dev server |
 | `cd bot && node src/index.js` | `bot/src/index.js` | Telegram bot |
-| `docker run daglock/indexer` | `Dockerfile` | Production containerized deployment |
 | `python3 scripts/simulation.py` | `scripts/simulation.py` | Generate trades + verify reputation |
-| Pre-flight checklist | `docs/manual-verification-plan.md` | 16 checks before testnet/mainnet deploy |
 
 ## Topology
 ```
@@ -210,6 +211,12 @@ DagLock/
 | Change message encryption | `indexer/src/crypto.rs` (AES-256-GCM, DAGLOCK_MESSAGE_KEY) |
 | Change jury rules | `indexer/src/api/jury.rs` |
 | Run reputation sim | `scripts/simulation.py` |
+| Add web page | `web/src/router.tsx` (Route type) + `web/src/App.tsx` (import + case) + new `.tsx` in `web/src/pages/` |
+| Change dashboard content | `web/src/pages/Dashboard.tsx` |
+| Add developer docs tab | `web/src/pages/DocsPage.tsx` |
+| Change offer card display | `web/src/pages/OffersPage.tsx` (OfferCard function) |
+| Add vault type | `web/src/pages/VaultsPage.tsx` (VAULT_TYPE_INFO map + CreateVault form) |
+| Run trade bot | `scripts/trade-bot.py` (systemd timer on VPS, every 10 min) |
 
 ## Domain registry
 | Domain | Doc | Files | Purpose |
@@ -219,7 +226,7 @@ DagLock/
 | indexer | `features/indexer.md` | 48 (45 src + 3 tests) | REST API, DB, auth, crypto, verification, jury, messages, webhooks, apps, services |
 | cli | `features/cli.md` | 14 | Command-line power-user tool |
 | wasm-sdk | `features/wasm-sdk.md` | 1 | Browser/JS SDK for tx assembly |
-| web | `features/web.md` | 36 (27 src + 9 tests) | React + Vite dashboard |
+| web | `features/web.md` | 37 (28 src + 9 tests) | React + Vite dashboard (Dashboard, Docs, 6 feature pages) |
 | bot | `features/bot.md` | 2 | Telegram bot (Node.js) |
 
 ## Existing docs
