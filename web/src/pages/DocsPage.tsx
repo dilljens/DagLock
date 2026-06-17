@@ -260,6 +260,24 @@ offer.created
 offer.accepted`}</Code>
 				<p className="muted">Delivery: HTTP POST with 3 retries (1s, 4s, 10s backoff). Two header IDs for idempotency.</p>
 			</Section>
+
+			<Section title="Encrypted Messaging">
+				<p className="muted">Each escrow has a threaded, encrypted chat attached. Messages are encrypted with AES-256-GCM using the server-side <code>DAGLOCK_MESSAGE_KEY</code>. Only the escrow participants can read them.</p>
+				<Code>{`# Send a message
+POST /v1/escrows/:id/messages
+Headers: X-Daglock-Address, X-Daglock-Signature
+Body: { "content": "message (max 1024 chars)" }
+
+# List messages
+GET /v1/escrows/:id/messages
+Headers: X-Daglock-Address, X-Daglock-Signature`}</Code>
+			</Section>
+
+			<Section title="Bug Reports & Feedback">
+				<p className="muted">Found a bug or have a feature request? Open an issue on GitHub:</p>
+				<p className="muted"><a href="https://github.com/dilljens/DagLock/issues" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>github.com/dilljens/DagLock/issues</a></p>
+				<p className="muted">Or message the team on Telegram: <a href="https://t.me/DagLock_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>@DagLock_bot</a></p>
+			</Section>
 		</>
 	);
 }

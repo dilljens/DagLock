@@ -168,3 +168,9 @@ redis.set_ex(cache_key, serialize(&offers), 30).await?;
 - [ ] 3.2 — Redis caching
 - [ ] 3.3 — Permanent IP ban list
 - [ ] 3.4 — Horizontal scaling
+- [ ] 3.5 — Email notifications for escrow lifecycle events
+  - Trigger on: escrow.settled, escrow.disputed, escrow.refunded, escrow.expired
+  - Delivery: SMTP via transaction email service (SendGrid, Postmark, or AWS SES)
+  - Opt-in: user provides email on Telegram or web settings page
+  - Rate-limited: max 10 email notifications per address per day to prevent abuse
+  - Priority: medium — useful for users who don't check Telegram constantly
