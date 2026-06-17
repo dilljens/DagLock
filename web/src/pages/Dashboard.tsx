@@ -35,8 +35,9 @@ export function Dashboard({ stats }: DashboardProps) {
 					<p>
 						Create, settle, and dispute escrows without trusting anyone. Funds are locked in
 						SilverScript covenants — no admin keys, no backdoors. Only the <strong>buyer</strong> or
-						<strong>seller</strong> can settle. A <strong>0.5% protocol fee</strong> is enforced by the
-						covenant itself and paid to the DagLock treasury on settlement.
+						<strong>seller</strong> can settle. A <strong>0.5% escrow fee</strong>
+						(and <strong>0.1% vault fee</strong>) is enforced by the
+						covenant itself and paid to the DagLock treasury.
 					</p>
 					{wallet.detected ? (
 						<button
@@ -74,7 +75,7 @@ export function Dashboard({ stats }: DashboardProps) {
 					<div className="feature-card">
 						<div className="feature-card-icon">🏦</div>
 						<h3>Time-Locked Vaults</h3>
-						<p>Self-custody storage with configurable timeouts. Standard, password-recoverable, or multi-sig vaults.</p>
+						<p>Self-custody storage with configurable timeouts. Standard, password-recoverable, or multi-sig vaults. 0.1% fee on withdrawal.</p>
 					</div>
 					<div className="feature-card">
 						<div className="feature-card-icon">🔄</div>
@@ -102,7 +103,7 @@ export function Dashboard({ stats }: DashboardProps) {
 					<div className="feature-card">
 						<div className="feature-card-icon">3️⃣</div>
 						<h3>Settle or Refund</h3>
-						<p>Both parties agree → funds released to seller. Or buyer refunds after timeout. 0.5% goes to the protocol treasury.</p>
+						<p>Both parties agree → funds released to seller. Or buyer refunds after timeout. 0.5% escrow fee / 0.1% vault fee goes to the treasury.</p>
 					</div>
 				</div>
 

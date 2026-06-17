@@ -206,6 +206,9 @@ export function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 				</small>
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
+			<p className="muted" style={{ fontSize: "12px", margin: "4px 0" }}>
+				A <strong>0.5% protocol fee</strong> will be charged on settlement (enforced by the covenant).
+			</p>
 			<button className="button primary" type="submit" disabled={status === "loading"}>
 				{status === "loading" ? "Creating…" : "Create escrow"}
 			</button>
@@ -446,6 +449,11 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 					</>
 				)}
 				{error && <p className="muted error-text">{error}</p>}
+				{action === "settle" && (
+					<p className="muted" style={{ fontSize: "12px", margin: "4px 0" }}>
+						A <strong>0.5% protocol fee</strong> is charged on settlement (enforced by the covenant).
+					</p>
+				)}
 				<button
 					className={`button ${action === "cancel" ? "" : "primary"}`}
 					type="submit"

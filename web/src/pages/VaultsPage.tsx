@@ -276,6 +276,9 @@ function CreateVault({ address }: { address: string }) {
 				{errors.timeout_days && <span className="input-feedback error">{errors.timeout_days.message}</span>}
 			</FormField>
 			<input type="hidden" {...register("owner_address")} />
+			<p className="muted" style={{ fontSize: "12px", margin: "8px 0" }}>
+				A <strong>0.1% protocol fee</strong> is charged on withdrawal (enforced by the covenant).
+			</p>
 			<button className="button primary" type="submit" disabled={isSubmitting || status === "loading"}>
 				{status === "loading" ? "Creating…" : "Create Vault"}
 			</button>

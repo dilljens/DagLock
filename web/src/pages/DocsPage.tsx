@@ -121,6 +121,17 @@ POST /v1/jury/cases/:id/vote
 POST /v1/apps/register`}</Code>
 			</Section>
 
+			<Section title="Fees">
+				<p className="muted">Both fees are enforced by the SilverScript covenant at the protocol level. DagLock cannot change or waive them.</p>
+				<Code>{`Escrow settlement: 0.5% (1/200 of the deposited amount)
+  → Paid by the seller at settlement
+  → Treasury output enforced by covenant
+
+Vault withdrawal: 0.1% (1/1000 of the vault amount)
+  → Paid by the vault owner at withdrawal
+  → Treasury output enforced by covenant`}</Code>
+			</Section>
+
 			<Section title="Rate Limits">
 				<p className="muted">30 req/min per IP without API key.</p>
 				<p className="muted">300 req/min per IP with <code>X-Daglock-Api-Key</code> header.</p>

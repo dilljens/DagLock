@@ -20,7 +20,7 @@ export function Footer() {
 				<div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
 					<span>DagLock v0.1.0</span>
 					<span>·</span>
-					<span>0.5% protocol fee</span>
+					<span>0.5% escrow fee · 0.1% vault fee</span>
 					<span>·</span>
 					<a href="https://github.com/dilljens/DagLock" target="_blank" rel="noopener noreferrer"
 						style={{ color: "var(--color-text-secondary)", textDecoration: "underline" }}>
@@ -46,7 +46,7 @@ export function Footer() {
 			</div>
 			<div style={{ marginTop: "8px", lineHeight: 1.5 }}>
 				Funds locked in SilverScript covenants — no admin keys, no backdoors.
-				The 0.5% fee is enforced by the covenant itself and paid to the DagLock treasury on settlement.
+				Fees: 0.5% on escrow settlement, 0.1% on vault withdrawal. Both enforced by the covenant itself and paid to the treasury.
 			</div>
 		</footer>
 	);
