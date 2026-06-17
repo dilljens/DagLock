@@ -4,9 +4,9 @@
 //
 // Run: BOT_TOKEN=xxx node src/index.js
 
-import crypto from "node:crypto";
 import { Bot, InlineKeyboard } from "grammy";
 import { ApiClient } from "./lib/api.js";
+import { encrypt, decrypt, getEncryptionKey } from "./crypto.js";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 
@@ -21,46 +21,11 @@ const api = new ApiClient(apiUrl);
 const bot = new Bot(token);
 
 // ── Encryption at rest ──────────────────────────────────────────────
-// Uses AES-256-GCM with a 32-byte key derived from BOT_ENCRYPTION_KEY
-// (base64-encoded). Falls back to DISABLED if no key is set (dev mode).
-const ENCRYPTION_KEY = process.env.BOT_ENCRYPTION_KEY;
-const KEY_BYTES = ENCRYPTION_KEY ? Buffer.from(ENCRYPTION_KEY, "base64") : null;
-const ALGORITHM = "aes-256-gcm";
-
-if (KEY_BYTES && KEY_BYTES.length !== 32) {
-	console.error(
-		"BOT_ENCRYPTION_KEY must decode to 32 bytes (got " + KEY_BYTES.length + ")",
-	);
-	process.exit(1);
-}
+const KEY_BYTES = getEncryptionKey();
 if (!KEY_BYTES) {
 	console.warn(
 		"⚠️  BOT_ENCRYPTION_KEY not set — user data stored in plaintext. Set it with: openssl rand -base64 32",
 	);
-}
-
-function encrypt(text) {
-	if (!KEY_BYTES) return text; // dev mode — store as plaintext
-	const iv = crypto.randomBytes(12); // 96-bit IV for GCM
-	const cipher = crypto.createCipheriv(ALGORITHM, KEY_BYTES, iv);
-	let encrypted = cipher.update(text, "utf-8", "hex");
-	encrypted += cipher.final("hex");
-	const tag = cipher.getAuthTag().toString("hex");
-	return iv.toString("hex") + ":" + tag + ":" + encrypted;
-}
-
-function decrypt(encoded) {
-	if (!KEY_BYTES || !encoded.includes(":")) return encoded; // plaintext fallback
-	const parts = encoded.split(":");
-	if (parts.length !== 3) return encoded;
-	const iv = Buffer.from(parts[0], "hex");
-	const tag = Buffer.from(parts[1], "hex");
-	const encrypted = parts[2];
-	const decipher = crypto.createDecipheriv(ALGORITHM, KEY_BYTES, iv);
-	decipher.setAuthTag(tag);
-	let decrypted = decipher.update(encrypted, "hex", "utf-8");
-	decrypted += decipher.final("utf-8");
-	return decrypted;
 }
 
 // ── User address storage (encrypted at rest) ────────────────────────
@@ -77,7 +42,7 @@ async function loadUsers() {
 			for (const [id, entry] of Object.entries(raw)) {
 				if (entry.encryptedAddress) {
 					users[id] = {
-						address: decrypt(entry.encryptedAddress),
+						address: decrypt(entry.encryptedAddress, KEY_BYTES),
 						updatedAt: entry.updatedAt,
 					};
 				} else if (entry.address) {
@@ -97,7 +62,7 @@ async function saveUsers() {
 		const encrypted = {};
 		for (const [id, entry] of Object.entries(users)) {
 			encrypted[id] = {
-				encryptedAddress: encrypt(entry.address),
+				encryptedAddress: encrypt(entry.address, KEY_BYTES),
 				updatedAt: entry.updatedAt,
 			};
 		}
