@@ -50,12 +50,25 @@ function ConnectPrompt() {
 	);
 }
 
+const VAULT_TYPE_INFO: Record<string, { label: string; desc: string }> = {
+	time: { label: "Time-locked", desc: "Funds locked until timeout, then anyone can withdraw. Best for cold storage or inheritance." },
+	beneficiary: { label: "Beneficiary", desc: "Time-locked with a beneficiary address. Beneficiary can withdraw after timeout without a password." },
+	deadman: { label: "Deadman switch", desc: "Recurring timeout — must be refreshed periodically or funds are released to a beneficiary." },
+	inheritance: { label: "Inheritance", desc: "Two-party vault with beneficiary timeout. Primary owner can withdraw anytime; beneficiary waits." },
+	multisig: { label: "Multi-sig", desc: "Requires 2-of-3 signatures to withdraw. Best for team treasuries or shared accounts." },
+};
+
 function formatVaultType(type: VaultType): string {
-	const map: Record<VaultType, string> = {
-		time: "Time-locked", beneficiary: "Beneficiary", deadman: "Deadman switch",
-		inheritance: "Inheritance", multisig: "Multi-sig",
+	return VAULT_TYPE_INFO[type]?.label || type;
+}
+
+function vaultTypeBadge(type: string): string {
+	const colors: Record<string, string> = {
+		time: "#53d769", beneficiary: "#4fc3f7", deadman: "#ff9800",
+		inheritance: "#ce93d8", multisig: "#ff7b7b",
 	};
-	return map[type] || type;
+	const bg = colors[type] || "rgba(255,255,255,0.1)";
+	return bg;
 }
 
 function formatVaultStatus(status: VaultStatus): string {
@@ -106,7 +119,16 @@ function MyVaults({ address }: { address: string }) {
 				return (
 					<article key={v.id} className="offer" style={{ cursor: "default", marginBottom: "8px" }}>
 						<div className="offer-top">
-							<strong>{formatVaultType(v.vault_type)}</strong>
+							<strong>
+								<span className="pill" style={{
+									background: `${vaultTypeBadge(v.vault_type)}22`,
+									color: vaultTypeBadge(v.vault_type),
+									border: `1px solid ${vaultTypeBadge(v.vault_type)}44`,
+								}}>
+									{formatVaultType(v.vault_type)}
+								</span>
+								{money(v.amount_sompi)} KAS
+							</strong>
 							<span className="pill">{formatVaultStatus(v.status)}</span>
 						</div>
 						<p>{money(v.amount_sompi)} KAS</p>
@@ -146,9 +168,12 @@ function WithdrawButton({ vault, address }: { vault: Vault; address: string }) {
 	);
 }
 
+const VAULT_TYPES = ["time", "beneficiary", "multisig"] as const;
+
 function CreateVault({ address }: { address: string }) {
 	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 	const [vaultId, setVaultId] = useState("");
+	const [vaultType, setVaultType] = useState<(typeof VAULT_TYPES)[number]>("time");
 	const { notify } = useToast();
 
 	const {
@@ -170,7 +195,7 @@ function CreateVault({ address }: { address: string }) {
 			const timeoutSec = Math.floor(Date.now() / 1000) + data.timeout_days * 86400;
 			const vault = await api.createVault({
 				owner_address: data.owner_address,
-				vault_type: "time" as const,
+				vault_type: vaultType,
 				amount_sompi: data.amount_sompi,
 				timeout: timeoutSec,
 			});
@@ -196,6 +221,41 @@ function CreateVault({ address }: { address: string }) {
 			<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
 				Owner: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 			</div>
+
+			{/* Vault type selector */}
+			<div className="field" style={{ marginBottom: "16px" }}>
+				<span style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "8px" }}>Vault Type</span>
+				<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+					{VAULT_TYPES.map((t) => {
+						const info = VAULT_TYPE_INFO[t];
+						const active = vaultType === t;
+						return (
+							<label
+								key={t}
+								onClick={() => setVaultType(t)}
+								style={{
+									display: "flex", gap: "12px", padding: "12px", borderRadius: "12px",
+									border: `1px solid ${active ? vaultTypeBadge(t) : "var(--color-border)"}`,
+									background: active ? `${vaultTypeBadge(t)}11` : "transparent",
+									cursor: "pointer", transition: "all 0.15s ease",
+								}}
+							>
+								<input type="radio" name="vaultType" checked={active} readOnly
+									style={{ accentColor: vaultTypeBadge(t), marginTop: "2px" }} />
+								<div>
+									<div style={{ fontWeight: 700, fontSize: "14px", color: active ? vaultTypeBadge(t) : "var(--color-text)" }}>
+										{info.label}
+									</div>
+									<div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginTop: "2px" }}>
+										{info.desc}
+									</div>
+								</div>
+							</label>
+						);
+					})}
+				</div>
+			</div>
+
 			<FormField label="Amount (KAS)">
 				<input
 					type="number"
