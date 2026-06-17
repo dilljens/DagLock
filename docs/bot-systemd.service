@@ -1,0 +1,16 @@
+[Unit]
+Description=DagLock Telegram Bot
+After=network.target daglock-indexer.service
+Requires=daglock-indexer.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/daglock-bot
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+Environment=INDEXER_URL=http://127.0.0.1:8443
+
+[Install]
+WantedBy=multi-user.target
