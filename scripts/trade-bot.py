@@ -40,10 +40,11 @@ BOTS = [BOT_A_ADDR, BOT_B_ADDR]
 
 # ── Asset pairs for offer variety ─────────────────────────────────────────
 ASSET_PAIRS = [
-    ("KAS", "KAS"),           # KAS escrow service
-    ("KAS", "KRC20:NACHO"),   # KAS for NACHO
-    ("KAS", "KRC20:GHOST"),   # KAS for GHOST
-    ("KAS", "KRC20:KASPY"),   # KAS for KASPY
+    ("KAS", "KAS"),           # KAS escrow service → "KAS Escrow" badge
+    ("KAS", "KAS"),           # (weighted 2x for more KAS escrows)
+    ("KAS", "KRC20:NACHO"),   # KAS for NACHO → "Atomic Swap" badge
+    ("KAS", "KRC20:GHOST"),   # KAS for GHOST → "Atomic Swap" badge
+    ("KAS", "KRC20:KASPY"),   # KAS for KASPY → "Atomic Swap" badge
 ]
 
 # ── Signing (compatible with SchnorrVerifier / mock auth) ─────────────────

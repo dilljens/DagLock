@@ -110,6 +110,17 @@ function BrowseOffers() {
 	);
 }
 
+/** Infer offer type from asset pair for display badge. */
+function offerTypeBadge(base: string, quote: string): { label: string; color: string } | null {
+	if (base === "KAS" && quote.startsWith("KRC20")) {
+		return { label: "Atomic Swap", color: "#ba68c8" };
+	}
+	if (base === "KAS" && quote === "KAS") {
+		return { label: "KAS Escrow", color: "#53d769" };
+	}
+	return null;
+}
+
 /* ─── Offer Card with inline actions ─── */
 function OfferCard({
 	offer,
@@ -152,6 +163,7 @@ function OfferCard({
 	}
 
 	const canAct = offer.status === "proposed";
+	const typeBadge = offerTypeBadge(offer.base_asset, offer.quote_asset);
 
 	return (
 		<article className="offer">
@@ -159,7 +171,19 @@ function OfferCard({
 				<strong>
 					{offer.side.toUpperCase()} {money(offer.amount_sompi)}
 				</strong>
-				<span className={badge(offer.status)}>{offer.status}</span>
+				<div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+					{typeBadge && (
+						<span className="pill" style={{
+							background: `${typeBadge.color}22`,
+							color: typeBadge.color,
+							border: `1px solid ${typeBadge.color}44`,
+							fontSize: "11px",
+						}}>
+							{typeBadge.label}
+						</span>
+					)}
+					<span className={badge(offer.status)}>{offer.status}</span>
+				</div>
 			</div>
 			<p>
 				{offer.base_asset} for {offer.quote_asset}
