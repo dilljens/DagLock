@@ -47,10 +47,10 @@ export const CreateOfferSchema = z.object({
 export const CreateEscrowSchema = z.object({
 	amount_sompi: sompiAmount,
 	buyer_address: kaspaAddress,
-	seller_address: kaspaAddress.optional(),
+	seller_address: z.string().optional().or(z.literal("")),
 	dispute_mode: disputeMode.optional(),
 	trade_hash: tradeHash,
-	mediator_key: kaspaAddress.optional(),
+	mediator_key: z.string().optional().or(z.literal("")),
 });
 
 export const AcceptOfferSchema = z.object({

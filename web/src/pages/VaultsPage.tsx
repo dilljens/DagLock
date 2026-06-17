@@ -6,6 +6,7 @@ import { money, time, sompi, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
+import { EmptyState } from "../components/empty-state";
 import { z } from "zod";
 import { CreateVaultSchema } from "../validation";
 
@@ -40,12 +41,12 @@ export function VaultsPage() {
 function ConnectPrompt() {
 	const { connect } = useWallet();
 	return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Connect your wallet</h3>
-			<p>Connect KasWare to manage vaults.</p>
-			<button className="button primary" onClick={connect}>Connect Wallet</button>
-		</div>
+		<EmptyState
+			icon="🔐"
+			title="Connect your wallet"
+			description="Connect KasWare to manage vaults."
+			action={{ label: "Connect Wallet", onClick: connect }}
+		/>
 	);
 }
 
@@ -90,11 +91,11 @@ function MyVaults({ address }: { address: string }) {
 	if (vaults.loading) return <SkeletonTable rows={5} />;
 	if (vaults.error) return <p className="muted error-text">{vaults.error}</p>;
 	if (!vaults.data?.length) return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>No vaults yet</h3>
-			<p>Create your first time-locked vault.</p>
-		</div>
+		<EmptyState
+			icon="🏦"
+			title="No vaults yet"
+			description="Create your first time-locked vault."
+		/>
 	);
 
 	return (
@@ -183,11 +184,11 @@ function CreateVault({ address }: { address: string }) {
 	}
 
 	if (status === "done") return (
-		<div className="empty-state">
-			<div className="empty-state-icon"></div>
-			<h3>Vault created!</h3>
-			<p>ID: <code>{vaultId}</code><br />Locked until timeout expires.</p>
-		</div>
+		<EmptyState
+			icon="✅"
+			title="Vault created!"
+			description={`ID: ${vaultId} — Locked until timeout expires.`}
+		/>
 	);
 
 	return (

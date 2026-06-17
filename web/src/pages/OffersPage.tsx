@@ -86,11 +86,11 @@ function BrowseOffers() {
 	return (
 		<div>
 			{filtered.length === 0 && (
-				<div className="empty-state">
-					<div className="empty-state-icon"></div>
-					<h3>No open offers</h3>
-					<p>Be the first to create one!</p>
-				</div>
+				<EmptyState
+					icon="📋"
+					title="No open offers"
+					description="Be the first to create one!"
+				/>
 			)}
 			<div className="offers">
 				{filtered
@@ -225,11 +225,11 @@ function MyOffers({ address }: { address: string }) {
 				</div>
 			)}
 			{filtered?.length === 0 && !offers.loading && (
-				<div className="empty-state">
-					<div className="empty-state-icon"></div>
-					<h3>No offers yet</h3>
-					<p>Create your first offer to start trading.</p>
-				</div>
+				<EmptyState
+					icon="📋"
+					title="No offers yet"
+					description="Create your first offer to start trading."
+				/>
 			)}
 			{filtered?.map((o) => (
 				<article key={o.id} className="offer" style={{ cursor: "default" }}>
@@ -297,11 +297,11 @@ function CreateOffer({ address }: { address: string }) {
 
 	if (status === "done") {
 		return (
-			<div className="empty-state">
-				<div className="empty-state-icon"></div>
-				<h3>Offer created!</h3>
-				<p>It's now visible on the public board.</p>
-			</div>
+			<EmptyState
+				icon="✅"
+				title="Offer created!"
+				description="It's now visible on the public board."
+			/>
 		);
 	}
 
