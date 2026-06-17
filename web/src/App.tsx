@@ -6,6 +6,7 @@ import { useRouter, RouterProvider } from "./router";
 import { useWallet, WalletProvider } from "./context/WalletContext";
 import { ToastProvider, useToast } from "./layout/Toast";
 import { Sidebar } from "./layout/Sidebar";
+import { Footer } from "./layout/Footer";
 
 import { ErrorBoundary } from "./components/error-boundary";
 import { Dashboard } from "./pages/Dashboard";
@@ -89,8 +90,8 @@ function AppInner() {
 			<Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 			<main className="main-content">
 				<div className="mobile-header">
-					<button className="hamburger" onClick={() => setSidebarOpen(true)}>
-						☰
+					<button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+						☰ <span style={{ fontSize: "14px", marginLeft: "4px" }}>Menu</span>
 					</button>
 					<span className="brand">DagLock</span>
 				</div>
@@ -133,6 +134,7 @@ function AppInner() {
 						{pageContent}
 					</motion.div>
 				</AnimatePresence>
+				<Footer />
 			</main>
 		</div>
 	);

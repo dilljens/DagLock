@@ -33,8 +33,10 @@ export function Dashboard({ stats }: DashboardProps) {
 				<div className="dashboard-hero">
 					<h2> Trustless Escrow on Kaspa</h2>
 					<p>
-						Create, settle, and dispute escrows without trusting anyone. Connect your KasWare wallet
-						to get started.
+						Create, settle, and dispute escrows without trusting anyone. Funds are locked in
+						SilverScript covenants — no admin keys, no backdoors. Only the <strong>buyer</strong> or
+						<strong>seller</strong> can settle. A <strong>0.5% protocol fee</strong> is enforced by the
+						covenant itself and paid to the DagLock treasury on settlement.
 					</p>
 					{wallet.detected ? (
 						<button
@@ -80,6 +82,39 @@ export function Dashboard({ stats }: DashboardProps) {
 						<p>Cross-asset trades via hash preimage. Both parties commit funds, then reveal the secret to settle.</p>
 					</div>
 				</div>
+
+				{/* How it works */}
+				<h2 style={{ marginTop: "36px", marginBottom: "4px" }}>How It Works</h2>
+				<p className="muted" style={{ marginTop: 0, marginBottom: "20px" }}>
+					From offer to settlement in 3 steps.
+				</p>
+				<div className="feature-cards">
+					<div className="feature-card">
+						<div className="feature-card-icon">1️⃣</div>
+						<h3>Create or Accept</h3>
+						<p>Create an offer or accept one from the board. An escrow is created — funds aren't locked yet.</p>
+					</div>
+					<div className="feature-card">
+						<div className="feature-card-icon">2️⃣</div>
+						<h3>Lock Funds</h3>
+						<p>The buyer sends KAS to a covenant address. The covenant enforces the rules — no one can steal.</p>
+					</div>
+					<div className="feature-card">
+						<div className="feature-card-icon">3️⃣</div>
+						<h3>Settle or Refund</h3>
+						<p>Both parties agree → funds released to seller. Or buyer refunds after timeout. 0.5% goes to the protocol treasury.</p>
+					</div>
+				</div>
+
+				<p className="muted" style={{ fontSize: "13px", marginBottom: "24px", lineHeight: 1.6, maxWidth: "600px" }}>
+					<strong>Note:</strong> DagLock has no custody of your funds. The covenant is compiled
+					into a Kaspa script address — your wallet sends KAS there directly. DagLock never touches
+					your keys, and the covenant enforces the rules without us. Read the source on{" "}
+					<a href="https://github.com/dilljens/DagLock" target="_blank" rel="noopener noreferrer"
+						style={{ color: "var(--color-primary)", textDecoration: "underline" }}>
+						GitHub
+					</a>.
+				</p>
 
 				<h2 style={{ margin: "36px 0 12px" }}>Get Started</h2>
 				<div className="action-grid">

@@ -43,6 +43,17 @@ export function OffersPage() {
 				</button>
 			</div>
 
+			{/* Offers info banner */}
+			<div className="panel" style={{ marginBottom: "16px", padding: "12px 16px" }}>
+				<p style={{ margin: 0, fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
+					<strong>How offers work:</strong> Creating an offer doesn't lock funds — it's just a listing.
+					When someone <strong>accepts</strong> your offer, an escrow is created and the buyer must
+					send KAS to lock it. KRC-20 token trades (<em>KRC20:NACHO, KRC20:GHOST, KRC20:KASPY</em>)
+					use atomic swaps with a hash preimage — the buyer sends KAS, the seller reveals the secret to claim both.
+					Learn more on the <a href="/#/docs" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>Docs page</a>.
+				</p>
+			</div>
+
 			{tab === "browse" && <BrowseOffers />}
 			{tab === "my-offers" &&
 				(wallet.connected ? <MyOffers address={address!} /> : <ConnectPrompt />)}
