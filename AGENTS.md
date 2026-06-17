@@ -93,35 +93,43 @@
 
 ## Deployment
 
-### Current Setup (June 2026)
+### Current Setup (June 17, 2026)
 
 | Component | Platform | Status | URL |
 |-----------|----------|--------|-----|
-| Indexer | Railway | ✅ Running (`--no-wrpc`) | `daglock-indexer.up.railway.app` |
-| Bot | Railway | ✅ Running | `@DagLock_bot` on Telegram |
+| Indexer | Hetzner VPS | ✅ Running (wRPC connected) | `api.daglock.com` |
+| Bot | Hetzner VPS | ✅ Running | `@DagLock_bot` on Telegram |
 | Web UI | Cloudflare Pages | ✅ Running | `daglock.com` |
-| Kaspa Node | Not deployed | ❌ Needed | — |
+| Kaspa Node | Hetzner VPS | ✅ Syncing testnet-12 | `46.224.171.239:16610` |
+| Trade Bot | Hetzner VPS | ✅ Systemd timer (10 min) | — |
 
-**Limitation:** Indexer runs with `--no-wrpc` — no block scanning, no UTXO verification. Escrows stay at `pending_confirmation`.
-
-### Target Setup: VPS + Railway (Option B)
-
+**Architecture:**
 ```
-┌──────────────────────────────────────┐
-│  Hetzner VPS ($5/mo)                │
-│  kaspad (testnet-12)                │
-│  wRPC on :16610                     │
-└──────────────┬───────────────────────┘
-               │ wRPC
-┌──────────────▼───────────────────────┐
-│  Railway (free tier)                 │
-│  daglock-indexer --wrpc-url ws://... │
-│  daglock-bot                         │
-│  SQLite volume                       │
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Hetzner VPS CX23 ($5/mo) — 46.224.171.239                 │
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │   kaspad     │  │ daglock-     │  │ daglock-bot       │  │
+│  │ (testnet-12) │◄─┤ indexer      │  │ (Telegram)        │  │
+│  │ wRPC :16610  │  │ :8443        │  │                    │  │
+│  └──────────────┘  └──────┬───────┘  └──────────────────┘  │
+│                           │ nginx                          │
+│                           │ :443 (Cloudflare SSL)          │
+│                           └──────┬───────────────          │
+│                                  │ api.daglock.com         │
+│  ┌──────────────────────┐        │                         │
+│  │ daglock-trade-bot    │        │                         │
+│  │ (systemd timer 10m)  │        │                         │
+│  └──────────────────────┘        │                         │
+└──────────────────────────────────┼─────────────────────────┘
+                                   │
+                     ┌─────────────▼─────────────┐
+                     │  Cloudflare Pages (free)   │
+                     │  daglock.com               │
+                     │  → API calls to            │
+                     │    api.daglock.com          │
+                     └───────────────────────────┘
 ```
-
-**Setup guide:** `docs/DEPLOYMENT-VPS-RAILWAY.md`
 
 ### Why Not a Local Node?
 
