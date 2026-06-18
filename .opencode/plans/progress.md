@@ -1,20 +1,13 @@
 # Progress Log
 
-## 2026-06-17 — Strategic Roadmap Created
+## 2026-06-18 — Plan Created
 
-- Compiled 5-phase strategic roadmap covering KRC-20 ecosystem, notifications, distribution, on-chain reputation, and cross-chain
-- Research findings documented in findings.md
-- Resource estimations and feasibility analysis done
+- Created on-chain reputation covenant plan (4 phases, 14 tasks)
+- Research decisions documented in findings.md
+- Design choices locked (per-trade UTXOs, both-party sigs, dual DB)
 
-## Current Focus
+## Current Status
 
-**Phase 0: Quick Wins (Before Mainnet)**
-- KRC-20 community help text
-- Push notifications 
-- Mobile PWA
-- CoinGecko oracle wiring
-- Fee rebate plan (design)
-
-## Starting With
-
-Phase 0.1 — KRC-20 community help text on Offers page
+- Phase 1-4: Not started
+- Blockers: None yet
+- Next action: Write `daglock_reputation.sil` covenant source
