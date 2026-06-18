@@ -16,9 +16,33 @@ export function JuryPage() {
 	return (
 		<div>
 			<div className="page-header">
-				<h1><h1>⚖ Jury</h1></h1>
+				<h1>⚖ Jury</h1>
 				<p>Community dispute resolution. Register as a juror, vote on cases.</p>
 			</div>
+
+			{/* How jury works — collapsible */}
+			<details className="panel" style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}>
+				<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
+					⚖️ How the Jury System Works
+				</summary>
+				<div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
+					<p style={{ margin: "0 0 8px" }}>
+						When an escrow is disputed with <strong>"jury"</strong> dispute mode, randomly selected community
+						members vote to decide the outcome.
+					</p>
+					<p style={{ margin: "0 0 8px" }}><strong>How it works:</strong></p>
+					<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
+						<li><strong>Registering:</strong> Anyone with 10+ trades and a 3.0+ reputation score can register as a juror. Registration costs nothing.</li>
+						<li><strong>Selection:</strong> For each case, the top candidates by reliability score are pooled and then randomly selected. Threshold varies by escrow value: 2/3 for small, 3/5 for medium, 5/9 for large.</li>
+						<li><strong>Voting:</strong> Selected jurors vote "seller wins" or "buyer wins" and provide reasoning. Votes are visible to both parties.</li>
+						<li><strong>Timeout:</strong> If no verdict is reached within 72 hours, seller wins by default.</li>
+					</ul>
+					<p style={{ margin: 0 }}>
+						Jury decisions are recorded on-chain via the arbiter covenant. The winning party must broadcast the transaction to release funds.
+					</p>
+				</div>
+			</details>
+
 			<div className="tab-bar">
 				{wallet.connected && (
 					<button className={`tab-btn ${tab === "my-cases" ? "tab-btn--active" : ""}`}

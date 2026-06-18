@@ -14,15 +14,43 @@ type Tab = "my-vaults" | "create" | "lookup";
 
 export function VaultsPage() {
 	const [tab, setTab] = useState<Tab>("my-vaults");
+	const [howOpen, setHowOpen] = useState(false);
 	const address = useAddress();
 	const { state: wallet } = useWallet();
 
 	return (
 		<div>
 			<div className="page-header">
-				<h1><h1> Vaults</h1></h1>
+				<h1> Vaults</h1>
 				<p>Time-locked KAS storage. Only you can withdraw after the timeout.</p>
 			</div>
+
+			{/* How vaults work — collapsible */}
+			<details
+				className="panel"
+				style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}
+				onToggle={(e) => setHowOpen((e.target as HTMLDetailsElement).open)}
+			>
+				<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
+					🏦 How Vaults Work
+				</summary>
+				<div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
+					<p style={{ margin: "0 0 8px" }}>
+						Vaults let you lock KAS for a set time period using a SilverScript covenant. Once locked,
+						<strong> no one</strong> can withdraw before the timeout — not even you.
+					</p>
+					<p style={{ margin: "0 0 8px" }}><strong>Three vault types:</strong></p>
+					<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
+						<li><strong>Time-locked</strong> — Standard timeout withdrawal. Anyone can withdraw after the timeout expires. Best for cold storage or inheritance planning.</li>
+						<li><strong>Beneficiary</strong> — A secondary address can withdraw after the timeout. The owner can also withdraw anytime. Best for shared accounts.</li>
+						<li><strong>Multi-sig</strong> — Requires 2-of-3 signatures to withdraw. Best for team treasuries or shared custody.</li>
+					</ul>
+					<p style={{ margin: 0 }}>
+						<strong>Fee:</strong> 0.1% on withdrawal, enforced by the covenant and paid to the DagLock treasury.
+					</p>
+				</div>
+			</details>
+
 			<div className="tab-bar">
 				<button className={`tab-btn ${tab === "my-vaults" ? "tab-btn--active" : ""}`}
 					onClick={() => setTab("my-vaults")}>My Vaults</button>

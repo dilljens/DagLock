@@ -132,6 +132,18 @@ Vault withdrawal: 0.1% (1/1000 of the vault amount)
   → Treasury output enforced by covenant`}</Code>
 			</Section>
 
+			<Section title="Reputation Formula">
+				<p className="muted">DagLock uses the Beta reputation system (Josang 2002) with recency weighting.</p>
+				<Code>{`Beta score = (settled + 1) / (trades + 2)
+  → Recent trades (90d) weighted 2x vs older trades
+
+Volume bonus = ln(volume_kas / 1000 + 1) × 0.12
+Age bonus   = min(age_days / 365, 2) × 0.05
+Score = 1 + (centered_beta × 4) + volume_bonus + age_bonus
+  → Clamped to [1.0, 5.0]`}</Code>
+				<p className="muted">Vouch score uses EigenTrust-lite: each vouch contributes <code>voucher_score / 5.0</code> weight. Vouchers with 0 trades get score=1.0, weight=0.2. Vouches expire after 6 months.</p>
+			</Section>
+
 			<Section title="Rate Limits">
 				<p className="muted">30 req/min per IP without API key.</p>
 				<p className="muted">300 req/min per IP with <code>X-Daglock-Api-Key</code> header.</p>
