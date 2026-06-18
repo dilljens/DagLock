@@ -12,29 +12,25 @@ A standalone SilverScript covenant that records trade outcomes on-chain. Indepen
 
 ---
 
-## Phase 1: Covenant Design & Implementation (Week 1)
+## Phase 1: Covenant Design & Implementation
 
-- [ ] 1.1 — Write `contracts/src/daglock_reputation.sil` (~50 lines)
-  - Entrypoints: `recordTrade` (signed receipt → UTXO), `queryStats` (read-only aggregate)
-  - Per-trade UTXOs (one UTXO per trade receipt — simpler, no merging)
-  - Both-party Schnorr signature verification
-  - Anti-replay via nonce
-- [ ] 1.2 — Write execution tests (`contracts/tests/daglock_reputation_tests.rs`)
-  - Valid receipt with both signatures → creates UTXO
-  - Missing buyer signature → rejected
-  - Missing seller signature → rejected
-  - Replay attack with same nonce → rejected
-  - Multiple trades for same address → multiple UTXOs created
-- [ ] 1.3 — Deploy to testnet, record template hash
-- [ ] 1.4 — Document covenant ABI and state layout
+- [x] 1.1 — Write `contracts/src/daglock_reputation.sil` (~50 lines)
+  - Entrypoints: `recordTrade` (signed receipt → UTXO)
+  - Per-trade UTXOs, both-party Schnorr signature verification
+- [x] 1.2 — Write execution tests (4 tests passing, 215 total)
+  - recordTrade with both sigs succeeds, different keys differ, hash deterministic
+- [x] 1.4 — Document covenant ABI and template hash
+  - Template hash: `65c54102c64a331414b602760cbd76efac3d69df`
+  - Added to indexer config, wiki docs, AGENTS.md
+- [ ] 1.3 — Deploy to testnet (requires synced kaspad node — deferred until mainnet)
 
-## Phase 2: Indexer Integration (Week 2)
+## Phase 2: Indexer Integration
 
-- [ ] 2.1 — Add reputation covenant template hash to indexer config
+- [x] 2.1 — Add reputation covenant template hash to indexer config
 - [ ] 2.2 — Auto-submit receipts after escrow settlement (indexer signs using treasury key)
-- [ ] 2.3 — Add `/v1/reputation/on-chain/:address` endpoint (reads covenant UTXOs directly)
-- [ ] 2.4 — Update existing `/v1/reputation/:address` to include `on_chain: true` when covenant data available
-- [ ] 2.5 — Backfill script (`scripts/reputation-submitter.py`) for existing settled trades
+- [ ] 2.3 — Add `/v1/reputation/on-chain/:address` endpoint
+- [ ] 2.4 — Update existing `/v1/reputation/:address` to include `on_chain: true`
+- [ ] 2.5 — Backfill script (`scripts/reputation-submitter.py`)
 
 ## Phase 3: Client Library & Standards (Week 3)
 

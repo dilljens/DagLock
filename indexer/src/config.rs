@@ -34,6 +34,9 @@ pub struct Args {
     #[arg(long)]
     pub daglock_vault_multisig_template: Option<String>,
 
+    #[arg(long)]
+    pub daglock_reputation_template: Option<String>,
+
     #[arg(long, default_value = "info")]
     pub log_level: String,
 
