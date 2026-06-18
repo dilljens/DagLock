@@ -214,6 +214,24 @@ pub fn compile_daglock_vault_softlock(
         .expect("daglock_vault_softlock.sil should compile")
 }
 
+/// The daglock_reputation.sil source embedded at compile time.
+pub fn daglock_reputation_source() -> &'static str {
+    include_str!("daglock_reputation.sil")
+}
+
+/// Compile the DagLock Reputation covenant.
+///
+/// Arguments:
+/// - `treasury_key`: 32-byte compressed public key for fee collection
+pub fn compile_daglock_reputation(
+    treasury_key: &[u8],
+) -> CompiledContract<'static> {
+    let source = daglock_reputation_source();
+    let args = vec![Expr::bytes(treasury_key.to_vec())];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_reputation.sil should compile")
+}
+
 /// Extract the template parts and hash from a compiled DagLock contract.
 ///
 /// Returns `(prefix, suffix, template_hash)` where `template_hash` is
@@ -247,6 +265,7 @@ pub mod entrypoints {
     pub const WITHDRAW_TIMEOUT: &str = "withdrawTimeout";
     pub const SWEEP: &str = "sweep";
     pub const EMERGENCY_REFUND: &str = "emergencyRefund";
+    pub const RECORD_TRADE: &str = "recordTrade";
 }
 
 #[cfg(test)]
@@ -452,6 +471,11 @@ mod tests {
         let (_, _, vault_hash) = template_parts_and_hash(&vault);
         let vault_hex: String = vault_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_vault_template_hash={}", vault_hex);
+
+        let reputation = compile_daglock_reputation(&zero);
+        let (_, _, rep_hash) = template_parts_and_hash(&reputation);
+        let rep_hex: String = rep_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_reputation_template_hash={}", rep_hex);
     }
     #[test]
     fn arbiter_zero_key_and_nonzero_key_produce_different_scripts() {

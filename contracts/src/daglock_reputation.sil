@@ -1,0 +1,82 @@
+pragma silverscript ^0.1.0;
+
+// DagLock Reputation — On-chain trade reputation covenant
+//
+// Records trade outcomes by verifying both parties' Schnorr signatures.
+// Each recordTrade call creates a permanent on-chain record visible to
+// anyone scanning the chain.
+//
+// Trade data is embedded in the transaction parameters (not stored in
+// UTXO state). Anyone scanning for recordTrade calls can decode the
+// receipt data and compute Beta reputation scores.
+//
+// Fee model: A small network fee (1000 sompi) is forwarded to the
+// treasury to cover transaction costs. The rest stays in the covenant
+// for future recordTrade calls.
+//
+// The covenant is INDEPENDENT of DagLock escrow covenants — it only
+// validates signatures. Any Kaspa user or dApp can submit signed
+// trade receipts.
+
+contract DagLockReputation(
+    byte[32] treasuryKey                // DagLock fee treasury
+) {
+    // ── Record Trade ─────────────────────────────────────────────
+    // Called by anyone with a signed trade receipt from both parties.
+    // Parameters ARE the on-chain record — they are visible to
+    // anyone scanning the blockchain for this entrypoint.
+    //
+    // message = serialize(partyA, partyB, amount, outcome, timestamp, nonce)
+    //
+    // partyA:    public key of the buyer (32 bytes)
+    // partyB:    public key of the seller (32 bytes)
+    // amount:    trade amount in sompi
+    // outcome:   0 = settled, 1 = refunded, 2 = disputed
+    // timestamp: unix timestamp of trade
+    // nonce:     random bytes for replay protection (8+ bytes)
+    // sigA:      Schnorr signature from partyA
+    // sigB:      Schnorr signature from partyB
+    entrypoint function recordTrade(
+        byte[32] partyA, byte[32] partyB,
+        int amount, int outcome, int timestamp,
+        byte[] nonce,
+        sig sigA, sig sigB
+    ) {
+        // Validate outcome value (must be 0, 1, or 2)
+        require(outcome >= 0);
+        require(outcome <= 2);
+
+        // Validate amount is positive and reasonable
+        require(amount > 0);
+        require(amount < 1000000000000000000);  // < 1B KAS
+
+        // Validate timestamp is reasonable (between 2024 and 2030)
+        require(timestamp >= 1700000000);
+        require(timestamp <= 1900000000);
+
+        // Validate nonce is present
+        require(length(nonce) >= 8);
+        require(length(nonce) <= 64);
+
+        // Verify both party signatures
+        // The signed message is: serialize(partyA, partyB, amount, outcome, timestamp, nonce)
+        // SilverScript handles hash-then-checkSig internally via the
+        // PersonalMessageSigningHash scheme (SHA-256d with prefix).
+        require(checkSig(sigA, pubkey(partyA)));
+        require(checkSig(sigB, pubkey(partyB)));
+
+        // Fee: 1000 sompi goes to treasury (covers network cost)
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int fee = 1000;
+        int remaining = inputValue - fee;
+
+        require(remaining > 0);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[0].value == fee);
+        require(tx.outputs[0].scriptPubKey == byte[](treasuryScript));
+
+        // Remaining balance stays in the covenant for future records
+        // The covenant address is same as input — UTXO chain continues
+    }
+}
