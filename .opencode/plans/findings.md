@@ -1,55 +1,44 @@
-# UI/UX Findings
+# Strategic Roadmap — Research Findings
 
-## Tool Stack Evaluation
+## KRC-20 Market Opportunity
 
-| Tool | Current | Verdict | Action |
-|------|---------|---------|--------|
-| React 18 + Vite 7 | ✅ In use | Good for SPA | Keep |
-| Custom CSS (1280 lines) | 🟡 Single file | Works, needs splitting | Split into CSS modules |
-| Tailwind CSS | ❌ Not used | 2-week migration, no functional gain | **Skip** |
-| No component library | 🔴 Hurts a11y | Dialog, Tabs, Tooltip needed | Add Radix UI |
-| No animation library | 🔴 Static transitions | Micro-interactions add polish | Add Framer Motion (`motion`) |
-| Manual data fetching | 🔴 No caching, no re-fetch | Every page re-fetches on mount | Add TanStack Query |
-| Manual form validation | 🔴 Repeated boilerplate | Each form re-implements the same patterns | Add React Hook Form + Zod |
-| Custom hash router | 🟡 Works fine | Not worth changing | Keep |
-| Biome linting | ✅ Fast, good | Best-in-class | Keep |
-| Vitest + RTL | ✅ Testing | Good setup | Keep |
+Kaspa has a thriving KRC-20 token ecosystem (NACHO, GHOST, KASPY, etc.) with no trustless OTC solution. Most trades happen over Telegram with manual trust — "I'll send the KAS first, then you send the tokens." DagLock is uniquely positioned to be the default escrow layer for these communities.
 
-## Design Decisions
+## Notification Infrastructure
 
-### Color Theme: Dark Green (Keep and expand)
-The current `#0a1a0a` background with `#53d769` accent is thematically correct for Kaspa. Expand with:
-- Semantic colors (success/error/info/warning) already exist but aren't used consistently
-- Add text hierarchy (primary/secondary/muted) with specific values
-- Add elevation colors for modal overlays
+- **Telegram notifications** can use the existing bot infrastructure — the bot already runs on the VPS and connects to the indexer
+- **Email notifications** require an SMTP service (SendGrid free tier: 100 emails/day) and a new settings page for users to opt in
+- **Push notifications via PWA** require a service worker + manifest.json (~2hrs work)
 
-### Typography: Inter (Keep)
-Inter is the correct choice for DeFi UIs (used by Uniswap, Aave, etc.). Already in use.
+## On-Chain Reputation Standard
 
-### Empty States
-Current "No offers found" text is unhelpful. Each empty state needs:
-1. Icon/illustration
-2. Friendly heading
-3. Explanation text
-4. Clear call-to-action button
+There is no on-chain reputation standard on Kaspa yet (no ERC-like equivalent). A KIP-17/KIP-20 compatible covenant could record trade outcomes. This would:
+- Make reputation portable across Kaspa dApps
+- Create a protocol-level moat for DagLock
+- Build network effects (more dApps using it = more data = more value)
 
-### Skeleton Loading
-Use animated placeholder shapes that mirror the final layout. Not just spinners. Not just "Loading...".
-Reference: react-loading-skeleton library pattern, but custom CSS to match our design tokens.
+## Cross-Chain HTLC Feasibility
 
-### Transaction Feedback
-Users need confirmation that their wallet action succeeded. Current toast-only approach misses the opportunity for a celebratory moment. Brief (2s) animation after successful settle/create/refund.
+Kaspa's SilverScript supports hash-locked covenants. Bitcoin's scripting supports HTLCs. The challenge is:
+- Running a Bitcoin node (or using an API) to track BTC transactions
+- Matching timeouts across two chains with different block times
+- The relayer/indexer needs to monitor both chains
 
-### Onboarding
-First-time users on `daglock.com` see a hero with "Connect Wallet". No guidance on what DagLock is or what to do next. A 4-step wizard on first visit would dramatically improve conversion.
+## Embeddable Widget
 
-## Bundle Impact
+There's already a `widget/` directory in the repo with an unused `<daglock-escrow>` custom element. This could be resurrected and polished for distribution to partner sites.
 
-Adding 6 packages adds ~80KB gzipped. Current JS bundle: 205KB → ~285KB total. Acceptable for the UX improvement.
+## Fee Rebates
 
-## What NOT to Do
-- Don't rewrite in Tailwind (2 weeks, no functional gain)
-- Don't add react-router (custom hash router works fine)
-- Don't add heavy component library (MUI, Chakra, Ant Design)
-- Don't add SSR/Next.js (SPA is correct architecture for wallet apps)
-- Don't add i18n (English-only is sufficient)
+- 0.5% is high for whales doing 100K+ KAS trades
+- Rebates can be off-chain (treasury sends refund monthly)
+- Tracking: indexer already records volume per address
+- Design: 30-day rolling window, automatic tiers
+
+## CoinGecko Price Oracle
+
+The indexer already has:
+- `listener.rs` — `update_market_prices()` fetches KAS/USD every 15 min
+- `offers.rs` — market price creation handler
+- DB columns for price data on offers/escrows
+What's missing: full wiring between creation → lock → settlement to capture price

@@ -1,7 +1,6 @@
 [Unit]
 Description=DagLock Telegram Bot
-After=network.target daglock-indexer.service
-Requires=daglock-indexer.service
+After=network.target
 
 [Service]
 Type=simple
