@@ -31,11 +31,11 @@ sqlx = { version = "0.7", features = [
   "migrate",
 ] }
 
-kaspa-wrpc-client = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-rpc-core = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-hashes = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-txscript = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+kaspa-wrpc-client = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-rpc-core = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-hashes = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-txscript = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
 
 daglock-contracts = { path = "../contracts" }
 daglock-shared = { path = "../shared" }
@@ -48,7 +48,7 @@ hex = "0.4"
 aes-gcm = "0.10"
 rand = "0.8"
 
-kaspa-notify = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+kaspa-notify = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
 
 secp256k1 = { version = "0.29", features = ["global-context"] }
 once_cell = "1.21.4"

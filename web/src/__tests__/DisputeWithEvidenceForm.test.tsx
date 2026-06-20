@@ -5,7 +5,12 @@ import { mockApi } from "./helpers";
 
 vi.mock("../api", () => ({ api: mockApi() }));
 import { api } from "../api";
+import { WalletProvider } from "../context/WalletContext";
 import { DisputeWithEvidenceForm } from "../components/escrows";
+
+function WithWallet({ children }: { children: React.ReactNode }) {
+	return <WalletProvider>{children}</WalletProvider>;
+}
 
 const VALID_ADDR = "kaspa:qr6g5fsvq5h4c56j8w6q8w6q8w6q8w6q8w6q8w6q";
 
@@ -16,7 +21,7 @@ describe("DisputeWithEvidenceForm", () => {
 	});
 
 	it("renders all form fields", () => {
-		render(<DisputeWithEvidenceForm onDone={onDone} />);
+		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
 		expect(screen.getByPlaceholderText("esc_...")).toBeInTheDocument();
 		expect(screen.getByPlaceholderText("Why are you disputing?")).toBeInTheDocument();
 		expect(screen.getByPlaceholderText(/Describe what happened/)).toBeInTheDocument();
@@ -30,7 +35,7 @@ describe("DisputeWithEvidenceForm", () => {
 			escrow_id: "esc_1",
 		});
 
-		render(<DisputeWithEvidenceForm onDone={onDone} />);
+		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
 
 		const escrowInput = screen.getByPlaceholderText("esc_...");
 		await user.type(escrowInput, "esc_1");
@@ -54,7 +59,7 @@ describe("DisputeWithEvidenceForm", () => {
 
 	it("shows error when auth missing", async () => {
 		const user = userEvent.setup();
-		render(<DisputeWithEvidenceForm onDone={onDone} />);
+		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
 
 		const escrowInput = screen.getByPlaceholderText("esc_...");
 		await user.type(escrowInput, "esc_1");
@@ -72,7 +77,7 @@ describe("DisputeWithEvidenceForm", () => {
 
 	it("shows error when reason missing", async () => {
 		const user = userEvent.setup();
-		render(<DisputeWithEvidenceForm onDone={onDone} />);
+		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
 
 		const escrowInput = screen.getByPlaceholderText("esc_...");
 		await user.type(escrowInput, "esc_1");

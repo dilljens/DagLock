@@ -6,6 +6,7 @@ import {
 	detectKasware,
 	connectWallet,
 	signMessage,
+	mockSignature,
 	subscribeToWallet,
 	type WalletState,
 } from "../kasware";
@@ -15,6 +16,8 @@ export interface WalletContextValue {
 	connect: () => Promise<void>;
 	sign: (msg: string) => Promise<string>;
 	disconnect: () => void;
+	/** Set a manual address for testnet dev mode (no wallet needed). */
+	setManualAddress: (address: string) => void;
 }
 
 const WalletCtx = createContext<WalletContextValue | null>(null);
@@ -28,6 +31,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 		balance: null,
 		loading: false,
 		error: null,
+		manualMode: false,
 	});
 
 	// Detect KasWare on mount
@@ -55,6 +59,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 				balance,
 				loading: false,
 				error: null,
+				manualMode: false,
 			});
 		} catch (err) {
 			setState((s) => ({
@@ -65,24 +70,43 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 		}
 	}, [state.connected]);
 
-	const sign = useCallback(async (msg: string): Promise<string> => {
-		return signMessage(msg, "schnorr");
+	const setManualAddress = useCallback((address: string) => {
+		setState({
+			detected: false,
+			connected: true,
+			address,
+			network: "testnet-12",
+			balance: null,
+			loading: false,
+			error: null,
+			manualMode: true,
+		});
 	}, []);
+
+	const sign = useCallback(async (msg: string): Promise<string> => {
+		if (state.manualMode) {
+			return mockSignature(msg);
+		}
+		return signMessage(msg, "schnorr");
+	}, [state.manualMode]);
 
 	const disconnect = useCallback(() => {
 		setState({
-			detected: true,
+			detected: state.manualMode ? false : true,
 			connected: false,
 			address: null,
 			network: null,
 			balance: null,
 			loading: false,
 			error: null,
+			manualMode: false,
 		});
-	}, []);
+	}, [state.manualMode]);
 
 	return (
-		<WalletCtx.Provider value={{ state, connect, sign, disconnect }}>{children}</WalletCtx.Provider>
+		<WalletCtx.Provider value={{ state, connect, sign, disconnect, setManualAddress }}>
+			{children}
+		</WalletCtx.Provider>
 	);
 }
 

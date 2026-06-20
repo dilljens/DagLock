@@ -1,146 +1,100 @@
-# Coding Standards
+# Rules
 
-## Rules — What you must NEVER do
+- **Rule #1: Never `.unwrap()` outside `#[cfg(test)]`**
+  - Panics crash the indexer/CLI in production
 
-Breaking these causes bugs hard to find.
+Check: `grep -rn '\.unwrap()' indexer/src/ cli/src/` should only hit test code
+- **Rule #2: Never hardcode addresses/keys in covenant source**
+  - All params must come from constructor — covenants are parameterized
 
-| # | Rule | Why | Check |
-|---|------|-----|-------|
-| 1 | Never `.unwrap()` outside `#[cfg(test)]` | Panics crash the indexer/CLI in production | `grep -rn '\.unwrap()' indexer/src/ cli/src/` should only hit test code |
-| 2 | Never hardcode addresses/keys in covenant source | All params must come from constructor — covenants are parameterized | `daglock.sil` and `daglock_krc20.sil` contain no literal addresses |
-| 3 | Never skip fee validation in release/swap paths | Treasury output must be checked — underpaying fees breaks protocol economics | Every `release`/`swap` entrypoint checks `outputs[1].value == feeAmount` |
-| 4 | Never expose private keys in bot/CLI/WASM | Only unsigned tx assembled — signing happens in KasWare/kaspawallet | No `signTransaction` calls outside wallet integration |
-| 5 | Never change the fee denominator (200) without updating all paths | Fee is hardcoded in compiled bytecode — inconsistent values = broken covenant | `inputValue / 200` appears in all 3 entrypoints of both `.sil` files |
-| 6 | Never use non-atomic updates for lifecycle transitions | Race conditions can settle/refund the same escrow twice | Use `settle_escrow_atomic()` or `refund_escrow_atomic()` |
-| 7 | Never skip address validation on create | Invalid addresses stored in DB cause failed settlements | Validate with `validate_kaspa_address()` |
+Check: `daglock.sil` and `daglock_krc20.sil` contain no literal addresses
+- **Rule #3: Never skip fee validation in release/swap paths**
+  - Treasury output must be checked — underpaying fees breaks protocol economics
 
-## Practices — How to write NEW code
+Check: Every `release`/`swap` entrypoint checks `outputs[1].value == feeAmount`
+- **Rule #4: Never expose private keys in bot/CLI/WASM**
+  - Only unsigned tx assembled — signing happens in KasWare/kaspawallet
 
-Standards for code you add or refactor. Existing code may not comply.
+Check: No `signTransaction` calls outside wallet integration
+- **Rule #5: Never change the fee denominator (200) without updating all paths**
+  - Fee is hardcoded in compiled bytecode — inconsistent values = broken covenant
 
-### Error handling
-- Use `thiserror` for custom error types in Rust crates.
-- Propagate errors with `?` and context (`anyhow` in binaries, `thiserror` in libraries).
-- Never discard errors silently — log or propagate.
+Check: `inputValue / 200` appears in all 3 entrypoints of both `.sil` files
+- **Rule #6: Never use non-atomic updates for lifecycle transitions**
+  - Race conditions can settle/refund the same escrow twice
 
-### API types
-- All REST API types: `#[derive(Debug, Clone, Serialize, Deserialize)]`
-- All enum variants: `#[serde(rename_all = "snake_case")]`
-- Use `ApiError::new(code, message)` for error responses.
+Check: Use `settle_escrow_atomic()` or `refund_escrow_atomic()`
+- **Rule #7: Never skip address validation on create**
+  - Invalid addresses stored in DB cause failed settlements
 
-### Database
-- Migrations: `include_str!("migrations/NNN_name.sql")` in `schema.rs`.
-- New columns: add `ensure_*` function with `PRAGMA table_info` check for idempotent ALTER TABLE.
-- Queries: return `Result<T, sqlx::Error>` — map to API errors in handler.
-- Lifecycle transitions: use atomic queries with `WHERE status = 'active'`.
+Check: Validate with `validate_kaspa_address()`
 
-### Authentication
-- Lifecycle endpoints require `X-Daglock-*` headers.
-- Use `AuthContext::from_headers()` to extract auth context.
-- Use `verify_settle_authorization()` or `verify_refund_authorization()`.
-- Mock verifiers for testing; real crypto for production.
+# Commands
 
-### CLI
-- Subcommands: `clap` derive macros with `#[derive(Subcommand)]` enum.
-- Each command: separate file in `cli/src/commands/<name>.rs`.
-- Functions: `pub async fn run(api_url: String, ...) -> anyhow::Result<()>`.
-- Amounts: use `kas_to_sompi()` for string-to-integer conversion.
+- `Test: shared`
+  - Run: `cargo test -p daglock-shared` | Notes: 20 tests (constants + validation)
+- `Test: contracts`
+  - Run: `cargo test -p daglock-contracts` | Notes: 5 test files — TxScriptEngine execution tests
+- `Test: indexer`
+  - Run: `cargo test -p daglock-indexer` | Notes: 3 test files — unit + lifecycle + edge cases
+- `Test: cli`
+  - Run: `cargo test -p daglock-cli` | Notes: Config + arg parsing
+- `Test: wasm-sdk`
+  - Run: `cargo test -p daglock-wasm-sdk` | Notes: Native (not wasm) compilation tests
+- `Test: web`
+  - Run: `cd web && npm test` | Notes: 36 tests across 9 files (Vitest + RTL)
+- `Test: bot`
+  - Run: `cd bot && npm test` | Notes: API client + command handlers
+- `Test: simulation`
+  - Run: `python3 scripts/simulation.py --trades 30 --bots 3` | Notes: Mass trade generation + reputation testing
+- `reputation-submitter.py`
+  - Script to backfill settled escrows into the on-chain reputation covenant. Reads from indexer API, produces unsigned receipts.
 
-### Testing
-- Unit tests: `#[cfg(test)] mod tests` inline in source file.
-- Integration tests: `tests/` directory in crate root.
-- Contract tests: verify all spending paths + negative cases.
-- Template hash tests: verify determinism and 20-byte length.
-- Edge case tests: atomic operations, validation, fee calculation.
+# Decisions
 
-### Code clarity
-- Comments explain WHY not WHAT.
-- Delete dead code. No magic numbers.
-- Naming: reveal intent at call site. Booleans: `is_*`, `has_*`, `can_*`.
-
-### Concurrency
-- Use `tokio::spawn` for background tasks (reconciliation loop, listener).
-- Pass `Pool<Sqlite>` by clone (it's `Arc` internally).
-- No blocking calls in async context.
-- Use atomic queries for lifecycle transitions.
-
-## Patterns — How code IS written
-
-Detected conventions. Match these so new code fits in.
-
-### Error handling
-**Pattern**: `thiserror` enums + `ApiError::new()` wrapper  **Example**: `indexer/src/types.rs`
-**Rule**: Domain errors → thiserror; HTTP errors → ApiError with code + message
-
-### Module structure
-**Import style**: `mod.rs` barrel pattern in indexer (`api/mod.rs`, `db/mod.rs`)
-**Barrel / re-export pattern**: Public items re-exported from `mod.rs`
-**One export per file**: no — modules group related handlers (e.g., `api/escrows.rs` has list, create, get_by_id, settle, refund, dispute, cancel, stats)
-
-### Type conventions
-| Kind | Convention | Example |
-|------|-----------|---------|
-| ID types | `type X = String` newtype | `EscrowId`, `OfferId`, `Address`, `TxId` |
-| Status enums | String-serializable with `as_str()`/`parse_status()` | `EscrowStatus` |
-| API responses | `#[derive(Serialize)]` struct | `EscrowListResponse` |
-| API requests | `#[derive(Deserialize)]` struct | `CreateEscrowRequest` |
-
-### Naming
-| Kind | Style | Example |
-|------|-------|---------|
-| Files | snake_case | `daglock_execution_tests.rs`, `schema.rs` |
-| Functions | snake_case | `compile_daglock()`, `template_parts_and_hash()` |
-| Constants | SCREAMING_SNAKE | `RELEASE`, `SWAP`, `REFUND` |
-| SQL migrations | `NNN_name.sql` | `001_create_escrows.sql` |
-
-### Concurrency
-**Pattern**: `tokio::spawn` for background loops  **Example**: `indexer/src/listener.rs`
-**Rule**: Background tasks receive owned data (`String`, `Pool<Sqlite>` clone). No references across spawn boundaries.
-
-### Atomic operations
-**Pattern**: Single query with `WHERE status = 'active'`  **Example**: `indexer/src/db/queries/escrows.rs`
-**Rule**: Lifecycle transitions must be atomic to prevent race conditions.
-
-### Authentication
-**Pattern**: Header extraction + trait-based verification  **Example**: `indexer/src/auth.rs`
-**Rule**: Extract `AuthContext::from_headers()`, verify with `SignatureVerifier` trait.
-
-### Contract source
-**Pattern**: `pragma silverscript ^0.1.0` + constructor params as `byte[32]`/`int`  **Example**: `contracts/src/daglock.sil`
-**Rule**: Constructor uses `byte[32]` (not `pubkey`) to work around compiler strict typing. Cast to `pubkey()` inside function bodies.
-
-### Message encryption
-**Pattern**: `AES-256-GCM` via `indexer/src/crypto.rs`  **Example**: `indexer/src/api/messages.rs`, `indexer/src/crypto.rs`
-**Rule**: Messages encrypted on write, decrypted on read. Key from `DAGLOCK_MESSAGE_KEY` env var (64 hex chars). Dev fallback is deterministic blake2b hash.
-
-### Jury system
-**Pattern**: Score-gated registration (10+ trades, 3.0+ score) + randomized selection  **Example**: `indexer/src/api/jury.rs`
-**Rule**: Top N*2 by reliability score -> random N from pool. Threshold varies by escrow value: 2/3 (<10K KAS), 3/5 (10K-100K), 5/9 (>100K). 72h timeout defaults to seller_wins.
-
-### Vouch scoring (EigenTrust-lite)
-**Pattern**: Weighted average of voucher reputations  **Example**: `indexer/src/db/queries/vouches.rs` `calculate_vouch_score()`
-**Rule**: Each vouch contributes `voucher_score / 5.0` weight. Vouchers with 0 trades get score=1.0, weight=0.2. Vouches expire after 6 months.
-
-### Route definition
-**Pattern**: `axum 0.7` uses `:id` not `{id}` for path params  **Example**: `indexer/src/api/mod.rs`
-**Rule**: Axum 0.7 uses `:id` syntax. Axum 0.8+ uses `{id}`. This project pins axum 0.7.9.
-
-### Message format for auth
-**Pattern**: Auth messages are `{action}:{escrow_id}`  **Example**: `indexer/src/auth.rs`
-**Rule**: settle:`id`, refund:`id`, dispute:`id`, cancel:`id`, evidence:`id`, vote:`id`, vouch:`addr`, messages:`id`
-
-### Error handling
-**Pattern**: Internal errors use generic messages, not e.to_string()  **Example**: `indexer/src/api/escrows.rs`
-**Rule**: All `internal_error` responses use static strings. `e.to_string()` only used in auth/verification contexts where the caller needs to know why a sig was rejected.
-
-### UX: User-facing validation
-**Pattern**: Inline validation with trim(), onBlur feedback, and confirmation dialogs  **Example**: `web/src/ui.tsx` `ValidatedInput`, `ConfirmDialog`
-**Rule**: All address inputs must be trimmed, validated on blur with green/red feedback. Destructive actions (cancel, refund, dispute) require a confirmation dialog.
-
-### Offer expiry
-**Pattern**: `expires_at` timestamp on offers, auto-expired by reconciliation loop  **Example**: `indexer/src/db/queries/offers.rs` `reconcile_expired_offers()`
-**Rule**: Offer creation form includes an expiry dropdown (24h/3d/7d/30d). The background listener marks expired offers automatically.
-
-### Dispute mode
-**Pattern**: `dispute_mode` field on escrow (standard/mediator/jury)  **Example**: `indexer/src/types.rs`, create escrow form
-**Rule**: When creating an escrow, the creator selects how disputes are resolved. `standard` = timeout refund only, `mediator` = specific mediator address, `jury` = community vote.
+- ****U1**: CLI create uses dummy keys**
+  - Status: ✅ Fixed | Domain: cli
+- ****U3**: No wallet signing in CLI**
+  - Status: ✅ Fixed | Domain: cli
+- ****Q1**: `.unwrap()` in production**
+  - Status: ✅ Fixed | Domain: cli
+- ****Q2/Q3**: Magic number `200` in `tx.rs`**
+  - Status: ✅ Fixed | Domain: cli
+- ****Q4**: `trade_hash` not validated**
+  - Status: ✅ Fixed | Domain: cli
+- ****U2** (web): WASM SDK missing `assemble_unsigned_tx` export**
+  - Status: ❌ Open | Domain: wasm-sdk
+- ****Q2/Q3**: Fee denominator not exposed**
+  - Status: ✅ Fixed | Domain: wasm-sdk
+- ****Q4**: `validate_trade_hash` not exported**
+  - Status: ✅ Fixed | Domain: wasm-sdk
+- ****U2**: Web CreateEscrowForm generates fake `lock_tx_id`**
+  - Status: ❌ Open | Domain: web
+- ****U7**: No web onboarding for first-time users**
+  - Status: ✅ Fixed | Domain: web
+- ****Q7**: Web API no request timeout**
+  - Status: ✅ Fixed | Domain: web
+- ****Q1**: `.expect()` on UUID in code**
+  - Status: ✅ Fixed | Domain: web
+- ****Q2/Q3**: Magic number `200` in fee calc**
+  - Status: ✅ Fixed | Domain: web
+- ****S6**: Bot stores addresses in plaintext /tmp**
+  - Status: ✅ Fixed | Domain: bot
+- ****U4**: Bot `/create` redirects to web**
+  - Status: ✅ Fixed | Domain: bot
+- ****Q8**: Bot API no retry/backoff**
+  - Status: ✅ Fixed | Domain: bot
+- ****A6**: Bot is Node.js while rest is Rust**
+  - Status: ❌ Open | Domain: bot
+- ****S2**: KRC-20 fee validation only boolean — feePaid loop checks if *any* output pays treasury, not the correct 0.5%**
+  - Status: ✅ Fixed | Domain: contracts
+- ****S3**: KRC-20 KCC-20 output ownership validation**
+  - Status: ⏭️ Closed | Domain: contracts
+- ****Phase 0**: Shared crate with FEE_DENOMINATOR**
+  - Status: ✅ Done | Domain: contracts
+- ****Q2/Q3**: Magic number `200` hardcoded in 3 covenant files — no single source of truth**
+  - Status: Consistency risk; `FEE_DENOMINATOR` constant now in `shared/src/constants.rs` | Domain: contracts
+- ****Q4**: `trade_hash` handling: KAS/Arbiter use `byte[32]`, KRC-20 uses `byte[32]` — consistent but API validation missing**
+  - Status: `daglock_shared::validate_trade_hash()` now validates 64-hex-char input on escrow creation | Domain: contracts
+- **Phase 1: On-chain Reputation Covenant**
+  - Completed June 18, 2026. d6f4eb9: daglock_reputation.sil + tests. 0f1c62c: template hash in indexer config + backfill script.

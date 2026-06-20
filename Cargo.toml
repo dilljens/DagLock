@@ -10,14 +10,14 @@ authors = ["DagLock contributors"]
 rust-version = "1.91.0"
 
 [workspace.dependencies]
-# Kaspa / SilverScript deps (branch: tn12)
-kaspa-consensus-core = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-txscript = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-txscript-errors = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-hashes = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-wrpc-client = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
-kaspa-rpc-core = { git = "https://github.com/kaspanet/rusty-kaspa", rev = "ab4c51af" }
+# Kaspa / SilverScript deps (v2.0.1 — Toccata mainnet)
+kaspa-consensus-core = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-txscript = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-txscript-errors = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-hashes = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-wrpc-client = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
+kaspa-rpc-core = { git = "https://github.com/kaspanet/rusty-kaspa", tag = "v2.0.1" }
 
 # Indexer deps
 tokio = { version = "1", features = ["full"] }

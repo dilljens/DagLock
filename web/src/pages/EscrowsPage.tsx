@@ -233,7 +233,8 @@ function CreateEscrow({ address }: { address: string }) {
 				// Send KAS to the covenant address via KasWare
 				lockTxId = await window.kasware.sendKaspa(covenantAddress, sompiAmount);
 			} else {
-				lockTxId = prompt("Tx ID (from kaspawallet):") || "";
+				// Manual mode or no KasWare: prompt for tx ID
+				lockTxId = prompt("Enter tx_id from wallet (or any hex for testnet dev mode):") || "";
 				if (!lockTxId) throw new Error("Tx ID required");
 			}
 

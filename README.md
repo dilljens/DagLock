@@ -1,6 +1,8 @@
 # DagLock — Trustless Escrow on Kaspa
 
-> **Testnet live at [daglock.com](https://daglock.com).** Mainnet launch June 30, 2026 (Toccata hard fork).
+> **Testnet beta live at [daglock.com](https://daglock.com).** Mainnet launch June 30, 2026 (Toccata hard fork at DAA 474,165,565).
+
+> ⚠️ **Dev mode:** The public Kaspa wRPC resolvers (kaspa.red/green/blue) are offline during the Toccata v2 migration. The indexer uses dev mode for UTXO checks — the covenants enforce all rules trustlessly on-chain. Full wRPC verification will be enabled post-Toccata. [Details](https://github.com/kaspanet/rusty-kaspa/releases/tag/v2.0.0)
 
 **Trustless escrow, atomic swaps, and time-locked vaults on Kaspa L1 via SilverScript covenants.**
 
@@ -36,7 +38,7 @@ Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptog
 ### Getting started
 
 1. Install [KasWare](https://kasware.xyz) browser extension
-2. Get testnet KAS from the [faucet](https://faucet-tn10.kaspanet.io/)
+2. Get testnet KAS from the [faucet](https://faucet.testnet12.kaspa.org/)
 3. Open [daglock.com](https://daglock.com) and connect your wallet
 4. Browse offers or create your first escrow
 
@@ -47,10 +49,10 @@ Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptog
 ### Quick Start
 
 ```bash
-# Prerequisites: Rust 1.85+, Node 22+
+# Prerequisites: Rust 1.91+, Node 22+
 
-# 1. Build and start the indexer
-cargo run -p daglock-indexer -- --network testnet-12
+# 1. Build and start the indexer (v2.0.1 — Toccata SDK)
+cargo run -p daglock-indexer -- --network testnet-12 --no-wrpc
 
 # 2. Start the web UI (separate terminal)
 cd web && npm ci && npm run dev
@@ -61,16 +63,18 @@ cd web && npm ci && npm run dev
 python3 scripts/simulation.py --trades 20 --bots 2
 ```
 
-### Architecture
+### Current Architecture
 
 ```
 daglock.com (Cloudflare Pages)
   → API calls to api.daglock.com
     → Cloudflare proxy → nginx → daglock-indexer :8443
-      → wRPC to local kaspad :16610 (same VPS)
-      → Telegram bot + trade bot also on same VPS
+      → MockVerifier (wRPC resolvers offline during Toccata v2 migration)
+      → Telegram bot + trade bot on same VPS
 
 All on one Hetzner CX23 ($5/mo)
+
+Mainnet (June 30): upgraded to CPX42+ with local kaspad for wRPC verification.
 ```
 
 ### Covenant Templates

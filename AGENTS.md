@@ -11,8 +11,8 @@
 | Language | SilverScript (contracts), Rust (indexer/CLI), TypeScript (web), Node.js (Telegram bot) |
 | Network | Kaspa Testnet 12 → Mainnet (Toccata hard fork, ~June 30, 2026) |
 | Contract format | UTXO covenants (KIP-17/KIP-20) |
-| Compiler | `silverscript-lang` branch `tn12` |
-| Node SDK | `rusty-kaspa` branch `tn12` — `kaspa-wrpc-client`, `kaspa-txscript` |
+| Compiler | `silverscript-lang` branch `master` |
+| Node SDK | `rusty-kaspa` tag `v2.0.1` — `kaspa-wrpc-client`, `kaspa-txscript` |
 | Wallet target | KasWare (web extension), Kaspium (mobile) |
 | Indexer DB | PostgreSQL or SQLite via SQLx |
 | Fee model | 0.5% (1/200) protocol fee to DagLock treasury |

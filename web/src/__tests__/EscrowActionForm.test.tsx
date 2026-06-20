@@ -5,7 +5,12 @@ import { mockApi } from "./helpers";
 
 vi.mock("../api", () => ({ api: mockApi() }));
 import { api } from "../api";
+import { WalletProvider } from "../context/WalletContext";
 import { EscrowActionForm } from "../components/escrows";
+
+function WithWallet({ children }: { children: React.ReactNode }) {
+	return <WalletProvider>{children}</WalletProvider>;
+}
 
 const VALID_ADDR = "kaspa:qr6g5fsvq5h4c56j8w6q8w6q8w6q8w6q8w6q8w6q";
 
@@ -16,7 +21,7 @@ describe("EscrowActionForm", () => {
 
 	describe("settle", () => {
 		it("renders auth fields for settle", () => {
-			render(<EscrowActionForm action="settle" />);
+			render(<WithWallet><EscrowActionForm action="settle" /></WithWallet>);
 			expect(screen.getByPlaceholderText("esc_...")).toBeInTheDocument();
 			expect(screen.getByPlaceholderText("kaspa:...")).toBeInTheDocument();
 		});
@@ -28,7 +33,7 @@ describe("EscrowActionForm", () => {
 				escrow_id: "esc_1",
 			});
 
-			render(<EscrowActionForm action="settle" />);
+			render(<WithWallet><EscrowActionForm action="settle" /></WithWallet>);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -49,7 +54,7 @@ describe("EscrowActionForm", () => {
 
 		it("shows error when auth missing", async () => {
 			const user = userEvent.setup();
-			render(<EscrowActionForm action="settle" />);
+			render(<WithWallet><EscrowActionForm action="settle" /></WithWallet>);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -66,7 +71,7 @@ describe("EscrowActionForm", () => {
 	describe("cancel", () => {
 		it("shows ConfirmDialog on submit", async () => {
 			const user = userEvent.setup();
-			render(<EscrowActionForm action="cancel" />);
+			render(<WithWallet><EscrowActionForm action="cancel" /></WithWallet>);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -78,7 +83,6 @@ describe("EscrowActionForm", () => {
 				expect(screen.getByText(/Are you sure you want to cancel/)).toBeInTheDocument();
 			});
 
-			// ConfirmDialog should be visible
 			expect(screen.getByText("Cancel escrow")).toBeInTheDocument();
 			expect(screen.getByText(/Are you sure you want to cancel escrow esc_1/)).toBeInTheDocument();
 		});
@@ -90,7 +94,7 @@ describe("EscrowActionForm", () => {
 				escrow_id: "esc_1",
 			});
 
-			render(<EscrowActionForm action="cancel" />);
+			render(<WithWallet><EscrowActionForm action="cancel" /></WithWallet>);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -102,8 +106,6 @@ describe("EscrowActionForm", () => {
 				expect(screen.getByText(/Are you sure you want to cancel/)).toBeInTheDocument();
 			});
 
-			// The dialog has two "Cancel" buttons: dismiss + confirm.
-			// Find all "Cancel" buttons and click the LAST one (confirm, primary style).
 			const allCancelBtns = screen.getAllByRole("button", { name: "Cancel" });
 			await user.click(allCancelBtns[allCancelBtns.length - 1]);
 
@@ -114,7 +116,7 @@ describe("EscrowActionForm", () => {
 
 		it("dismisses ConfirmDialog on cancel", async () => {
 			const user = userEvent.setup();
-			const { container } = render(<EscrowActionForm action="cancel" />);
+			render(<WithWallet><EscrowActionForm action="cancel" /></WithWallet>);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -126,8 +128,6 @@ describe("EscrowActionForm", () => {
 				expect(screen.getByText(/Are you sure you want to cancel/)).toBeInTheDocument();
 			});
 
-			// Find the dismiss button inside the Radix Dialog Portal (rendered in document.body).
-			// The dismiss button is the one that is NOT of class "button primary".
 			const dialog = document.querySelector('[role="dialog"]');
 			expect(dialog).not.toBeNull();
 			const dismissBtn = dialog!.querySelector(".button:not(.primary)");
@@ -144,7 +144,7 @@ describe("EscrowActionForm", () => {
 	describe("refund", () => {
 		it("shows ConfirmDialog for refund", async () => {
 			const user = userEvent.setup();
-			render(<EscrowActionForm action="refund" />);
+			render(<WithWallet><EscrowActionForm action="refund" /></WithWallet>);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -160,7 +160,7 @@ describe("EscrowActionForm", () => {
 
 	describe("dispute", () => {
 		it("shows reason field for dispute", () => {
-			render(<EscrowActionForm action="dispute" />);
+			render(<WithWallet><EscrowActionForm action="dispute" /></WithWallet>);
 			expect(screen.getByPlaceholderText("Why are you disputing?")).toBeInTheDocument();
 		});
 	});

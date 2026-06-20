@@ -1,0 +1,24 @@
+{
+  "lastRender": "2026-06-19T03:23:01.922Z",
+  "lastCheck": "2026-06-18",
+  "entityCount": 141,
+  "domains": [
+    "bot",
+    "cli",
+    "contracts",
+    "indexer",
+    "simulation",
+    "wasm-sdk",
+    "web"
+  ],
+  "crossReferences": {
+    "total": 7,
+    "broken": 1,
+    "notes": "Removed orphaned artifacts/--------.md"
+  },
+  "health": {
+    "avgStaleness": 1,
+    "freshestDomain": "contracts",
+    "mostStaleDomain": "all"
+  }
+}
