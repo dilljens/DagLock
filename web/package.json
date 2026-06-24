@@ -14,7 +14,9 @@
 		"test:headed": "playwright test --headed",
 		"test:ui": "playwright test --ui",
 		"test:e2e:ci": "PLAYWRIGHT_CHROMIUM_HEADLESS_MODE=1 playwright test",
-		"format": "biome format --write src/"
+		"format": "biome format --write src/",
+		"seo": "bash ../scripts/seo-audit.sh",
+		"links": "npx linkinator https://daglock.com --recurse"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^5.4.0",
