@@ -108,3 +108,11 @@
   - Kaspa's WebSocket RPC protocol | Context: `indexer/src/listener.rs`, `indexer/src/verification.rs`
 - **WrpcVerifier**
   - On-chain UTXO verification via wRPC (used at settlement time) | Context: `indexer/src/verification.rs`
+- **Borsh**
+  - Binary encoding format used by Kaspa wRPC for inter-process communication. DagLock uses Borsh for direct wRPC connections. | Context: `indexer/src/listener.rs`
+- **ICC (Inter-Covenant Communication)**
+  - SilverScript pattern for cross-covenant state introspection. Uses `OpCovInputIdx`, `readInputStateWithTemplate`, and `validateOutputStateWithTemplate` builtins. | Context: `contracts/src/daglock_krc20.sil`
+- **MockVerifier**
+  - Offline UTXO verification mode. Always returns success — no actual on-chain check. Used with `--no-wrpc` flag. | Context: `indexer/src/verification.rs`
+- **PNN (Public Node Network)**
+  - Kaspa's decentralized pool of community-operated resolver nodes (`kaspa.stream`, `kaspa.red`, `kaspa.green`, `kaspa.blue`). Currently down during wRPC v2 migration. | Context: `indexer/src/listener.rs`

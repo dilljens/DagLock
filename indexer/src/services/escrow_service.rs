@@ -5,7 +5,7 @@
 //! layer for validation, auth checks, DB updates, and side effects.
 
 use crate::auth::{
-    self, parse_message, verify_cancel_authorization, verify_nonce, verify_refund_authorization,
+    parse_message, verify_cancel_authorization, verify_nonce, verify_refund_authorization,
     verify_settle_authorization, AuthContext, SignatureVerifier,
 };
 use crate::db::queries;
@@ -66,6 +66,7 @@ pub struct EscrowService<'a> {
     verifier: Arc<dyn crate::verification::EscrowVerifier>,
 }
 
+#[allow(dead_code)]
 impl<'a> EscrowService<'a> {
     pub fn new(
         db: Pool<Sqlite>,
@@ -112,11 +113,12 @@ impl<'a> EscrowService<'a> {
         };
 
         // Validate addresses
-        if !validate_kaspa_address(&buyer_address) {
+        let valid_addr = |a: &str| crate::api::escrows::validate_kaspa_address(a);
+        if !valid_addr(&buyer_address) {
             return Err(ServiceError::InvalidInput("invalid buyer_address".into()));
         }
         if let Some(ref seller) = body.seller_address {
-            if !validate_kaspa_address(seller) {
+            if !valid_addr(seller) {
                 return Err(ServiceError::InvalidInput("invalid seller_address".into()));
             }
         }
@@ -138,7 +140,7 @@ impl<'a> EscrowService<'a> {
             buyer_address,
             seller_address: body.seller_address.clone(),
             amount_sompi: body.amount_sompi,
-            fee_sompi: body.amount_sompi / daglock_shared::FEE_DENOMINATOR as i64,
+            fee_sompi: body.amount_sompi / daglock_shared::FEE_DENOMINATOR,
             template_hash: body.template_hash.clone().unwrap_or_default(),
             expiration_daa_score: body.expiration_daa_score,
             disputed_at: None,
@@ -455,6 +457,7 @@ impl<'a> EscrowService<'a> {
 }
 
 /// Response variant for dispute operations.
+#[allow(dead_code)]
 pub enum DisputeResponse {
     Standard,
     Jury {
@@ -464,17 +467,4 @@ pub enum DisputeResponse {
     },
 }
 
-/// Validate a Kaspa address (basic format check).
-pub fn validate_kaspa_address(address: &str) -> bool {
-    if !address.starts_with("kaspa:") {
-        return false;
-    }
-    let prefix_len = "kaspa:".len();
-    if address.len() <= prefix_len {
-        return false;
-    }
-    let bech32_chars = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
-    address[prefix_len..]
-        .chars()
-        .all(|c| bech32_chars.contains(c))
-}
+// validate_kaspa_address removed — use daglock_shared::validate_kaspa_address instead

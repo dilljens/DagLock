@@ -28,10 +28,25 @@ Use codebase-memory-mcp tools for structural code queries:
 - `get_architecture` — high-level project structure
 - `/knowledge:query` — unified search across code + concepts + decisions
 
+## Key Documents
+| Document | What it covers |
+|----------|---------------|
+| `_glossary.md` | Project vocabulary |
+| `_standards.md` | Rules, conventions, patterns |
+| `docs/ecosystem-research.md` | Kaspa ecosystem landscape — who builds what, open space analysis |
+| `docs/PENDING.md` | Planned features with effort estimates, deferred until after launch |
+| `.opencode/plans/bot-labeling.md` | Plan: bot/exchange reputation labeling with different score algorithms |
+| `.opencode/plans/pre-announcement.md` | Pre-launch human checklist (friend test, demo video, drafts) |
+
 ## Audit Log
 | Date | Change |
 |------|--------|
 | 2026-06-18 | SDK migration: rusty-kaspa `tn12` → `v2.0.1` (Toccata mainnet). All 215 tests pass, template hashes unchanged. Add `--allow-mainnet` flag. |
+| 2026-06-21 | Playwright E2E test suite (40 tests across 3 projects). Bug fix: infinite re-render in MyEscrows. Port conflict resolution across 4 projects. Ecosystem research completed. |
+| 2026-06-23 | **S3 ICC fix**: KCC-20 input ownership validated via `readInputStateWithTemplate` in `daglock_krc20.sil`. New template hash: `ae0946e4a9bd4a7585e6bf9135de38083cb11c85`. | 
+| 2026-06-23 | **Code quality**: All `.unwrap()` removed from production. `FEE_DENOMINATOR` shared constant (i64). Flaky crypto tests fixed. |
+| 2026-06-23 | **VPS hardened**: daglock user, LimitNOFILE=65536. Mainnet binary deployed. 303 tests passing. |
+| 2026-06-23 | **wRPC discovery**: Kaspa PNN resolver down (wRPC v2 migration). Mainnet endpoints found at `troy.kaspa.stream` (borsh). Testnet-12 kaspad patched (1-line fix). |
 
-> Knowledge graph last synced: 6/18/2026
+> Knowledge graph last synced: 6/23/2026
 > Run `/knowledge:sync` to refresh from codebase

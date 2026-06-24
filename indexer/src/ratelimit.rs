@@ -38,7 +38,7 @@ impl RateLimiter {
     /// Check if an IP is within its rate limit.
     /// `max_requests` overrides the default limit (e.g., 300 for API key holders).
     pub fn check(&self, ip: IpAddr, max_requests: u32) -> std::result::Result<(), Response> {
-        let mut map = self.inner.lock().unwrap();
+        let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
         if let Some(entry) = map.get_mut(&ip) {

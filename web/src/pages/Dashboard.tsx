@@ -5,6 +5,7 @@ import { useWallet } from "../context/WalletContext";
 import { money } from "../helpers";
 import type { LoadState } from "../helpers";
 import { SkeletonTable, SkeletonStats } from "../ui";
+import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 
 interface DashboardProps {
@@ -29,7 +30,12 @@ export function Dashboard({ stats }: DashboardProps) {
 	// Not connected — show hero
 	if (!wallet.connected) {
 		return (
-			<div>
+			<>
+				<Helmet>
+					<title>DagLock — Trustless Escrow & Atomic Swaps on Kaspa</title>
+					<meta name="description" content="Browse escrow offers, manage vaults, and trade KAS and KRC-20 tokens on Kaspa L1." />
+				</Helmet>
+				<div>
 				<div className="dashboard-hero">
 					<h2> Trustless Escrow on Kaspa</h2>
 					<p>
@@ -136,6 +142,7 @@ export function Dashboard({ stats }: DashboardProps) {
 					</div>
 				</div>
 			</div>
+			</>
 		);
 	}
 
@@ -155,8 +162,13 @@ export function Dashboard({ stats }: DashboardProps) {
 	];
 
 	return (
-		<div>
-			<div className="page-header">
+		<>
+			<Helmet>
+				<title>DagLock — Trustless Escrow & Atomic Swaps on Kaspa</title>
+				<meta name="description" content="Browse escrow offers, manage vaults, and trade KAS and KRC-20 tokens on Kaspa L1." />
+			</Helmet>
+			<div>
+				<div className="page-header">
 				<h1>Dashboard</h1>
 				<p>
 					{wallet.address?.slice(0, 24)}… · Balance: {wallet.balance} KAS
@@ -229,5 +241,6 @@ export function Dashboard({ stats }: DashboardProps) {
 				/>
 			)}
 		</div>
+		</>
 	);
 }

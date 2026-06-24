@@ -179,7 +179,7 @@ pub fn verify_template_match(script_hex: &str, template_hash_hex: &str) -> Resul
 /// JSON string with: `{ amount_sompi, fee_sompi, fee_percentage }`
 #[wasm_bindgen]
 pub fn calculate_fee(amount_sompi: i64) -> Result<String, JsError> {
-    let fee_sompi = amount_sompi / daglock_shared::FEE_DENOMINATOR as i64;
+    let fee_sompi = amount_sompi / daglock_shared::FEE_DENOMINATOR;
 
     let result = serde_json::json!({
         "amount_sompi": amount_sompi,

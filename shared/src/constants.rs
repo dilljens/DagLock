@@ -2,7 +2,7 @@
 
 /// Fee denominator for the 0.5% protocol fee (1/200).
 /// Used across covenants, indexer, CLI, web, and WASM SDK.
-pub const FEE_DENOMINATOR: u64 = 200;
+pub const FEE_DENOMINATOR: i64 = 200;
 
 /// Fee as basis points (50 bps = 0.5%).
 pub const FEE_BASIS_POINTS: u16 = 50;

@@ -93,7 +93,7 @@ pub async fn create(
     let offer = Offer {
         id: format!(
             "off_{}",
-            Uuid::new_v4().to_string().split('-').next().unwrap()
+            Uuid::new_v4().to_string().replace('-', "")
         ),
         creator_address: creator_address.clone(),
         side: body.side,

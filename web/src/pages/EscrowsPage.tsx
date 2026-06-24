@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api, type AuthHeaders, type Escrow } from "../api";
 import { useRouter } from "../router";
 import { money, badge } from "../helpers";
@@ -7,6 +7,7 @@ import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
 import { SignWithWallet } from "../components/wallet";
+import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 
 type Tab = "my-escrows" | "create" | "lookup";
@@ -17,9 +18,14 @@ export function EscrowsPage() {
 	const { state: wallet } = useWallet();
 
 	return (
-		<div>
-			<div className="page-header">
-				<h1>Escrows</h1>
+		<>
+			<Helmet>
+				<title>Escrows — DagLock</title>
+				<meta name="description" content="Create and manage trustless escrow contracts on Kaspa. Lock KAS or KRC-20 tokens with covenant-enforced terms." />
+			</Helmet>
+			<div>
+				<div className="page-header">
+					<h1>Escrows</h1>
 				<p>Create trustless escrows. Settle, refund, or dispute.</p>
 			</div>
 			<div className="tab-bar">
@@ -48,6 +54,7 @@ export function EscrowsPage() {
 				(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
 			{tab === "lookup" && <EscrowLookup />}
 		</div>
+		</>
 	);
 }
 
@@ -68,8 +75,9 @@ function MyEscrows({ address }: { address: string }) {
 	const { navigate } = useRouter();
 	const [escrows, setEscrows] = useState<LoadState<Escrow[]>>({ loading: true });
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const loaded = useRef(false);
 
-	const load = useCallback(() => {
+	const fetchEscrows = useCallback(() => {
 		setEscrows({ loading: true });
 		api
 			.escrows(address)
@@ -77,8 +85,13 @@ function MyEscrows({ address }: { address: string }) {
 			.catch((e) => setEscrows({ error: e.message, loading: false }));
 	}, [address]);
 
+	useEffect(() => {
+		if (loaded.current) return;
+		loaded.current = true;
+		fetchEscrows();
+	}, [fetchEscrows]);
+
 	if (escrows.loading) {
-		load();
 		return <SkeletonTable rows={5} />;
 	}
 	if (escrows.error) return <p className="muted error-text">{escrows.error}</p>;
@@ -109,7 +122,7 @@ function MyEscrows({ address }: { address: string }) {
 						{e.asset_type} · {e.buyer_address.slice(0, 16)}…
 					</p>
 					<code>{e.id}</code>
-					{selectedId === e.id && <EscrowActions escrow={e} onMutated={load} />}
+					{selectedId === e.id && <EscrowActions escrow={e} onMutated={fetchEscrows} />}
 				</article>
 			))}
 		</div>

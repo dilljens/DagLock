@@ -4,6 +4,7 @@ import { badge, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
+import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 
 type Tab = "my-cases" | "register" | "candidates";
@@ -14,9 +15,14 @@ export function JuryPage() {
 	const { state: wallet } = useWallet();
 
 	return (
-		<div>
-			<div className="page-header">
-				<h1>⚖ Jury</h1>
+		<>
+			<Helmet>
+				<title>Jury — DagLock</title>
+				<meta name="description" content="Decentralized dispute resolution for Kaspa escrow trades via community jury." />
+			</Helmet>
+			<div>
+				<div className="page-header">
+					<h1>⚖ Jury</h1>
 				<p>Community dispute resolution. Register as a juror, vote on cases.</p>
 			</div>
 
@@ -57,6 +63,7 @@ export function JuryPage() {
 			{tab === "register" && (wallet.connected ? <RegisterSection address={address!} /> : <ConnectPrompt />)}
 			{tab === "candidates" && <CandidatesSection />}
 		</div>
+		</>
 	);
 }
 

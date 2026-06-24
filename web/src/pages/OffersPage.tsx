@@ -6,6 +6,7 @@ import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonOffers, SkeletonTable } from "../ui";
 import { EmptyState } from "../components/empty-state";
+import { Helmet } from "react-helmet-async";
 import { SignWithWallet } from "../components/wallet";
 
 type Tab = "browse" | "my-offers" | "create";
@@ -16,9 +17,14 @@ export function OffersPage() {
 	const { state: wallet } = useWallet();
 
 	return (
-		<div>
-			<div className="page-header">
-				<h1>Offers</h1>
+		<>
+			<Helmet>
+				<title>Offer Board — DagLock</title>
+				<meta name="description" content="Browse open escrow offers, find counterparties for KAS and KRC-20 trades on Kaspa." />
+			</Helmet>
+			<div>
+				<div className="page-header">
+					<h1>Offers</h1>
 				<p>Browse public trade offers or create your own.</p>
 			</div>
 
@@ -50,7 +56,7 @@ export function OffersPage() {
 					When someone <strong>accepts</strong> your offer, an escrow is created and the buyer must
 					send KAS to lock it. KRC-20 token trades (<em>KRC20:NACHO, KRC20:GHOST, KRC20:KASPY</em>)
 					use atomic swaps with a hash preimage — the buyer sends KAS, the seller reveals the secret to claim both.
-					Learn more on the <a href="/#/docs" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>Docs page</a>.
+					Learn more on the <a href="/docs" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>Docs page</a>.
 				</p>
 			</div>
 
@@ -60,6 +66,7 @@ export function OffersPage() {
 			{tab === "create" &&
 				(wallet.connected ? <CreateOffer address={address!} /> : <ConnectPrompt />)}
 		</div>
+		</>
 	);
 }
 

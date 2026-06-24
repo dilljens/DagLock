@@ -462,7 +462,9 @@ pub fn spawn_vault_sweeper(
         return;
     }
 
-    let treasury_key = match hex::decode(treasury_pubkey_hex.unwrap()) {
+    // Guarded by is_none() check above — safe but avoid unwrap for audit compliance
+    let treasury_pubkey = treasury_pubkey_hex.unwrap_or_default();
+    let treasury_key = match hex::decode(&treasury_pubkey) {
         Ok(k) if k.len() == 32 => k,
         _ => {
             error!("Invalid treasury pubkey hex for vault sweep");

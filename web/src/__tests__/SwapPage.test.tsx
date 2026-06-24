@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { HelmetProvider } from "react-helmet-async";
 import userEvent from "@testing-library/user-event";
 import { mockApi } from "./helpers";
+
+function TestWrapper({ children }: { children: React.ReactNode }) {
+	return <HelmetProvider>{children}</HelmetProvider>;
+}
 
 // Dynamic wallet mock — tests can override by setting mockWalletConnected
 let mockWalletConnected = true;
@@ -30,6 +35,8 @@ vi.mock("../api", () => ({ api: mockApi() }));
 import { api } from "../api";
 import { SwapPage } from "../pages/SwapPage";
 
+const r = (ui: React.ReactElement) => render(ui, { wrapper: TestWrapper });
+
 describe("SwapPage", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -37,14 +44,14 @@ describe("SwapPage", () => {
 	});
 
 	it("renders all three tabs", () => {
-		render(<SwapPage />);
+		r(<SwapPage />);
 		expect(screen.getByText("Generate Swap")).toBeInTheDocument();
 		expect(screen.getByText("Submit Preimage")).toBeInTheDocument();
 		expect(screen.getByText("How it Works")).toBeInTheDocument();
 	});
 
 	it("shows Generate tab by default with generate button", () => {
-		render(<SwapPage />);
+		r(<SwapPage />);
 		expect(screen.getByRole("button", { name: /generate secret & hash/i })).toBeInTheDocument();
 	});
 
@@ -55,7 +62,7 @@ describe("SwapPage", () => {
 			hash: "my_hash_hex",
 		});
 
-		render(<SwapPage />);
+		r(<SwapPage />);
 
 		const generateBtn = screen.getByRole("button", { name: /generate secret & hash/i });
 		await user.click(generateBtn);
@@ -72,7 +79,7 @@ describe("SwapPage", () => {
 			new Error("Generation failed"),
 		);
 
-		render(<SwapPage />);
+		r(<SwapPage />);
 
 		const generateBtn = screen.getByRole("button", { name: /generate secret & hash/i });
 		await user.click(generateBtn);
@@ -84,7 +91,7 @@ describe("SwapPage", () => {
 
 	it("Submit Preimage tab renders form fields", async () => {
 		const user = userEvent.setup();
-		render(<SwapPage />);
+		r(<SwapPage />);
 
 		await user.click(screen.getByText("Submit Preimage"));
 
@@ -101,7 +108,7 @@ describe("SwapPage", () => {
 			preimage_hash: "abc123",
 		});
 
-		render(<SwapPage />);
+		r(<SwapPage />);
 
 		await user.click(screen.getByText("Submit Preimage"));
 
@@ -123,7 +130,7 @@ describe("SwapPage", () => {
 		const user = userEvent.setup();
 		(api.swapEscrow as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Invalid preimage"));
 
-		render(<SwapPage />);
+		r(<SwapPage />);
 
 		await user.click(screen.getByText("Submit Preimage"));
 
@@ -143,7 +150,7 @@ describe("SwapPage", () => {
 
 	it("How it Works tab shows protocol explanation", async () => {
 		const user = userEvent.setup();
-		render(<SwapPage />);
+		r(<SwapPage />);
 
 		await user.click(screen.getByText("How it Works"));
 
@@ -155,7 +162,7 @@ describe("SwapPage", () => {
 	it("shows ConnectPrompt when wallet not connected on Submit tab", async () => {
 		mockWalletConnected = false;
 		const user = userEvent.setup();
-		render(<SwapPage />);
+		r(<SwapPage />);
 
 		await user.click(screen.getByText("Submit Preimage"));
 

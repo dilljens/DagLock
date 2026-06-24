@@ -12,7 +12,7 @@ pub async fn register_app(
 ) -> Result<(crate::types::App, String), sqlx::Error> {
     let app_id = format!(
         "app_{}",
-        uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+        uuid::Uuid::new_v4().to_string().replace('-', "")
     );
     let now = chrono::Utc::now().timestamp();
 
@@ -43,7 +43,7 @@ pub async fn register_app(
     // Insert API key hash
     let key_id = format!(
         "k_{}",
-        uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+        uuid::Uuid::new_v4().to_string().replace('-', "")
     );
     sqlx::query(
         "INSERT INTO api_keys (id, key_hash, app_id, label, created_at, is_active)

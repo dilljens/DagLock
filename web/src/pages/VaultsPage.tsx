@@ -8,6 +8,7 @@ import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
 import { EmptyState } from "../components/empty-state";
 import { z } from "zod";
+import { Helmet } from "react-helmet-async";
 import { CreateVaultSchema } from "../validation";
 
 type Tab = "my-vaults" | "create" | "lookup";
@@ -19,9 +20,14 @@ export function VaultsPage() {
 	const { state: wallet } = useWallet();
 
 	return (
-		<div>
-			<div className="page-header">
-				<h1> Vaults</h1>
+		<>
+			<Helmet>
+				<title>Vaults — DagLock</title>
+				<meta name="description" content="Time-locked and multi-sig vaults for secure KAS storage on Kaspa L1." />
+			</Helmet>
+			<div>
+				<div className="page-header">
+					<h1> Vaults</h1>
 				<p>Time-locked KAS storage. Only you can withdraw after the timeout.</p>
 			</div>
 
@@ -63,6 +69,7 @@ export function VaultsPage() {
 			{tab === "create" && (wallet.connected ? <CreateVault address={address!} /> : <ConnectPrompt />)}
 			{tab === "lookup" && <VaultLookup />}
 		</div>
+		</>
 	);
 }
 

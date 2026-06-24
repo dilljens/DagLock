@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { HelmetProvider } from "react-helmet-async";
 import { AnimatePresence, motion } from "motion/react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useRouter, RouterProvider } from "./router";
@@ -143,6 +144,7 @@ function AppInner() {
 /* ─── Top-level App ─── */
 export default function App() {
 	return (
+		<HelmetProvider>
 		<QueryClientProvider client={queryClient}>
 			<Tooltip.Provider delayDuration={400}>
 				<RouterProvider>
@@ -154,5 +156,6 @@ export default function App() {
 				</RouterProvider>
 			</Tooltip.Provider>
 		</QueryClientProvider>
+		</HelmetProvider>
 	);
 }

@@ -159,7 +159,7 @@ pub async fn create(
 
     let vault_id = format!(
         "vault_{}",
-        uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+        uuid::Uuid::new_v4().to_string().replace('-', "")
     );
 
     // Owner address is taken from the authenticated user, not the request body

@@ -7,7 +7,7 @@ use daglock_contracts::compile_daglock;
 
 pub struct CreateEscrowResult {
     pub escrow_id: String,
-    pub unsigned_tx_hex: String,
+    pub _unsigned_tx_hex: String,
     pub _template_hash: Vec<u8>,
     pub amount_sompi: i64,
     pub fee_sompi: i64,
@@ -38,7 +38,7 @@ pub fn assemble_create_escrow(
     timeout_secs: u64,
     treasury_key: &[u8; 32],
 ) -> anyhow::Result<CreateEscrowResult> {
-    let fee_sompi = amount_sompi / daglock_shared::FEE_DENOMINATOR as i64;
+    let fee_sompi = amount_sompi / daglock_shared::FEE_DENOMINATOR;
     let zero_hash = [0u8; 32];
     let now = chrono::Utc::now().timestamp();
     let expiration = now + timeout_secs as i64;
@@ -70,7 +70,7 @@ pub fn assemble_create_escrow(
 
     Ok(CreateEscrowResult {
         escrow_id,
-        unsigned_tx_hex: hex::encode(&compiled.script),
+        _unsigned_tx_hex: hex::encode(&compiled.script),
         _template_hash: tpl_hash,
         amount_sompi,
         fee_sompi,

@@ -1,7 +1,7 @@
 {
-  "lastRender": "2026-06-19T03:23:01.922Z",
-  "lastCheck": "2026-06-18",
-  "entityCount": 141,
+  "lastRender": "2026-06-23T08:00:00.000Z",
+  "lastCheck": "2026-06-23",
+  "entityCount": 145,
   "domains": [
     "bot",
     "cli",
@@ -13,12 +13,11 @@
   ],
   "crossReferences": {
     "total": 7,
-    "broken": 1,
-    "notes": "Removed orphaned artifacts/--------.md"
+    "broken": 0
   },
   "health": {
-    "avgStaleness": 1,
+    "avgStaleness": 0,
     "freshestDomain": "contracts",
-    "mostStaleDomain": "all"
+    "mostStaleDomain": "simulation"
   }
 }

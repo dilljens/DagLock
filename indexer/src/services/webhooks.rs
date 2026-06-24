@@ -94,7 +94,7 @@ pub fn dispatch(pool: Pool<Sqlite>, event: WebhookEvent<'_>) {
 
             let delivery_id = format!(
                 "whd_{}",
-                uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+                uuid::Uuid::new_v4().to_string().replace('-', "")
             );
             let now = chrono::Utc::now().timestamp();
 

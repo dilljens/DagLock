@@ -272,8 +272,8 @@ pub fn receipt_from_escrow(escrow: &Escrow) -> Receipt {
             signatures_verified: settled_at.is_some()
                 || refunded_at.is_some()
                 || cancelled_at.is_some(),
-            // Verify fee matches protocol rate (0.5% = 1/200)
-            fee_compliant: fee_sompi == amount_sompi / 200,
+            // Verify fee matches protocol rate (0.5% = 1/FEE_DENOMINATOR)
+            fee_compliant: fee_sompi == amount_sompi / daglock_shared::FEE_DENOMINATOR,
         },
     }
 }

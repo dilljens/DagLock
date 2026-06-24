@@ -248,7 +248,7 @@ pub fn validate_timeout_duration(timeout_seconds: u64) -> ValidationResult<i64> 
 /// # Returns
 /// * Fee in sompi (amount / FEE_DENOMINATOR)
 pub fn calculate_fee(amount_sompi: u64) -> u64 {
-    amount_sompi / FEE_DENOMINATOR
+    amount_sompi / FEE_DENOMINATOR as u64
 }
 
 /// Calculates the net amount after fee deduction.

@@ -1,5 +1,6 @@
-// Simple hash-based router for DagLock
-// No external dependencies. Uses location.hash and popstate events.
+// Simple History API-based router for DagLock
+// Uses pushState/popstate so routes are real URLs indexable by Google.
+// No external dependencies.
 
 import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from "react";
 
@@ -20,36 +21,39 @@ interface RouterContextValue {
 
 const RouterContext = createContext<RouterContextValue | null>(null);
 
-/** Normalize a hash string to a valid Route */
-function hashToRoute(hash: string): Route {
-	const path = hash.replace(/^#/, "").split("?")[0].replace(/\/$/, "") || "/";
-	const validRoutes: Route[] = [
-		"/",
-		"/offers",
-		"/escrows",
-		"/vaults",
-		"/reputation",
-		"/jury",
-		"/swap",
-		"/docs",
-	];
-	// Support redirects from old-style anchors like #offers → /offers
-	if (path.startsWith("#")) return hashToRoute(path);
-	if (validRoutes.includes(path as Route)) return path as Route;
+const VALID_ROUTES: readonly Route[] = [
+	"/",
+	"/offers",
+	"/escrows",
+	"/vaults",
+	"/reputation",
+	"/jury",
+	"/swap",
+	"/docs",
+];
+
+/** Read the current pathname and normalize to a valid Route */
+function pathToRoute(path: string): Route {
+	const clean = path.replace(/\/$/, "") || "/";
+	if (VALID_ROUTES.includes(clean as Route)) return clean as Route;
 	return "/";
 }
 
 export function RouterProvider({ children }: { children: ReactNode }) {
-	const [route, setRoute] = useState<Route>(() => hashToRoute(location.hash));
+	const [route, setRoute] = useState<Route>(() => pathToRoute(window.location.pathname));
 
 	useEffect(() => {
-		const onHashChange = () => setRoute(hashToRoute(location.hash));
-		window.addEventListener("hashchange", onHashChange);
-		return () => window.removeEventListener("hashchange", onHashChange);
+		// Handle browser back/forward
+		const onPop = () => setRoute(pathToRoute(window.location.pathname));
+		window.addEventListener("popstate", onPop);
+		return () => window.removeEventListener("popstate", onPop);
 	}, []);
 
 	const navigate = useCallback((to: Route) => {
-		location.hash = to;
+		if (to === window.location.pathname) return; // skip if already there
+		window.history.pushState(null, "", to);
+		setRoute(to);
+		window.scrollTo(0, 0);
 	}, []);
 
 	return <RouterContext.Provider value={{ route, navigate }}>{children}</RouterContext.Provider>;

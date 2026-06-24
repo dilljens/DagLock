@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField } from "../ui";
+import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 
 type Tab = "generate" | "submit" | "how-to";
@@ -13,9 +14,14 @@ export function SwapPage() {
 	const { state: wallet } = useWallet();
 
 	return (
-		<div>
-			<div className="page-header">
-				<h1>Atomic Swap</h1>
+		<>
+			<Helmet>
+				<title>Atomic Swap — DagLock</title>
+				<meta name="description" content="Trustless atomic swaps between KAS and KRC-20 tokens on Kaspa L1." />
+			</Helmet>
+			<div>
+				<div className="page-header">
+					<h1>Atomic Swap</h1>
 				<p>Generate secret/hash pairs and settle hash-locked escrows.</p>
 			</div>
 			<div className="tab-bar">
@@ -43,6 +49,7 @@ export function SwapPage() {
 				(wallet.connected ? <SubmitPreimage address={address!} /> : <ConnectPrompt />)}
 			{tab === "how-to" && <HowItWorks />}
 		</div>
+		</>
 	);
 }
 
@@ -321,7 +328,7 @@ function HowItWorks() {
 					</li>
 					<li>
 						<strong>Buyer creates an escrow</strong> on the{" "}
-						<a href="#/escrows" style={{ color: "#88b888" }}>
+						<a href="/escrows" style={{ color: "#88b888" }}>
 							Escrows page
 						</a>{" "}
 						using the hash from step 1. The escrow locks funds in a covenant that can only be

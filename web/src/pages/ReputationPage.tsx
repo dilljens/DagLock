@@ -4,6 +4,7 @@ import { money, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonStats } from "../ui";
+import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 
 type Tab = "lookup" | "my-reputation" | "vouch" | "identity";
@@ -14,9 +15,14 @@ export function ReputationPage() {
 	const { state: wallet } = useWallet();
 
 	return (
-		<div>
-			<div className="page-header">
-				<h1> Reputation</h1>
+		<>
+			<Helmet>
+				<title>Reputation — DagLock</title>
+				<meta name="description" content="On-chain trade reputation scores derived from verifiable escrow history on Kaspa." />
+			</Helmet>
+			<div>
+				<div className="page-header">
+					<h1> Reputation</h1>
 				<p>On-chain trading history, vouches, and identity verification.</p>
 			</div>
 
@@ -69,6 +75,7 @@ export function ReputationPage() {
 			{tab === "vouch" && (wallet.connected ? <VouchSection /> : <ConnectPrompt />)}
 			{tab === "identity" && (wallet.connected ? <IdentitySection /> : <ConnectPrompt />)}
 		</div>
+		</>
 	);
 }
 

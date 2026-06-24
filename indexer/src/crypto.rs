@@ -64,6 +64,94 @@ fn load_key() -> [u8; 32] {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::sync::Mutex;
+
+    const TEST_KEY: &str = "abababababababababababababababababababababababababababababababab";
+    const WRONG_KEY: &str = "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd";
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Set DAGLOCK_MESSAGE_KEY and run a test. Serializes via ENV_LOCK.
+    /// Uses unwrap_or_else to recover from mutex poisoning (parallel test panics).
+    fn with_test_key<F: FnOnce()>(f: F) {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = env::var("DAGLOCK_MESSAGE_KEY").ok();
+        env::set_var("DAGLOCK_MESSAGE_KEY", TEST_KEY);
+        f();
+        match prev {
+            Some(k) => env::set_var("DAGLOCK_MESSAGE_KEY", k),
+            None => env::remove_var("DAGLOCK_MESSAGE_KEY"),
+        }
+    }
+
+    #[test]
+    fn encrypt_decrypt_round_trip_with_env_key() {
+        with_test_key(|| {
+            let (ct, nonce) = encrypt_message("Hello, escrow!").unwrap();
+            let decrypted = decrypt_message(&ct, &nonce).unwrap();
+            assert_eq!(decrypted, "Hello, escrow!");
+        });
+    }
+
+    #[test]
+    fn encrypt_decrypt_long_message() {
+        with_test_key(|| {
+            let plaintext = "A".repeat(10_000);
+            let (ct, nonce) = encrypt_message(&plaintext).unwrap();
+            let decrypted = decrypt_message(&ct, &nonce).unwrap();
+            assert_eq!(decrypted, plaintext);
+        });
+    }
+
+    #[test]
+    fn decrypt_wrong_key_returns_none() {
+        // Encrypt with TEST_KEY, then manually swap to WRONG_KEY for decrypt
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = env::var("DAGLOCK_MESSAGE_KEY").ok();
+        env::set_var("DAGLOCK_MESSAGE_KEY", TEST_KEY);
+        let (ct, nonce) = encrypt_message("secret").unwrap();
+        env::set_var("DAGLOCK_MESSAGE_KEY", WRONG_KEY);
+        let result = decrypt_message(&ct, &nonce);
+        assert!(result.is_none());
+        match prev {
+            Some(k) => env::set_var("DAGLOCK_MESSAGE_KEY", k),
+            None => env::remove_var("DAGLOCK_MESSAGE_KEY"),
+        }
+    }
+
+    #[test]
+    fn decrypt_tampered_ciphertext_returns_none() {
+        with_test_key(|| {
+            let (mut ct, nonce) = encrypt_message("secret").unwrap();
+            let bytes = hex::decode(&ct).unwrap();
+            let tampered = std::iter::once(bytes[0] ^ 1).chain(bytes[1..].iter().copied()).collect::<Vec<_>>();
+            ct = hex::encode(tampered);
+            let result = decrypt_message(&ct, &nonce);
+            assert!(result.is_none());
+        });
+    }
+
+    #[test]
+    fn encrypt_succeeds_without_env_key() {
+        // Encryption uses load_key() which falls back to dev key.
+        // Decryption uses load_key_optional() which returns None -> decrypt returns None.
+        // This is by design: you can always encrypt, but decrypt needs DAGLOCK_MESSAGE_KEY.
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = env::var("DAGLOCK_MESSAGE_KEY").ok();
+        env::remove_var("DAGLOCK_MESSAGE_KEY");
+        let (ct, nonce) = encrypt_message("dev mode test").unwrap();
+        assert!(!ct.is_empty());
+        assert!(!nonce.is_empty());
+        match prev {
+            Some(k) => env::set_var("DAGLOCK_MESSAGE_KEY", k),
+            None => {}
+        }
+    }
+}
+
 fn load_key_optional() -> Option<[u8; 32]> {
     let hex_key = env::var("DAGLOCK_MESSAGE_KEY").ok()?;
     let bytes = hex::decode(hex_key).ok()?;

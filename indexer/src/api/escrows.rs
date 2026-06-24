@@ -11,14 +11,11 @@ use uuid::Uuid;
 
 use crate::api::AppState;
 
-use crate::auth::{
-    parse_message, verify_cancel_authorization, verify_nonce, verify_refund_authorization,
-    verify_settle_authorization, AuthContext,
-};
+use crate::auth::{parse_message, verify_nonce, AuthContext};
 use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
-use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
+
 use crate::websocket::WsEvent;
 // Preimage verification uses SHA-256 via the covenant's trade_hash
 
@@ -189,178 +186,10 @@ pub async fn create(
     headers: axum::http::HeaderMap,
     Json(body): Json<CreateEscrowRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
-    // Validate required fields
-    if body.amount_sompi <= 0 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!(ApiError::new(
-                "invalid_amount",
-                "amount must be positive"
-            ))),
-        ));
-    }
+    // Validate request body
+    validate_create_request(&headers, &body, &state).await?;
 
-    // Optional auth: verify buyer address if auth headers present
-    if headers.contains_key("x-daglock-address") {
-        let auth = AuthContext::from_headers(&headers).map_err(|e| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(json!(ApiError::new("unauthorized", e.to_string()))),
-            )
-        })?;
-        if auth.address != body.buyer_address {
-            return Err((
-                StatusCode::FORBIDDEN,
-                Json(json!(ApiError::new(
-                    "forbidden",
-                    "Signed address must match buyer_address"
-                ))),
-            ));
-        }
-    }
-
-    // Validate buyer address
-    if !validate_kaspa_address(&body.buyer_address) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!(ApiError::new(
-                "invalid_address",
-                "Invalid buyer Kaspa address"
-            ))),
-        ));
-    }
-
-    // Validate buyer address length
-    if body.buyer_address.len() > 100 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!(ApiError::new(
-                "invalid_address",
-                "Buyer address too long"
-            ))),
-        ));
-    }
-
-    // Seller cannot be the same as buyer (prevents self-trading reputation farming)
-    if let Some(ref seller) = body.seller_address {
-        if seller == &body.buyer_address {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!(ApiError::new(
-                    "self_referential",
-                    "Buyer and seller cannot be the same address"
-                ))),
-            ));
-        }
-        if !validate_kaspa_address(seller) {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!(ApiError::new(
-                    "invalid_address",
-                    "Invalid seller Kaspa address"
-                ))),
-            ));
-        }
-        if seller.len() > 100 {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!(ApiError::new(
-                    "invalid_address",
-                    "Seller address too long"
-                ))),
-            ));
-        }
-    }
-
-    // Validate mediator_key if provided
-    if let Some(ref med) = body.mediator_key {
-        if !med.is_empty() && !validate_kaspa_address(med) {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!(ApiError::new(
-                    "invalid_address",
-                    "Invalid mediator Kaspa address"
-                ))),
-            ));
-        }
-    }
-
-    // Validate template_hash if provided — must match known DagLock templates
-    if let Some(ref template_hash) = body.template_hash {
-        if !template_hash.is_empty() {
-            let known_hashes = [
-                state.daglock_kas_template.as_deref(),
-                state.daglock_krc20_template.as_deref(),
-            ];
-            let is_known = known_hashes.iter().any(|h| match h {
-                Some(expected) => {
-                    let expected_bytes = hex::decode(expected).unwrap_or_default();
-                    expected_bytes.as_slice() == template_hash.as_slice()
-                }
-                None => false,
-            });
-            if !is_known {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    Json(json!(ApiError::new(
-                        "unknown_template",
-                        "Template hash does not match any known DagLock covenant. \
-                         Provide a valid template hash from the compiled covenant."
-                    ))),
-                ));
-            }
-        }
-    }
-
-    // Validate trade_hash if provided (must be 64 hex chars = 32 bytes)
-    if let Some(ref trade_hash) = body.trade_hash {
-        if !trade_hash.is_empty() {
-            match daglock_shared::validate_trade_hash(trade_hash) {
-                Ok(_) => {}
-                Err(e) => {
-                    return Err((
-                        StatusCode::BAD_REQUEST,
-                        Json(json!(ApiError::new(
-                            "invalid_trade_hash",
-                            format!("Invalid trade hash: {e}")
-                        ))),
-                    ));
-                }
-            }
-        }
-    }
-
-    // Validate amount range
-    if body.amount_sompi > 100_000_000_000_000 {
-        // 1M KAS max
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!(ApiError::new(
-                "invalid_amount",
-                "Amount exceeds maximum (1M KAS)"
-            ))),
-        ));
-    }
-
-    // Check for duplicate lock_tx (same UTXO used in another escrow)
-    // The unique index enforces this at the DB level, but we check early for a better error message
-    if let Ok((existing, _)) =
-        queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await
-    {
-        if existing.iter().any(|e| {
-            e.lock_tx_id == body.lock_tx_id && e.lock_tx_output_index == body.lock_tx_output_index
-        }) {
-            return Err((
-                StatusCode::CONFLICT,
-                Json(json!(ApiError::new(
-                    "duplicate_lock",
-                    "An escrow already exists for this UTXO"
-                ))),
-            ));
-        }
-    }
-
-    let fee_sompi = body.amount_sompi / 200; // 0.5%
+    let fee_sompi = body.amount_sompi / daglock_shared::FEE_DENOMINATOR; // 0.5%
     let buyer_address = &body.buyer_address;
 
     // Rate limit: max 50 escrows per address per day
@@ -454,6 +283,110 @@ pub async fn create(
     webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowCreated(&escrow.id));
 
     Ok((StatusCode::CREATED, Json(json!(escrow))))
+}
+
+/// Validate an escrow creation request.
+/// Returns an error tuple on any validation failure.
+async fn validate_create_request(
+    headers: &axum::http::HeaderMap,
+    body: &CreateEscrowRequest,
+    state: &AppState,
+) -> Result<(), (StatusCode, Json<Value>)> {
+    if body.amount_sompi <= 0 {
+        return Err(bad_request("invalid_amount", "amount must be positive"));
+    }
+
+    // Optional auth: verify buyer address if auth headers present
+    if headers.contains_key("x-daglock-address") {
+        let auth = AuthContext::from_headers(headers).map_err(|e| {
+            (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", e.to_string()))))
+        })?;
+        if auth.address != body.buyer_address {
+            return Err(forbidden("forbidden", "Signed address must match buyer_address"));
+        }
+    }
+
+    if !validate_kaspa_address(&body.buyer_address) {
+        return Err(bad_request("invalid_address", "Invalid buyer Kaspa address"));
+    }
+    if body.buyer_address.len() > 100 {
+        return Err(bad_request("invalid_address", "Buyer address too long"));
+    }
+
+    if let Some(ref seller) = body.seller_address {
+        if seller == &body.buyer_address {
+            return Err(bad_request("self_referential", "Buyer and seller cannot be the same address"));
+        }
+        if !validate_kaspa_address(seller) {
+            return Err(bad_request("invalid_address", "Invalid seller Kaspa address"));
+        }
+        if seller.len() > 100 {
+            return Err(bad_request("invalid_address", "Seller address too long"));
+        }
+    }
+
+    if let Some(ref med) = body.mediator_key {
+        if !med.is_empty() && !validate_kaspa_address(med) {
+            return Err(bad_request("invalid_address", "Invalid mediator Kaspa address"));
+        }
+    }
+
+    if let Some(ref template_hash) = body.template_hash {
+        if !template_hash.is_empty() {
+            let known_hashes = [
+                state.daglock_kas_template.as_deref(),
+                state.daglock_krc20_template.as_deref(),
+            ];
+            let is_known = known_hashes.iter().any(|h| match h {
+                Some(expected) => {
+                    let expected_bytes = hex::decode(expected).unwrap_or_default();
+                    expected_bytes.as_slice() == template_hash.as_slice()
+                }
+                None => false,
+            });
+            if !is_known {
+                return Err(bad_request("unknown_template",
+                    "Template hash does not match any known DagLock covenant."));
+            }
+        }
+    }
+
+    if let Some(ref trade_hash) = body.trade_hash {
+        if !trade_hash.is_empty() {
+            daglock_shared::validate_trade_hash(trade_hash)
+                .map_err(|e| bad_request("invalid_trade_hash", format!("Invalid trade hash: {e}")))?;
+        }
+    }
+
+    if body.amount_sompi > 100_000_000_000_000 {
+        return Err(bad_request("invalid_amount", "Amount exceeds maximum (1M KAS)"));
+    }
+
+    if let Ok((existing, _)) =
+        queries::list_escrows_by_address(&state.db, &body.buyer_address, None, None, 100, 0).await
+    {
+        if existing.iter().any(|e| {
+            e.lock_tx_id == body.lock_tx_id && e.lock_tx_output_index == body.lock_tx_output_index
+        }) {
+            return Err(conflict("duplicate_lock", "An escrow already exists for this UTXO"));
+        }
+    }
+
+    Ok(())
+}
+
+// ── Error helpers for validation ────────────────────────────────────
+
+fn bad_request(code: &'static str, msg: impl std::fmt::Display) -> (StatusCode, Json<Value>) {
+    (StatusCode::BAD_REQUEST, Json(json!(ApiError::new(code, msg.to_string()))))
+}
+
+fn forbidden(code: &'static str, msg: impl std::fmt::Display) -> (StatusCode, Json<Value>) {
+    (StatusCode::FORBIDDEN, Json(json!(ApiError::new(code, msg.to_string()))))
+}
+
+fn conflict(code: &'static str, msg: impl std::fmt::Display) -> (StatusCode, Json<Value>) {
+    (StatusCode::CONFLICT, Json(json!(ApiError::new(code, msg.to_string()))))
 }
 
 /// GET /v1/stats

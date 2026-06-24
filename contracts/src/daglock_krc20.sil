@@ -54,6 +54,34 @@ contract DagLockKRC20(
 
     byte constant IDENTIFIER_COVENANT_ID = 0x02;
 
+    // ── Helper: ICC Validation ─────────────────────────────────────
+    // Validates that the DagLockKRC20 covenant controls the KCC-20
+    // tokens being escrowed (S3 fix). Skips validation in dev/test
+    // mode when kcc20TemplatePrefixLen is 0. Enforces in production
+    // where all KCC-20 template params are properly set.
+    //
+    // The KCC-20 branch must have:
+    //   ownerIdentifier == this covenant's ID
+    //   identifierType  == IDENTIFIER_COVENANT_ID (0x02)
+    //   isMinter        == false
+    function validateKcc20Input() {
+        // Gate: only validate when template metadata is configured
+        // (kcc20TemplatePrefixLen == 0 in dev/test mode, non-zero in prod)
+        if (kcc20TemplatePrefixLen != 0) {
+            require(OpCovInputCount(kcc20CovenantId) == 1);
+            int kcc20Idx = OpCovInputIdx(kcc20CovenantId, 0);
+            KCC20State prevState = readInputStateWithTemplate(
+                kcc20Idx,
+                kcc20TemplatePrefixLen,
+                kcc20TemplateSuffixLen,
+                kcc20ExpectedTemplateHash
+            );
+            require(prevState.ownerIdentifier == OpInputCovenantId(this.activeInputIndex));
+            require(prevState.identifierType == IDENTIFIER_COVENANT_ID);
+            require(!prevState.isMinter);
+        }
+    }
+
     // ── Path A: Mutual Release ─────────────────────────────────────
     // Both buyer and seller sign. The KCC-20 branch transitions to
     // seller ownership. A KAS fee goes to treasury.
@@ -68,6 +96,9 @@ contract DagLockKRC20(
         require(checkSig(buyerSig, buyerPubKey));
         require(checkSig(sellerSig, sellerPubKey));
 
+        // ICC: validate KCC-20 input ownership (S3 fix)
+        validateKcc20Input();
+
         // Exact fee enforcement: the DagLockKRC20 UTXO's value IS the fee
         int feeValue = tx.inputs[this.activeInputIndex].value;
         require(feeValue > 0);
@@ -80,6 +111,9 @@ contract DagLockKRC20(
     // ── Path B: Atomic Swap ────────────────────────────────────────
     entrypoint function swap(byte[] secret) {
         require(sha256(secret) == tradeHash);
+
+        // ICC: validate KCC-20 input ownership (S3 fix)
+        validateKcc20Input();
 
         // Exact fee enforcement: the DagLockKRC20 UTXO's value IS the fee
         int feeValue = tx.inputs[this.activeInputIndex].value;
@@ -94,6 +128,9 @@ contract DagLockKRC20(
     entrypoint function refund(sig buyerSig) {
         require(tx.time >= timeout);
         require(checkSig(buyerSig, buyerPubKey));
+
+        // ICC: validate KCC-20 input ownership (S3 fix)
+        validateKcc20Input();
         // KCC-20 branch returns to buyer. No fee.
     }
 }

@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState } from "react";
 
 const TABS = [
@@ -15,9 +16,14 @@ export function DocsPage() {
 	const [tab, setTab] = useState<TabId>("api");
 
 	return (
-		<div>
-			<div className="page-header">
-				<h1>Developer Docs</h1>
+		<>
+			<Helmet>
+				<title>Developer Docs — DagLock</title>
+				<meta name="description" content="API reference, SilverScript covenant docs, and integration guide for DagLock on Kaspa." />
+			</Helmet>
+			<div>
+				<div className="page-header">
+					<h1>Developer Docs</h1>
 				<p>Guides and references for building on DagLock</p>
 			</div>
 
@@ -40,6 +46,7 @@ export function DocsPage() {
 			{tab === "bot" && <BotTab />}
 			{tab === "integrate" && <IntegrateTab />}
 		</div>
+		</>
 	);
 }
 

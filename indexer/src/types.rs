@@ -643,7 +643,7 @@ pub fn generate_id(prefix: &str) -> String {
     format!(
         "{}_{}",
         prefix,
-        Uuid::new_v4().to_string().split('-').next().unwrap()
+        Uuid::new_v4().to_string().replace('-', "")
     )
 }
 

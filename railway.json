@@ -4,9 +4,9 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template 8a43a8438d183a92bc7b94337c031196ff16725b --cors-origin https://daglock.com --wrpc-url ws://46.224.171.239:16610",
+    "startCommand": "daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network mainnet --allow-mainnet --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --daglock-reputation-template 65c54102c64a331414b602760cbd76efac3d69df --cors-origin https://daglock.com --no-wrpc",
     "healthcheckPath": "/v1/health",
     "restartPolicyType": "ON_FAILURE"
   },
-  "note": "Indexer migrated to VPS (46.224.171.239). Railway config kept for CI build verification only."
+  "note": "Indexer deployed on VPS (46.224.171.239) via systemd. Railway config kept for CI build verification only."
 }
