@@ -21,6 +21,7 @@ export function OffersPage() {
 			<Helmet>
 				<title>Offer Board — DagLock</title>
 				<meta name="description" content="Browse open escrow offers, find counterparties for KAS and KRC-20 trades on Kaspa." />
+				<link rel="canonical" href="https://daglock.com/offers" />
 			</Helmet>
 			<div>
 				<div className="page-header">

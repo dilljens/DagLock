@@ -18,6 +18,7 @@ export function SwapPage() {
 			<Helmet>
 				<title>Atomic Swap — DagLock</title>
 				<meta name="description" content="Trustless atomic swaps between KAS and KRC-20 tokens on Kaspa L1." />
+				<link rel="canonical" href="https://daglock.com/swap" />
 			</Helmet>
 			<div>
 				<div className="page-header">

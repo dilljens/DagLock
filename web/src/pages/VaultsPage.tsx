@@ -24,6 +24,7 @@ export function VaultsPage() {
 			<Helmet>
 				<title>Vaults — DagLock</title>
 				<meta name="description" content="Time-locked and multi-sig vaults for secure KAS storage on Kaspa L1." />
+				<link rel="canonical" href="https://daglock.com/vaults" />
 			</Helmet>
 			<div>
 				<div className="page-header">

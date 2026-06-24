@@ -31,12 +31,13 @@ export function Dashboard({ stats }: DashboardProps) {
 	if (!wallet.connected) {
 		return (
 			<>
-				<Helmet>
-					<title>DagLock — Trustless Escrow & Atomic Swaps on Kaspa</title>
-					<meta name="description" content="Browse escrow offers, manage vaults, and trade KAS and KRC-20 tokens on Kaspa L1." />
-				</Helmet>
-				<div>
-				<div className="dashboard-hero">
+			<Helmet>
+				<title>DagLock — Trustless Escrow & Atomic Swaps on Kaspa</title>
+				<meta name="description" content="Browse escrow offers, manage vaults, and trade KAS and KRC-20 tokens on Kaspa L1." />
+				<link rel="canonical" href="https://daglock.com/" />
+			</Helmet>
+			<div>
+			<div className="dashboard-hero">
 					<h2> Trustless Escrow on Kaspa</h2>
 					<p>
 						Create, settle, and dispute escrows without trusting anyone. Funds are locked in
@@ -166,6 +167,7 @@ export function Dashboard({ stats }: DashboardProps) {
 			<Helmet>
 				<title>DagLock — Trustless Escrow & Atomic Swaps on Kaspa</title>
 				<meta name="description" content="Browse escrow offers, manage vaults, and trade KAS and KRC-20 tokens on Kaspa L1." />
+				<link rel="canonical" href="https://daglock.com/" />
 			</Helmet>
 			<div>
 				<div className="page-header">

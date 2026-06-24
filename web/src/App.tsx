@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { AnimatePresence, motion } from "motion/react";
@@ -10,14 +10,14 @@ import { Sidebar } from "./layout/Sidebar";
 import { Footer } from "./layout/Footer";
 
 import { ErrorBoundary } from "./components/error-boundary";
-import { Dashboard } from "./pages/Dashboard";
-import { OffersPage } from "./pages/OffersPage";
-import { EscrowsPage } from "./pages/EscrowsPage";
-import { VaultsPage } from "./pages/VaultsPage";
-import { ReputationPage } from "./pages/ReputationPage";
-import { JuryPage } from "./pages/JuryPage";
-import { SwapPage } from "./pages/SwapPage";
-import { DocsPage } from "./pages/DocsPage";
+const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
+const OffersPage = lazy(() => import("./pages/OffersPage").then((m) => ({ default: m.OffersPage })));
+const EscrowsPage = lazy(() => import("./pages/EscrowsPage").then((m) => ({ default: m.EscrowsPage })));
+const VaultsPage = lazy(() => import("./pages/VaultsPage").then((m) => ({ default: m.VaultsPage })));
+const ReputationPage = lazy(() => import("./pages/ReputationPage").then((m) => ({ default: m.ReputationPage })));
+const JuryPage = lazy(() => import("./pages/JuryPage").then((m) => ({ default: m.JuryPage })));
+const SwapPage = lazy(() => import("./pages/SwapPage").then((m) => ({ default: m.SwapPage })));
+const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
 
 import { api } from "./api";
 import { useWebSocket } from "./hooks/useWebSocket";
@@ -60,31 +60,34 @@ function AppInner() {
 	// Close sidebar on route change
 	useEffect(() => setSidebarOpen(false), [route]);
 
-	const pageContent = (() => {
-		const page = (() => {
-			switch (route) {
-				case "/":
-					return <Dashboard stats={stats} />;
-				case "/offers":
-					return <OffersPage />;
-				case "/escrows":
-					return <EscrowsPage />;
-				case "/vaults":
-					return <VaultsPage />;
-				case "/reputation":
-					return <ReputationPage />;
-				case "/jury":
-					return <JuryPage />;
-				case "/swap":
-					return <SwapPage />;
-				case "/docs":
-					return <DocsPage />;
-				default:
-					return <Dashboard stats={stats} />;
-			}
-		})();
-		return <ErrorBoundary key={route}>{page}</ErrorBoundary>;
-	})();
+	const pageContent = (
+		<Suspense fallback={<div className="loading" style={{ textAlign: "center", padding: "3rem", color: "#888" }}>Loading…</div>}>
+			<ErrorBoundary key={route}>
+				{(() => {
+					switch (route) {
+						case "/":
+							return <Dashboard stats={stats} />;
+						case "/offers":
+							return <OffersPage />;
+						case "/escrows":
+							return <EscrowsPage />;
+						case "/vaults":
+							return <VaultsPage />;
+						case "/reputation":
+							return <ReputationPage />;
+						case "/jury":
+							return <JuryPage />;
+						case "/swap":
+							return <SwapPage />;
+						case "/docs":
+							return <DocsPage />;
+						default:
+							return <Dashboard stats={stats} />;
+					}
+				})()}
+			</ErrorBoundary>
+		</Suspense>
+	);
 
 	return (
 		<div className="app-shell">

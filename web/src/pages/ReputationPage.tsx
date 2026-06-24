@@ -19,6 +19,7 @@ export function ReputationPage() {
 			<Helmet>
 				<title>Reputation — DagLock</title>
 				<meta name="description" content="On-chain trade reputation scores derived from verifiable escrow history on Kaspa." />
+				<link rel="canonical" href="https://daglock.com/reputation" />
 			</Helmet>
 			<div>
 				<div className="page-header">

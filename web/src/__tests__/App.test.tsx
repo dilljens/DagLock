@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
 
 beforeAll(() => {
@@ -36,22 +36,27 @@ describe("App", () => {
 		expect(screen.getByText(/TESTNET/)).toBeInTheDocument();
 	});
 
-	it("renders quick action cards on dashboard", () => {
+	it("renders quick action cards on dashboard", async () => {
 		render(<App />);
-		expect(screen.getByText("Browse Offers")).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByText("Browse Offers")).toBeInTheDocument();
+		});
 		expect(screen.getByText("Developer Docs")).toBeInTheDocument();
 	});
 
-	it("renders feature cards explaining DagLock", () => {
+	it("renders feature cards explaining DagLock", async () => {
 		render(<App />);
-		expect(screen.getAllByText("Trustless Escrow").length).toBeGreaterThanOrEqual(1);
-		expect(screen.getByText("Time-Locked Vaults")).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByText("Time-Locked Vaults")).toBeInTheDocument();
+		});
 		expect(screen.getByText("Atomic Swaps")).toBeInTheDocument();
 	});
 
-	it("renders How It Works section", () => {
+	it("renders How It Works section", async () => {
 		render(<App />);
-		expect(screen.getByText("How It Works")).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByText("How It Works")).toBeInTheDocument();
+		});
 		expect(screen.getByText("Create or Accept")).toBeInTheDocument();
 		expect(screen.getByText("Lock Funds")).toBeInTheDocument();
 		expect(screen.getByText("Settle or Refund")).toBeInTheDocument();

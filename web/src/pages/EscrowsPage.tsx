@@ -22,6 +22,7 @@ export function EscrowsPage() {
 			<Helmet>
 				<title>Escrows — DagLock</title>
 				<meta name="description" content="Create and manage trustless escrow contracts on Kaspa. Lock KAS or KRC-20 tokens with covenant-enforced terms." />
+				<link rel="canonical" href="https://daglock.com/escrows" />
 			</Helmet>
 			<div>
 				<div className="page-header">

@@ -20,6 +20,7 @@ export function DocsPage() {
 			<Helmet>
 				<title>Developer Docs — DagLock</title>
 				<meta name="description" content="API reference, SilverScript covenant docs, and integration guide for DagLock on Kaspa." />
+				<link rel="canonical" href="https://daglock.com/docs" />
 			</Helmet>
 			<div>
 				<div className="page-header">

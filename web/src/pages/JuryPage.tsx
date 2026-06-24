@@ -19,6 +19,7 @@ export function JuryPage() {
 			<Helmet>
 				<title>Jury — DagLock</title>
 				<meta name="description" content="Decentralized dispute resolution for Kaspa escrow trades via community jury." />
+				<link rel="canonical" href="https://daglock.com/jury" />
 			</Helmet>
 			<div>
 				<div className="page-header">
