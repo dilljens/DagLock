@@ -3,11 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DagLock — Trustless Escrow & Atomic Swaps on Kaspa</title>
+    <title>DagLock — Trustless Escrow & Atomic Swaps on Kaspa | Kaspa L1</title>
     <meta
       name="description"
-      content="Lock KAS or KRC-20 tokens in SilverScript covenants. Trustless escrow, time-locked vaults, and atomic swaps on Kaspa L1. No admin keys, no backdoors. 0.5% fee."
+      content="DagLock is a trustless escrow and atomic swap protocol on Kaspa L1. Lock KAS or KRC-20 tokens in SilverScript covenants. 0.5% fee, no admin keys, audited. Try it on testnet."
     />
+    <meta name="keywords" content="Kaspa escrow, KRC-20 swap, trustless escrow, atomic swap Kaspa, SilverScript covenant, Kaspa DeFi, crypto escrow, DAG escrow" />
     <meta name="robots" content="index, follow" />
 <meta name="theme-color" content="#0a1a0a" />
     <link rel="canonical" href="https://daglock.com" />
@@ -46,6 +47,64 @@
       "sameAs": [
         "https://github.com/dilljens/DagLock",
         "https://t.me/DagLock_bot"
+      ]
+    }
+    </script>
+
+    <!-- FAQPage Structured Data (static — eligible for rich results) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is a trustless escrow on Kaspa?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A trustless escrow on Kaspa uses SilverScript covenants to enforce trade terms without a trusted third party. Funds are locked in a covenant UTXO and only released when both parties sign or a timeout is reached."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does DagLock charge in fees?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "DagLock charges a 0.5% protocol fee (1/200) on escrow settlements, enforced by the SilverScript covenant at the protocol level. Vault withdrawals incur a 0.1% fee."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What assets does DagLock support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "DagLock supports native KAS and KRC-20 tokens on Kaspa L1. Cross-chain HTLC support for BTC and LTC is planned."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is DagLock audited?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. DagLock completed a comprehensive security audit on June 6, 2026 covering all covenant contracts, the indexer, CLI, web UI, and Telegram bot. All 7 critical security findings have been fixed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does DagLock have admin keys?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. DagLock has zero admin keys or backdoors. The SilverScript covenants enforce all rules at the protocol level. DagLock cannot access, freeze, or confiscate funds."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do KRC-20 token swaps work on DagLock?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "KRC-20 token swaps use the Inter-Covenant Communication (ICC) pattern. The DagLockKRC20 covenant validates KCC-20 input ownership via readInputStateWithTemplate, ensuring token transfers are authorized before settlement."
+          }
+        }
       ]
     }
     </script>

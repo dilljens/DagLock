@@ -1,0 +1,21 @@
+# DagLock Cloudflare Pages Headers
+# See: https://developers.cloudflare.com/pages/platform/headers/
+
+# Security + SEO headers on all pages
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Robots-Tag: index, follow
+
+# Block staging/dev subdomains from indexing
+*.pages.dev/*
+  X-Robots-Tag: noindex
+
+# Long-lived cache for fingerprinted assets (Vite content-hashes)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Short cache for blog/content (can be revalidated)
+/blog/*
+  Cache-Control: public, max-age=3600, s-maxage=86400

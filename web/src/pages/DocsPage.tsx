@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useState } from "react";
 
 const TABS = [
+	{ id: "faq", label: "FAQ" },
 	{ id: "api", label: "API" },
 	{ id: "cli", label: "CLI" },
 	{ id: "bot", label: "Bot" },
@@ -19,8 +20,39 @@ export function DocsPage() {
 		<>
 			<Helmet>
 				<title>Developer Docs — DagLock</title>
-				<meta name="description" content="API reference, SilverScript covenant docs, and integration guide for DagLock on Kaspa." />
+				<meta name="description" content="API reference, SilverScript covenant docs, and integration guide for DagLock on Kaspa. Learn how to create trustless escrows, atomic swaps, and time-locked vaults on Kaspa L1." />
 				<link rel="canonical" href="https://daglock.com/docs" />
+				<script type="application/ld+json">{JSON.stringify({
+					"@context": "https://schema.org",
+					"@type": "FAQPage",
+					"mainEntity": [
+						{
+							"@type": "Question",
+							"name": "What is a trustless escrow on Kaspa?",
+							"acceptedAnswer": { "@type": "Answer", "text": "A trustless escrow on Kaspa uses SilverScript covenants to enforce trade terms without a trusted third party. Funds are locked in a covenant UTXO and only released when both parties sign or a timeout is reached." }
+						},
+						{
+							"@type": "Question",
+							"name": "How much does DagLock charge in fees?",
+							"acceptedAnswer": { "@type": "Answer", "text": "DagLock charges a 0.5% protocol fee (1/200) on escrow settlements. This fee is enforced by the SilverScript covenant at the protocol level and cannot be changed or waived. Vault withdrawals incur a 0.1% fee." }
+						},
+						{
+							"@type": "Question",
+							"name": "What assets does DagLock support?",
+							"acceptedAnswer": { "@type": "Answer", "text": "DagLock supports native KAS and KRC-20 tokens on Kaspa L1. Cross-chain HTLC support for BTC and LTC is planned for future releases." }
+						},
+						{
+							"@type": "Question",
+							"name": "Is DagLock audited?",
+							"acceptedAnswer": { "@type": "Answer", "text": "Yes. DagLock completed a comprehensive security audit on June 6, 2026 covering all covenant contracts, the indexer, CLI, web UI, and Telegram bot. All 7 critical security findings have been fixed." }
+						},
+						{
+							"@type": "Question",
+							"name": "How do KRC-20 token swaps work on DagLock?",
+							"acceptedAnswer": { "@type": "Answer", "text": "KRC-20 token swaps use the Inter-Covenant Communication (ICC) pattern. The DagLockKRC20 covenant validates KCC-20 input ownership via readInputStateWithTemplate, ensuring token transfers are authorized before settlement." }
+						}
+					]
+				})}</script>
 			</Helmet>
 			<div>
 				<div className="page-header">
@@ -42,6 +74,7 @@ export function DocsPage() {
 				))}
 			</div>
 
+			{tab === "faq" && <FaqTab />}
 			{tab === "api" && <ApiTab />}
 			{tab === "cli" && <CliTab />}
 			{tab === "bot" && <BotTab />}
@@ -68,6 +101,68 @@ function Code({ children }: { children: string }) {
 		}}>
 			<code>{children}</code>
 		</pre>
+	);
+}
+
+const FAQ_ITEMS = [
+	{
+		q: "What is DagLock?",
+		a: "DagLock is a trustless escrow and atomic swap protocol on Kaspa L1. It uses SilverScript covenants to enforce trade terms — no admin keys, no backdoors. Funds are locked in covenant UTXOs and only released when conditions are met.",
+	},
+	{
+		q: "What is a trustless escrow on Kaspa?",
+		a: "A trustless escrow on Kaspa uses SilverScript covenants to enforce trade terms without a trusted third party. Funds are locked in a covenant UTXO and only released when both parties sign or a timeout is reached. The covenant enforces all rules — DagLock cannot access your funds.",
+	},
+	{
+		q: "How much does DagLock charge in fees?",
+		a: "DagLock charges a 0.5% protocol fee (1/200) on escrow settlements. This is enforced by the SilverScript covenant at the protocol level — DagLock cannot change or waive it. Vault withdrawals incur a 0.1% fee. Both fees go to the DagLock treasury.",
+	},
+	{
+		q: "What assets does DagLock support?",
+		a: "DagLock supports native KAS and KRC-20 tokens on Kaspa L1. The KRC-20 integration uses the Inter-Covenant Communication (ICC) pattern for secure token transfers. Cross-chain HTLC support for BTC and LTC is planned.",
+	},
+	{
+		q: "Is DagLock audited?",
+		a: "Yes. DagLock completed a comprehensive security audit on June 6, 2026 covering all 6 covenants (KAS, KRC-20, Arbiter, Vault, VaultSoftlock, VaultMultisig), the Rust indexer, CLI, web UI, Telegram bot, and WASM SDK. All 7 critical and high security findings have been resolved.",
+	},
+	{
+		q: "How do KRC-20 token swaps work?",
+		a: "KRC-20 token swaps use the ICC (Inter-Covenant Communication) pattern. The DagLockKRC20 covenant validates KCC-20 input ownership using SilverScript's readInputStateWithTemplate builtin. This ensures the covenant controls the tokens before authorizing the transfer.",
+	},
+	{
+		q: "What happens if the counterparty doesn't release?",
+		a: "Every DagLock escrow has a timeout. If the seller doesn't claim after the timeout expires, the buyer can call refund() solo to reclaim their funds. Arbiter escrows add a 30-day emergency refund path. No funds can be permanently locked.",
+	},
+	{
+		q: "Does DagLock have admin keys?",
+		a: "No. DagLock has zero admin keys or backdoors. The SilverScript covenants enforce all rules at the protocol level. DagLock cannot access, freeze, or confiscate funds under any circumstances.",
+	},
+	{
+		q: "How is DagLock different from traditional escrow?",
+		a: "Traditional escrow relies on a trusted third party (lawyer, platform) to hold and release funds. DagLock replaces the trusted third party with a SilverScript covenant that enforces the terms automatically. No human intervention, no counterparty risk, no admin keys.",
+	},
+	{
+		q: "How to get started with DagLock?",
+		a: "Install KasWare browser extension, get testnet KAS from the Kaspa testnet faucet, and visit daglock.com. Connect your wallet, create an escrow, and settle it. For developers, use the REST API at api.daglock.com or the CLI tool. For mobile users, use @DagLock_bot on Telegram.",
+	},
+];
+
+function FaqTab() {
+	return (
+		<>
+			{FAQ_ITEMS.map((item, i) => (
+				<section key={i} className="panel" style={{ marginTop: "16px" }}>
+					<div className="panel-head"><h3>{item.q}</h3></div>
+					<p className="muted">{item.a}</p>
+				</section>
+			))}
+			<Section title="Still have questions?">
+				<p className="muted">
+					Message <a href="https://t.me/DagLock_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>@DagLock_bot</a> on Telegram or open an issue on{" "}
+					<a href="https://github.com/dilljens/DagLock/issues" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>GitHub</a>.
+				</p>
+			</Section>
+		</>
 	);
 }
 
