@@ -50,7 +50,7 @@
    - Schema: `HowTo`
 
 3. **`/security`** — Audit results + security model
-   - Content: Covenant architecture, no admin keys, audit findings, bug bounty
+   - Content: Covenant architecture, no admin keys, audit findings
    - Schema: `TechArticle`
 
 4. **`/faq`** — Frequently asked questions
