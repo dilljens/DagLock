@@ -16,7 +16,6 @@ pub struct WsEvent {
     pub data: serde_json::Value,
 }
 
-#[allow(dead_code)]
 impl WsEvent {
     pub fn escrow_created(escrow_id: &str) -> Self {
         Self {
@@ -101,9 +100,4 @@ pub fn create_event_channel() -> broadcast::Sender<WsEvent> {
     tx
 }
 
-/// Broadcast an event to all connected WebSocket clients.
-#[allow(dead_code)]
-pub fn broadcast_event(tx: &broadcast::Sender<WsEvent>, event: WsEvent) {
-    // Ignore broadcast errors (no receivers is fine)
-    let _ = tx.send(event);
-}
+

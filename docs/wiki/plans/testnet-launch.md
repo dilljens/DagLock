@@ -52,7 +52,7 @@ Then check `railway.json` start command has the same hashes:
 | Covenant | Config flag | Current hash |
 |----------|-------------|-------------|
 | KAS | `--daglock-kas-template` | `30876e3ea42d0e23bb0980f3fd97ae8807e9c70f` |
-| KRC-20 | `--daglock-krc20-template` | `8a43a8438d183a92bc7b94337c031196ff16725b` |
+| KRC-20 | `--daglock-krc20-template` | `ae0946e4a9bd4a7585e6bf9135de38083cb11c85` |
 
 > If hashes differ (e.g., after contract changes), update `railway.json` and `.env.example`.
 
@@ -201,8 +201,8 @@ In Railway dashboard → indexer service → **Variables**:
 In Railway → **Deploy** → **Start Command**, change:
 
 ```diff
-- daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template 8a43a8438d183a92bc7b94337c031196ff16725b --cors-origin https://daglock.com --no-wrpc
-+ daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template 8a43a8438d183a92bc7b94337c031196ff16725b --cors-origin https://daglock.com --wrpc-url ws://<VPS_IP>:16610
+- daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --cors-origin https://daglock.com --no-wrpc
++ daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --cors-origin https://daglock.com --wrpc-url ws://<VPS_IP>:16610
 ```
 
 Also update `railway.json` to match (so future deploys keep the change).

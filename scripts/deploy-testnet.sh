@@ -20,7 +20,7 @@ cargo build --release -p daglock-indexer
 # These identify DagLock UTXOs regardless of constructor parameters
 DAGLOCK_KAS_TEMPLATE="30876e3ea42d0e23bb0980f3fd97ae8807e9c70f"
 DAGLOCK_ARBITER_TEMPLATE="d6aea010040d361049483c62da2e6b35f6dc256c"
-DAGLOCK_KRC20_TEMPLATE="8a43a8438d183a92bc7b94337c031196ff16725b"
+DAGLOCK_KRC20_TEMPLATE="ae0946e4a9bd4a7585e6bf9135de38083cb11c85"
 
 # Copy config
 echo "Writing template hashes to .env..."

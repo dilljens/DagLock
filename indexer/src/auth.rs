@@ -569,31 +569,6 @@ pub async fn verify_cancel_authorization(
     verify_nonce(pool, &parsed, &auth.address).await?;
     Ok(())
 }
-#[allow(dead_code)]
-pub fn verify_auth(
-    headers: &axum::http::HeaderMap,
-    verifier: &dyn SignatureVerifier,
-    expected_message: &str,
-) -> AuthResult<AuthContext> {
-    let auth = AuthContext::from_headers(headers)?;
-
-    if auth.message != expected_message {
-        return Err(AuthError::Unauthorized {
-            reason: format!(
-                "Invalid message format. Expected '{}', got '{}'",
-                expected_message, auth.message
-            ),
-        });
-    }
-
-    if !verifier.verify_signature(&auth.address, &auth.signature, &auth.message)? {
-        return Err(AuthError::InvalidSignature {
-            address: auth.address.clone(),
-        });
-    }
-
-    Ok(auth)
-}
 
 /// Generate a nonce for replay-protected messages.
 /// Returns a hex-encoded 20-byte BLAKE2b-160 hash.

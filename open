@@ -63,7 +63,7 @@ cargo run -p daglock-indexer -- \
 	--host "127.0.0.1" \
 	--port "$INDEXER_PORT" \
 	--daglock-kas-template "30876e3ea42d0e23bb0980f3fd97ae8807e9c70f" \
-	--daglock-krc20-template "8a43a8438d183a92bc7b94337c031196ff16725b" --no-wrpc \
+	--daglock-krc20-template "ae0946e4a9bd4a7585e6bf9135de38083cb11c85" --no-wrpc \
 	> /tmp/daglock-indexer.log 2>&1 &
 echo $! >> "$PIDFILE"
 echo "  Logs: tail -f /tmp/daglock-indexer.log"

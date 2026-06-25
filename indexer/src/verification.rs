@@ -47,43 +47,12 @@ impl EscrowVerifier for MockVerifier {
     }
 }
 
-/// Verify escrow can be settled.
+/// Verify escrow is in an active state and its UTXO exists on-chain.
 ///
 /// Checks:
-/// 1. Escrow is in a settleable state (active or pending_confirmation)
+/// 1. Escrow is in an active state (active or pending_confirmation)
 /// 2. UTXO exists on-chain (via verifier)
-pub async fn verify_escrow_settleable(
-    escrow: &Escrow,
-    verifier: &dyn EscrowVerifier,
-) -> VerificationResult<()> {
-    // Check status
-    if !matches!(
-        escrow.status,
-        crate::types::EscrowStatus::Active | crate::types::EscrowStatus::PendingConfirmation
-    ) {
-        return Err(VerificationError::Other(format!(
-            "Escrow is not in active state: {:?}",
-            escrow.status
-        )));
-    }
-
-    // Verify UTXO exists on-chain
-    if !verifier.verify_utxo_exists(escrow).await? {
-        return Err(VerificationError::UtxoNotFound {
-            tx_id: escrow.lock_tx_id.clone(),
-            output_index: escrow.lock_tx_output_index,
-        });
-    }
-
-    Ok(())
-}
-
-/// Verify escrow can be refunded.
-///
-/// Checks:
-/// 1. Escrow is in a refundable state (active or pending_confirmation)
-/// 2. UTXO exists on-chain (via verifier)
-pub async fn verify_escrow_refundable(
+pub async fn verify_escrow_active(
     escrow: &Escrow,
     verifier: &dyn EscrowVerifier,
 ) -> VerificationResult<()> {
@@ -272,23 +241,23 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn verify_escrow_settleable_with_active_escrow() {
+    async fn verify_escrow_active_with_active_escrow() {
         let verifier = MockVerifier;
         let escrow = test_escrow(EscrowStatus::Active);
-        assert!(verify_escrow_settleable(&escrow, &verifier).await.is_ok());
+        assert!(verify_escrow_active(&escrow, &verifier).await.is_ok());
     }
 
     #[tokio::test]
-    async fn verify_escrow_settleable_fails_for_settled() {
+    async fn verify_escrow_active_fails_for_settled() {
         let verifier = MockVerifier;
         let escrow = test_escrow(EscrowStatus::Settled);
-        assert!(verify_escrow_settleable(&escrow, &verifier).await.is_err());
+        assert!(verify_escrow_active(&escrow, &verifier).await.is_err());
     }
 
     #[tokio::test]
-    async fn verify_escrow_refundable_fails_for_expired() {
+    async fn verify_escrow_active_fails_for_expired() {
         let verifier = MockVerifier;
         let escrow = test_escrow(EscrowStatus::Expired);
-        assert!(verify_escrow_refundable(&escrow, &verifier).await.is_err());
+        assert!(verify_escrow_active(&escrow, &verifier).await.is_err());
     }
 }

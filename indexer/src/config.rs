@@ -133,3 +133,103 @@ impl Args {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_args() -> Args {
+        Args {
+            host: "0.0.0.0".into(),
+            port: 8543,
+            wrpc_url: None,
+            no_wrpc: true,
+            network: "testnet-12".into(),
+            database_url: "sqlite::memory:".into(),
+            daglock_kas_template: None,
+            daglock_krc20_template: None,
+            daglock_vault_softlock_template: None,
+            daglock_vault_multisig_template: None,
+            daglock_reputation_template: None,
+            log_level: "info".into(),
+            cors_origin: "*".into(),
+            allow_mainnet: false,
+            db_type: "sqlite".into(),
+            mock_auth: false,
+            treasury_pubkey: None,
+            auto_sweep_vaults: false,
+        }
+    }
+
+    #[test]
+    fn valid_testnet_config_passes() {
+        valid_args().validate();
+    }
+
+    #[test]
+    fn invalid_network_panics() {
+        let mut args = valid_args();
+        args.network = "invalidnet".into();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn invalid_log_level_panics() {
+        let mut args = valid_args();
+        args.log_level = "verbose".into();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn invalid_db_type_panics() {
+        let mut args = valid_args();
+        args.db_type = "mysql".into();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn zero_port_panics() {
+        let mut args = valid_args();
+        args.port = 0;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn mock_auth_on_mainnet_panics() {
+        let mut args = valid_args();
+        args.network = "mainnet".into();
+        args.allow_mainnet = true;
+        args.mock_auth = true;
+        std::env::set_var("DAGLOCK_MESSAGE_KEY", "ab".repeat(32));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
+        std::env::remove_var("DAGLOCK_MESSAGE_KEY");
+    }
+
+    #[test]
+    fn mainnet_without_allow_flag_panics() {
+        let mut args = valid_args();
+        args.network = "mainnet".into();
+        args.allow_mainnet = false;
+        std::env::set_var("DAGLOCK_MESSAGE_KEY", "ab".repeat(32));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
+        std::env::remove_var("DAGLOCK_MESSAGE_KEY");
+    }
+
+    #[test]
+    fn mainnet_with_allow_flag_passes() {
+        let mut args = valid_args();
+        args.network = "mainnet".into();
+        args.allow_mainnet = true;
+        args.no_wrpc = true;
+        args.database_url = "sqlite::memory:".into();
+        std::env::set_var("DAGLOCK_MESSAGE_KEY", "ab".repeat(32));
+        args.validate();
+        std::env::remove_var("DAGLOCK_MESSAGE_KEY");
+    }
+}

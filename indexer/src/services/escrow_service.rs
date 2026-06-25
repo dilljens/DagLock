@@ -11,7 +11,7 @@ use crate::auth::{
 use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
-use crate::verification::{verify_escrow_refundable, verify_escrow_settleable};
+use crate::verification::verify_escrow_active;
 use crate::websocket::WsEvent;
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
@@ -209,7 +209,7 @@ impl<'a> EscrowService<'a> {
             .await
             .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
 
-        verify_escrow_settleable(&current, self.verifier.as_ref())
+        verify_escrow_active(&current, self.verifier.as_ref())
             .await
             .map_err(|e| ServiceError::VerificationFailed(e.to_string()))?;
 
@@ -244,7 +244,7 @@ impl<'a> EscrowService<'a> {
             .await
             .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
 
-        verify_escrow_refundable(&current, self.verifier.as_ref())
+        verify_escrow_active(&current, self.verifier.as_ref())
             .await
             .map_err(|e| ServiceError::VerificationFailed(e.to_string()))?;
 

@@ -327,3 +327,7 @@ Before June 30 launch, ALL must pass:
 - [ ] Manual: Bot `/create` wizard → deep link → complete flow
 
 ✅ All tests pass (241 Rust, 40 Web, 22 Bot = 303 total)
+
+## VPS
+
+Single OVH VPS running all projects. See `../VPS.md` for connection info, services, and commands.

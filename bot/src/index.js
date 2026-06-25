@@ -556,10 +556,36 @@ bot.command("evidence", async (ctx) => {
 
 // ── Help command ────────────────────────────────────────────────────
 
+bot.command("help", async (ctx) => {
+	await ctx.reply(
+		"🔒 *DagLock Bot Help*\n\n" +
+			"*Setup:*\n" +
+			"/setaddress — Set your Kaspa address\n\n" +
+			"*Commands:*\n" +
+			"/create — Create escrow (opens web interface)\n" +
+			"/claim <id> — Claim an escrow from a trade link\n" +
+			"/list — List your escrows\n" +
+			"/offers — Browse open offers\n" +
+			"/swap <id> <hex> — Atomic swap settle via preimage\n" +
+			"/vaults — List your vaults\n" +
+			"/msg <id> <text> — Send a message on an escrow\n" +
+			"/messages <id> — Read message thread\n" +
+			"/status <id> — Check escrow status\n" +
+			"/receipt <id> — Fetch receipt\n" +
+			"/dispute <id> <reason> — Dispute escrow\n" +
+			"/cancel <id> — Cancel escrow\n" +
+			"/reputation <address> — Check reputation\n\n" +
+			"*Trade Links:*\n" +
+			"Share a link to let someone claim your escrow:\n" +
+			"`https://t.me/DagLock_bot?start=claim_<escrow-id>`",
+		{ parse_mode: "Markdown" },
+	);
+});
+
 // --- Wizard text handler ---
-bot.on("message:text", async (ctx) => {
+bot.on("message:text", async (ctx, next) => {
 	const conv = getConv(ctx.from.id);
-	if (!conv) return;
+	if (!conv) return next();
 
 	const text = ctx.message.text.trim();
 	const step = conv.step;
@@ -645,31 +671,6 @@ bot.on("message:text", async (ctx) => {
 		await ctx.reply("Error: " + e.message);
 		endConv(ctx.from.id);
 	}
-});
-bot.command("help", async (ctx) => {
-	await ctx.reply(
-		"🔒 *DagLock Bot Help*\n\n" +
-			"*Setup:*\n" +
-			"/setaddress — Set your Kaspa address\n\n" +
-			"*Commands:*\n" +
-			"/create — Create escrow (opens web interface)\n" +
-			"/claim <id> — Claim an escrow from a trade link\n" +
-			"/list — List your escrows\n" +
-			"/offers — Browse open offers\n" +
-			"/swap <id> <hex> — Atomic swap settle via preimage\n" +
-			"/vaults — List your vaults\n" +
-			"/msg <id> <text> — Send a message on an escrow\n" +
-			"/messages <id> — Read message thread\n" +
-			"/status <id> — Check escrow status\n" +
-			"/receipt <id> — Fetch receipt\n" +
-			"/dispute <id> <reason> — Dispute escrow\n" +
-			"/cancel <id> — Cancel escrow\n" +
-			"/reputation <address> — Check reputation\n\n" +
-			"*Trade Links:*\n" +
-			"Share a link to let someone claim your escrow:\n" +
-			"`https://t.me/DagLock_bot?start=claim_<escrow-id>`",
-		{ parse_mode: "Markdown" },
-	);
 });
 
 // ── Claim handler ────────────────────────────────────────────────────

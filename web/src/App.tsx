@@ -116,7 +116,7 @@ function AppInner() {
 					>
 						TESTNET — Use{" "}
 						<a
-							href="https://faucet-tn10.kaspanet.io/"
+							href="https://faucet-testnet.kaspanet.io/"
 							target="_blank"
 							rel="noopener noreferrer"
 							style={{ color: "#000", textDecoration: "underline" }}

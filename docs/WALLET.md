@@ -335,7 +335,7 @@ export function parseDaglockCovenant(txHex: string): DaglockAction | null {
 |----------|--------------|
 | KAS escrow | `30876e3ea42d0e23bb0980f3fd97ae8807e9c70f` |
 | Arbiter | `d6aea010040d361049483c62da2e6b35f6dc256c` |
-| KRC-20 | `8a43a8438d183a92bc7b94337c031196ff16725b` |
+| KRC-20 | `ae0946e4a9bd4a7585e6bf9135de38083cb11c85` |
 | Vault | `b338c514b1ef79bf1b0739814bc0d567e8461cfb` |
 | Softlock | `ed57b9da957beaac387a0baa9a23c8c54d186964` |
 | Multisig | `caf0b46ea425159b80af81436fc8f8cfd4e62afa` |

@@ -8,6 +8,7 @@ use std::process::Command;
 
 /// Sign an unsigned transaction hex with `kaspawallet`.
 /// Returns the signed transaction hex.
+#[allow(dead_code)]
 pub fn sign_with_kaspawallet(unsigned_tx_hex: &str) -> Result<String> {
     let output = Command::new("kaspawallet")
         .arg("sign")

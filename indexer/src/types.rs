@@ -226,16 +226,6 @@ pub struct Reputation {
     pub trading_concentration: f64,
 }
 
-/// Verified social identity linked to a Kaspa address.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct VerifiedIdentity {
-    pub address: Address,
-    pub platform: String,
-    pub handle: String,
-    pub verified_at: i64,
-}
-
 /// Create identity request (from POST endpoint).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateIdentityRequest {
@@ -347,12 +337,6 @@ pub struct JurorRegistration {
 }
 
 /// Request to register as a juror.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct JuryRegisterRequest {
-    pub address: Address,
-}
-
 /// Jury case record.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JuryCase {
@@ -367,17 +351,6 @@ pub struct JuryCase {
     pub decided_at: Option<i64>,
     pub outcome: Option<String>,
     pub jurors: Vec<String>,
-}
-
-/// Jury vote record.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct JuryVote {
-    pub case_id: String,
-    pub juror_address: Address,
-    pub vote: String,
-    pub voted_at: i64,
-    pub reasoning: Option<String>,
 }
 
 /// Cast vote request.
@@ -414,12 +387,7 @@ pub struct SendMessageRequest {
 }
 
 /// Message list response.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[allow(dead_code)]
-pub struct MessageListResponse {
-    pub messages: Vec<EscrowMessage>,
-    pub total: i64,
-}
+
 /// Typed error codes for structured API responses.
 #[derive(Debug, Clone, Copy)]
 pub enum ApiErrorCode {
@@ -542,13 +510,6 @@ pub struct CreateVouchRequest {
     pub subject_address: Address,
     pub escrow_id: Option<String>,
     pub note: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[allow(dead_code)]
-pub struct VouchListResponse {
-    pub vouches: Vec<Vouch>,
-    pub total: i64,
 }
 
 // ── Vault Types ─────────────────────────────────────────────────

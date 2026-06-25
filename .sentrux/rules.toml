@@ -1,0 +1,97 @@
+# DagLock Architectural Rules
+#
+# Layer ordering (higher order = more foundational / more depended-upon):
+#   order 4: contracts/ shared/   (most depended-on)
+#   order 3: indexer/
+#   order 2: cli/  wasm-sdk/
+#   order 1: web/
+#   order 0: bot/   (least depended-on — Node.js, no Rust deps)
+
+[constraints]
+# Allow 1 cycle — docs/flowcharts/*.html files cross-link to each other
+max_cycles = 1
+# Allow 40 — indexer/src/api/escrows.rs:create has 40 branches from input validation
+max_cc = 40
+no_god_files = false
+
+# ── Layer definitions ──
+[[layers]]
+name = "bot"
+paths = ["bot/src/*"]
+order = 0
+
+[[layers]]
+name = "web"
+paths = ["web/src/*"]
+order = 1
+
+[[layers]]
+name = "cli"
+paths = ["cli/src/*"]
+order = 2
+
+[[layers]]
+name = "wasm-sdk"
+paths = ["wasm-sdk/src/*"]
+order = 2
+
+[[layers]]
+name = "indexer"
+paths = ["indexer/src/*"]
+order = 3
+
+[[layers]]
+name = "foundation"
+paths = ["shared/src/*", "contracts/src/*"]
+order = 4
+
+# ── Boundary rules ──
+[[boundaries]]
+from = "indexer/src/*"
+to = "cli/src/*"
+reason = "Indexer must not depend on CLI"
+
+[[boundaries]]
+from = "indexer/src/*"
+to = "web/src/*"
+reason = "Indexer must not depend on web"
+
+[[boundaries]]
+from = "indexer/src/*"
+to = "bot/src/*"
+reason = "Indexer must not depend on bot"
+
+[[boundaries]]
+from = "web/src/*"
+to = "indexer/src/*"
+reason = "Web must not import indexer internals directly (REST API only)"
+
+[[boundaries]]
+from = "cli/src/*"
+to = "indexer/src/*"
+reason = "CLI must not import indexer internals (REST API only)"
+
+[[boundaries]]
+from = "bot/src/*"
+to = "shared/src/*"
+reason = "Bot is Node.js — must not depend on Rust crates"
+
+[[boundaries]]
+from = "bot/src/*"
+to = "contracts/src/*"
+reason = "Bot is Node.js — must not depend on Rust crates"
+
+[[boundaries]]
+from = "bot/src/*"
+to = "indexer/src/*"
+reason = "Bot is Node.js — must not depend on Rust crates"
+
+[[boundaries]]
+from = "bot/src/*"
+to = "cli/src/*"
+reason = "Bot is Node.js — must not depend on Rust crates"
+
+[[boundaries]]
+from = "bot/src/*"
+to = "wasm-sdk/src/*"
+reason = "Bot is Node.js — must not depend on Rust crates"
