@@ -17,6 +17,7 @@ export function WalletStatus({ onConnect }: { onConnect?: (addr: string) => void
 	});
 	const [showManualInput, setShowManualInput] = useState(false);
 	const [manualAddr, setManualAddr] = useState("");
+	const [networkWarning, setNetworkWarning] = useState<string | null>(null);
 
 	useEffect(() => {
 		detectKasware().then((detected) => setWallet((s) => ({ ...s, detected })));
@@ -36,6 +37,11 @@ export function WalletStatus({ onConnect }: { onConnect?: (addr: string) => void
 				error: null,
 				manualMode: false,
 			});
+			// Check for network mismatch — KasWare only supports testnet-10/11,
+			// but DagLock runs on testnet-12 until mainnet.
+			if (network && network !== "testnet-12" && network !== "mainnet") {
+				setNetworkWarning(network);
+			}
 			onConnect?.(address);
 		} catch (err) {
 			setWallet((s) => ({
@@ -86,7 +92,7 @@ export function WalletStatus({ onConnect }: { onConnect?: (addr: string) => void
 					</button>
 				</>
 			)}
-			{!wallet.detected && showManualInput && (
+			{showManualInput && (
 				<div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
 					<input
 						value={manualAddr}
@@ -105,16 +111,63 @@ export function WalletStatus({ onConnect }: { onConnect?: (addr: string) => void
 					</button>
 				</div>
 			)}
-			{wallet.detected && !wallet.connected && (
-				<button
-					type="button"
-					className="button"
-					onClick={handleConnect}
-					disabled={wallet.loading}
-					style={{ fontSize: "12px", padding: "4px 10px" }}
+			{wallet.detected && !wallet.connected && !showManualInput && (
+				<>
+					<button
+						type="button"
+						className="button"
+						onClick={handleConnect}
+						disabled={wallet.loading}
+						style={{ fontSize: "12px", padding: "4px 10px" }}
+					>
+						{wallet.loading ? "Connecting..." : "Connect Wallet"}
+					</button>
+					<button
+						type="button"
+						className="button"
+						onClick={() => setShowManualInput(true)}
+						style={{ fontSize: "12px", padding: "4px 10px" }}
+					>
+						Use manual mode
+					</button>
+				</>
+			)}
+			{networkWarning && !wallet.manualMode && (
+				<div
+					style={{
+						background: "#fff3cd33",
+						border: "1px solid #ffc107",
+						borderRadius: "6px",
+						padding: "8px 12px",
+						fontSize: "12px",
+						color: "#e6a700",
+						marginTop: "6px",
+						width: "100%",
+					}}
 				>
-					{wallet.loading ? "Connecting..." : "Connect Wallet"}
-				</button>
+					⚠ KasWare connected to <strong>{networkWarning}</strong>, but DagLock
+					runs on <strong>testnet-12</strong>. KasWare doesn't support testnet-12
+					yet.{" "}
+					<button
+						type="button"
+						onClick={() => {
+							setShowManualInput(true);
+							setWallet((s) => ({ ...s, connected: false, address: null }));
+							setNetworkWarning(null);
+						}}
+						style={{
+							background: "none",
+							border: "none",
+							color: "#e6a700",
+							textDecoration: "underline",
+							cursor: "pointer",
+							fontSize: "12px",
+							padding: 0,
+						}}
+					>
+						Switch to manual mode
+					</button>
+				</div>
 			)}
 			{wallet.connected && wallet.address && (
 				<>
