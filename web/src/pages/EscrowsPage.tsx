@@ -219,14 +219,20 @@ function CreateEscrow({ address }: { address: string }) {
 
 			let lockTxId: string;
 			if (window.kasware?.getPublicKey && window.kasware.sendKaspa) {
-				// Get buyer's public key from KasWare
+				// KasWare is detected — get buyer's public key
 				const buyerPubkey = await window.kasware.getPublicKey();
-				// Use a hardcoded seller key for demo — in production this comes from the seller
-				const sellerPubkey = "0000000000000000000000000000000000000000000000000000000000000000";
-				const zeroHash = "0000000000000000000000000000000000000000000000000000000000000000";
+				// Require the seller to provide their public key (prevents broken covenants)
+				const sellerPubkey = prompt("Enter seller's public key (64 hex chars):");
+				if (!sellerPubkey || sellerPubkey.length !== 64 || !/^[0-9a-fA-F]{64}$/.test(sellerPubkey)) {
+					setStatus("idle");
+					notify("error", "Valid seller public key (64 hex) is required to create an escrow covenant.");
+					return;
+				}
+				const treasuryKey = prompt("Enter treasury public key (64 hex chars, or leave blank for default):")?.trim();
+				const resolvedTreasuryKey = treasuryKey || "0000000000000000000000000000000000000000000000000000000000000000";
 				const timeout = Math.floor(Date.now() / 1000) + 86400;
 
-				// Compile covenant via WASM SDK (loaded externally) or use compile API
+				// Compile covenant via API
 				let covenantAddress: string;
 				try {
 					const resp = await fetch(`${import.meta.env.VITE_API_URL}/v1/compile`, {
@@ -237,9 +243,9 @@ function CreateEscrow({ address }: { address: string }) {
 							params: {
 								buyer_key: buyerPubkey,
 								seller_key: sellerPubkey,
-								trade_hash: zeroHash,
+								trade_hash: "0000000000000000000000000000000000000000000000000000000000000000",
 								timeout: timeout.toString(),
-								treasury_key: zeroHash,
+								treasury_key: resolvedTreasuryKey,
 							},
 						}),
 					});
@@ -250,8 +256,9 @@ function CreateEscrow({ address }: { address: string }) {
 						throw new Error("Compiler not available");
 					}
 				} catch {
-					// Fallback: use indexer compile endpoint
-					covenantAddress = address;
+					notify("error", "Covenant compilation failed. Use manual mode instead.");
+					setStatus("idle");
+					return;
 				}
 
 				// Send KAS to the covenant address via KasWare

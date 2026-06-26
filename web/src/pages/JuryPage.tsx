@@ -290,12 +290,12 @@ function RegisterSection({ address }: { address: string }) {
 function CandidatesSection() {
 	const [candidates, setCandidates] = useState<LoadState<JurorRegistration[]>>({ loading: true });
 
-	if (candidates.loading) {
+	useEffect(() => {
 		api
 			.juryCandidates()
 			.then((d) => setCandidates({ data: d.candidates, loading: false }))
 			.catch((e) => setCandidates({ error: e.message, loading: false }));
-	}
+	}, []);
 
 	if (candidates.loading) return <SkeletonTable rows={5} />;
 	if (candidates.error) return <p className="muted error-text">{candidates.error}</p>;

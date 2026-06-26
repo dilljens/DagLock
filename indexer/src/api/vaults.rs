@@ -288,65 +288,6 @@ pub async fn withdraw(
     })))
 }
 
-/// POST /v1/vaults/:id/password-withdraw
-///
-/// Withdraw from a beneficiary (softlock) vault using a password.
-pub async fn password_withdraw(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    JsonBody(body): JsonBody<PasswordWithdrawRequest>,
-) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let vault = queries::get_vault(&state.db, &id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "database_error", "message": format!("{e}")})),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})),
-            )
-        })?;
-    if vault.vault_type != VaultType::Beneficiary {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(
-                json!({"error": "invalid_type", "message": "Only Beneficiary vaults support password withdrawal"}),
-            ),
-        ));
-    }
-    if vault.status != VaultStatus::Locked {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(
-                json!({"error": "invalid_status", "message": format!("Vault is already {:?}", vault.status)}),
-            ),
-        ));
-    }
-    let mut hasher = Sha256::new();
-    hasher.update(body.password.as_bytes());
-    let password_hash = hex::encode(hasher.finalize());
-    queries::update_vault_status(&state.db, &id, "unlocked")
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "database_error", "message": format!("{e}")})),
-            )
-        })?;
-    Ok(Json(
-        json!({"status": "unlocked", "vault_id": id, "password_hash": password_hash, "message": "Vault unlocked via password. The beneficiary must broadcast the on-chain withdrawPassword() transaction."}),
-    ))
-}
-
-#[derive(serde::Deserialize)]
-pub struct PasswordWithdrawRequest {
-    pub password: String,
-}
-
 /// POST /v1/vaults/:id/transfer
 ///
 /// Transfer vault ownership to a beneficiary. Requires auth headers.

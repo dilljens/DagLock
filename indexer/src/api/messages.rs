@@ -43,6 +43,14 @@ pub async fn send(
         )
     })?;
 
+    // Verify signature
+    let expected_message = format!("message:{}", escrow_id);
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+    {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+    }
+
     // Verify escrow exists and sender is a party
     let escrow = queries::get_escrow(&state.db, &escrow_id)
         .await

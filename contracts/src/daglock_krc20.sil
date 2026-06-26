@@ -56,17 +56,19 @@ contract DagLockKRC20(
 
     // ── Helper: ICC Validation ─────────────────────────────────────
     // Validates that the DagLockKRC20 covenant controls the KCC-20
-    // tokens being escrowed (S3 fix). Skips validation in dev/test
-    // mode when kcc20TemplatePrefixLen is 0. Enforces in production
-    // where all KCC-20 template params are properly set.
+    // tokens being escrowed (S3 fix). Enforces ICC validation when
+    // template metadata is configured (kcc20TemplatePrefixLen > 0).
+    //
+    // When kcc20TemplatePrefixLen is 0 (dev/test), validation is
+    // skipped but a hard check is performed: if all ICC parameters
+    // are zeroed EXCEPT kcc20CovenantId is set, this is a
+    // misconfiguration and the transaction is rejected.
     //
     // The KCC-20 branch must have:
     //   ownerIdentifier == this covenant's ID
     //   identifierType  == IDENTIFIER_COVENANT_ID (0x02)
     //   isMinter        == false
     function validateKcc20Input() {
-        // Gate: only validate when template metadata is configured
-        // (kcc20TemplatePrefixLen == 0 in dev/test mode, non-zero in prod)
         if (kcc20TemplatePrefixLen != 0) {
             require(OpCovInputCount(kcc20CovenantId) == 1);
             int kcc20Idx = OpCovInputIdx(kcc20CovenantId, 0);
@@ -131,6 +133,10 @@ contract DagLockKRC20(
 
         // ICC: validate KCC-20 input ownership (S3 fix)
         validateKcc20Input();
-        // KCC-20 branch returns to buyer. No fee.
+
+        // Refund: the DagLockKRC20 UTXO's full value returns to the buyer
+        // No fee is charged on refund (same as KAS escrow covenant).
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
     }
 }

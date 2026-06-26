@@ -39,6 +39,14 @@ pub async fn create(
         )
     })?;
 
+    // Verify signature
+    let expected_message = format!("vouch:{}", body.subject_address);
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+    {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+    }
+
     // Cannot vouch for yourself
     if auth.address == body.subject_address {
         return Err((
@@ -117,6 +125,14 @@ pub async fn delete(
             ))),
         )
     })?;
+
+    // Verify signature
+    let expected_message = format!("unvouch:{}", id);
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+    {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+    }
 
     let deleted = queries::delete_vouch(&state.db, &id, &auth.address)
         .await

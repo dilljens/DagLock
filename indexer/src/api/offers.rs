@@ -28,6 +28,13 @@ pub async fn create(
             Json(json!(ApiError::new("unauthorized", e.to_string()))),
         )
     })?;
+    // Verify signature
+    let expected_message = format!("create:offer:{}", body.creator_address);
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+    {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+    }
     if auth.address != body.creator_address {
         return Err((
             StatusCode::FORBIDDEN,
@@ -177,6 +184,13 @@ pub async fn accept(
             Json(json!(ApiError::new("unauthorized", e.to_string()))),
         )
     })?;
+    // Verify signature
+    let expected_message = format!("accept:offer:{}", id);
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+    {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+    }
     if auth.address != body.counterparty_address {
         return Err((
             StatusCode::FORBIDDEN,
@@ -269,6 +283,13 @@ pub async fn cancel(
                     ))),
                 )
             })?;
+            // Verify signature
+            let expected_message = format!("cancel:offer:{}", id);
+            if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+                .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+            {
+                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+            }
             if auth.address != o.creator_address {
                 return Err((
                     StatusCode::FORBIDDEN,

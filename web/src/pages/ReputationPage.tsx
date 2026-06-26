@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api, type Reputation } from "../api";
 import { money, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
@@ -143,12 +143,12 @@ function ConnectPrompt() {
 function ReputationDisplay({ address }: { address: string }) {
 	const [state, setState] = useState<LoadState<Reputation>>({ loading: true });
 
-	if (state.loading) {
+	useEffect(() => {
 		api
 			.reputation(address)
 			.then((d) => setState({ data: d, loading: false }))
 			.catch((e) => setState({ error: e.message, loading: false }));
-	}
+	}, [address]);
 
 	if (state.loading) return <SkeletonStats />;
 	if (state.error) return <p className="muted error-text">{state.error}</p>;

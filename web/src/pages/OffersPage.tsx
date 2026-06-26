@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api, type Offer } from "../api";
 import { money, sompi, relativeTime, badge } from "../helpers";
 import type { LoadState } from "../helpers";
@@ -102,7 +102,7 @@ function BrowseOffers() {
 	const [filtered, setFiltered] = useState<Offer[]>([]);
 	const address = useAddress();
 
-	if (offers.loading) {
+	useEffect(() => {
 		api
 			.offers()
 			.then((d) => {
@@ -110,7 +110,7 @@ function BrowseOffers() {
 				setFiltered(d.offers);
 			})
 			.catch((e) => setOffers({ error: e.message, loading: false }));
-	}
+	}, []);
 
 	if (offers.loading) return <SkeletonOffers />;
 	if (offers.error) return <p className="muted error-text">{offers.error}</p>;
@@ -250,14 +250,14 @@ function MyOffers({ address }: { address: string }) {
 	const [offers, setOffers] = useState<LoadState<Offer[]>>({ loading: true });
 	const [filter, setFilter] = useState("all");
 
-	if (offers.loading) {
+	useEffect(() => {
 		api
 			.offers(address)
 			.then((d) => {
 				setOffers({ data: d.offers, loading: false });
 			})
 			.catch((e) => setOffers({ error: e.message, loading: false }));
-	}
+	}, [address]);
 
 	const filtered = offers.data?.filter((o) => filter === "all" || o.status === filter);
 
