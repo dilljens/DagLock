@@ -19,12 +19,12 @@ cd daglock/cli && cargo build --release
 All commands take `--api-url` to point at a DagLock indexer:
 
 ```bash
-daglock-cli --api-url https://api.daglock.io <command>
+daglock-cli --api-url https://api.daglock.com <command>
 ```
 
 Set a default in your config:
 ```bash
-daglock-cli config --api-url https://api.daglock.io
+daglock-cli config --api-url https://api.daglock.com
 ```
 
 ## Commands

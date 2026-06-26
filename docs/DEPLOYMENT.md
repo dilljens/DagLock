@@ -11,7 +11,7 @@ export DAGLOCK_MESSAGE_KEY
 ./scripts/deploy-mainnet.sh
 
 # Or custom settings:
-CORS_ORIGIN=https://daglock.io DAGLOCK_MESSAGE_KEY=$KEY ./scripts/deploy-mainnet.sh
+CORS_ORIGIN=https://daglock.com DAGLOCK_MESSAGE_KEY=$KEY ./scripts/deploy-mainnet.sh
 ```
 
 ## Configuration Reference
@@ -136,10 +136,10 @@ sudo systemctl start daglock
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name api.daglock.io;
+    server_name api.daglock.com;
 
-    ssl_certificate /etc/letsencrypt/live/api.daglock.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.daglock.io/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.daglock.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.daglock.com/privkey.pem;
 
     # Rate limiting
     limit_req_zone $binary_remote_addr zone=api:10m rate=100r/s;
@@ -179,20 +179,20 @@ npm install
 npm run build
 
 # Copy dist/ to nginx or serve statically
-cp -r dist/* /var/www/daglock.io/
+cp -r dist/* /var/www/daglock.com/
 ```
 
 ## 9. Verify Deployment
 
 ```bash
 # Health check
-curl https://api.daglock.io/v1/health
+curl https://api.daglock.com/v1/health
 
 # Stats
-curl https://api.daglock.io/v1/stats
+curl https://api.daglock.com/v1/stats
 
 # Test CLI
-./target/release/daglock-cli --api-url https://api.daglock.io status --id esc_test
+./target/release/daglock-cli --api-url https://api.daglock.com status --id esc_test
 ```
 
 ## 10. Monitor Logs

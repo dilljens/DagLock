@@ -11,7 +11,7 @@
                           Users                                       
                      
     Telegram        Web             CLI                        
-    @DagLock_bot     daglock.io      daglock-cli                
+    @DagLock_bot     daglock.com      daglock-cli                
                      
                                                                    
                                  

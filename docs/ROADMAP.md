@@ -11,7 +11,7 @@
 
 **168 tests pass across 6 crateworks (Rust + web).**
 **CI: green** — zero warnings, all checks pass.
-**Production: live** at `daglock-production.up.railway.app` (template hashes visible, offline/MockVerifier mode).
+**Testnet:** live at `api.daglock.com` (offline/MockVerifier mode — no real wRPC node connected).
 **Security audit:** All 7 critical/high findings fixed.
 
 ---

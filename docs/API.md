@@ -2,7 +2,7 @@
 
 > Reference for the HTTP API exposed by the DagLock indexer service.
 
-Base URL: `https://api.daglock.io/v1` (production) / `http://localhost:8543/v1` (development)
+Base URL: `https://api.daglock.com/v1` (production) / `http://localhost:8543/v1` (development)
 
 ---
 

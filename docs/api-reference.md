@@ -1,6 +1,6 @@
 # DagLock API Reference
 
-**Base URL:** `https://daglock-production.up.railway.app`
+**Base URL:** `https://api.daglock.com`
 
 **Version:** 1.0.0
 
@@ -78,7 +78,7 @@ X-Daglock-Message: <signed message>
 ### Health Check
 
 ```bash
-curl https://daglock-production.up.railway.app/v1/health
+curl https://api.daglock.com/v1/health
 ```
 
 Response:
@@ -95,7 +95,7 @@ Response:
 ### Create Escrow
 
 ```bash
-curl -X POST https://daglock-production.up.railway.app/v1/escrows \
+curl -X POST https://api.daglock.com/v1/escrows \
   -H "Content-Type: application/json" \
   -d '{
     "lock_tx_id": "abc123",
@@ -121,7 +121,7 @@ Response:
 ### Create Offer
 
 ```bash
-curl -X POST https://daglock-production.up.railway.app/v1/offers \
+curl -X POST https://api.daglock.com/v1/offers \
   -H "Content-Type: application/json" \
   -d '{
     "creator_address": "kaspa:qdyzkrhd74v6cetrv4fhv",
@@ -145,7 +145,7 @@ Response:
 ### Get Reputation
 
 ```bash
-curl https://daglock-production.up.railway.app/v1/reputation/kaspa:qdyzkrhd74v6cetrv4fhv
+curl https://api.daglock.com/v1/reputation/kaspa:qdyzkrhd74v6cetrv4fhv
 ```
 
 Response:

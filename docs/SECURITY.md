@@ -122,7 +122,7 @@ A comprehensive codebase audit was performed on June 6, 2026, covering contracts
 
 | ID | Finding | Location | Status |
 |----|---------|----------|--------|
-| **S1** | **MockVerifier used in production** — `WrpcVerifier.verify_utxo_exists()` always returns `Ok(true)` even with real wRPC client. No actual on-chain UTXO verification occurs at settlement/refund. Attackers can settle/refund escrows that never existed on-chain. | `indexer/src/verification.rs`, `indexer/src/main.rs` | ✅ Fixed June 2026 |
+| **S1** | **MockVerifier used in production** — `WrpcVerifier.verify_utxo_exists()` always returns `Ok(true)` even with real wRPC client. No actual on-chain UTXO verification occurs at settlement/refund. Attackers can settle/refund escrows that never existed on-chain. | `indexer/src/verification.rs`, `indexer/src/main.rs` | ✅ Code fix merged June 2026 (WrpcVerifier with real `get_utxos_by_addresses`). Not yet active — requires a wRPC-connected Kaspa node. |
 | **S2** | **KRC-20 fee validation only boolean** — `feePaid` loop checks if *any* output pays treasury, not the *correct amount* (0.5%). Fee can be 1 sompi. Comment says "enforced off-chain" but off-chain checks are bypassable. | `contracts/src/daglock_krc20.sil` | ✅ Fixed June 2026 |
 | **S3** | **KRC-20 doesn't verify KCC-20 output ownership** — `release()`/`swap()` don't verify the KCC-20 output transitions to the correct new owner (seller). Only checks fee paid. KCC-20's `checkSigs()` validates DagLock authorization but DagLock doesn't validate KCC-20 output state. | `contracts/src/daglock_krc20.sil` | ✅ Fixed June 23, 2026 (ICC pattern) |
 
@@ -188,7 +188,7 @@ After mainnet launch (June 30), the following monitoring must be active:
 
 | Check | Frequency | Tool |
 |-------|-----------|------|
-| Indexer health endpoint (`/v1/health`) | Every 30s | Railway / custom |
+| Indexer health endpoint (`/v1/health`) | Every 30s | Custom monitoring |
 | wRPC connection status | Every 10s | Indexer listener logs |
 | Escrow settlement rate | Hourly | Dashboard / SQL |
 | Error rate on `/v1/escrows/*/settle` | Real-time | Structured logs |

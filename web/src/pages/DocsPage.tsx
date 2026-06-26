@@ -140,23 +140,23 @@ function Code({ children }: { children: string }) {
 const FAQ_ITEMS = [
 	{
 		q: "What is DagLock?",
-		a: "DagLock is a trustless escrow and atomic swap protocol on Kaspa L1. It uses SilverScript covenants to enforce trade terms — no admin keys, no backdoors. Funds are locked in covenant UTXOs and only released when conditions are met.",
+		a: "DagLock is a covenant-based escrow protocol on Kaspa L1. It uses SilverScript covenants to enforce trade terms — no admin keys, no backdoors. Funds are locked in covenant UTXOs and only released when conditions are met.",
 	},
 	{
-		q: "What is a trustless escrow on Kaspa?",
-		a: "A trustless escrow on Kaspa uses SilverScript covenants to enforce trade terms without a trusted third party. Funds are locked in a covenant UTXO and only released when both parties sign or a timeout is reached. The covenant enforces all rules — DagLock cannot access your funds.",
+		q: "What is a covenant escrow on Kaspa?",
+		a: "A covenant escrow on Kaspa uses SilverScript covenants to enforce trade terms without a trusted third party. Funds are locked in a covenant UTXO and only released when both parties sign or a timeout is reached. The covenant enforces all rules — DagLock cannot access your escrowed funds.",
 	},
 	{
 		q: "How much does DagLock charge in fees?",
-		a: "DagLock charges a 0.5% protocol fee (1/200) on escrow settlements. This is enforced by the SilverScript covenant at the protocol level — DagLock cannot change or waive it. Vault withdrawals incur a 0.1% fee. Both fees go to the DagLock treasury.",
+		a: "DagLock charges a 0.5% protocol fee (1/200) on escrow settlements, enforced by the SilverScript covenant at the contract level. Vault withdrawals incur a 0.1% fee. Both fees go to the DagLock treasury.",
 	},
 	{
 		q: "What assets does DagLock support?",
-		a: "DagLock supports native KAS and KRC-20 tokens on Kaspa L1. The KRC-20 integration uses the Inter-Covenant Communication (ICC) pattern for secure token transfers. Cross-chain HTLC support for BTC and LTC is planned.",
+		a: "On testnet, DagLock supports KAS and KRC-20 tokens. Mainnet KRC-20 support will be available after the Toccata hard fork activates. Cross-chain HTLC support for BTC and LTC is planned.",
 	},
 	{
 		q: "Is DagLock audited?",
-		a: "Yes. DagLock completed a comprehensive security audit on June 6, 2026 covering all 6 covenants (KAS, KRC-20, Arbiter, Vault, VaultSoftlock, VaultMultisig), the Rust indexer, CLI, web UI, Telegram bot, and WASM SDK. All 7 critical and high security findings have been resolved.",
+		a: "Yes. DagLock completed a comprehensive internal security review on June 6, 2026 covering all 6 covenants (KAS, KRC-20, Arbiter, Vault, VaultSoftlock, VaultMultisig), the Rust indexer, CLI, web UI, Telegram bot, and WASM SDK. All 7 critical and high security findings have been resolved.",
 	},
 	{
 		q: "How do KRC-20 token swaps work?",
@@ -168,11 +168,11 @@ const FAQ_ITEMS = [
 	},
 	{
 		q: "Does DagLock have admin keys?",
-		a: "No. DagLock has zero admin keys or backdoors. The SilverScript covenants enforce all rules at the protocol level. DagLock cannot access, freeze, or confiscate funds under any circumstances.",
+		a: "No. The covenant architecture has no admin keys — DagLock cannot access escrowed funds. The treasury key collects protocol fees only.",
 	},
 	{
 		q: "How is DagLock different from traditional escrow?",
-		a: "Traditional escrow relies on a trusted third party (lawyer, platform) to hold and release funds. DagLock replaces the trusted third party with a SilverScript covenant that enforces the terms automatically. No human intervention, no counterparty risk, no admin keys.",
+		a: "Traditional escrow relies on a trusted third party (lawyer, platform) to hold and release funds. DagLock replaces the trusted third party with a SilverScript covenant that enforces the terms automatically. No human intervention, no counterparty risk.",
 	},
 	{
 		q: "How to get started with DagLock?",
@@ -288,7 +288,7 @@ POST /v1/apps/register`}</Code>
 
 			<Section title="Fees">
 				<p className="muted">
-					Both fees are enforced by the SilverScript covenant at the protocol level. DagLock cannot
+					Both fees are enforced by the SilverScript covenant at the contract level. DagLock cannot
 					change or waive them.
 				</p>
 				<Code>{`Escrow settlement: 0.5% (1/200 of the deposited amount)

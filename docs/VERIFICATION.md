@@ -31,7 +31,7 @@ Compare the output template hash with the one claimed by the indexer at `/v1/net
 
 ```bash
 # Ask the indexer to compile a specific template
-curl -s https://api.daglock.io/v1/compile \
+curl -s https://api.daglock.com/v1/compile \
   -H "Content-Type: application/json" \
   -d '{"template":"daglock","params":{"buyer_key":"0000000000000000000000000000000000000000000000000000000000000000","seller_key":"0000000000000000000000000000000000000000000000000000000000000000","trade_hash":"0000000000000000000000000000000000000000000000000000000000000000","timeout":"2000000000","treasury_key":"0000000000000000000000000000000000000000000000000000000000000000"}}'
 
