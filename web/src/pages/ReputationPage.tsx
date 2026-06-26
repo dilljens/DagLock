@@ -19,64 +19,110 @@ export function ReputationPage() {
 		<>
 			<Helmet>
 				<title>Reputation — DagLock</title>
-				<meta name="description" content="On-chain trade reputation scores derived from verifiable escrow history on Kaspa." />
+				<meta
+					name="description"
+					content="On-chain trade reputation scores derived from verifiable escrow history on Kaspa."
+				/>
 				<link rel="canonical" href="https://daglock.com/reputation" />
 			</Helmet>
 			<div>
 				<div className="page-header">
 					<h1> Reputation</h1>
-				<p>On-chain trading history, vouches, and identity verification.</p>
-			</div>
-
-			{/* How reputation works — collapsible */}
-			<details className="panel" style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}>
-				<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
-					 How Reputation Works
-				</summary>
-				<div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
-					<p style={{ margin: "0 0 8px" }}>
-						DagLock uses the <strong>Beta reputation system</strong> (Josang 2002), an academic standard for
-						binary-satisfaction reputation. Your score starts at <strong>1.0</strong> (new address) and grows
-						toward <strong>5.0</strong> as you complete trades.
-					</p>
-					<p style={{ margin: "0 0 8px" }}>
-						<strong>What affects your score:</strong>
-					</p>
-					<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
-						<li><strong>Settled trades</strong> — increase your score (weighted 2x for the last 90 days)</li>
-						<li><strong>Refunds</strong> — neutral (you didn't fail, you just didn't complete)</li>
-						<li><strong>Disputes</strong> — decrease your score (dispute rate &gt; 5% starts to hurt)</li>
-						<li><strong>Trading volume</strong> — logarithmic bonus for high-volume addresses</li>
-						<li><strong>Account age</strong> — small bonus for long-standing addresses (up to 2 years)</li>
-						<li><strong>Vouches</strong> — weighted by the vouch giver's own reputation (EigenTrust-lite)</li>
-					</ul>
-					<p style={{ margin: 0 }}>
-						<strong>Wash trading signal:</strong> If &gt;90% of your volume is with a single counterparty,
-						a warning appears. This is not penalized in the score — it's informational for other traders.
-					</p>
+					<p>On-chain trading history, vouches, and identity verification.</p>
 				</div>
-			</details>
-			<div className="tab-bar">
-				{wallet.connected && (
-					<button className={`tab-btn ${tab === "my-reputation" ? "tab-btn--active" : ""}`}
-						onClick={() => setTab("my-reputation")}>My Reputation</button>
-				)}
-				<button className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("lookup")}>Lookup</button>
-				{wallet.connected && (
-					<>
-						<button className={`tab-btn ${tab === "vouch" ? "tab-btn--active" : ""}`}
-							onClick={() => setTab("vouch")}>Vouch</button>
-						<button className={`tab-btn ${tab === "identity" ? "tab-btn--active" : ""}`}
-							onClick={() => setTab("identity")}>Link Telegram</button>
-					</>
-				)}
+
+				{/* How reputation works — collapsible */}
+				<details
+					className="panel"
+					style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}
+				>
+					<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
+						How Reputation Works
+					</summary>
+					<div
+						style={{
+							marginTop: "12px",
+							fontSize: "13px",
+							color: "var(--color-text-secondary)",
+							lineHeight: 1.7,
+						}}
+					>
+						<p style={{ margin: "0 0 8px" }}>
+							DagLock uses the <strong>Beta reputation system</strong> (Josang 2002), an academic
+							standard for binary-satisfaction reputation. Your score starts at <strong>1.0</strong>{" "}
+							(new address) and grows toward <strong>5.0</strong> as you complete trades.
+						</p>
+						<p style={{ margin: "0 0 8px" }}>
+							<strong>What affects your score:</strong>
+						</p>
+						<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
+							<li>
+								<strong>Settled trades</strong> — increase your score (weighted 2x for the last 90
+								days)
+							</li>
+							<li>
+								<strong>Refunds</strong> — neutral (you didn't fail, you just didn't complete)
+							</li>
+							<li>
+								<strong>Disputes</strong> — decrease your score (dispute rate &gt; 5% starts to
+								hurt)
+							</li>
+							<li>
+								<strong>Trading volume</strong> — logarithmic bonus for high-volume addresses
+							</li>
+							<li>
+								<strong>Account age</strong> — small bonus for long-standing addresses (up to 2
+								years)
+							</li>
+							<li>
+								<strong>Vouches</strong> — weighted by the vouch giver's own reputation
+								(EigenTrust-lite)
+							</li>
+						</ul>
+						<p style={{ margin: 0 }}>
+							<strong>Wash trading signal:</strong> If &gt;90% of your volume is with a single
+							counterparty, a warning appears. This is not penalized in the score — it's
+							informational for other traders.
+						</p>
+					</div>
+				</details>
+				<div className="tab-bar">
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "my-reputation" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("my-reputation")}
+						>
+							My Reputation
+						</button>
+					)}
+					<button
+						className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("lookup")}
+					>
+						Lookup
+					</button>
+					{wallet.connected && (
+						<>
+							<button
+								className={`tab-btn ${tab === "vouch" ? "tab-btn--active" : ""}`}
+								onClick={() => setTab("vouch")}
+							>
+								Vouch
+							</button>
+							<button
+								className={`tab-btn ${tab === "identity" ? "tab-btn--active" : ""}`}
+								onClick={() => setTab("identity")}
+							>
+								Link Telegram
+							</button>
+						</>
+					)}
+				</div>
+				{tab === "my-reputation" && address && <ReputationDisplay address={address} />}
+				{tab === "lookup" && <ReputationLookup />}
+				{tab === "vouch" && (wallet.connected ? <VouchSection /> : <ConnectPrompt />)}
+				{tab === "identity" && (wallet.connected ? <IdentitySection /> : <ConnectPrompt />)}
 			</div>
-			{tab === "my-reputation" && address && <ReputationDisplay address={address} />}
-			{tab === "lookup" && <ReputationLookup />}
-			{tab === "vouch" && (wallet.connected ? <VouchSection /> : <ConnectPrompt />)}
-			{tab === "identity" && (wallet.connected ? <IdentitySection /> : <ConnectPrompt />)}
-		</div>
 		</>
 	);
 }
@@ -98,7 +144,8 @@ function ReputationDisplay({ address }: { address: string }) {
 	const [state, setState] = useState<LoadState<Reputation>>({ loading: true });
 
 	if (state.loading) {
-		api.reputation(address)
+		api
+			.reputation(address)
 			.then((d) => setState({ data: d, loading: false }))
 			.catch((e) => setState({ error: e.message, loading: false }));
 	}
@@ -130,30 +177,64 @@ function ReputationDisplay({ address }: { address: string }) {
 			</div>
 			<div className="panel">
 				<div className="stack">
-					<div className="row"><span>Recent trades (90d)</span><strong>{d.recent_trade_count}</strong></div>
-					<div className="row"><span>Settled</span><strong>{d.settled_count}</strong></div>
-					<div className="row"><span>Refunded</span><strong>{d.refunded_count}</strong></div>
-					<div className="row"><span>Disputed</span><strong>{d.disputed_count}</strong></div>
-					<div className="row"><span>Refund rate</span><strong>{(d.refund_rate * 100).toFixed(1)}%</strong></div>
-					<div className="row"><span>Dispute rate</span><strong>{(d.dispute_rate * 100).toFixed(1)}%</strong></div>
-					<div className="row"><span>Vouches received</span><strong>{d.vouches_received}</strong></div>
-					<div className="row"><span>Vouches given</span><strong>{d.vouches_given}</strong></div>
+					<div className="row">
+						<span>Recent trades (90d)</span>
+						<strong>{d.recent_trade_count}</strong>
+					</div>
+					<div className="row">
+						<span>Settled</span>
+						<strong>{d.settled_count}</strong>
+					</div>
+					<div className="row">
+						<span>Refunded</span>
+						<strong>{d.refunded_count}</strong>
+					</div>
+					<div className="row">
+						<span>Disputed</span>
+						<strong>{d.disputed_count}</strong>
+					</div>
+					<div className="row">
+						<span>Refund rate</span>
+						<strong>{(d.refund_rate * 100).toFixed(1)}%</strong>
+					</div>
+					<div className="row">
+						<span>Dispute rate</span>
+						<strong>{(d.dispute_rate * 100).toFixed(1)}%</strong>
+					</div>
+					<div className="row">
+						<span>Vouches received</span>
+						<strong>{d.vouches_received}</strong>
+					</div>
+					<div className="row">
+						<span>Vouches given</span>
+						<strong>{d.vouches_given}</strong>
+					</div>
 					{d.vouch_score != null && (
-						<div className="row"><span>Vouch score</span><strong>{d.vouch_score.toFixed(2)}/5</strong></div>
+						<div className="row">
+							<span>Vouch score</span>
+							<strong>{d.vouch_score.toFixed(2)}/5</strong>
+						</div>
 					)}
 					{d.telegram_handle && (
-						<div className="row"><span>Telegram</span><strong>{d.telegram_handle}</strong></div>
+						<div className="row">
+							<span>Telegram</span>
+							<strong>{d.telegram_handle}</strong>
+						</div>
 					)}
 					{d.trading_concentration > 0.9 && (
 						<div className="row">
 							<span> Wash trading signal</span>
-							<strong style={{ color: "#ff7b7b" }}>{(d.trading_concentration * 100).toFixed(0)}% with one counterparty</strong>
+							<strong style={{ color: "#ff7b7b" }}>
+								{(d.trading_concentration * 100).toFixed(0)}% with one counterparty
+							</strong>
 						</div>
 					)}
 					{d.mediator_stats && (
 						<div className="row">
 							<span>Mediator score</span>
-							<strong>{d.mediator_stats.score.toFixed(2)}/5 ({d.mediator_stats.disputes_mediated} cases)</strong>
+							<strong>
+								{d.mediator_stats.score.toFixed(2)}/5 ({d.mediator_stats.disputes_mediated} cases)
+							</strong>
 						</div>
 					)}
 				</div>
@@ -181,8 +262,7 @@ function ReputationLookup() {
 	return (
 		<div>
 			<form className="form" onSubmit={handleSubmit} style={{ marginBottom: "16px" }}>
-				<input value={addr} onChange={(e) => setAddr(e.target.value)}
-					placeholder="kaspa address" />
+				<input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="kaspa address" />
 				<button className="button primary" type="submit" disabled={data.loading}>
 					{data.loading ? "Loading…" : "Check"}
 				</button>
@@ -207,7 +287,11 @@ function VouchSection() {
 		if (!subject.startsWith("kaspa:")) return;
 		setStatus("loading");
 		try {
-			const auth = { address, signature: await sign(`vouch:${subject}`), message: `vouch:${subject}` };
+			const auth = {
+				address,
+				signature: await sign(`vouch:${subject}`),
+				message: `vouch:${subject}`,
+			};
 			await api.vouch(subject, auth, undefined, note || undefined);
 			setStatus("done");
 			notify("success", "Vouch created!");
@@ -217,13 +301,14 @@ function VouchSection() {
 		}
 	}
 
-	if (status === "done") return (
-		<EmptyState
-			icon="✅"
-			title="Vouch created!"
-			description={`You vouched for ${subject.slice(0, 24)}…`}
-		/>
-	);
+	if (status === "done")
+		return (
+			<EmptyState
+				icon="✅"
+				title="Vouch created!"
+				description={`You vouched for ${subject.slice(0, 24)}…`}
+			/>
+		);
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit}>
@@ -231,12 +316,18 @@ function VouchSection() {
 				Vouch for someone's reliability. Your own reputation score is attached.
 			</p>
 			<FormField label="Subject address">
-				<input value={subject} onChange={(e) => setSubject(e.target.value)}
-					placeholder="kaspa:..." />
+				<input
+					value={subject}
+					onChange={(e) => setSubject(e.target.value)}
+					placeholder="kaspa:..."
+				/>
 			</FormField>
 			<FormField label="Note (optional)">
-				<input value={note} onChange={(e) => setNote(e.target.value)}
-					placeholder="Why do you vouch for them?" />
+				<input
+					value={note}
+					onChange={(e) => setNote(e.target.value)}
+					placeholder="Why do you vouch for them?"
+				/>
 			</FormField>
 			<button className="button primary" type="submit" disabled={status === "loading"}>
 				{status === "loading" ? "Creating…" : "Create Vouch"}
@@ -255,7 +346,8 @@ function IdentitySection() {
 				Link your Telegram handle to your Kaspa address. This shows in your reputation profile.
 			</p>
 			<div style={{ fontSize: "13px", color: "#88b888", padding: "0 0 12px" }}>
-				Address: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
+				Address:{" "}
+				<code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 			</div>
 			<LinkTelegramForm onDone={() => {}} />
 		</div>

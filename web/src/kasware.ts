@@ -19,11 +19,11 @@ export type WalletState = {
 /** Generate a dummy signature for testnet mock auth. */
 export function mockSignature(message: string): string {
 	// deterministic "signature" for dev mode — any hex string works with --mock-auth
-	return "ff" + Array.from(new TextEncoder().encode(message))
+	return `ff${Array.from(new TextEncoder().encode(message))
 		.map((b) => b.toString(16).padStart(2, "0"))
 		.join("")
 		.slice(0, 128)
-		.padEnd(128, "0");
+		.padEnd(128, "0")}`;
 }
 
 interface KaswareProvider {

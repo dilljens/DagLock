@@ -21,7 +21,11 @@ describe("EscrowActionForm", () => {
 
 	describe("settle", () => {
 		it("renders auth fields for settle", () => {
-			render(<WithWallet><EscrowActionForm action="settle" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="settle" />
+				</WithWallet>,
+			);
 			expect(screen.getByPlaceholderText("esc_...")).toBeInTheDocument();
 			expect(screen.getByPlaceholderText("kaspa:...")).toBeInTheDocument();
 		});
@@ -33,7 +37,11 @@ describe("EscrowActionForm", () => {
 				escrow_id: "esc_1",
 			});
 
-			render(<WithWallet><EscrowActionForm action="settle" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="settle" />
+				</WithWallet>,
+			);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -54,7 +62,11 @@ describe("EscrowActionForm", () => {
 
 		it("shows error when auth missing", async () => {
 			const user = userEvent.setup();
-			render(<WithWallet><EscrowActionForm action="settle" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="settle" />
+				</WithWallet>,
+			);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -71,7 +83,11 @@ describe("EscrowActionForm", () => {
 	describe("cancel", () => {
 		it("shows ConfirmDialog on submit", async () => {
 			const user = userEvent.setup();
-			render(<WithWallet><EscrowActionForm action="cancel" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="cancel" />
+				</WithWallet>,
+			);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -94,7 +110,11 @@ describe("EscrowActionForm", () => {
 				escrow_id: "esc_1",
 			});
 
-			render(<WithWallet><EscrowActionForm action="cancel" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="cancel" />
+				</WithWallet>,
+			);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -116,7 +136,11 @@ describe("EscrowActionForm", () => {
 
 		it("dismisses ConfirmDialog on cancel", async () => {
 			const user = userEvent.setup();
-			render(<WithWallet><EscrowActionForm action="cancel" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="cancel" />
+				</WithWallet>,
+			);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -130,7 +154,7 @@ describe("EscrowActionForm", () => {
 
 			const dialog = document.querySelector('[role="dialog"]');
 			expect(dialog).not.toBeNull();
-			const dismissBtn = dialog!.querySelector(".button:not(.primary)");
+			const dismissBtn = dialog?.querySelector(".button:not(.primary)");
 			expect(dismissBtn).not.toBeNull();
 			await user.click(dismissBtn!);
 
@@ -144,7 +168,11 @@ describe("EscrowActionForm", () => {
 	describe("refund", () => {
 		it("shows ConfirmDialog for refund", async () => {
 			const user = userEvent.setup();
-			render(<WithWallet><EscrowActionForm action="refund" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="refund" />
+				</WithWallet>,
+			);
 
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
@@ -160,7 +188,11 @@ describe("EscrowActionForm", () => {
 
 	describe("dispute", () => {
 		it("shows reason field for dispute", () => {
-			render(<WithWallet><EscrowActionForm action="dispute" /></WithWallet>);
+			render(
+				<WithWallet>
+					<EscrowActionForm action="dispute" />
+				</WithWallet>,
+			);
 			expect(screen.getByPlaceholderText("Why are you disputing?")).toBeInTheDocument();
 		});
 	});

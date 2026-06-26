@@ -23,14 +23,12 @@ export function mockApi() {
 		refundEscrow: vi.fn().mockResolvedValue({ status: "refunded", escrow_id: "esc_1" }),
 		disputeEscrow: vi.fn().mockResolvedValue({ status: "disputed", escrow_id: "esc_1" }),
 		cancelEscrow: vi.fn().mockResolvedValue({ status: "cancelled", escrow_id: "esc_1" }),
-		swapEscrow: vi
-			.fn()
-			.mockResolvedValue({
-				status: "settled",
-				escrow_id: "esc_1",
-				method: "swap",
-				preimage_hash: "abc123",
-			}),
+		swapEscrow: vi.fn().mockResolvedValue({
+			status: "settled",
+			escrow_id: "esc_1",
+			method: "swap",
+			preimage_hash: "abc123",
+		}),
 		generateSwap: vi.fn().mockResolvedValue({ secret: "secret123", hash: "hash456" }),
 
 		// Messages

@@ -21,7 +21,11 @@ describe("DisputeWithEvidenceForm", () => {
 	});
 
 	it("renders all form fields", () => {
-		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
+		render(
+			<WithWallet>
+				<DisputeWithEvidenceForm onDone={onDone} />
+			</WithWallet>,
+		);
 		expect(screen.getByPlaceholderText("esc_...")).toBeInTheDocument();
 		expect(screen.getByPlaceholderText("Why are you disputing?")).toBeInTheDocument();
 		expect(screen.getByPlaceholderText(/Describe what happened/)).toBeInTheDocument();
@@ -35,7 +39,11 @@ describe("DisputeWithEvidenceForm", () => {
 			escrow_id: "esc_1",
 		});
 
-		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
+		render(
+			<WithWallet>
+				<DisputeWithEvidenceForm onDone={onDone} />
+			</WithWallet>,
+		);
 
 		const escrowInput = screen.getByPlaceholderText("esc_...");
 		await user.type(escrowInput, "esc_1");
@@ -59,7 +67,11 @@ describe("DisputeWithEvidenceForm", () => {
 
 	it("shows error when auth missing", async () => {
 		const user = userEvent.setup();
-		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
+		render(
+			<WithWallet>
+				<DisputeWithEvidenceForm onDone={onDone} />
+			</WithWallet>,
+		);
 
 		const escrowInput = screen.getByPlaceholderText("esc_...");
 		await user.type(escrowInput, "esc_1");
@@ -77,7 +89,11 @@ describe("DisputeWithEvidenceForm", () => {
 
 	it("shows error when reason missing", async () => {
 		const user = userEvent.setup();
-		render(<WithWallet><DisputeWithEvidenceForm onDone={onDone} /></WithWallet>);
+		render(
+			<WithWallet>
+				<DisputeWithEvidenceForm onDone={onDone} />
+			</WithWallet>,
+		);
 
 		const escrowInput = screen.getByPlaceholderText("esc_...");
 		await user.type(escrowInput, "esc_1");

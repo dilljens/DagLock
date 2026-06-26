@@ -1,10 +1,9 @@
 import { z } from "zod";
 
 /** Valid Kaspa address starts with 'kaspa:' and is at least 15 chars. */
-const kaspaAddress = z.string().refine(
-	(addr) => addr.startsWith("kaspa:") && addr.length >= 15,
-	{ message: "Must be a valid Kaspa address starting with 'kaspa:'" },
-);
+const kaspaAddress = z.string().refine((addr) => addr.startsWith("kaspa:") && addr.length >= 15, {
+	message: "Must be a valid Kaspa address starting with 'kaspa:'",
+});
 
 /** Amount in sompi: positive integer, max 1M KAS. */
 const sompiAmount = z

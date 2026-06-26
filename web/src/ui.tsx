@@ -34,16 +34,30 @@ export function LookupResult<T>({
 	render: (data: T) => React.ReactNode;
 	skeleton?: React.ReactNode;
 }) {
-	if (loading) return skeleton || <div className="skeleton-card"><div className="skeleton" style={{ height: 48 }} /></div>;
+	if (loading)
+		return (
+			skeleton || (
+				<div className="skeleton-card">
+					<div className="skeleton" style={{ height: 48 }} />
+				</div>
+			)
+		);
 	if (error) return <p className="muted error-text">{error}</p>;
-	if (!data) return <p className="muted" style={{ textAlign: "center", padding: "32px 0" }}>Enter an ID to inspect live state.</p>;
+	if (!data)
+		return (
+			<p className="muted" style={{ textAlign: "center", padding: "32px 0" }}>
+				Enter an ID to inspect live state.
+			</p>
+		);
 	return <div className="result">{render(data)}</div>;
 }
 
 export function SkeletonStats() {
 	return (
 		<div className="skeleton-stats">
-			{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton" />)}
+			{Array.from({ length: 4 }).map((_, i) => (
+				<div key={i} className="skeleton" />
+			))}
 		</div>
 	);
 }
@@ -72,7 +86,9 @@ export function SkeletonOffers() {
 export function SkeletonTable({ rows = 5 }: { rows?: number }) {
 	return (
 		<div className="skeleton-table">
-			{Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton" />)}
+			{Array.from({ length: rows }).map((_, i) => (
+				<div key={i} className="skeleton" />
+			))}
 		</div>
 	);
 }
@@ -153,7 +169,13 @@ export function ConfirmDialog({
 	onCancel: () => void;
 }) {
 	return (
-		<ConfirmDialogInner title={title} message={message} confirmLabel={confirmLabel} onConfirm={onConfirm} onCancel={onCancel} />
+		<ConfirmDialogInner
+			title={title}
+			message={message}
+			confirmLabel={confirmLabel}
+			onConfirm={onConfirm}
+			onCancel={onCancel}
+		/>
 	);
 }
 
@@ -177,12 +199,21 @@ export function Dialog({
 		<DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
 			<DialogPrimitive.Portal>
 				<DialogPrimitive.Overlay className="dialog-overlay" />
-				<DialogPrimitive.Content className="dialog-content" aria-describedby={description ? "dialog-desc" : undefined}>
+				<DialogPrimitive.Content
+					className="dialog-content"
+					aria-describedby={description ? "dialog-desc" : undefined}
+				>
 					<DialogPrimitive.Title className="dialog-title">{title}</DialogPrimitive.Title>
-					{description && <DialogPrimitive.Description id="dialog-desc" className="dialog-description">{description}</DialogPrimitive.Description>}
+					{description && (
+						<DialogPrimitive.Description id="dialog-desc" className="dialog-description">
+							{description}
+						</DialogPrimitive.Description>
+					)}
 					{children}
 					<DialogPrimitive.Close asChild>
-						<button className="dialog-close" aria-label="Close">✕</button>
+						<button className="dialog-close" aria-label="Close">
+							✕
+						</button>
 					</DialogPrimitive.Close>
 				</DialogPrimitive.Content>
 			</DialogPrimitive.Portal>
@@ -205,10 +236,19 @@ function ConfirmDialogInner({
 	onCancel: () => void;
 }) {
 	return (
-		<Dialog open={true} onOpenChange={(open) => { if (!open) onCancel(); }} title={title} description={message}>
+		<Dialog
+			open={true}
+			onOpenChange={(open) => {
+				if (!open) onCancel();
+			}}
+			title={title}
+			description={message}
+		>
 			<div className="confirm-actions" style={{ marginTop: 20 }}>
 				<DialogPrimitive.Close asChild>
-					<button className="button" type="button">Cancel</button>
+					<button className="button" type="button">
+						Cancel
+					</button>
 				</DialogPrimitive.Close>
 				<button className="button primary" type="button" onClick={onConfirm}>
 					{confirmLabel}

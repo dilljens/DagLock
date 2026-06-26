@@ -19,53 +19,67 @@ export function OffersPage() {
 		<>
 			<Helmet>
 				<title>Offer Board — DagLock</title>
-				<meta name="description" content="Browse open escrow offers, find counterparties for KAS and KRC-20 trades on Kaspa." />
+				<meta
+					name="description"
+					content="Browse open escrow offers, find counterparties for KAS and KRC-20 trades on Kaspa."
+				/>
 				<link rel="canonical" href="https://daglock.com/offers" />
 			</Helmet>
 			<div>
 				<div className="page-header">
 					<h1>Offers</h1>
-				<p>Browse public trade offers or create your own.</p>
-			</div>
+					<p>Browse public trade offers or create your own.</p>
+				</div>
 
-			<div className="tab-bar">
-				<button
-					className={`tab-btn ${tab === "browse" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("browse")}
-				>
-					Browse
-				</button>
-				<button
-					className={`tab-btn ${tab === "my-offers" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("my-offers")}
-				>
-					My Offers
-				</button>
-				<button
-					className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("create")}
-				>
-					Create
-				</button>
-			</div>
+				<div className="tab-bar">
+					<button
+						className={`tab-btn ${tab === "browse" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("browse")}
+					>
+						Browse
+					</button>
+					<button
+						className={`tab-btn ${tab === "my-offers" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("my-offers")}
+					>
+						My Offers
+					</button>
+					<button
+						className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("create")}
+					>
+						Create
+					</button>
+				</div>
 
-			{/* Offers info banner */}
-			<div className="panel" style={{ marginBottom: "16px", padding: "12px 16px" }}>
-				<p style={{ margin: 0, fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-					<strong>How offers work:</strong> Creating an offer doesn't lock funds — it's just a listing.
-					When someone <strong>accepts</strong> your offer, an escrow is created and the buyer must
-					send KAS to lock it. KRC-20 token trades (<em>KRC20:NACHO, KRC20:GHOST, KRC20:KASPY</em>)
-					use atomic swaps with a hash preimage — the buyer sends KAS, the seller reveals the secret to claim both.
-					Learn more on the <a href="/docs" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>Docs page</a>.
-				</p>
-			</div>
+				{/* Offers info banner */}
+				<div className="panel" style={{ marginBottom: "16px", padding: "12px 16px" }}>
+					<p
+						style={{
+							margin: 0,
+							fontSize: "13px",
+							color: "var(--color-text-secondary)",
+							lineHeight: 1.5,
+						}}
+					>
+						<strong>How offers work:</strong> Creating an offer doesn't lock funds — it's just a
+						listing. When someone <strong>accepts</strong> your offer, an escrow is created and the
+						buyer must send KAS to lock it. KRC-20 token trades (
+						<em>KRC20:NACHO, KRC20:GHOST, KRC20:KASPY</em>) use atomic swaps with a hash preimage —
+						the buyer sends KAS, the seller reveals the secret to claim both. Learn more on the{" "}
+						<a href="/docs" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>
+							Docs page
+						</a>
+						.
+					</p>
+				</div>
 
-			{tab === "browse" && <BrowseOffers />}
-			{tab === "my-offers" &&
-				(wallet.connected ? <MyOffers address={address!} /> : <ConnectPrompt />)}
-			{tab === "create" &&
-				(wallet.connected ? <CreateOffer address={address!} /> : <ConnectPrompt />)}
-		</div>
+				{tab === "browse" && <BrowseOffers />}
+				{tab === "my-offers" &&
+					(wallet.connected ? <MyOffers address={address!} /> : <ConnectPrompt />)}
+				{tab === "create" &&
+					(wallet.connected ? <CreateOffer address={address!} /> : <ConnectPrompt />)}
+			</div>
 		</>
 	);
 }
@@ -104,11 +118,7 @@ function BrowseOffers() {
 	return (
 		<div>
 			{filtered.length === 0 && (
-				<EmptyState
-					icon="📋"
-					title="No open offers"
-					description="Be the first to create one!"
-				/>
+				<EmptyState icon="📋" title="No open offers" description="Be the first to create one!" />
 			)}
 			<div className="offers">
 				{filtered
@@ -191,12 +201,15 @@ function OfferCard({
 				</strong>
 				<div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
 					{typeBadge && (
-						<span className="pill" style={{
-							background: `${typeBadge.color}22`,
-							color: typeBadge.color,
-							border: `1px solid ${typeBadge.color}44`,
-							fontSize: "11px",
-						}}>
+						<span
+							className="pill"
+							style={{
+								background: `${typeBadge.color}22`,
+								color: typeBadge.color,
+								border: `1px solid ${typeBadge.color}44`,
+								fontSize: "11px",
+							}}
+						>
 							{typeBadge.label}
 						</span>
 					)}

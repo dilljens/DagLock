@@ -1,10 +1,5 @@
 import { useState } from "react";
-import {
-	api,
-	type AuthHeaders,
-	type CreateEscrowRequest,
-	type Escrow,
-} from "../api";
+import { api, type AuthHeaders, type CreateEscrowRequest, type Escrow } from "../api";
 import { money, sompi, time, relativeTime, badge } from "../helpers";
 import type { LoadState } from "../helpers";
 import { Panel, LookupResult, FormField, ConfirmDialog } from "../ui";
@@ -38,16 +33,17 @@ export function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 		setError("");
 		try {
 			// Use KasWare broadcast tx_id if available, fallback to manual
-			let lockTxId = '';
-			let outputIndex = 0;
+			let lockTxId = "";
+			const outputIndex = 0;
 
-			if (window.kasware && window.kasware.sendKaspa) {
+			if (window.kasware?.sendKaspa) {
 				// Broadcast the covenant funding tx via KasWare
 				lockTxId = await window.kasware.sendKaspa(trimmedBuyer, sompi(amountNum));
 			} else {
 				// Fallback: manually input tx_id (kaspawallet CLI flow)
-				lockTxId = prompt('Tx broadcast tx_id (from kaspawallet):') || '';
-				if (!lockTxId) throw new Error('Tx ID required. Use: kaspawallet send --to <covenant_address>');
+				lockTxId = prompt("Tx broadcast tx_id (from kaspawallet):") || "";
+				if (!lockTxId)
+					throw new Error("Tx ID required. Use: kaspawallet send --to <covenant_address>");
 			}
 
 			const body: CreateEscrowRequest = {
@@ -205,7 +201,8 @@ export function CreateEscrowForm({ onDone }: { onDone: () => void }) {
 			</FormField>
 			{error && <p className="muted error-text">{error}</p>}
 			<p className="muted" style={{ fontSize: "12px", margin: "4px 0" }}>
-				A <strong>0.5% protocol fee</strong> will be charged on settlement (enforced by the covenant).
+				A <strong>0.5% protocol fee</strong> will be charged on settlement (enforced by the
+				covenant).
 			</p>
 			<button className="button primary" type="submit" disabled={status === "loading"}>
 				{status === "loading" ? "Creating…" : "Create escrow"}
@@ -449,7 +446,8 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 				{error && <p className="muted error-text">{error}</p>}
 				{action === "settle" && (
 					<p className="muted" style={{ fontSize: "12px", margin: "4px 0" }}>
-						A <strong>0.5% protocol fee</strong> is charged on settlement (enforced by the covenant).
+						A <strong>0.5% protocol fee</strong> is charged on settlement (enforced by the
+						covenant).
 					</p>
 				)}
 				<button
@@ -572,5 +570,3 @@ export function DisputeWithEvidenceForm({ onDone }: { onDone: () => void }) {
 		</form>
 	);
 }
-
-

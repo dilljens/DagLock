@@ -421,7 +421,6 @@ export const api = {
 			auth,
 		),
 
-
 	// Jury
 	juryRegister: (auth: AuthHeaders) =>
 		postJson<{ status: string; address: string }>("/v1/jury/register", {}, auth),

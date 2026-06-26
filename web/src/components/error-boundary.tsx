@@ -30,10 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
 					<p style={{ color: "#88b888", fontSize: "14px", margin: "0 0 16px" }}>
 						{this.state.error.message}
 					</p>
-					<button
-						className="button primary"
-						onClick={() => this.setState({ error: null })}
-					>
+					<button className="button primary" onClick={() => this.setState({ error: null })}>
 						Try Again
 					</button>
 				</div>

@@ -24,5 +24,5 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-	delete (window as any).kasware;
+	(window as any).kasware = undefined;
 });

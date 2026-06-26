@@ -21,47 +21,50 @@ export function EscrowsPage() {
 		<>
 			<Helmet>
 				<title>Escrows — DagLock</title>
-				<meta name="description" content="Create and manage trustless escrow contracts on Kaspa. Lock KAS or KRC-20 tokens with covenant-enforced terms." />
+				<meta
+					name="description"
+					content="Create and manage trustless escrow contracts on Kaspa. Lock KAS or KRC-20 tokens with covenant-enforced terms."
+				/>
 				<link rel="canonical" href="https://daglock.com/escrows" />
 			</Helmet>
 			<div>
 				<div className="page-header">
 					<h1>Escrows</h1>
-				<p>Create trustless escrows. Settle, refund, or dispute.</p>
+					<p>Create trustless escrows. Settle, refund, or dispute.</p>
+				</div>
+				<div className="tab-bar">
+					<button
+						className={`tab-btn ${tab === "my-escrows" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("my-escrows")}
+					>
+						My Escrows
+					</button>
+					<button
+						className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("create")}
+					>
+						Create
+					</button>
+					<button
+						className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("lookup")}
+					>
+						Lookup
+					</button>
+					<button
+						className={`tab-btn ${tab === "receipt" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("receipt")}
+					>
+						Receipt
+					</button>
+				</div>
+				{tab === "my-escrows" &&
+					(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
+				{tab === "create" &&
+					(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
+				{tab === "lookup" && <EscrowLookup />}
+				{tab === "receipt" && <ReceiptLookup />}
 			</div>
-			<div className="tab-bar">
-				<button
-					className={`tab-btn ${tab === "my-escrows" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("my-escrows")}
-				>
-					My Escrows
-				</button>
-				<button
-					className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("create")}
-				>
-					Create
-				</button>
-				<button
-					className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("lookup")}
-				>
-					Lookup
-				</button>
-				<button
-					className={`tab-btn ${tab === "receipt" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("receipt")}
-				>
-					Receipt
-				</button>
-			</div>
-			{tab === "my-escrows" &&
-				(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
-			{tab === "create" &&
-				(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
-			{tab === "lookup" && <EscrowLookup />}
-			{tab === "receipt" && <ReceiptLookup />}
-		</div>
 		</>
 	);
 }
@@ -215,7 +218,7 @@ function CreateEscrow({ address }: { address: string }) {
 			const sompiAmount = Number((amountNum * 100_000_000).toFixed(0));
 
 			let lockTxId: string;
-			if (window.kasware && window.kasware.getPublicKey && window.kasware.sendKaspa) {
+			if (window.kasware?.getPublicKey && window.kasware.sendKaspa) {
 				// Get buyer's public key from KasWare
 				const buyerPubkey = await window.kasware.getPublicKey();
 				// Use a hardcoded seller key for demo — in production this comes from the seller
@@ -226,7 +229,7 @@ function CreateEscrow({ address }: { address: string }) {
 				// Compile covenant via WASM SDK (loaded externally) or use compile API
 				let covenantAddress: string;
 				try {
-					const resp = await fetch(import.meta.env.VITE_API_URL + "/v1/compile", {
+					const resp = await fetch(`${import.meta.env.VITE_API_URL}/v1/compile`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({

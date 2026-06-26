@@ -18,52 +18,95 @@ export function JuryPage() {
 		<>
 			<Helmet>
 				<title>Jury — DagLock</title>
-				<meta name="description" content="Decentralized dispute resolution for Kaspa escrow trades via community jury." />
+				<meta
+					name="description"
+					content="Decentralized dispute resolution for Kaspa escrow trades via community jury."
+				/>
 				<link rel="canonical" href="https://daglock.com/jury" />
 			</Helmet>
 			<div>
 				<div className="page-header">
 					<h1>⚖ Jury</h1>
-				<p>Community dispute resolution. Register as a juror, vote on cases.</p>
-			</div>
-
-			{/* How jury works — collapsible */}
-			<details className="panel" style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}>
-				<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
-					⚖️ How the Jury System Works
-				</summary>
-				<div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
-					<p style={{ margin: "0 0 8px" }}>
-						When an escrow is disputed with <strong>"jury"</strong> dispute mode, randomly selected community
-						members vote to decide the outcome.
-					</p>
-					<p style={{ margin: "0 0 8px" }}><strong>How it works:</strong></p>
-					<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
-						<li><strong>Registering:</strong> Anyone with 10+ trades and a 3.0+ reputation score can register as a juror. Registration costs nothing.</li>
-						<li><strong>Selection:</strong> For each case, the top candidates by reliability score are pooled and then randomly selected. Threshold varies by escrow value: 2/3 for small, 3/5 for medium, 5/9 for large.</li>
-						<li><strong>Voting:</strong> Selected jurors vote "seller wins" or "buyer wins" and provide reasoning. Votes are visible to both parties.</li>
-						<li><strong>Timeout:</strong> If no verdict is reached within 72 hours, seller wins by default.</li>
-					</ul>
-					<p style={{ margin: 0 }}>
-						Jury decisions are recorded on-chain via the arbiter covenant. The winning party must broadcast the transaction to release funds.
-					</p>
+					<p>Community dispute resolution. Register as a juror, vote on cases.</p>
 				</div>
-			</details>
 
-			<div className="tab-bar">
-				{wallet.connected && (
-					<button className={`tab-btn ${tab === "my-cases" ? "tab-btn--active" : ""}`}
-						onClick={() => setTab("my-cases")}>My Cases</button>
-				)}
-				<button className={`tab-btn ${tab === "register" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("register")}>Register</button>
-				<button className={`tab-btn ${tab === "candidates" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("candidates")}>Candidates</button>
+				{/* How jury works — collapsible */}
+				<details
+					className="panel"
+					style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}
+				>
+					<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
+						⚖️ How the Jury System Works
+					</summary>
+					<div
+						style={{
+							marginTop: "12px",
+							fontSize: "13px",
+							color: "var(--color-text-secondary)",
+							lineHeight: 1.7,
+						}}
+					>
+						<p style={{ margin: "0 0 8px" }}>
+							When an escrow is disputed with <strong>"jury"</strong> dispute mode, randomly
+							selected community members vote to decide the outcome.
+						</p>
+						<p style={{ margin: "0 0 8px" }}>
+							<strong>How it works:</strong>
+						</p>
+						<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
+							<li>
+								<strong>Registering:</strong> Anyone with 10+ trades and a 3.0+ reputation score can
+								register as a juror. Registration costs nothing.
+							</li>
+							<li>
+								<strong>Selection:</strong> For each case, the top candidates by reliability score
+								are pooled and then randomly selected. Threshold varies by escrow value: 2/3 for
+								small, 3/5 for medium, 5/9 for large.
+							</li>
+							<li>
+								<strong>Voting:</strong> Selected jurors vote "seller wins" or "buyer wins" and
+								provide reasoning. Votes are visible to both parties.
+							</li>
+							<li>
+								<strong>Timeout:</strong> If no verdict is reached within 72 hours, seller wins by
+								default.
+							</li>
+						</ul>
+						<p style={{ margin: 0 }}>
+							Jury decisions are recorded on-chain via the arbiter covenant. The winning party must
+							broadcast the transaction to release funds.
+						</p>
+					</div>
+				</details>
+
+				<div className="tab-bar">
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "my-cases" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("my-cases")}
+						>
+							My Cases
+						</button>
+					)}
+					<button
+						className={`tab-btn ${tab === "register" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("register")}
+					>
+						Register
+					</button>
+					<button
+						className={`tab-btn ${tab === "candidates" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("candidates")}
+					>
+						Candidates
+					</button>
+				</div>
+				{tab === "my-cases" &&
+					(wallet.connected ? <MyCases address={address!} /> : <ConnectPrompt />)}
+				{tab === "register" &&
+					(wallet.connected ? <RegisterSection address={address!} /> : <ConnectPrompt />)}
+				{tab === "candidates" && <CandidatesSection />}
 			</div>
-			{tab === "my-cases" && (wallet.connected ? <MyCases address={address!} /> : <ConnectPrompt />)}
-			{tab === "register" && (wallet.connected ? <RegisterSection address={address!} /> : <ConnectPrompt />)}
-			{tab === "candidates" && <CandidatesSection />}
-		</div>
 		</>
 	);
 }
@@ -89,33 +132,44 @@ function MyCases({ address }: { address: string }) {
 
 	const load = useCallback(() => {
 		setCases({ loading: true });
-		api.juryActiveCases(address)
+		api
+			.juryActiveCases(address)
 			.then((d) => setCases({ data: d.cases, loading: false }))
 			.catch((e) => setCases({ error: e.message, loading: false }));
 	}, [address]);
 
-	useEffect(() => { load(); }, [load]);
+	useEffect(() => {
+		load();
+	}, [load]);
 
 	if (cases.loading) return <SkeletonTable rows={5} />;
 	if (cases.error) return <p className="muted error-text">{cases.error}</p>;
-	if (!cases.data?.length) return (
-		<EmptyState
-			icon="⚖"
-			title="No active cases"
-			description="You're not assigned to any jury cases right now."
-		/>
-	);
+	if (!cases.data?.length)
+		return (
+			<EmptyState
+				icon="⚖"
+				title="No active cases"
+				description="You're not assigned to any jury cases right now."
+			/>
+		);
 
 	return (
 		<div>
 			{cases.data.map((c) => (
-				<article key={c.id} className="offer" style={{ cursor: "pointer", marginBottom: "8px" }}
-					onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}>
+				<article
+					key={c.id}
+					className="offer"
+					style={{ cursor: "pointer", marginBottom: "8px" }}
+					onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
+				>
 					<div className="offer-top">
 						<strong>Case {c.id.slice(0, 16)}…</strong>
 						<span className={badge(c.status)}>{c.status}</span>
 					</div>
-					<p>Escrow: {c.escrow_id} · Votes: {c.votes_for_seller + c.votes_for_buyer}/{c.juror_count} · Threshold: {c.threshold}</p>
+					<p>
+						Escrow: {c.escrow_id} · Votes: {c.votes_for_seller + c.votes_for_buyer}/{c.juror_count}{" "}
+						· Threshold: {c.threshold}
+					</p>
 					<code>{c.id}</code>
 					{selectedId === c.id && c.status === "voting" && (
 						<VotePanel case={c} address={address} onVoted={load} />
@@ -126,7 +180,11 @@ function MyCases({ address }: { address: string }) {
 	);
 }
 
-function VotePanel({ case: c, address, onVoted }: { case: JuryCase; address: string; onVoted: () => void }) {
+function VotePanel({
+	case: c,
+	address,
+	onVoted,
+}: { case: JuryCase; address: string; onVoted: () => void }) {
 	const { sign } = useWallet();
 	const { notify } = useToast();
 	const [vote, setVote] = useState("");
@@ -163,8 +221,11 @@ function VotePanel({ case: c, address, onVoted }: { case: JuryCase; address: str
 				</select>
 			</FormField>
 			<FormField label="Reasoning (optional)">
-				<input value={reasoning} onChange={(e) => setReasoning(e.target.value)}
-					placeholder="Why?" />
+				<input
+					value={reasoning}
+					onChange={(e) => setReasoning(e.target.value)}
+					placeholder="Why?"
+				/>
 			</FormField>
 			<button className="button primary" disabled={!vote || loading} onClick={handleVote}>
 				{loading ? "Submitting…" : "Submit Vote"}
@@ -196,24 +257,26 @@ function RegisterSection({ address }: { address: string }) {
 		}
 	}
 
-	if (status === "done") return (
-		<EmptyState
-			icon="✅"
-			title="Vote submitted!"
-			description="You'll be assigned to dispute cases when they arise. Stay responsive."
-		/>
-	);
+	if (status === "done")
+		return (
+			<EmptyState
+				icon="✅"
+				title="Vote submitted!"
+				description="You'll be assigned to dispute cases when they arise. Stay responsive."
+			/>
+		);
 
 	return (
 		<div>
 			<div className="panel">
 				<h3 style={{ margin: "0 0 12px" }}>Become a Juror</h3>
 				<p className="muted" style={{ fontSize: "13px", marginBottom: "16px" }}>
-					Jurors resolve disputes by voting. You need 10+ trades and a 3.0+ reputation score.
-					When assigned, you have 72 hours to vote.
+					Jurors resolve disputes by voting. You need 10+ trades and a 3.0+ reputation score. When
+					assigned, you have 72 hours to vote.
 				</p>
 				<div style={{ fontSize: "13px", color: "#88b888", marginBottom: "16px" }}>
-					Address: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
+					Address:{" "}
+					<code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 				</div>
 				<button className="button primary" onClick={handleRegister} disabled={status === "loading"}>
 					{status === "loading" ? "Registering…" : "Register as Juror"}
@@ -228,32 +291,40 @@ function CandidatesSection() {
 	const [candidates, setCandidates] = useState<LoadState<JurorRegistration[]>>({ loading: true });
 
 	if (candidates.loading) {
-		api.juryCandidates()
+		api
+			.juryCandidates()
 			.then((d) => setCandidates({ data: d.candidates, loading: false }))
 			.catch((e) => setCandidates({ error: e.message, loading: false }));
 	}
 
 	if (candidates.loading) return <SkeletonTable rows={5} />;
 	if (candidates.error) return <p className="muted error-text">{candidates.error}</p>;
-	if (!candidates.data?.length) return (
-		<EmptyState
-			icon="👤"
-			title="No jurors registered"
-			description="Be the first to register!"
-		/>
-	);
+	if (!candidates.data?.length)
+		return (
+			<EmptyState icon="👤" title="No jurors registered" description="Be the first to register!" />
+		);
 
 	return (
 		<div>
-			<p className="muted" style={{ marginBottom: "12px" }}>{candidates.data.length} registered jurors</p>
+			<p className="muted" style={{ marginBottom: "12px" }}>
+				{candidates.data.length} registered jurors
+			</p>
 			{candidates.data.map((c) => (
-				<article key={c.address} className="offer" style={{ cursor: "default", marginBottom: "8px" }}>
+				<article
+					key={c.address}
+					className="offer"
+					style={{ cursor: "default", marginBottom: "8px" }}
+				>
 					<div className="offer-top">
 						<strong>{c.address.slice(0, 24)}…</strong>
 						<span className="pill">{c.reliability_score.toFixed(1)}/5</span>
 					</div>
-					<p>Cases: {c.total_cases_assigned} assigned · {c.total_cases_voted} voted</p>
-					<small className="muted">Registered {new Date(c.registered_at * 1000).toLocaleDateString()}</small>
+					<p>
+						Cases: {c.total_cases_assigned} assigned · {c.total_cases_voted} voted
+					</p>
+					<small className="muted">
+						Registered {new Date(c.registered_at * 1000).toLocaleDateString()}
+					</small>
 				</article>
 			))}
 		</div>

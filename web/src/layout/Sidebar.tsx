@@ -54,11 +54,21 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 	return (
 		<>
 			{/* Mobile overlay */}
-			{open && <div className="sidebar-overlay" onClick={onClose} />}
+			{open && (
+				<div
+					className="sidebar-overlay"
+					onClick={onClose}
+					role="button"
+					tabIndex={0}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") onClose();
+					}}
+				/>
+			)}
 
 			<aside className={`sidebar ${open ? "sidebar--open" : ""}`}>
 				<div className="sidebar-brand">
-					<div className="sidebar-logo"></div>
+					<div className="sidebar-logo" />
 					<div>
 						<div className="sidebar-title">DagLock</div>
 						<div className="sidebar-subtitle">Trustless Escrow</div>
@@ -68,6 +78,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 				<nav className="sidebar-nav">
 					{NAV_ITEMS.map((item) => (
 						<button
+							type="button"
 							key={item.route}
 							className={`sidebar-link ${route === item.route ? "sidebar-link--active" : ""}`}
 							onClick={() => handleNav(item.route)}
@@ -91,9 +102,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 								marginBottom: "8px",
 							}}
 						>
-							KasWare connected to <strong>{networkWarning}</strong>, but DagLock
-							runs on <strong>testnet-12</strong>. KasWare doesn't support
-							testnet-12 yet.{" "}
+							KasWare connected to <strong>{networkWarning}</strong>, but DagLock runs on{" "}
+							<strong>testnet-12</strong>. KasWare doesn't support testnet-12 yet.{" "}
 							<button
 								type="button"
 								onClick={() => {
@@ -145,6 +155,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 							/>
 							<div style={{ display: "flex", gap: "4px" }}>
 								<button
+									type="button"
 									className="sidebar-connect"
 									onClick={handleManualSubmit}
 									disabled={!manualAddr.trim().startsWith("kaspa:")}
@@ -153,6 +164,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 									Set address
 								</button>
 								<button
+									type="button"
 									className="sidebar-connect"
 									onClick={() => setShowManualInput(false)}
 									style={{ flex: 0, padding: "6px 10px" }}
@@ -164,6 +176,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 					) : (
 						<>
 							<button
+								type="button"
 								className="sidebar-connect"
 								onClick={handleConnect}
 								disabled={state.loading}
@@ -176,6 +189,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 										: "Install KasWare"}
 							</button>
 							<button
+								type="button"
 								className="sidebar-connect"
 								onClick={() => setShowManualInput(true)}
 								style={{

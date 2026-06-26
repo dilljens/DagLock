@@ -83,16 +83,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 		});
 	}, []);
 
-	const sign = useCallback(async (msg: string): Promise<string> => {
-		if (state.manualMode) {
-			return mockSignature(msg);
-		}
-		return signMessage(msg, "schnorr");
-	}, [state.manualMode]);
+	const sign = useCallback(
+		async (msg: string): Promise<string> => {
+			if (state.manualMode) {
+				return mockSignature(msg);
+			}
+			return signMessage(msg, "schnorr");
+		},
+		[state.manualMode],
+	);
 
 	const disconnect = useCallback(() => {
 		setState({
-			detected: state.manualMode ? false : true,
+			detected: !state.manualMode,
 			connected: false,
 			address: null,
 			network: null,

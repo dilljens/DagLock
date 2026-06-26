@@ -17,39 +17,42 @@ export function SwapPage() {
 		<>
 			<Helmet>
 				<title>Atomic Swap — DagLock</title>
-				<meta name="description" content="Trustless atomic swaps between KAS and KRC-20 tokens on Kaspa L1." />
+				<meta
+					name="description"
+					content="Trustless atomic swaps between KAS and KRC-20 tokens on Kaspa L1."
+				/>
 				<link rel="canonical" href="https://daglock.com/swap" />
 			</Helmet>
 			<div>
 				<div className="page-header">
 					<h1>Atomic Swap</h1>
-				<p>Generate secret/hash pairs and settle hash-locked escrows.</p>
+					<p>Generate secret/hash pairs and settle hash-locked escrows.</p>
+				</div>
+				<div className="tab-bar">
+					<button
+						className={`tab-btn ${tab === "generate" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("generate")}
+					>
+						Generate Swap
+					</button>
+					<button
+						className={`tab-btn ${tab === "submit" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("submit")}
+					>
+						Submit Preimage
+					</button>
+					<button
+						className={`tab-btn ${tab === "how-to" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("how-to")}
+					>
+						How it Works
+					</button>
+				</div>
+				{tab === "generate" && <GenerateSwap />}
+				{tab === "submit" &&
+					(wallet.connected ? <SubmitPreimage address={address!} /> : <ConnectPrompt />)}
+				{tab === "how-to" && <HowItWorks />}
 			</div>
-			<div className="tab-bar">
-				<button
-					className={`tab-btn ${tab === "generate" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("generate")}
-				>
-					Generate Swap
-				</button>
-				<button
-					className={`tab-btn ${tab === "submit" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("submit")}
-				>
-					Submit Preimage
-				</button>
-				<button
-					className={`tab-btn ${tab === "how-to" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("how-to")}
-				>
-					How it Works
-				</button>
-			</div>
-			{tab === "generate" && <GenerateSwap />}
-			{tab === "submit" &&
-				(wallet.connected ? <SubmitPreimage address={address!} /> : <ConnectPrompt />)}
-			{tab === "how-to" && <HowItWorks />}
-		</div>
 		</>
 	);
 }

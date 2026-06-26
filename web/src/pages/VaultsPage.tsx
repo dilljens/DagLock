@@ -7,7 +7,7 @@ import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
 import { EmptyState } from "../components/empty-state";
-import { z } from "zod";
+import type { z } from "zod";
 import { Helmet } from "react-helmet-async";
 import { CreateVaultSchema } from "../validation";
 
@@ -22,52 +22,89 @@ export function VaultsPage() {
 		<>
 			<Helmet>
 				<title>Vaults — DagLock</title>
-				<meta name="description" content="Time-locked and multi-sig vaults for secure KAS storage on Kaspa L1." />
+				<meta
+					name="description"
+					content="Time-locked and multi-sig vaults for secure KAS storage on Kaspa L1."
+				/>
 				<link rel="canonical" href="https://daglock.com/vaults" />
 			</Helmet>
 			<div>
 				<div className="page-header">
 					<h1> Vaults</h1>
-				<p>Time-locked KAS storage. Only you can withdraw after the timeout.</p>
-			</div>
-
-			{/* How vaults work — collapsible */}
-			<details
-				className="panel"
-				style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}
-			>
-				<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
-					🏦 How Vaults Work
-				</summary>
-				<div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
-					<p style={{ margin: "0 0 8px" }}>
-						Vaults let you lock KAS for a set time period using a SilverScript covenant. Once locked,
-						<strong> no one</strong> can withdraw before the timeout — not even you.
-					</p>
-					<p style={{ margin: "0 0 8px" }}><strong>Three vault types:</strong></p>
-					<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
-						<li><strong>Time-locked</strong> — Standard timeout withdrawal. Anyone can withdraw after the timeout expires. Best for cold storage or inheritance planning.</li>
-						<li><strong>Beneficiary</strong> — A secondary address can withdraw after the timeout. The owner can also withdraw anytime. Best for shared accounts.</li>
-						<li><strong>Multi-sig</strong> — Requires 2-of-3 signatures to withdraw. Best for team treasuries or shared custody.</li>
-					</ul>
-					<p style={{ margin: 0 }}>
-						<strong>Fee:</strong> 0.1% on withdrawal, enforced by the covenant and paid to the DagLock treasury.
-					</p>
+					<p>Time-locked KAS storage. Only you can withdraw after the timeout.</p>
 				</div>
-			</details>
 
-			<div className="tab-bar">
-				<button className={`tab-btn ${tab === "my-vaults" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("my-vaults")}>My Vaults</button>
-				<button className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("create")}>Create</button>
-				<button className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
-					onClick={() => setTab("lookup")}>Lookup</button>
+				{/* How vaults work — collapsible */}
+				<details
+					className="panel"
+					style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}
+				>
+					<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
+						🏦 How Vaults Work
+					</summary>
+					<div
+						style={{
+							marginTop: "12px",
+							fontSize: "13px",
+							color: "var(--color-text-secondary)",
+							lineHeight: 1.7,
+						}}
+					>
+						<p style={{ margin: "0 0 8px" }}>
+							Vaults let you lock KAS for a set time period using a SilverScript covenant. Once
+							locked,
+							<strong> no one</strong> can withdraw before the timeout — not even you.
+						</p>
+						<p style={{ margin: "0 0 8px" }}>
+							<strong>Three vault types:</strong>
+						</p>
+						<ul style={{ margin: "0 0 8px", paddingLeft: "20px" }}>
+							<li>
+								<strong>Time-locked</strong> — Standard timeout withdrawal. Anyone can withdraw
+								after the timeout expires. Best for cold storage or inheritance planning.
+							</li>
+							<li>
+								<strong>Beneficiary</strong> — A secondary address can withdraw after the timeout.
+								The owner can also withdraw anytime. Best for shared accounts.
+							</li>
+							<li>
+								<strong>Multi-sig</strong> — Requires 2-of-3 signatures to withdraw. Best for team
+								treasuries or shared custody.
+							</li>
+						</ul>
+						<p style={{ margin: 0 }}>
+							<strong>Fee:</strong> 0.1% on withdrawal, enforced by the covenant and paid to the
+							DagLock treasury.
+						</p>
+					</div>
+				</details>
+
+				<div className="tab-bar">
+					<button
+						className={`tab-btn ${tab === "my-vaults" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("my-vaults")}
+					>
+						My Vaults
+					</button>
+					<button
+						className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("create")}
+					>
+						Create
+					</button>
+					<button
+						className={`tab-btn ${tab === "lookup" ? "tab-btn--active" : ""}`}
+						onClick={() => setTab("lookup")}
+					>
+						Lookup
+					</button>
+				</div>
+				{tab === "my-vaults" &&
+					(wallet.connected ? <MyVaults address={address!} /> : <ConnectPrompt />)}
+				{tab === "create" &&
+					(wallet.connected ? <CreateVault address={address!} /> : <ConnectPrompt />)}
+				{tab === "lookup" && <VaultLookup />}
 			</div>
-			{tab === "my-vaults" && (wallet.connected ? <MyVaults address={address!} /> : <ConnectPrompt />)}
-			{tab === "create" && (wallet.connected ? <CreateVault address={address!} /> : <ConnectPrompt />)}
-			{tab === "lookup" && <VaultLookup />}
-		</div>
 		</>
 	);
 }
@@ -85,11 +122,26 @@ function ConnectPrompt() {
 }
 
 const VAULT_TYPE_INFO: Record<string, { label: string; desc: string }> = {
-	time: { label: "Time-locked", desc: "Funds locked until timeout, then anyone can withdraw. Best for cold storage or inheritance." },
-	beneficiary: { label: "Beneficiary", desc: "Time-locked with a beneficiary address. Beneficiary can withdraw after timeout without a password." },
-	deadman: { label: "Deadman switch", desc: "Recurring timeout — must be refreshed periodically or funds are released to a beneficiary." },
-	inheritance: { label: "Inheritance", desc: "Two-party vault with beneficiary timeout. Primary owner can withdraw anytime; beneficiary waits." },
-	multisig: { label: "Multi-sig", desc: "Requires 2-of-3 signatures to withdraw. Best for team treasuries or shared accounts." },
+	time: {
+		label: "Time-locked",
+		desc: "Funds locked until timeout, then anyone can withdraw. Best for cold storage or inheritance.",
+	},
+	beneficiary: {
+		label: "Beneficiary",
+		desc: "Time-locked with a beneficiary address. Beneficiary can withdraw after timeout without a password.",
+	},
+	deadman: {
+		label: "Deadman switch",
+		desc: "Recurring timeout — must be refreshed periodically or funds are released to a beneficiary.",
+	},
+	inheritance: {
+		label: "Inheritance",
+		desc: "Two-party vault with beneficiary timeout. Primary owner can withdraw anytime; beneficiary waits.",
+	},
+	multisig: {
+		label: "Multi-sig",
+		desc: "Requires 2-of-3 signatures to withdraw. Best for team treasuries or shared accounts.",
+	},
 };
 
 function formatVaultType(type: VaultType): string {
@@ -98,8 +150,11 @@ function formatVaultType(type: VaultType): string {
 
 function vaultTypeBadge(type: string): string {
 	const colors: Record<string, string> = {
-		time: "#53d769", beneficiary: "#4fc3f7", deadman: "#ff9800",
-		inheritance: "#ce93d8", multisig: "#ff7b7b",
+		time: "#53d769",
+		beneficiary: "#4fc3f7",
+		deadman: "#ff9800",
+		inheritance: "#ce93d8",
+		multisig: "#ff7b7b",
 	};
 	const bg = colors[type] || "rgba(255,255,255,0.1)";
 	return bg;
@@ -107,7 +162,10 @@ function vaultTypeBadge(type: string): string {
 
 function formatVaultStatus(status: VaultStatus): string {
 	const map: Record<VaultStatus, string> = {
-		locked: "Locked", unlocked: "Unlocked", expired: "Expired", transferred: "Transferred",
+		locked: "Locked",
+		unlocked: "Unlocked",
+		expired: "Expired",
+		transferred: "Transferred",
 	};
 	return map[status] || status;
 }
@@ -128,22 +186,26 @@ function MyVaults({ address }: { address: string }) {
 
 	const load = useCallback(() => {
 		setVaults({ loading: true });
-		api.vaults(address)
+		api
+			.vaults(address)
 			.then((d) => setVaults({ data: d.vaults, loading: false }))
 			.catch((e) => setVaults({ error: e.message, loading: false }));
 	}, [address]);
 
-	useEffect(() => { load(); }, [load]);
+	useEffect(() => {
+		load();
+	}, [load]);
 
 	if (vaults.loading) return <SkeletonTable rows={5} />;
 	if (vaults.error) return <p className="muted error-text">{vaults.error}</p>;
-	if (!vaults.data?.length) return (
-		<EmptyState
-			icon="🏦"
-			title="No vaults yet"
-			description="Create your first time-locked vault."
-		/>
-	);
+	if (!vaults.data?.length)
+		return (
+			<EmptyState
+				icon="🏦"
+				title="No vaults yet"
+				description="Create your first time-locked vault."
+			/>
+		);
 
 	return (
 		<div>
@@ -154,11 +216,14 @@ function MyVaults({ address }: { address: string }) {
 					<article key={v.id} className="offer" style={{ cursor: "default", marginBottom: "8px" }}>
 						<div className="offer-top">
 							<strong>
-								<span className="pill" style={{
-									background: `${vaultTypeBadge(v.vault_type)}22`,
-									color: vaultTypeBadge(v.vault_type),
-									border: `1px solid ${vaultTypeBadge(v.vault_type)}44`,
-								}}>
+								<span
+									className="pill"
+									style={{
+										background: `${vaultTypeBadge(v.vault_type)}22`,
+										color: vaultTypeBadge(v.vault_type),
+										border: `1px solid ${vaultTypeBadge(v.vault_type)}44`,
+									}}
+								>
 									{formatVaultType(v.vault_type)}
 								</span>
 								{money(v.amount_sompi)} KAS
@@ -166,7 +231,9 @@ function MyVaults({ address }: { address: string }) {
 							<span className="pill">{formatVaultStatus(v.status)}</span>
 						</div>
 						<p>{money(v.amount_sompi)} KAS</p>
-						<small className="muted">Timeout: {time(v.timeout)} · {timeRemaining(v.timeout)}</small>
+						<small className="muted">
+							Timeout: {time(v.timeout)} · {timeRemaining(v.timeout)}
+						</small>
 						<code>{v.id}</code>
 						{canWithdraw && <WithdrawButton vault={v} address={address} />}
 					</article>
@@ -195,8 +262,12 @@ function WithdrawButton({ vault, address }: { vault: Vault; address: string }) {
 	}
 
 	return (
-		<button className="button primary" disabled={loading} onClick={handleWithdraw}
-			style={{ marginTop: "12px" }}>
+		<button
+			className="button primary"
+			disabled={loading}
+			onClick={handleWithdraw}
+			style={{ marginTop: "12px" }}
+		>
 			{loading ? "Withdrawing…" : " Withdraw"}
 		</button>
 	);
@@ -242,13 +313,14 @@ function CreateVault({ address }: { address: string }) {
 		}
 	}
 
-	if (status === "done") return (
-		<EmptyState
-			icon="✅"
-			title="Vault created!"
-			description={`ID: ${vaultId} — Locked until timeout expires.`}
-		/>
-	);
+	if (status === "done")
+		return (
+			<EmptyState
+				icon="✅"
+				title="Vault created!"
+				description={`ID: ${vaultId} — Locked until timeout expires.`}
+			/>
+		);
 
 	return (
 		<form className="form form-stacked" onSubmit={handleSubmit(onSubmit)}>
@@ -258,7 +330,9 @@ function CreateVault({ address }: { address: string }) {
 
 			{/* Vault type selector */}
 			<div className="field" style={{ marginBottom: "16px" }}>
-				<span style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "8px" }}>Vault Type</span>
+				<span style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "8px" }}>
+					Vault Type
+				</span>
 				<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 					{VAULT_TYPES.map((t) => {
 						const info = VAULT_TYPE_INFO[t];
@@ -268,19 +342,40 @@ function CreateVault({ address }: { address: string }) {
 								key={t}
 								onClick={() => setVaultType(t)}
 								style={{
-									display: "flex", gap: "12px", padding: "12px", borderRadius: "12px",
+									display: "flex",
+									gap: "12px",
+									padding: "12px",
+									borderRadius: "12px",
 									border: `1px solid ${active ? vaultTypeBadge(t) : "var(--color-border)"}`,
 									background: active ? `${vaultTypeBadge(t)}11` : "transparent",
-									cursor: "pointer", transition: "all 0.15s ease",
+									cursor: "pointer",
+									transition: "all 0.15s ease",
 								}}
 							>
-								<input type="radio" name="vaultType" checked={active} readOnly
-									style={{ accentColor: vaultTypeBadge(t), marginTop: "2px" }} />
+								<input
+									type="radio"
+									name="vaultType"
+									checked={active}
+									readOnly
+									style={{ accentColor: vaultTypeBadge(t), marginTop: "2px" }}
+								/>
 								<div>
-									<div style={{ fontWeight: 700, fontSize: "14px", color: active ? vaultTypeBadge(t) : "var(--color-text)" }}>
+									<div
+										style={{
+											fontWeight: 700,
+											fontSize: "14px",
+											color: active ? vaultTypeBadge(t) : "var(--color-text)",
+										}}
+									>
 										{info.label}
 									</div>
-									<div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginTop: "2px" }}>
+									<div
+										style={{
+											fontSize: "12px",
+											color: "var(--color-text-secondary)",
+											marginTop: "2px",
+										}}
+									>
 										{info.desc}
 									</div>
 								</div>
@@ -297,7 +392,9 @@ function CreateVault({ address }: { address: string }) {
 					placeholder="100"
 					{...register("amount_sompi", { valueAsNumber: true })}
 				/>
-				{errors.amount_sompi && <span className="input-feedback error">{errors.amount_sompi.message}</span>}
+				{errors.amount_sompi && (
+					<span className="input-feedback error">{errors.amount_sompi.message}</span>
+				)}
 			</FormField>
 			<FormField label="Lock duration">
 				<select {...register("timeout_days", { valueAsNumber: true })}>
@@ -307,13 +404,19 @@ function CreateVault({ address }: { address: string }) {
 					<option value={90}>90 days</option>
 					<option value={365}>1 year</option>
 				</select>
-				{errors.timeout_days && <span className="input-feedback error">{errors.timeout_days.message}</span>}
+				{errors.timeout_days && (
+					<span className="input-feedback error">{errors.timeout_days.message}</span>
+				)}
 			</FormField>
 			<input type="hidden" {...register("owner_address")} />
 			<p className="muted" style={{ fontSize: "12px", margin: "8px 0" }}>
 				A <strong>0.1% protocol fee</strong> is charged on withdrawal (enforced by the covenant).
 			</p>
-			<button className="button primary" type="submit" disabled={isSubmitting || status === "loading"}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={isSubmitting || status === "loading"}
+			>
 				{status === "loading" ? "Creating…" : "Create Vault"}
 			</button>
 		</form>
@@ -338,8 +441,11 @@ function VaultLookup() {
 	return (
 		<div>
 			<form className="form" onSubmit={handleSubmit} style={{ marginBottom: "16px" }}>
-				<input value={id} onChange={(e) => setId(e.target.value)}
-					placeholder="vault id (vault_...)" />
+				<input
+					value={id}
+					onChange={(e) => setId(e.target.value)}
+					placeholder="vault id (vault_...)"
+				/>
 				<button className="button primary" type="submit" disabled={vault.loading}>
 					{vault.loading ? "Loading…" : "Fetch"}
 				</button>
@@ -348,16 +454,40 @@ function VaultLookup() {
 			{vault.data && (
 				<div className="panel">
 					<div className="stack">
-						<div className="row"><span>Type</span><strong>{formatVaultType(vault.data.vault_type)}</strong></div>
-						<div className="row"><span>Amount</span><strong>{money(vault.data.amount_sompi)}</strong></div>
-						<div className="row"><span>Status</span><strong>{formatVaultStatus(vault.data.status)}</strong></div>
-						<div className="row"><span>Timeout</span><strong>{time(vault.data.timeout)}</strong></div>
-						<div className="row"><span>Time</span><strong>{timeRemaining(vault.data.timeout)}</strong></div>
+						<div className="row">
+							<span>Type</span>
+							<strong>{formatVaultType(vault.data.vault_type)}</strong>
+						</div>
+						<div className="row">
+							<span>Amount</span>
+							<strong>{money(vault.data.amount_sompi)}</strong>
+						</div>
+						<div className="row">
+							<span>Status</span>
+							<strong>{formatVaultStatus(vault.data.status)}</strong>
+						</div>
+						<div className="row">
+							<span>Timeout</span>
+							<strong>{time(vault.data.timeout)}</strong>
+						</div>
+						<div className="row">
+							<span>Time</span>
+							<strong>{timeRemaining(vault.data.timeout)}</strong>
+						</div>
 						{vault.data.beneficiary_address && (
-							<div className="row"><span>Beneficiary</span><strong className="addr">{vault.data.beneficiary_address}</strong></div>
+							<div className="row">
+								<span>Beneficiary</span>
+								<strong className="addr">{vault.data.beneficiary_address}</strong>
+							</div>
 						)}
-						<div className="row"><span>Owner</span><strong className="addr">{vault.data.owner_address}</strong></div>
-						<div className="row"><span>Created</span><strong>{time(vault.data.created_at)}</strong></div>
+						<div className="row">
+							<span>Owner</span>
+							<strong className="addr">{vault.data.owner_address}</strong>
+						</div>
+						<div className="row">
+							<span>Created</span>
+							<strong>{time(vault.data.created_at)}</strong>
+						</div>
 					</div>
 				</div>
 			)}

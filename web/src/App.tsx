@@ -11,10 +11,18 @@ import { Footer } from "./layout/Footer";
 
 import { ErrorBoundary } from "./components/error-boundary";
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
-const OffersPage = lazy(() => import("./pages/OffersPage").then((m) => ({ default: m.OffersPage })));
-const EscrowsPage = lazy(() => import("./pages/EscrowsPage").then((m) => ({ default: m.EscrowsPage })));
-const VaultsPage = lazy(() => import("./pages/VaultsPage").then((m) => ({ default: m.VaultsPage })));
-const ReputationPage = lazy(() => import("./pages/ReputationPage").then((m) => ({ default: m.ReputationPage })));
+const OffersPage = lazy(() =>
+	import("./pages/OffersPage").then((m) => ({ default: m.OffersPage })),
+);
+const EscrowsPage = lazy(() =>
+	import("./pages/EscrowsPage").then((m) => ({ default: m.EscrowsPage })),
+);
+const VaultsPage = lazy(() =>
+	import("./pages/VaultsPage").then((m) => ({ default: m.VaultsPage })),
+);
+const ReputationPage = lazy(() =>
+	import("./pages/ReputationPage").then((m) => ({ default: m.ReputationPage })),
+);
 const JuryPage = lazy(() => import("./pages/JuryPage").then((m) => ({ default: m.JuryPage })));
 const SwapPage = lazy(() => import("./pages/SwapPage").then((m) => ({ default: m.SwapPage })));
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
@@ -61,7 +69,13 @@ function AppInner() {
 	useEffect(() => setSidebarOpen(false), [route]);
 
 	const pageContent = (
-		<Suspense fallback={<div className="loading" style={{ textAlign: "center", padding: "3rem", color: "#888" }}>Loading…</div>}>
+		<Suspense
+			fallback={
+				<div className="loading" style={{ textAlign: "center", padding: "3rem", color: "#888" }}>
+					Loading…
+				</div>
+			}
+		>
 			<ErrorBoundary key={route}>
 				{(() => {
 					switch (route) {
@@ -148,17 +162,17 @@ function AppInner() {
 export default function App() {
 	return (
 		<HelmetProvider>
-		<QueryClientProvider client={queryClient}>
-			<Tooltip.Provider delayDuration={400}>
-				<RouterProvider>
-					<WalletProvider>
-						<ToastProvider>
-							<AppInner />
-						</ToastProvider>
-					</WalletProvider>
-				</RouterProvider>
-			</Tooltip.Provider>
-		</QueryClientProvider>
+			<QueryClientProvider client={queryClient}>
+				<Tooltip.Provider delayDuration={400}>
+					<RouterProvider>
+						<WalletProvider>
+							<ToastProvider>
+								<AppInner />
+							</ToastProvider>
+						</WalletProvider>
+					</RouterProvider>
+				</Tooltip.Provider>
+			</QueryClientProvider>
 		</HelmetProvider>
 	);
 }
