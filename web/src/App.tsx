@@ -66,6 +66,7 @@ function AppInner() {
 	useWebSocket();
 
 	// Close sidebar on route change
+	// biome-ignore lint/correctness/useExhaustiveDependencies: route used intentionally to close sidebar on navigation
 	useEffect(() => setSidebarOpen(false), [route]);
 
 	const pageContent = (
@@ -108,7 +109,12 @@ function AppInner() {
 			<Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 			<main className="main-content">
 				<div className="mobile-header">
-					<button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+					<button
+						type="button"
+						className="hamburger"
+						onClick={() => setSidebarOpen(true)}
+						aria-label="Open menu"
+					>
 						☰ <span style={{ fontSize: "14px", marginLeft: "4px" }}>Menu</span>
 					</button>
 					<span className="brand">DagLock</span>

@@ -223,13 +223,23 @@ function CreateEscrow({ address }: { address: string }) {
 				const buyerPubkey = await window.kasware.getPublicKey();
 				// Require the seller to provide their public key (prevents broken covenants)
 				const sellerPubkey = prompt("Enter seller's public key (64 hex chars):");
-				if (!sellerPubkey || sellerPubkey.length !== 64 || !/^[0-9a-fA-F]{64}$/.test(sellerPubkey)) {
+				if (
+					!sellerPubkey ||
+					sellerPubkey.length !== 64 ||
+					!/^[0-9a-fA-F]{64}$/.test(sellerPubkey)
+				) {
 					setStatus("idle");
-					notify("error", "Valid seller public key (64 hex) is required to create an escrow covenant.");
+					notify(
+						"error",
+						"Valid seller public key (64 hex) is required to create an escrow covenant.",
+					);
 					return;
 				}
-				const treasuryKey = prompt("Enter treasury public key (64 hex chars, or leave blank for default):")?.trim();
-				const resolvedTreasuryKey = treasuryKey || "0000000000000000000000000000000000000000000000000000000000000000";
+				const treasuryKey = prompt(
+					"Enter treasury public key (64 hex chars, or leave blank for default):",
+				)?.trim();
+				const resolvedTreasuryKey =
+					treasuryKey || "0000000000000000000000000000000000000000000000000000000000000000";
 				const timeout = Math.floor(Date.now() / 1000) + 86400;
 
 				// Compile covenant via API

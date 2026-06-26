@@ -6,7 +6,34 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"correctness": {
+				"useExhaustiveDependencies": "warn"
+			},
+			"a11y": {
+				"useKeyWithClickEvents": {
+					"level": "warn"
+				},
+				"noLabelWithoutControl": {
+					"level": "warn"
+				},
+				"useButtonType": {
+					"level": "warn"
+				}
+			},
+			"suspicious": {
+				"noArrayIndexKey": {
+					"level": "warn"
+				},
+				"noExplicitAny": {
+					"level": "warn"
+				}
+			},
+			"style": {
+				"noNonNullAssertion": {
+					"level": "warn"
+				}
+			}
 		}
 	},
 	"formatter": {
