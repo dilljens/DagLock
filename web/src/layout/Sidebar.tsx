@@ -190,7 +190,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 							</button>
 							<button
 								type="button"
-								className="sidebar-connect"
+								className="sidebar-manual"
 								onClick={() => setShowManualInput(true)}
 								style={{
 									background: "transparent",
