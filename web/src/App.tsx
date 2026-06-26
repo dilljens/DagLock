@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useRouter, RouterProvider } from "./router";
 import { useWallet, WalletProvider } from "./context/WalletContext";
-import { ToastProvider, useToast } from "./layout/Toast";
+import { ToastProvider } from "./layout/Toast";
 import { Sidebar } from "./layout/Sidebar";
 import { Footer } from "./layout/Footer";
 

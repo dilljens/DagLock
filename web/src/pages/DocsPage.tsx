@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState } from "react";
+import { CompileCovenantForm } from "../components/compile";
 
 const TABS = [
 	{ id: "faq", label: "FAQ" },
@@ -7,6 +8,7 @@ const TABS = [
 	{ id: "cli", label: "CLI" },
 	{ id: "bot", label: "Bot" },
 	{ id: "integrate", label: "Integrate" },
+	{ id: "compile", label: "Compile" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -79,6 +81,7 @@ export function DocsPage() {
 			{tab === "cli" && <CliTab />}
 			{tab === "bot" && <BotTab />}
 			{tab === "integrate" && <IntegrateTab />}
+			{tab === "compile" && <CompileTab />}
 		</div>
 		</>
 	);
@@ -394,5 +397,17 @@ Headers: X-Daglock-Address, X-Daglock-Signature`}</Code>
 				<p className="muted">Or message the team on Telegram: <a href="https://t.me/DagLock_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>@DagLock_bot</a></p>
 			</Section>
 		</>
+	);
+}
+
+/* ─── Compile Covenant Tab ─── */
+function CompileTab() {
+	return (
+		<Section title="Compile Covenant">
+			<p className="muted">Compile a SilverScript covenant template and get its bytecode and template hash. Useful for debugging or manually verifying covenant deployments.</p>
+			<div style={{ marginTop: "12px" }}>
+				<CompileCovenantForm onDone={() => {}} />
+			</div>
+		</Section>
 	);
 }

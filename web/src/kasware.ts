@@ -92,14 +92,6 @@ export async function signMessage(
 	return window.kasware.signMessage(message, type);
 }
 
-// Send KAS via KasWare
-export async function sendKaspa(to: string, sompi: number, feeRate?: number): Promise<string> {
-	if (!window.kasware) {
-		throw new Error("KasWare wallet not detected.");
-	}
-	return window.kasware.sendKaspa(to, sompi, { feeRate });
-}
-
 // Subscribe to wallet events
 export function subscribeToWallet(onStateChange: (state: WalletState) => void): () => void {
 	const kasware = window.kasware;

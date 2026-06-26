@@ -352,8 +352,6 @@ export const api = {
 	health: () => loadJson<Health>("/v1/health"),
 	compile: (template: string, params: Record<string, string>) =>
 		postJson<CompileResponse>("/v1/compile", { template, params }),
-	network: () => loadJson<NetworkInfo>("/v1/network"),
-	networkPrice: () => loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
 	stats: () => loadJson<Stats>("/v1/stats"),
 
 	// Vaults
@@ -422,19 +420,7 @@ export const api = {
 			{ subject_address: subjectAddress, escrow_id: escrowId, note },
 			auth,
 		),
-	unvouch: (vouchId: string, auth: AuthHeaders) =>
-		postEmpty<{ status: string; vouch_id: string }>(
-			`/v1/vouches/${encodeURIComponent(vouchId)}`,
-			auth,
-		),
-	listVouchesBySubject: (address: string) =>
-		loadJson<{ vouches: Vouch[]; total: number }>(
-			`/v1/vouches?subject=${encodeURIComponent(address)}`,
-		),
-	listVouchesByVoucher: (address: string) =>
-		loadJson<{ vouches: Vouch[]; total: number }>(
-			`/v1/vouches?voucher=${encodeURIComponent(address)}`,
-		),
+
 
 	// Jury
 	juryRegister: (auth: AuthHeaders) =>
@@ -443,7 +429,6 @@ export const api = {
 		postJson<{ status: string; address: string }>("/v1/jury/unregister", {}, auth),
 	juryCases: (auth: AuthHeaders) =>
 		loadAuthJson<{ cases: JuryCase[]; total: number }>("/v1/jury/cases", auth),
-	juryCase: (caseId: string) => loadJson<JuryCase>(`/v1/jury/cases/${encodeURIComponent(caseId)}`),
 	juryVote: (caseId: string, vote: string, reasoning?: string, auth?: AuthHeaders) =>
 		postJson<{ status: string; vote: string; verdict?: string | null }>(
 			`/v1/jury/cases/${encodeURIComponent(caseId)}/vote`,
@@ -500,10 +485,6 @@ export const api = {
 			`/v1/escrows/${encodeURIComponent(escrowId)}/evidence`,
 			{ content, signed_message: signedMessage },
 			auth,
-		),
-	listEvidence: (escrowId: string) =>
-		loadJson<{ evidence: DisputeEvidence[]; escrow_id: string }>(
-			`/v1/escrows/${encodeURIComponent(escrowId)}/evidence`,
 		),
 	resolveDispute: (escrowId: string, outcome: string, resolved_by: string, auth?: AuthHeaders) =>
 		postJson<{ status: string; escrow_id: string; outcome: string }>(

@@ -6,6 +6,7 @@ import { useToast } from "../layout/Toast";
 import { FormField, SkeletonStats } from "../ui";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
+import { LinkTelegramForm } from "../components/identity";
 
 type Tab = "lookup" | "my-reputation" | "vouch" | "identity";
 
@@ -247,52 +248,16 @@ function VouchSection() {
 /* ─── Identity / Link Telegram ─── */
 function IdentitySection() {
 	const address = useAddress()!;
-	const { sign } = useWallet();
-	const { notify } = useToast();
-	const [handle, setHandle] = useState("");
-	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
-
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		if (!handle.trim()) return;
-		setStatus("loading");
-		try {
-			const msg = `daglock.io:verify:telegram:${handle.trim()}`;
-			const sig = await sign(msg);
-			await api.createIdentity("telegram", handle.trim(), msg, sig, {
-				address, signature: sig, message: msg,
-			});
-			setStatus("done");
-			notify("success", "Telegram linked!");
-		} catch (e) {
-			notify("error", "Failed to link", (e as Error).message);
-			setStatus("idle");
-		}
-	}
-
-	if (status === "done") return (
-		<EmptyState
-			icon="✅"
-			title="Telegram linked!"
-			description={`@${handle} is now associated with your address.`}
-		/>
-	);
 
 	return (
-		<form className="form form-stacked" onSubmit={handleSubmit}>
-			<p className="muted" style={{ fontSize: "13px" }}>
+		<div>
+			<p className="muted" style={{ fontSize: "13px", marginBottom: "8px" }}>
 				Link your Telegram handle to your Kaspa address. This shows in your reputation profile.
 			</p>
-			<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
+			<div style={{ fontSize: "13px", color: "#88b888", padding: "0 0 12px" }}>
 				Address: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 			</div>
-			<FormField label="Telegram handle">
-				<input value={handle} onChange={(e) => setHandle(e.target.value)}
-					placeholder="yourusername (without @)" />
-			</FormField>
-			<button className="button primary" type="submit" disabled={status === "loading"}>
-				{status === "loading" ? "Linking…" : "Link Telegram"}
-			</button>
-		</form>
+			<LinkTelegramForm onDone={() => {}} />
+		</div>
 	);
 }

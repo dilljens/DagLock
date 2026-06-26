@@ -15,7 +15,6 @@ type Tab = "my-vaults" | "create" | "lookup";
 
 export function VaultsPage() {
 	const [tab, setTab] = useState<Tab>("my-vaults");
-	const [howOpen, setHowOpen] = useState(false);
 	const address = useAddress();
 	const { state: wallet } = useWallet();
 
@@ -36,7 +35,6 @@ export function VaultsPage() {
 			<details
 				className="panel"
 				style={{ marginBottom: "16px", padding: "12px 16px", cursor: "pointer" }}
-				onToggle={(e) => setHowOpen((e.target as HTMLDetailsElement).open)}
 			>
 				<summary style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>
 					🏦 How Vaults Work

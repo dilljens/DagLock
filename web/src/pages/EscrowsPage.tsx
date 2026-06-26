@@ -6,11 +6,11 @@ import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
-import { SignWithWallet } from "../components/wallet";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
+import { ReceiptLookup } from "../components/lookup";
 
-type Tab = "my-escrows" | "create" | "lookup";
+type Tab = "my-escrows" | "create" | "lookup" | "receipt";
 
 export function EscrowsPage() {
 	const [tab, setTab] = useState<Tab>("my-escrows");
@@ -48,12 +48,19 @@ export function EscrowsPage() {
 				>
 					Lookup
 				</button>
+				<button
+					className={`tab-btn ${tab === "receipt" ? "tab-btn--active" : ""}`}
+					onClick={() => setTab("receipt")}
+				>
+					Receipt
+				</button>
 			</div>
 			{tab === "my-escrows" &&
 				(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
 			{tab === "create" &&
 				(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
 			{tab === "lookup" && <EscrowLookup />}
+			{tab === "receipt" && <ReceiptLookup />}
 		</div>
 		</>
 	);

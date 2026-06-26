@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { api, type Stats, type Escrow } from "../api";
 import { useRouter } from "../router";
 import { useWallet } from "../context/WalletContext";

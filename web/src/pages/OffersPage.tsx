@@ -7,7 +7,6 @@ import { useToast } from "../layout/Toast";
 import { FormField, SkeletonOffers, SkeletonTable } from "../ui";
 import { EmptyState } from "../components/empty-state";
 import { Helmet } from "react-helmet-async";
-import { SignWithWallet } from "../components/wallet";
 
 type Tab = "browse" | "my-offers" | "create";
 
