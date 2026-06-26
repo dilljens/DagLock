@@ -37,8 +37,8 @@ test.describe("Escrow Creation", () => {
 		await page.goto("/");
 		await page.waitForLoadState("load");
 
-		// The h2 text "Trustless Escrow" is on the dashboard — use first match
-		const hero = page.locator("h2").filter({ hasText: "Trustless Escrow" });
+		// The h2 text "Covenant Escrow" is on the dashboard — use first match
+		const hero = page.locator("h2").filter({ hasText: "Covenant Escrow" });
 		await expect(hero).toBeVisible({ timeout: 5000 });
 	});
 
