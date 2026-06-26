@@ -119,9 +119,9 @@ jobs:
           node-version: 20
 
       - name: Run broken link check
-        run: npx linkinator https://daglock.com --recurse --skip "mailto:|linkedin.com|facebook.com|twitter.com|x.com"
+        run: npx linkinator https://daglock.pages.dev --recurse --skip "mailto:|linkedin.com|facebook.com|twitter.com|x.com"
 
       - name: Run SEO audit
-        run: bash scripts/seo-audit.sh https://daglock.com
+        run: bash scripts/seo-audit.sh https://daglock.pages.dev
         env:
           PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
