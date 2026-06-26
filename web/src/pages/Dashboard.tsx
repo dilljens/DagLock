@@ -43,10 +43,10 @@ export function Dashboard({ stats }: DashboardProps) {
 					<div className="dashboard-hero">
 						<h2> Covenant Escrow on Kaspa</h2>
 						<p>
-							Create, settle, and dispute escrows secured by SilverScript covenants — no admin
-							keys, no backdoors. Only the <strong>buyer</strong> or <strong>seller</strong> can
-							settle. A <strong>0.5% escrow fee</strong> (and <strong>0.1% vault fee</strong>) is
-							enforced by the covenant and paid to the DagLock treasury.
+							Create, settle, and dispute escrows secured by SilverScript covenants — no admin keys,
+							no backdoors. Only the <strong>buyer</strong> or <strong>seller</strong> can settle. A{" "}
+							<strong>0.5% escrow fee</strong> (and <strong>0.1% vault fee</strong>) is enforced by
+							the covenant and paid to the DagLock treasury.
 						</p>
 						{wallet.detected ? (
 							<button
