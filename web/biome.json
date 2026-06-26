@@ -11,28 +11,16 @@
 				"useExhaustiveDependencies": "warn"
 			},
 			"a11y": {
-				"useKeyWithClickEvents": {
-					"level": "warn"
-				},
-				"noLabelWithoutControl": {
-					"level": "warn"
-				},
-				"useButtonType": {
-					"level": "warn"
-				}
+				"useKeyWithClickEvents": "warn",
+				"noLabelWithoutControl": "warn",
+				"useButtonType": "warn"
 			},
 			"suspicious": {
-				"noArrayIndexKey": {
-					"level": "warn"
-				},
-				"noExplicitAny": {
-					"level": "warn"
-				}
+				"noArrayIndexKey": "warn",
+				"noExplicitAny": "warn"
 			},
 			"style": {
-				"noNonNullAssertion": {
-					"level": "warn"
-				}
+				"noNonNullAssertion": "warn"
 			}
 		}
 	},
