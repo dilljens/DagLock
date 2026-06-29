@@ -9,8 +9,9 @@ import { FormField, SkeletonTable } from "../ui";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 import { ReceiptLookup } from "../components/lookup";
+import { CreateInvoiceForm } from "../components/invoice-form";
 
-type Tab = "my-escrows" | "create" | "lookup" | "receipt";
+type Tab = "my-escrows" | "create" | "lookup" | "receipt" | "invoice";
 
 export function EscrowsPage() {
 	const [tab, setTab] = useState<Tab>("my-escrows");
@@ -57,6 +58,14 @@ export function EscrowsPage() {
 					>
 						Receipt
 					</button>
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "invoice" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("invoice")}
+						>
+							Invoice
+						</button>
+					)}
 				</div>
 				{tab === "my-escrows" &&
 					(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
@@ -64,6 +73,7 @@ export function EscrowsPage() {
 					(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
 				{tab === "lookup" && <EscrowLookup />}
 				{tab === "receipt" && <ReceiptLookup />}
+				{tab === "invoice" && <CreateInvoiceForm />}
 			</div>
 		</>
 	);

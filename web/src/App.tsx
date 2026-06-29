@@ -26,6 +26,9 @@ const ReputationPage = lazy(() =>
 const JuryPage = lazy(() => import("./pages/JuryPage").then((m) => ({ default: m.JuryPage })));
 const SwapPage = lazy(() => import("./pages/SwapPage").then((m) => ({ default: m.SwapPage })));
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
+const PayInvoicePage = lazy(() =>
+	import("./pages/PayInvoicePage").then((m) => ({ default: m.PayInvoicePage })),
+);
 
 import { api } from "./api";
 import { useWebSocket } from "./hooks/useWebSocket";
@@ -79,6 +82,10 @@ function AppInner() {
 		>
 			<ErrorBoundary key={route}>
 				{(() => {
+					// Invoice payment page — dynamic route /pay/:id
+					if (window.location.pathname.startsWith("/pay/")) {
+						return <PayInvoicePage />;
+					}
 					switch (route) {
 						case "/":
 							return <Dashboard stats={stats} />;

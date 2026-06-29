@@ -124,12 +124,40 @@ export type CreateEscrowRequest = {
 	price_currency?: string;
 	trade_hash?: string;
 	price_type?: string;
+	invoice_id?: string;
 };
 
 export type AuthHeaders = {
 	address: string;
 	signature: string;
 	message: string;
+};
+
+export type InvoiceData = {
+	id: string;
+	freelancer_address: string;
+	client_address: string | null;
+	escrow_id: string | null;
+	description: string;
+	amount_sompi: number;
+	due_date: number | null;
+	status: string;
+	created_at: number;
+	paid_at: number | null;
+	settled_at: number | null;
+};
+
+export type InvoiceResponse = {
+	invoice: InvoiceData;
+	escrow_status: string | null;
+	link: string;
+};
+
+export type CreateInvoiceRequest = {
+	description: string;
+	amount_sompi: number;
+	due_date?: number;
+	client_email?: string;
 };
 
 export type Reputation = {
@@ -399,6 +427,13 @@ export const api = {
 			{ preimage },
 		),
 	generateSwap: () => loadJson<{ secret: string; hash: string }>("/v1/swap/generate"),
+
+	// Invoices
+	getInvoice: (id: string) => loadJson<InvoiceResponse>(`/v1/invoices/${encodeURIComponent(id)}`),
+	createInvoice: (req: CreateInvoiceRequest, auth: AuthHeaders) =>
+		postJson<{ id: string; link: string; invoice: InvoiceData }>("/v1/invoices", req, auth),
+	listInvoices: (address: string, auth: AuthHeaders) =>
+		loadAuthJson<{ invoices: InvoiceData[]; total: number }>(`/v1/invoices?address=${encodeURIComponent(address)}`, auth),
 
 	// Offers
 	offers: (creator?: string) =>
