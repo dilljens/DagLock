@@ -273,11 +273,23 @@ pub async fn create(
             None
         },
         price_type: body.price_type.clone(),
+        invoice_id: body.invoice_id.clone(),
     };
 
     queries::insert_escrow(&state.db, &escrow)
         .await
         .map_err(|_e| crate::types::internal_error())?;
+
+    // If this escrow is linked to an invoice, update invoice status
+    if let Some(ref inv_id) = body.invoice_id {
+        let _ = queries::link_invoice_to_escrow(
+            &state.db,
+            inv_id,
+            &escrow.id,
+            &body.buyer_address,
+        )
+        .await;
+    }
 
     let _ = state.ws_tx.send(WsEvent::escrow_created(&escrow.id));
     webhooks::dispatch(state.db.clone(), WebhookEvent::EscrowCreated(&escrow.id));

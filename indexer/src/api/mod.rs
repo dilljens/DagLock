@@ -5,6 +5,7 @@ pub mod compile;
 pub mod escrows;
 pub mod evidence;
 pub mod identity;
+pub mod invoices;
 pub mod jury;
 pub mod messages;
 pub mod network;
@@ -120,6 +121,8 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             get(apps::list_keys).post(apps::create_key),
         )
         .route("/v1/apps/:id/keys/:key_id", post(apps::delete_key))
+        .route("/v1/invoices", get(invoices::list).post(invoices::create))
+        .route("/v1/invoices/:id", get(invoices::get))
         .route("/v1/jury/register", post(jury::register))
         .route("/v1/jury/unregister", post(jury::unregister))
         .route("/v1/jury/cases", get(jury::list_cases))

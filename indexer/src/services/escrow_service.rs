@@ -181,6 +181,7 @@ impl<'a> EscrowService<'a> {
                 None
             },
             price_type: body.price_type.clone(),
+            invoice_id: body.invoice_id.clone(),
         };
 
         queries::insert_escrow(&self.db, &escrow)

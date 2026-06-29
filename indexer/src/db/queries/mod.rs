@@ -5,6 +5,7 @@ pub mod auth;
 pub mod escrows;
 pub mod evidence;
 pub mod identity;
+pub mod invoices;
 pub mod jury;
 pub mod messages;
 pub mod offers;
@@ -17,6 +18,7 @@ pub use auth::*;
 pub use escrows::*;
 pub use evidence::*;
 pub use identity::*;
+pub use invoices::*;
 pub use jury::*;
 pub use messages::*;
 pub use offers::*;
@@ -60,6 +62,7 @@ mod tests {
             price_at_settlement: None,
             price_source: None,
             price_type: None,
+            invoice_id: None,
         }
     }
 

@@ -93,6 +93,7 @@ pub struct Escrow {
     pub price_at_settlement: Option<f64>,
     pub price_source: Option<String>,
     pub price_type: Option<String>,
+    pub invoice_id: Option<String>,
 }
 
 /// Create escrow request (from POST endpoint).
@@ -118,6 +119,7 @@ pub struct CreateEscrowRequest {
     pub trade_hash: Option<String>,
     #[serde(default)]
     pub price_type: Option<String>,
+    pub invoice_id: Option<String>,
 }
 
 /// App registered by an integrator.
@@ -591,6 +593,72 @@ pub struct TransferVaultRequest {
     pub beneficiary_address: Address,
     pub owner_address: Address,
     pub signature: String,
+}
+
+// ── Invoices ──────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum InvoiceStatus {
+    Draft,
+    Sent,
+    Paid,
+    Settled,
+    Disputed,
+    Refunded,
+    Cancelled,
+}
+
+impl std::fmt::Display for InvoiceStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InvoiceStatus::Draft => write!(f, "draft"),
+            InvoiceStatus::Sent => write!(f, "sent"),
+            InvoiceStatus::Paid => write!(f, "paid"),
+            InvoiceStatus::Settled => write!(f, "settled"),
+            InvoiceStatus::Disputed => write!(f, "disputed"),
+            InvoiceStatus::Refunded => write!(f, "refunded"),
+            InvoiceStatus::Cancelled => write!(f, "cancelled"),
+        }
+    }
+}
+
+impl From<&str> for InvoiceStatus {
+    fn from(s: &str) -> Self {
+        match s {
+            "draft" => InvoiceStatus::Draft,
+            "sent" => InvoiceStatus::Sent,
+            "paid" => InvoiceStatus::Paid,
+            "settled" => InvoiceStatus::Settled,
+            "disputed" => InvoiceStatus::Disputed,
+            "refunded" => InvoiceStatus::Refunded,
+            "cancelled" => InvoiceStatus::Cancelled,
+            _ => InvoiceStatus::Draft,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Invoice {
+    pub id: String,
+    pub freelancer_address: Address,
+    pub client_address: Option<Address>,
+    pub escrow_id: Option<String>,
+    pub description: String,
+    pub amount_sompi: i64,
+    pub due_date: Option<i64>,
+    pub status: String,
+    pub created_at: i64,
+    pub paid_at: Option<i64>,
+    pub settled_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateInvoiceRequest {
+    pub description: String,
+    pub amount_sompi: i64,
+    pub due_date: Option<i64>,
+    pub client_email: Option<String>,
 }
 
 // ── Shared Helpers ────────────────────────────────────────────────

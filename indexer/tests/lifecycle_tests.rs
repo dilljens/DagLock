@@ -48,6 +48,7 @@ fn make_escrow(id: &str, status: EscrowStatus) -> Escrow {
         price_at_settlement: None,
         price_source: None,
         price_type: None,
+        invoice_id: None,
     }
 }
 
