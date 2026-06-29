@@ -205,6 +205,22 @@ bot.command("create", async (ctx) => {
 	);
 });
 
+bot.command("invoice", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply(
+			"Please set your address first:\n/setaddress <kaspa-address>",
+			{ parse_mode: "Markdown" },
+		);
+	}
+	startConv(ctx.from.id);
+	updateConv(ctx.from.id, "address", address);
+	await ctx.reply(
+		"*Create Invoice - Step 1/3*\n\nHow much KAS is the invoice for?\n\nExample: `100` or `2500`",
+		{ parse_mode: "Markdown" },
+	);
+});
+
 bot.command("claim", async (ctx) => {
 	const id = ctx.match?.trim();
 	if (!id) return await ctx.reply("Usage: /claim <escrow-id>");
@@ -591,6 +607,69 @@ bot.on("message:text", async (ctx, next) => {
 	const step = conv.step;
 
 	try {
+		// ── Invoice wizard ─────────────────────────────────────────
+		if (step === "inv_amount") {
+			const num = parseFloat(text);
+			if (isNaN(num) || num <= 0) {
+				return await ctx.reply("Enter a valid amount, e.g. `100`", {
+					parse_mode: "Markdown",
+				});
+			}
+			updateConv(ctx.from.id, "amount", num);
+			advanceConv(ctx.from.id, "inv_description");
+			return await ctx.reply(
+				"*Create Invoice - Step 2/3*\n\nWhat's this invoice for?\n\nDescribe the work or product (max 200 chars).",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "inv_description") {
+			if (text.length < 3 || text.length > 200) {
+				return await ctx.reply("Description must be 3-200 characters.", {
+					parse_mode: "Markdown",
+				});
+			}
+			updateConv(ctx.from.id, "description", text);
+			advanceConv(ctx.from.id, "inv_due");
+			return await ctx.reply(
+				"*Create Invoice - Step 3/3*\n\nDue date? (optional)\n\nEnter days from now (e.g. `7` for 7 days), or type `none` for no due date.",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "inv_due") {
+			const data = conv.data;
+			endConv(ctx.from.id);
+
+			// Redirect to web app — the bot cannot sign transactions
+			const webUrl = process.env.WEB_URL || "https://daglock.com";
+			const params = new URLSearchParams({
+				amount: data.amount.toString(),
+				description: data.description,
+			});
+			if (text !== "none") {
+				const days = parseInt(text);
+				if (isNaN(days) || days < 1) {
+					return await ctx.reply("Enter a number of days (e.g. `7`) or `none`.", {
+						parse_mode: "Markdown",
+					});
+				}
+				params.set("due_days", days.toString());
+			}
+			const redirectUrl = `${webUrl}/escrows?tab=invoice&${params.toString()}`;
+
+			await ctx.reply(
+				"✅ *Invoice params ready!*\n\n" +
+					`Amount: ${data.amount} KAS\n` +
+					`Description: ${data.description}\n` +
+					"\nTo create the invoice, open the web app and sign with your wallet:\n" +
+					`[Create Invoice](${redirectUrl})`,
+				{ parse_mode: "Markdown", disable_web_page_preview: true },
+			);
+			return;
+		}
+
+		// ── Escrow wizard ──────────────────────────────────────────
 		if (step === "amount") {
 			const num = parseFloat(text);
 			if (isNaN(num) || num <= 0) {
