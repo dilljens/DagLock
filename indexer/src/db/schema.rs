@@ -94,6 +94,8 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
 
+    ensure_daily_stats_table(pool).await?;
+
     ensure_escrow_lifecycle_columns(pool).await?;
     ensure_escrow_invoice_id_column(pool).await?;
     ensure_escrow_memo_column(pool).await?;
@@ -113,6 +115,10 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_chat_columns(pool).await?;
     ensure_anchor_columns(pool).await?;
     ensure_chat_reveal_columns(pool).await?;
+    ensure_api_key_tier(pool).await?;
+
+    ensure_price_alerts_table(pool).await?;
+    ensure_price_history_table(pool).await?;
 
     Ok(())
 }
@@ -185,6 +191,39 @@ pub async fn ensure_milestone_escrows_table(pool: &Pool<Sqlite>) -> Result<(), s
 
         sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_milestone_escrows_seller ON milestone_escrows(seller_address)"
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_daily_stats_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(daily_stats)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+
+    if !existing.contains("date") {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS daily_stats (
+                date TEXT PRIMARY KEY,
+                escrows_created INTEGER DEFAULT 0,
+                escrows_settled INTEGER DEFAULT 0,
+                milestones_completed INTEGER DEFAULT 0,
+                subscriptions_completed INTEGER DEFAULT 0,
+                volume_sompi INTEGER DEFAULT 0,
+                fees_sompi INTEGER DEFAULT 0,
+                active_escrows INTEGER DEFAULT 0,
+                open_offers INTEGER DEFAULT 0,
+                kas_usd_price REAL,
+                daa_score INTEGER,
+                created_at INTEGER
+            )"
         )
         .execute(pool)
         .await?;
@@ -730,6 +769,93 @@ pub async fn ensure_chat_reveal_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx:
         )
         .execute(pool)
         .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_price_alerts_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(price_alerts)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+
+    if !existing.contains("id") {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS price_alerts (
+                id TEXT PRIMARY KEY,
+                address TEXT NOT NULL,
+                target_price REAL NOT NULL,
+                direction TEXT NOT NULL,
+                triggered INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                triggered_at INTEGER
+            )"
+        )
+        .execute(pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_price_alerts_address ON price_alerts(address)"
+        )
+        .execute(pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_price_alerts_triggered ON price_alerts(triggered)"
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_price_history_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(price_history)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+
+    if !existing.contains("timestamp") {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS price_history (
+                timestamp INTEGER PRIMARY KEY,
+                price_usd REAL,
+                source TEXT DEFAULT 'coingecko'
+            )"
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_api_key_tier(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(api_keys)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+
+    if !existing.contains("tier") {
+        sqlx::query("ALTER TABLE api_keys ADD COLUMN tier TEXT NOT NULL DEFAULT 'free'")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("webhooks_enabled") {
+        sqlx::query("ALTER TABLE api_keys ADD COLUMN webhooks_enabled INTEGER NOT NULL DEFAULT 0")
+            .execute(pool)
+            .await?;
     }
 
     Ok(())

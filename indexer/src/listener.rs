@@ -481,7 +481,7 @@ pub fn spawn_vault_sweeper(
                 Ok(vaults) => {
                     for (id, _owner_addr, amount_sompi, owner_pubkey_hex) in &vaults {
                         info!(
-                            "Vault {} can be swept: {} sompi past timeout",
+                            "Vault {} can be swept: {} sompi past lock duration",
                             id, amount_sompi
                         );
                         if let Some(owner_pk_hex) = owner_pubkey_hex {

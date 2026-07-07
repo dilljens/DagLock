@@ -5,6 +5,7 @@ import { useToast } from "../layout/Toast";
 import { FormField } from "../ui";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
+import { PriceAlertsSettings } from "../components/PriceAlerts";
 
 export function SettingsPage() {
 	const { state: wallet, sign } = useWallet();
@@ -183,6 +184,9 @@ export function SettingsPage() {
 						</button>
 					</div>
 				)}
+
+				{/* Price alerts */}
+				<PriceAlertsSettings address={address!} />
 			</div>
 		</>
 	);

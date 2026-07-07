@@ -2,15 +2,15 @@ pragma silverscript ^0.1.0;
 
 contract DagLockVault(
     byte[32] ownerKey,
-    int timeout,
+    int lockDuration,
     byte[32] treasuryKey,
     byte[32] heirKey,
-    int heirTimeout
+    int inheritLockDuration
 ) {
     int constant MIN_OUT = 1000;
 
     entrypoint function withdraw(sig ownerSig) {
-        require(tx.time >= timeout);
+        require(this.age >= lockDuration);
         require(checkSig(ownerSig, pubkey(ownerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
@@ -27,7 +27,7 @@ contract DagLockVault(
     }
 
     entrypoint function sweep() {
-        require(tx.time >= timeout);
+        require(this.age >= lockDuration);
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
         int feeAmount = inputValue / 1000;
@@ -78,7 +78,7 @@ contract DagLockVault(
     }
 
     entrypoint function heir_withdraw(sig heirSig) {
-        require(tx.time >= heirTimeout);
+        require(this.age >= inheritLockDuration);
         require(checkSig(heirSig, pubkey(heirKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;

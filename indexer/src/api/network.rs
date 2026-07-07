@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 
 use crate::api::AppState;
 use crate::db::queries;
-use crate::types::{FeeEstimate, NetworkInfo};
+use crate::types::{FeeEstimate, NetworkInfo, PriceHistoryPoint};
 
 /// GET /v1/network
 pub async fn get(State(state): State<AppState>) -> Json<Value> {
@@ -39,6 +39,47 @@ pub async fn price(State(_state): State<AppState>) -> Json<Value> {
 /// Returns the Kaspa block explorer base URL.
 pub async fn explorer(State(state): State<AppState>) -> Json<Value> {
     Json(json!({ "base_url": state.explorer_base_url }))
+}
+
+/// GET /v1/network/price/history?days=30
+/// Returns KAS/USD price history for charting.
+pub async fn price_history(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Json<Value> {
+    let days: i64 = params
+        .get("days")
+        .and_then(|d| d.parse().ok())
+        .unwrap_or(30)
+        .min(90)
+        .max(1);
+    let cutoff = chrono::Utc::now().timestamp() - days * 86400;
+
+    let rows = match sqlx::query_as::<_, (i64, f64)>(
+        "SELECT timestamp, price_usd FROM price_history \
+         WHERE timestamp >= ?1 ORDER BY timestamp ASC"
+    )
+    .bind(cutoff)
+    .fetch_all(&state.db)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return Json(json!({
+                "error": { "code": "internal_error", "message": format!("{e}") }
+            }));
+        }
+    };
+
+    let points: Vec<PriceHistoryPoint> = rows
+        .into_iter()
+        .map(|(ts, price)| PriceHistoryPoint {
+            timestamp: ts,
+            price_usd: price,
+        })
+        .collect();
+
+    Json(json!({ "points": points, "days": days }))
 }
 
 /// GET /v1/fees/estimate?amount_kas=...

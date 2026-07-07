@@ -1,7 +1,11 @@
-//! Simple per-IP request rate limiter using axum::middleware::from_fn.
+//! Tiered rate limiter using axum::middleware::from_fn.
 //!
-//! Tracks requests per IP with a sliding window counter.
-//! Returns HTTP 429 Too Many Requests when exceeded.
+//! API key tier determines the request limit per window:
+//!   free  → 10 req/min
+//!   pro   → 100 req/min
+//!   whale → 1000 req/min
+//!
+//! A simple in-memory cache (TTL 60s) avoids a DB lookup on every request.
 
 use axum::{
     http::Request,
@@ -10,16 +14,52 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use std::{collections::HashMap, net::IpAddr, sync::Mutex, time::Instant};
+use std::{
+    collections::HashMap,
+    net::IpAddr,
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 
-/// Rate limit tiers.
-const DEFAULT_MAX: u32 = 30;
-const API_KEY_MAX: u32 = 300;
 const WINDOW_SECS: u64 = 60;
 
-/// Thread-safe per-IP rate limiter.
+/// Supported API tiers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ApiTier {
+    Free,
+    Pro,
+    Whale,
+}
+
+impl ApiTier {
+    fn max_requests(self) -> u32 {
+        match self {
+            Self::Free => 10,
+            Self::Pro => 100,
+            Self::Whale => 1000,
+        }
+    }
+}
+
+impl From<&str> for ApiTier {
+    fn from(s: &str) -> Self {
+        match s {
+            "pro" => Self::Pro,
+            "whale" => Self::Whale,
+            _ => Self::Free,
+        }
+    }
+}
+
+/// Thread-safe per-IP rate limiter with tier support.
 pub struct RateLimiter {
-    inner: Mutex<HashMap<IpAddr, WindowState>>,
+    inner: Mutex<RateLimiterInner>,
+}
+
+struct RateLimiterInner {
+    windows: HashMap<IpAddr, WindowState>,
+    /// key_hash → (tier, cached_at) with 60s TTL
+    tier_cache: HashMap<Vec<u8>, (ApiTier, Instant)>,
 }
 
 struct WindowState {
@@ -31,20 +71,25 @@ struct WindowState {
 impl RateLimiter {
     pub fn new() -> Self {
         Self {
-            inner: Mutex::new(HashMap::new()),
+            inner: Mutex::new(RateLimiterInner {
+                windows: HashMap::new(),
+                tier_cache: HashMap::new(),
+            }),
         }
     }
 
-    /// Check if an IP is within its rate limit.
-    /// `max_requests` overrides the default limit (e.g., 300 for API key holders).
-    pub fn check(&self, ip: IpAddr, max_requests: u32) -> std::result::Result<(), Response> {
-        let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+    /// Check rate limit for an IP with an optional tier override.
+    /// `tier` is `None` when no API key is present (falls back to Free).
+    pub fn check(&self, ip: IpAddr, tier: Option<ApiTier>) -> Result<(), Response> {
+        let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
-        if let Some(entry) = map.get_mut(&ip) {
+        let max_requests = tier.unwrap_or(ApiTier::Free).max_requests();
+
+        if let Some(entry) = inner.windows.get_mut(&ip) {
             if now >= entry.reset_at {
                 entry.count = 1;
-                entry.reset_at = now + std::time::Duration::from_secs(WINDOW_SECS);
+                entry.reset_at = now + Duration::from_secs(WINDOW_SECS);
                 entry.max_requests = max_requests;
                 Ok(())
             } else if entry.count < entry.max_requests {
@@ -64,15 +109,42 @@ impl RateLimiter {
                     .into_response())
             }
         } else {
-            map.insert(
+            inner.windows.insert(
                 ip,
                 WindowState {
                     count: 1,
-                    reset_at: now + std::time::Duration::from_secs(WINDOW_SECS),
+                    reset_at: now + Duration::from_secs(WINDOW_SECS),
                     max_requests,
                 },
             );
             Ok(())
+        }
+    }
+
+    /// Resolve an API key hash to its tier, using a 60s cache.
+    /// `None` means no valid key was provided.
+    pub fn resolve_tier(&self, key_hash: Option<&[u8]>) -> Option<ApiTier> {
+        let key_hash = key_hash?;
+        let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let now = Instant::now();
+
+        // Check cache
+        if let Some((tier, cached_at)) = inner.tier_cache.get(key_hash) {
+            if now.duration_since(*cached_at) < Duration::from_secs(60) {
+                return Some(*tier);
+            }
+        }
+
+        // Cache miss — caller must populate via cache_tier()
+        None
+    }
+
+    /// Populate the tier cache for a key hash.
+    pub fn cache_tier(&self, key_hash: Vec<u8>, tier: ApiTier) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner
+                .tier_cache
+                .insert(key_hash, (tier, Instant::now()));
         }
     }
 }
@@ -83,8 +155,12 @@ impl Default for RateLimiter {
     }
 }
 
-/// Axum middleware function for rate limiting.
-/// Checks for X-Daglock-Api-Key header — if present, allows 300 req/min instead of 30.
+/// Axum middleware for tiered rate limiting.
+///
+/// Headers inspected:
+///   X-Daglock-Api-Key — hashed to look up the key's tier
+///
+/// When no (or invalid) API key is present, the Free tier applies.
 pub async fn rate_limit_mw(
     state: axum::extract::State<std::sync::Arc<RateLimiter>>,
     req: Request<axum::body::Body>,
@@ -98,21 +174,30 @@ pub async fn rate_limit_mw(
         .and_then(|v| v.trim().parse::<IpAddr>().ok())
         .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)));
 
-    // API key holders get 10x the rate limit
-    let has_api_key = req
+    let api_key = req
         .headers()
         .get("x-daglock-api-key")
         .and_then(|v| v.to_str().ok())
-        .map(|v| !v.is_empty())
-        .unwrap_or(false);
+        .filter(|v| !v.is_empty());
 
-    let max_requests = if has_api_key {
-        API_KEY_MAX
-    } else {
-        DEFAULT_MAX
-    };
+    let tier = api_key.and_then(|raw| {
+        let hash = blake2b_simd::Params::new()
+            .hash_length(32)
+            .hash(raw.as_bytes())
+            .as_bytes()
+            .to_vec();
 
-    match state.check(ip, max_requests) {
+        // Try cache first; if miss, we default to Free rather than
+        // blocking the request on a DB query. The cache is populated
+        // after successful key verification by endpoint handlers.
+        state.resolve_tier(Some(&hash)).or_else(|| {
+            // Fall back to Free for uncached keys
+            // (will be cached after the first verified request)
+            Some(ApiTier::Free)
+        })
+    });
+
+    match state.check(ip, tier) {
         Ok(()) => next.run(req).await,
         Err(resp) => resp,
     }
@@ -124,25 +209,43 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn allows_requests_under_limit() {
+    fn free_tier_allows_10() {
         let limiter = RateLimiter::new();
-        let ip = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
-        for _ in 0..5 {
-            assert!(limiter.check(ip, 5).is_ok(), "should allow up to 5");
+        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+        for _ in 0..10 {
+            assert!(limiter.check(ip, Some(ApiTier::Free)).is_ok());
         }
+        assert!(limiter.check(ip, Some(ApiTier::Free)).is_err());
     }
 
     #[test]
-    fn blocks_request_over_limit() {
+    fn pro_tier_allows_100() {
         let limiter = RateLimiter::new();
-        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
-        for _ in 0..3 {
-            assert!(limiter.check(ip, 3).is_ok());
+        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2));
+        for _ in 0..100 {
+            assert!(limiter.check(ip, Some(ApiTier::Pro)).is_ok());
         }
-        assert!(
-            limiter.check(ip, 3).is_err(),
-            "4th request should be blocked"
-        );
+        assert!(limiter.check(ip, Some(ApiTier::Pro)).is_err());
+    }
+
+    #[test]
+    fn whale_tier_allows_1000() {
+        let limiter = RateLimiter::new();
+        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 3));
+        for _ in 0..1000 {
+            assert!(limiter.check(ip, Some(ApiTier::Whale)).is_ok());
+        }
+        assert!(limiter.check(ip, Some(ApiTier::Whale)).is_err());
+    }
+
+    #[test]
+    fn no_tier_falls_back_to_free() {
+        let limiter = RateLimiter::new();
+        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 4));
+        for _ in 0..10 {
+            assert!(limiter.check(ip, None).is_ok());
+        }
+        assert!(limiter.check(ip, None).is_err());
     }
 
     #[test]
@@ -151,47 +254,26 @@ mod tests {
         let ip_a = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
         let ip_b = IpAddr::V4(Ipv4Addr::new(2, 2, 2, 2));
 
-        assert!(limiter.check(ip_a, 2).is_ok());
-        assert!(limiter.check(ip_a, 2).is_ok());
-        assert!(limiter.check(ip_a, 2).is_err(), "IP A should be blocked");
+        for _ in 0..10 {
+            assert!(limiter.check(ip_a, Some(ApiTier::Free)).is_ok());
+        }
+        assert!(limiter.check(ip_a, Some(ApiTier::Free)).is_err());
 
-        assert!(
-            limiter.check(ip_b, 2).is_ok(),
-            "IP B should still be allowed"
-        );
-        assert!(limiter.check(ip_b, 2).is_ok());
-        assert!(
-            limiter.check(ip_b, 2).is_err(),
-            "IP B should also be blocked"
-        );
+        // IP B starts fresh
+        for _ in 0..10 {
+            assert!(limiter.check(ip_b, Some(ApiTier::Free)).is_ok());
+        }
     }
 
     #[test]
-    fn api_key_tier_gets_higher_limit() {
+    fn tier_cache_roundtrip() {
         let limiter = RateLimiter::new();
-        let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
-
-        // Default tier: 30 req/min
-        for _ in 0..30 {
-            assert!(limiter.check(ip, 30).is_ok());
-        }
-        assert!(
-            limiter.check(ip, 30).is_err(),
-            "31st default should be blocked"
-        );
-
-        // API key tier: should start fresh for new window (can't test in same window)
-        // Just verify the higher limit is accepted
-        let ip2 = IpAddr::V4(Ipv4Addr::new(5, 6, 7, 8));
-        for _ in 0..300 {
-            assert!(
-                limiter.check(ip2, 300).is_ok(),
-                "should allow 300 with API key"
-            );
-        }
-        assert!(
-            limiter.check(ip2, 300).is_err(),
-            "301st API key should be blocked"
+        let hash = vec![1u8, 2, 3];
+        assert!(limiter.resolve_tier(Some(&hash)).is_none());
+        limiter.cache_tier(hash.clone(), ApiTier::Pro);
+        assert_eq!(
+            limiter.resolve_tier(Some(&hash)),
+            Some(ApiTier::Pro)
         );
     }
 }

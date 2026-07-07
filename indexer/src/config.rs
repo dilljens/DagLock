@@ -98,6 +98,19 @@ pub struct Args {
     /// Hours after case resolution to auto-wipe revealed chat evidence.
     #[arg(long, default_value_t = 24)]
     pub evidence_auto_wipe_hours: u64,
+
+    /// Admin auth token for privileged endpoints (e.g. tier management).
+    /// When not set, admin endpoints return 403.
+    #[arg(long)]
+    pub admin_token: Option<String>,
+
+    /// Interval between daily stats computation runs (seconds).
+    #[arg(long, default_value_t = 3600)]
+    pub stats_interval_seconds: u64,
+
+    /// Enable the background price alert checker task.
+    #[arg(long, default_value_t = false)]
+    pub price_alerts_enabled: bool,
 }
 
 impl Args {
@@ -201,6 +214,9 @@ mod tests {
             anchor_interval_seconds: 300,
             anchor_wallet_key: None,
             evidence_auto_wipe_hours: 24,
+            admin_token: None,
+            stats_interval_seconds: 3600,
+            price_alerts_enabled: false,
         }
     }
 

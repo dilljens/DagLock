@@ -67,10 +67,16 @@ pub fn dispatch(pool: Pool<Sqlite>, event: WebhookEvent<'_>) {
     let escrow_id = event.id().to_string();
 
     tokio::spawn(async move {
+        // Only dispatch webhooks for apps that have at least one active API key
+        // with webhooks_enabled = 1 (free tier = no webhooks, pro+ = yes).
         let hooks = match sqlx::query_as::<_, (String, String)>(
             "SELECT w.id, w.url FROM webhooks w
              INNER JOIN apps a ON a.id = w.app_id
-             WHERE w.event = ?1 AND w.is_active = 1 AND a.is_active = 1",
+             WHERE w.event = ?1 AND w.is_active = 1 AND a.is_active = 1
+             AND EXISTS (
+                 SELECT 1 FROM api_keys k
+                 WHERE k.app_id = a.id AND k.is_active = 1 AND k.webhooks_enabled = 1
+             )",
         )
         .bind(&event_name)
         .fetch_all(&pool)

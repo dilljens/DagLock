@@ -138,6 +138,8 @@ async fn main() {
     ));
     let anchor_bg = anchor_service.clone();
 
+    let rate_limiter = Arc::new(crate::ratelimit::RateLimiter::new());
+
     let state = AppState {
         db: pool,
         started_at: Instant::now(),
@@ -157,6 +159,8 @@ async fn main() {
         ai_mediator_model: Some(args.ai_mediator_model.clone()),
         mock_chat_sig: args.mock_chat_sig,
         anchor_service,
+        rate_limiter,
+        admin_token: args.admin_token.clone(),
     };
 
     // Background task: flush anchor batches every N seconds
@@ -450,6 +454,52 @@ async fn main() {
                 }
             }
         });
+    }
+
+    // Background task: compute and store daily stats every N seconds
+    {
+        let db = state.db.clone();
+        let interval = args.stats_interval_seconds;
+        tokio::spawn(async move {
+            let mut timer = tokio::time::interval(std::time::Duration::from_secs(interval));
+            // Run once on startup
+            if let Err(e) = crate::db::queries::compute_and_store_daily_stats(&db).await {
+                tracing::warn!("Failed to compute daily stats: {e}");
+            }
+            loop {
+                timer.tick().await;
+                if let Err(e) = crate::db::queries::compute_and_store_daily_stats(&db).await {
+                    tracing::warn!("Failed to compute daily stats: {e}");
+                } else {
+                    tracing::info!("Daily stats snapshot stored");
+                }
+            }
+        });
+        tracing::info!("Daily stats background task started (interval: {interval}s)");
+    }
+
+    // Background task: price history tracking every 5 minutes
+    crate::services::price_oracle::spawn(state.db.clone());
+    tracing::info!("Price oracle background task started (5-minute interval)");
+
+    // Background task: check price alerts every 5 minutes
+    if args.price_alerts_enabled {
+        let db = state.db.clone();
+        let ws_tx = state.ws_tx.clone();
+        let email_service = state.email_service.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
+            loop {
+                interval.tick().await;
+                if let Some(price) = crate::types::fetch_kas_usd_price().await {
+                    crate::services::price_alerts::check_alerts(
+                        &db, price, &ws_tx, &email_service,
+                    )
+                    .await;
+                }
+            }
+        });
+        tracing::info!("Price alert checker background task started (5-minute interval)");
     }
 
     // Background task: sweep stale deposits every 60 seconds

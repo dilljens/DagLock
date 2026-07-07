@@ -46,12 +46,12 @@ fn p2pk_script(pubkey: &[u8]) -> ScriptPublicKey {
 #[test]
 fn vault_withdraw_succeeds_after_timeout() {
     let owner = random_keypair();
-    let timeout: i64 = 1_600_000_000; // past timestamp
+    let lock_duration: i64 = 500;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault(
         &pubkey_bytes(&owner),
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
         &[0u8; 32],
         0,
@@ -68,14 +68,14 @@ fn vault_withdraw_succeeds_after_timeout() {
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([1u8; 32]), 0),
         vec![],
-        0,
+        lock_duration as u64,
         0u8,
     );
     let tx = Transaction::new(
         1,
         vec![input],
         outputs.clone(),
-        timeout as u64,
+        0,
         Default::default(),
         0,
         vec![],
@@ -127,12 +127,12 @@ fn vault_withdraw_succeeds_after_timeout() {
 #[test]
 fn vault_withdraw_fails_before_timeout() {
     let owner = random_keypair();
-    let timeout: i64 = 3_000_000_000; // future timestamp
+    let lock_duration: i64 = 3000;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault(
         &pubkey_bytes(&owner),
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
         &[0u8; 32],
         0,
@@ -156,7 +156,7 @@ fn vault_withdraw_fails_before_timeout() {
         1,
         vec![input],
         outputs.clone(),
-        0, // current time before timeout
+        0,
         Default::default(),
         0,
         vec![],
@@ -205,12 +205,12 @@ fn vault_withdraw_fails_before_timeout() {
 fn vault_withdraw_fails_wrong_signature() {
     let owner = random_keypair();
     let wrong_signer = random_keypair();
-    let timeout: i64 = 1_600_000_000;
+    let lock_duration: i64 = 500;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault(
         &pubkey_bytes(&owner),
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
         &[0u8; 32],
         0,
@@ -227,14 +227,14 @@ fn vault_withdraw_fails_wrong_signature() {
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([3u8; 32]), 0),
         vec![],
-        0,
+        lock_duration as u64,
         0u8,
     );
     let tx = Transaction::new(
         1,
         vec![input],
         outputs.clone(),
-        timeout as u64,
+        0,
         Default::default(),
         0,
         vec![],
@@ -308,14 +308,14 @@ fn softlock_password_withdraw_succeeds_correct_password() {
     let beneficiary = random_keypair();
     let password = b"my-secure-password-123!";
     let password_hash = sha256_full(password);
-    let timeout: i64 = 1_600_000_000;
+    let lock_duration: i64 = 500;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&beneficiary),
         &password_hash,
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
     );
 
@@ -388,14 +388,14 @@ fn softlock_password_withdraw_fails_wrong_password() {
     let password = b"correct-password";
     let password_hash = sha256_full(password);
     let wrong_password = b"wrong-password";
-    let timeout: i64 = 1_600_000_000;
+    let lock_duration: i64 = 500;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&beneficiary),
         &password_hash,
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
     );
 
@@ -457,14 +457,14 @@ fn softlock_timeout_withdraw_succeeds_after_timeout() {
     let owner = random_keypair();
     let beneficiary = random_keypair();
     let password_hash = sha256_full(b"any-password");
-    let timeout: i64 = 1_600_000_000;
+    let lock_duration: i64 = 500;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&owner),
         &password_hash,
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
     );
 
@@ -479,14 +479,14 @@ fn softlock_timeout_withdraw_succeeds_after_timeout() {
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([8u8; 32]), 0),
         vec![],
-        0,
+        lock_duration as u64,
         0u8,
     );
     let tx = Transaction::new(
         1,
         vec![input],
         outputs,
-        timeout as u64,
+        0,
         Default::default(),
         0,
         vec![],
@@ -540,14 +540,14 @@ fn softlock_timeout_withdraw_fails_before_timeout() {
     let owner = random_keypair();
     let beneficiary = random_keypair();
     let password_hash = sha256_full(b"any");
-    let timeout: i64 = 3_000_000_000;
+    let lock_duration: i64 = 3000;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault_softlock(
         &pubkey_bytes(&owner),
         &pubkey_bytes(&owner),
         &password_hash,
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
     );
 
@@ -613,12 +613,12 @@ fn softlock_timeout_withdraw_fails_before_timeout() {
 #[test]
 fn vault_sweep_succeeds_after_timeout() {
     let owner = random_keypair();
-    let timeout: i64 = 1_600_000_000;
+    let lock_duration: i64 = 500;
     let treasury = random_keypair();
 
     let compiled = compile_daglock_vault(
         &pubkey_bytes(&owner),
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
         &[0u8; 32],
         0,
@@ -635,14 +635,14 @@ fn vault_sweep_succeeds_after_timeout() {
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([10u8; 32]), 0),
         vec![],
-        0,
+        lock_duration as u64,
         0u8,
     );
     let tx = Transaction::new(
         1,
         vec![input],
         outputs.clone(),
-        timeout as u64,
+        0,
         Default::default(),
         0,
         vec![],
@@ -682,11 +682,11 @@ fn vault_sweep_succeeds_after_timeout() {
 #[test]
 fn vault_sweep_fails_before_timeout() {
     let owner = random_keypair();
-    let timeout: i64 = 3_000_000_000;
+    let lock_duration: i64 = 3000;
     let treasury = random_keypair();
     let compiled = compile_daglock_vault(
         &pubkey_bytes(&owner),
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
         &[0u8; 32],
         0,
@@ -743,13 +743,13 @@ fn multisig_sweep_succeeds_with_single_key() {
     let kp2 = random_keypair();
     let kp3 = random_keypair();
     let treasury = random_keypair();
-    let timeout: i64 = 1_600_000_000;
+    let lock_duration: i64 = 500;
 
     let compiled = compile_daglock_vault_multisig(
         &pubkey_bytes(&kp1),
         &pubkey_bytes(&kp2),
         &pubkey_bytes(&kp3),
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
     );
 
@@ -764,14 +764,14 @@ fn multisig_sweep_succeeds_with_single_key() {
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([30u8; 32]), 0),
         vec![],
-        0,
+        lock_duration as u64,
         0u8,
     );
     let tx = Transaction::new(
         1,
         vec![input],
         outputs.clone(),
-        timeout as u64,
+        0,
         Default::default(),
         0,
         vec![],
@@ -824,13 +824,13 @@ fn multisig_sweep_fails_with_wrong_key() {
     let kp2 = random_keypair();
     let treasury = random_keypair();
     let impostor = random_keypair(); // not configured as a signer
-    let timeout: i64 = 1_600_000_000;
+    let lock_duration: i64 = 500;
 
     let compiled = compile_daglock_vault_multisig(
         &pubkey_bytes(&kp1),
         &pubkey_bytes(&kp2),
         &[0u8; 32],
-        timeout,
+        lock_duration,
         &pubkey_bytes(&treasury),
     );
 
@@ -845,14 +845,14 @@ fn multisig_sweep_fails_with_wrong_key() {
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([31u8; 32]), 0),
         vec![],
-        0,
+        lock_duration as u64,
         0u8,
     );
     let tx = Transaction::new(
         1,
         vec![input],
         outputs.clone(),
-        timeout as u64,
+        0,
         Default::default(),
         0,
         vec![],

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { api, type AuthHeaders, type Escrow, type MilestoneEscrow, type MultiEscrow, type Deposit } from "../api";
 import { useRouter } from "../router";
-import { money, badge, time } from "../helpers";
+import { money, badge, time, moneyCompact } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
@@ -17,8 +17,70 @@ import { generateChatKeypair, type ChatKeypair } from "../crypto/chat-crypto";
 import { encodeBase64 } from "tweetnacl-util";
 import { saveKeypair } from "../crypto/chat-store";
 import { downloadRecoverySheet } from "../crypto/recovery-sheet";
+import { useQuery } from "@tanstack/react-query";
 
 type Tab = "my-escrows" | "create" | "lookup" | "receipt" | "invoice" | "milestones" | "create-milestone" | "multi" | "create-multi";
+
+const DEAL_PRESETS = {
+	goods: {
+		label: "🛒 Goods",
+		description: "Physical items — 72h dispute window",
+		disputeWindow: 72,
+		autoSettle: 72 * 3600,
+	},
+	otc: {
+		label: "🤝 OTC Trade",
+		description: "KAS/KRC-20 trades — 24h dispute window",
+		disputeWindow: 24,
+		autoSettle: 24 * 3600,
+	},
+	service: {
+		label: "🛠️ Service",
+		description: "Freelance work — 120h dispute window",
+		disputeWindow: 120,
+		autoSettle: 120 * 3600,
+	},
+	custom: {
+		label: "⚙️ Custom",
+		description: "Set your own terms",
+		disputeWindow: null,
+		autoSettle: null,
+	},
+};
+
+function dealTypeFromTimeout(escrow: Escrow): { key: string; label: string } | null {
+	if (!escrow.auto_settle_timeout || !escrow.created_at) return null;
+	const duration = escrow.auto_settle_timeout - escrow.created_at;
+	if (duration === 259200) return { key: "goods", label: "🛒 Goods (72h)" };
+	if (duration === 86400) return { key: "otc", label: "🤝 OTC (24h)" };
+	if (duration === 432000) return { key: "service", label: "🛠️ Service (120h)" };
+	return { key: "custom", label: "⚙️ Custom" };
+}
+
+function DealTypeBadge({ escrow }: { escrow: Escrow }) {
+	const info = dealTypeFromTimeout(escrow);
+	if (!info) return null;
+	const colors: Record<string, { bg: string; fg: string }> = {
+		goods: { bg: "#4caf5022", fg: "#4caf50" },
+		otc: { bg: "#2196f322", fg: "#2196f3" },
+		service: { bg: "#ff980022", fg: "#ff9800" },
+		custom: { bg: "#88888822", fg: "#888" },
+	};
+	const c = colors[info.key] || colors.custom;
+	return (
+		<span
+			className="pill"
+			style={{
+				background: c.bg,
+				color: c.fg,
+				border: `1px solid ${c.fg}44`,
+				fontSize: "11px",
+			}}
+		>
+			{info.label}
+		</span>
+	);
+}
 
 export function EscrowsPage() {
 	const [tab, setTab] = useState<Tab>("my-escrows");
@@ -138,12 +200,31 @@ function ConnectPrompt() {
 	);
 }
 
+/* ─── Current KAS/USD price (for USD display) ─── */
+function useKasUsdPrice() {
+	const { data } = useQuery({
+		queryKey: ["kas-usd-price"],
+		queryFn: () => api.networkPrice(),
+		staleTime: 60_000,
+		refetchInterval: 120_000,
+	});
+	return data?.kas_usd ?? null;
+}
+
+function formatUsd(sompi: number, priceUsd: number | null): string {
+	if (!priceUsd || !sompi) return "";
+	const kas = sompi / 100_000_000;
+	return `~$${(kas * priceUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 /* ─── My Escrows ─── */
 function MyEscrows({ address }: { address: string }) {
 	const { navigate } = useRouter();
 	const [escrows, setEscrows] = useState<LoadState<Escrow[]>>({ loading: true });
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [dealTypeFilter, setDealTypeFilter] = useState("all");
 	const loaded = useRef(false);
+	const usdPrice = useKasUsdPrice();
 
 	const fetchEscrows = useCallback(() => {
 		setEscrows({ loading: true });
@@ -175,7 +256,20 @@ function MyEscrows({ address }: { address: string }) {
 
 	return (
 		<div>
-			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+				<div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+					<span style={{ fontSize: "12px", color: "#888" }}>Filter:</span>
+					{["all", "goods", "otc", "service", "custom"].map((f) => (
+						<button
+							key={f}
+							className={`button ${dealTypeFilter === f ? "primary" : ""}`}
+							onClick={() => setDealTypeFilter(f)}
+							style={{ fontSize: "11px", padding: "2px 8px" }}
+						>
+							{f === "all" ? "All" : DEAL_PRESETS[f as keyof typeof DEAL_PRESETS]?.label || f}
+						</button>
+					))}
+				</div>
 				<a
 					href={`${import.meta.env.VITE_API_URL || ""}/v1/escrows/export?address=${encodeURIComponent(address)}`}
 					download="daglock-escrows.csv"
@@ -185,7 +279,12 @@ function MyEscrows({ address }: { address: string }) {
 					⬇ Export CSV
 				</a>
 			</div>
-			{escrows.data.map((e) => (
+			{escrows.data.filter((e) => {
+				if (dealTypeFilter === "all") return true;
+				const dt = dealTypeFromTimeout(e);
+				if (dealTypeFilter === "custom") return dt?.key === "custom" || dt === null;
+				return dt?.key === dealTypeFilter;
+			}).map((e) => (
 				<article
 					key={e.id}
 					className="offer"
@@ -194,12 +293,23 @@ function MyEscrows({ address }: { address: string }) {
 				>
 					<div className="offer-top">
 						<strong>{money(e.amount_sompi)}</strong>
+						{usdPrice && (
+							<span style={{ fontSize: "12px", color: "#888" }}>
+								({formatUsd(e.amount_sompi, usdPrice)})
+							</span>
+						)}
+						<DealTypeBadge escrow={e} />
 						<span className={badge(e.status)}>{e.status}</span>
 					</div>
 					<p>
 						{e.asset_type} · {e.buyer_address.slice(0, 16)}…
 					</p>
 					<code>{e.id}</code>
+					{e.price_at_creation && (
+						<div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
+							~${e.price_at_creation.toFixed(2)} USD at creation
+						</div>
+					)}
 					<div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
 						<ExplorerTxLink txid={e.lock_tx_id} label="View TX" />
 						<ExplorerAddressLink address={e.buyer_address} label="Buyer" />
@@ -378,7 +488,7 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 }
 
 /* ─── Create Escrow (using wallet address) ─── */
-function CreateEscrow({ address }: { address: string }) {
+	function CreateEscrow({ address }: { address: string }) {
 	const [amount, setAmount] = useState("");
 	const [sellerAddress, setSellerAddress] = useState("");
 	const [disputeMode, setDisputeMode] = useState("standard");
@@ -387,6 +497,7 @@ function CreateEscrow({ address }: { address: string }) {
 	const [memo, setMemo] = useState("");
 	const [autoSettle, setAutoSettle] = useState(false);
 	const [autoSettleDuration, setAutoSettleDuration] = useState(86400);
+	const [selectedPreset, setSelectedPreset] = useState("custom");
 	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 	const [result, setResult] = useState<Escrow | null>(null);
 	const [chatKeypair, setChatKeypair] = useState<ChatKeypair | null>(null);
@@ -481,10 +592,22 @@ function CreateEscrow({ address }: { address: string }) {
 			if (chatKeypair) saveKeypair(escrow.id, chatKeypair);
 			setResult(escrow);
 			setStatus("done");
-			notify("success", "Escrow created!");
 		} catch (e) {
 			notify("error", "Failed to create escrow", (e as Error).message);
 			setStatus("idle");
+		}
+	}
+
+	function handlePresetSelect(key: string) {
+		setSelectedPreset(key);
+		if (key === "custom") {
+			setAutoSettle(false);
+			return;
+		}
+		const preset = DEAL_PRESETS[key as keyof typeof DEAL_PRESETS];
+		if (preset.autoSettle != null) {
+			setAutoSettle(true);
+			setAutoSettleDuration(preset.autoSettle);
 		}
 	}
 
@@ -536,6 +659,22 @@ function CreateEscrow({ address }: { address: string }) {
 			<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
 				You: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 			</div>
+			<FormField label="Deal type">
+				<div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+					{Object.entries(DEAL_PRESETS).map(([key, preset]) => (
+						<button
+							key={key}
+							type="button"
+							className={`button ${selectedPreset === key ? "primary" : ""}`}
+							onClick={() => handlePresetSelect(key)}
+							style={{ fontSize: "12px", padding: "6px 10px", textAlign: "center", lineHeight: 1.3 }}
+						>
+							<div>{preset.label}</div>
+							<div style={{ fontSize: "10px", fontWeight: 400, opacity: 0.7 }}>{preset.description}</div>
+						</button>
+					))}
+				</div>
+			</FormField>
 			<FormField label="Amount (KAS)">
 				<input
 					type="number"
@@ -1027,7 +1166,14 @@ function EscrowLookup() {
 						</div>
 						<div className="row">
 							<span>Amount</span>
-							<strong>{money(escrow.data.amount_sompi)}</strong>
+							<strong>
+								{money(escrow.data.amount_sompi)}
+								{escrow.data.price_at_creation && (
+									<span style={{ fontSize: "11px", color: "#888", marginLeft: "8px" }}>
+										(~${escrow.data.price_at_creation.toFixed(2)} at creation)
+									</span>
+								)}
+							</strong>
 						</div>
 						<div className="row">
 							<span>Fee (0.5%)</span>
@@ -1057,6 +1203,12 @@ function EscrowLookup() {
 							<div className="row">
 								<span>Dispute</span>
 								<strong>{escrow.data.dispute_reason}</strong>
+							</div>
+						)}
+						{escrow.data.auto_settle_timeout && (
+							<div className="row">
+								<span>Deal Type</span>
+								<DealTypeBadge escrow={escrow.data} />
 							</div>
 						)}
 						{escrow.data.dispute_mode && (

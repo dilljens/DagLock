@@ -35,6 +35,43 @@ export type NetworkInfo = {
 	daglock_krc20_template_hash?: string | null;
 };
 
+export type PriceAlert = {
+	id: string;
+	address: string;
+	target_price: number;
+	direction: string;
+	triggered: boolean;
+	created_at: number;
+	triggered_at: number | null;
+};
+
+export type PriceHistoryPoint = {
+	timestamp: number;
+	price_usd: number;
+};
+
+export type DailyStat = {
+	date: string;
+	escrows_created: number;
+	escrows_settled: number;
+	volume_sompi: number;
+	fees_sompi: number;
+	active_escrows: number;
+	open_offers: number;
+	kas_usd_price: number | null;
+	total_users: number;
+};
+
+export type LiveSummary = {
+	total_escrows: number;
+	total_volume_sompi: number;
+	total_fees_sompi: number;
+	active_escrows: number;
+	total_users: number;
+	open_offers: number;
+	uptime_seconds: number;
+};
+
 export type Stats = {
 	total_escrows: number;
 	active_escrows: number;
@@ -158,6 +195,17 @@ export type InvoiceResponse = {
 	invoice: InvoiceData;
 	escrow_status: string | null;
 	link: string;
+};
+
+export type ApiKey = {
+	key_id: string;
+	app_id: string;
+	label: string;
+	created_at: number;
+	last_used_at: number | null;
+	is_active: boolean;
+	tier: string;
+	webhooks_enabled: boolean;
 };
 
 export type CreateInvoiceRequest = {
@@ -786,8 +834,48 @@ export const api = {
 			`/v1/multi-escrows/${encodeURIComponent(id)}/swap`,
 		),
 
+	// API key management
+	upgradeKeyTier: (appId: string, keyId: string, tier: string, adminToken: string) =>
+		fetchWithTimeout(`${API_BASE}/v1/apps/${encodeURIComponent(appId)}/keys/${encodeURIComponent(keyId)}/tier`, {
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Daglock-Admin": adminToken,
+			},
+			body: JSON.stringify({ tier }),
+		}).then((r) => {
+			if (!r.ok) throw new Error(r.statusText);
+			return r.json() as Promise<{ status: string; key_id: string; app_id: string; tier: string }>;
+		}),
+
+	// Stats / analytics
+	getDailyStats: (days?: number) =>
+		loadJson<{ stats: DailyStat[]; days: number }>(
+			`/v1/stats/daily${days ? `?days=${days}` : ""}`,
+		),
+	getLiveSummary: () => loadJson<LiveSummary>("/v1/stats/summary"),
+
+	// Price alerts
+	createPriceAlert: (req: { address: string; target_price: number; direction: string }) =>
+		postJson<PriceAlert>("/v1/price-alerts", req),
+	listPriceAlerts: (address: string) =>
+		loadJson<{ alerts: PriceAlert[]; total: number }>(
+			`/v1/price-alerts?address=${encodeURIComponent(address)}`,
+		),
+	deletePriceAlert: (id: string) =>
+		fetchWithTimeout(`${API_BASE}/v1/price-alerts/${encodeURIComponent(id)}`, {
+			method: "DELETE",
+		}).then((r) => {
+			if (!r.ok) throw new Error(r.statusText);
+			return r.json() as Promise<{ status: string; alert_id: string }>;
+		}),
+
 	// Network / prices
 	networkPrice: () => loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
+	getPriceHistory: (days?: number) =>
+		loadJson<{ points: PriceHistoryPoint[]; days: number }>(
+			`/v1/network/price/history${days ? `?days=${days}` : ""}`,
+		),
 	explorer: () => loadJson<{ base_url: string }>("/v1/network/explorer"),
 
 	// KRC-20 tokens

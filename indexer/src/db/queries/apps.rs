@@ -46,8 +46,8 @@ pub async fn register_app(
         uuid::Uuid::new_v4().to_string().replace('-', "")
     );
     sqlx::query(
-        "INSERT INTO api_keys (id, key_hash, app_id, label, created_at, is_active)
-         VALUES (?1, ?2, ?3, 'default', ?4, 1)",
+        "INSERT INTO api_keys (id, key_hash, app_id, label, created_at, is_active, tier)
+         VALUES (?1, ?2, ?3, 'default', ?4, 1, 'free')",
     )
     .bind(&key_id)
     .bind(&key_hash)
@@ -135,7 +135,7 @@ pub async fn list_api_keys(
     app_id: &str,
 ) -> Result<Vec<crate::types::ApiKey>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT k.id, k.app_id, k.label, k.created_at, k.last_used_at, k.is_active
+        "SELECT k.id, k.app_id, k.label, k.created_at, k.last_used_at, k.is_active, k.tier, k.webhooks_enabled
          FROM api_keys k WHERE k.app_id = ?1 ORDER BY k.created_at DESC",
     )
     .bind(app_id)
@@ -155,6 +155,48 @@ pub async fn revoke_api_key(
         .bind(app_id)
         .execute(pool)
         .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Look up tier and webhooks_enabled for a key by key_hash.
+pub async fn get_key_tier(
+    pool: &Pool<Sqlite>,
+    key_hash: &[u8],
+) -> Result<Option<(String, bool)>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT tier, webhooks_enabled FROM api_keys WHERE key_hash = ?1 AND is_active = 1"
+    )
+    .bind(key_hash)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|r| {
+        (
+            r.try_get::<String, _>("tier").unwrap_or_else(|_| "free".to_string()),
+            r.try_get::<i64, _>("webhooks_enabled").unwrap_or(0) != 0,
+        )
+    }))
+}
+
+/// Update the tier for an API key.
+pub async fn update_key_tier(
+    pool: &Pool<Sqlite>,
+    key_id: &str,
+    app_id: &str,
+    tier: &str,
+) -> Result<bool, sqlx::Error> {
+    let webhooks_enabled = match tier {
+        "pro" | "whale" => 1,
+        _ => 0,
+    };
+    let result = sqlx::query(
+        "UPDATE api_keys SET tier = ?1, webhooks_enabled = ?2 WHERE id = ?3 AND app_id = ?4"
+    )
+    .bind(tier)
+    .bind(webhooks_enabled)
+    .bind(key_id)
+    .bind(app_id)
+    .execute(pool)
+    .await?;
     Ok(result.rows_affected() > 0)
 }
 
@@ -178,5 +220,7 @@ fn row_to_api_key(row: sqlx::sqlite::SqliteRow) -> crate::types::ApiKey {
         created_at: row.try_get("created_at").unwrap_or(0),
         last_used_at: row.try_get("last_used_at").ok().flatten(),
         is_active: row.try_get("is_active").unwrap_or(1) != 0,
+        tier: row.try_get("tier").unwrap_or_else(|_| "free".to_string()),
+        webhooks_enabled: row.try_get("webhooks_enabled").unwrap_or(0) != 0,
     }
 }

@@ -8,6 +8,7 @@ import { useToast } from "../layout/Toast";
 import { FormField, SkeletonOffers, SkeletonTable } from "../ui";
 import { EmptyState } from "../components/empty-state";
 import { Helmet } from "react-helmet-async";
+import { useQuery } from "@tanstack/react-query";
 
 type Tab = "browse" | "my-offers" | "create";
 
@@ -98,11 +99,30 @@ function ConnectPrompt() {
 	);
 }
 
+/* ─── Current KAS/USD price (for USD display) ─── */
+function useKasUsdPrice() {
+	const { data } = useQuery({
+		queryKey: ["kas-usd-price-offers"],
+		queryFn: () => api.networkPrice(),
+		staleTime: 60_000,
+		refetchInterval: 120_000,
+	});
+	return data?.kas_usd ?? null;
+}
+
+function formatUsd(sompi: number, priceUsd: number | null): string {
+	if (!priceUsd || !sompi) return "";
+	const kas = sompi / 100_000_000;
+	return `~$${(kas * priceUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 /* ─── Browse Offers ─── */
 function BrowseOffers() {
 	const [offers, setOffers] = useState<LoadState<Offer[]>>({ loading: true });
 	const [filtered, setFiltered] = useState<Offer[]>([]);
+	const [dealTypeFilter, setDealTypeFilter] = useState("all");
 	const address = useAddress();
+	const usdPrice = useKasUsdPrice();
 
 	useEffect(() => {
 		api
@@ -119,17 +139,37 @@ function BrowseOffers() {
 
 	return (
 		<div>
+			<div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "12px" }}>
+				<span style={{ fontSize: "12px", color: "#888" }}>Deal type:</span>
+				{["all", "goods", "otc", "service", "custom"].map((f) => (
+					<button
+						key={f}
+						className={`button ${dealTypeFilter === f ? "primary" : ""}`}
+						onClick={() => setDealTypeFilter(f)}
+						style={{ fontSize: "11px", padding: "2px 8px" }}
+					>
+						{f === "all" ? "All" : f === "goods" ? "🛒 Goods" : f === "otc" ? "🤝 OTC" : f === "service" ? "🛠️ Service" : "⚙️ Custom"}
+					</button>
+				))}
+			</div>
 			{filtered.length === 0 && (
 				<EmptyState icon="📋" title="No open offers" description="Be the first to create one!" />
 			)}
 			<div className="offers">
 				{filtered
 					.filter((o) => o.status === "proposed")
+					.filter((o) => {
+						if (dealTypeFilter === "all") return true;
+						if (dealTypeFilter === "otc") return o.base_asset === "KAS" && o.quote_asset.startsWith("KRC20");
+						if (dealTypeFilter === "goods" || dealTypeFilter === "service") return o.base_asset === "KAS" && o.quote_asset === "KAS";
+						return false;
+					})
 					.map((o) => (
 						<OfferCard
 							key={o.id}
 							offer={o}
 							currentAddress={address}
+							usdPrice={usdPrice}
 							onMutated={() => {
 								api.offers().then((d) => setFiltered(d.offers));
 							}}
@@ -155,10 +195,12 @@ function offerTypeBadge(base: string, quote: string): { label: string; color: st
 function OfferCard({
 	offer,
 	currentAddress,
+	usdPrice,
 	onMutated,
 }: {
 	offer: Offer;
 	currentAddress: string | null;
+	usdPrice: number | null;
 	onMutated: () => void;
 }) {
 	const [loading, setLoading] = useState(false);
@@ -231,6 +273,11 @@ function OfferCard({
 			<div className="offer-top">
 				<strong>
 					{offer.side.toUpperCase()} {money(offer.amount_sompi)}
+					{usdPrice && (
+						<span style={{ fontSize: "11px", color: "#888", marginLeft: "6px", fontWeight: 400 }}>
+							({formatUsd(offer.amount_sompi, usdPrice)})
+						</span>
+					)}
 				</strong>
 				<div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
 					{typeBadge && (
@@ -340,6 +387,7 @@ function OfferCard({
 function MyOffers({ address }: { address: string }) {
 	const [offers, setOffers] = useState<LoadState<Offer[]>>({ loading: true });
 	const [filter, setFilter] = useState("all");
+	const usdPrice = useKasUsdPrice();
 
 	useEffect(() => {
 		api
@@ -382,6 +430,7 @@ function MyOffers({ address }: { address: string }) {
 					key={o.id}
 					offer={o}
 					currentAddress={address}
+					usdPrice={usdPrice}
 					onMutated={() => {
 						api.offers(address).then((d) => setOffers({ data: d.offers, loading: false }));
 					}}

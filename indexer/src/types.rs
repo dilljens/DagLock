@@ -163,6 +163,8 @@ pub struct ApiKey {
     pub created_at: i64,
     pub last_used_at: Option<i64>,
     pub is_active: bool,
+    pub tier: String,
+    pub webhooks_enabled: bool,
 }
 
 /// Register a new app request.
@@ -321,6 +323,32 @@ pub struct MultiEscrow {
     pub settled_at: Option<i64>,
     pub refunded_at: Option<i64>,
     pub signatures: Vec<String>,
+}
+
+/// Daily aggregated statistics record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DailyStat {
+    pub date: String,
+    pub escrows_created: i64,
+    pub escrows_settled: i64,
+    pub volume_sompi: i64,
+    pub fees_sompi: i64,
+    pub active_escrows: i64,
+    pub open_offers: i64,
+    pub kas_usd_price: Option<f64>,
+    pub total_users: i64,
+}
+
+/// Live aggregate summary of the entire system.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LiveSummary {
+    pub total_escrows: i64,
+    pub total_volume_sompi: i64,
+    pub total_fees_sompi: i64,
+    pub active_escrows: i64,
+    pub total_users: i64,
+    pub open_offers: i64,
+    pub uptime_seconds: i64,
 }
 
 /// Stats response.
@@ -630,6 +658,32 @@ impl ApiErrorCode {
             Self::MediationExpired => "Mediation has expired. Escalate to jury.",
         }
     }
+}
+
+/// Price alert record stored in the database.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PriceAlert {
+    pub id: String,
+    pub address: String,
+    pub target_price: f64,
+    pub direction: String,
+    pub triggered: bool,
+    pub created_at: i64,
+    pub triggered_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PriceHistoryPoint {
+    pub timestamp: i64,
+    pub price_usd: f64,
+}
+
+/// Create price alert request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreatePriceAlertRequest {
+    pub address: String,
+    pub target_price: f64,
+    pub direction: String,
 }
 
 /// API error response.

@@ -4,7 +4,7 @@ pragma silverscript ^0.1.0;
 //
 // Two spending paths:
 //   withdrawPassword(password)     — anyone with password can unlock, goes to beneficiaryKey
-//   withdrawTimeout(ownerSig)      — owner reclaims after timeout
+//   withdrawTimeout(ownerSig)      — owner reclaims after lockDuration blocks
 //
 // 0.1% protocol fee (1/1000) sent to treasury on every withdrawal.
 
@@ -12,7 +12,7 @@ contract DagLockVaultSoftlock(
     byte[32] ownerKey,
     byte[32] beneficiaryKey,      // where password withdraw MUST send funds
     byte[32] passwordHash,         // SHA-256 of password
-    int timeout,                   // Unix timestamp
+    int lockDuration,              // DAA block count (~1 block/sec)
     byte[32] treasuryKey           // DagLock fee treasury
 ) {
     entrypoint function withdrawPassword(byte[] password) {
@@ -33,7 +33,7 @@ contract DagLockVaultSoftlock(
     }
 
     entrypoint function withdrawTimeout(sig ownerSig) {
-        require(tx.time >= timeout);
+        require(this.age >= lockDuration);
         require(checkSig(ownerSig, pubkey(ownerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;

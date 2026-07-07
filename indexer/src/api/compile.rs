@@ -244,14 +244,14 @@ fn compile_vault_template(
     params: &std::collections::HashMap<String, String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let owner = hex_param(params, "owner_key")?;
-    let timeout = int_param(params, "timeout")?;
+    let lock_duration = int_param(params, "lock_duration")?;
     let treasury = optional_or_enforced_treasury(params, state)?;
     let heir = params
         .get("heir_key")
         .map(|v| hex::decode(v).unwrap_or(vec![0u8; 32]))
         .unwrap_or_else(|| vec![0u8; 32]);
-    let heir_timeout = params
-        .get("heir_timeout")
+    let inherit_lock_duration = params
+        .get("inherit_lock_duration")
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(0);
     if owner.len() != 32 || treasury.len() != 32 || heir.len() != 32 {
@@ -263,8 +263,9 @@ fn compile_vault_template(
             ))),
         ));
     }
-    let compiled =
-        daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury, &heir, heir_timeout);
+    let compiled = daglock_contracts::compile_daglock_vault(
+        &owner, lock_duration, &treasury, &heir, inherit_lock_duration,
+    );
     Ok(compile_result(&compiled))
 }
 
@@ -275,7 +276,7 @@ fn compile_vault_softlock_template(
     let owner = hex_param(params, "owner_key")?;
     let beneficiary = hex_param(params, "beneficiary_key")?;
     let password_hash = hex_param(params, "password_hash")?;
-    let timeout = int_param(params, "timeout")?;
+    let lock_duration = int_param(params, "lock_duration")?;
     let treasury = optional_or_enforced_treasury(params, state)?;
     if owner.len() != 32
         || beneficiary.len() != 32
@@ -294,7 +295,7 @@ fn compile_vault_softlock_template(
         &owner,
         &beneficiary,
         &password_hash,
-        timeout,
+        lock_duration,
         &treasury,
     );
     Ok(compile_result(&compiled))
@@ -306,7 +307,7 @@ fn compile_vault_multisig_template(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let key1 = hex_param(params, "key1")?;
     let treasury = optional_or_enforced_treasury(params, state)?;
-    let timeout = int_param(params, "timeout")?;
+    let lock_duration = int_param(params, "lock_duration")?;
     let key2 = match params.get("key2") {
         Some(h) => hex::decode(h).map_err(|_| {
             (
@@ -341,7 +342,7 @@ fn compile_vault_multisig_template(
         ));
     }
     let compiled =
-        daglock_contracts::compile_daglock_vault_multisig(&key1, &key2, &key3, timeout, &treasury);
+        daglock_contracts::compile_daglock_vault_multisig(&key1, &key2, &key3, lock_duration, &treasury);
     Ok(compile_result(&compiled))
 }
 

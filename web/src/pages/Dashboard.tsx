@@ -170,6 +170,11 @@ export function Dashboard({ stats }: DashboardProps) {
 							<span className="action-card-label">Developer Docs</span>
 							<span className="action-card-desc">API reference, CLI, bot, integrations</span>
 						</div>
+						<div className="action-card" onClick={() => navigate("/security")}>
+							<span className="action-card-icon">🔒</span>
+							<span className="action-card-label">Try to Break It</span>
+							<span className="action-card-desc">See why DagLock's covenant stops every attack</span>
+						</div>
 					</div>
 
 					<FeeCalculator />

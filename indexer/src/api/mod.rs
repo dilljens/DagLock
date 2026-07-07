@@ -17,12 +17,14 @@ pub mod milestones;
 pub mod multi_escrows;
 pub mod network;
 pub mod notifications;
+pub mod price_alerts;
 pub mod offers;
 pub mod reveal;
 pub mod receipts;
 pub mod reports;
 pub mod reputation;
 pub mod subscriptions;
+pub mod stats;
 pub mod status;
 pub mod swap;
 pub mod tokens;
@@ -31,9 +33,10 @@ pub mod vouches;
 pub mod webhooks;
 
 use crate::auth::SignatureVerifier;
+use crate::ratelimit::RateLimiter;
 use crate::verification::EscrowVerifier;
 use crate::websocket;
-use axum::routing::{get, patch, post};
+use axum::routing::{delete, get, patch, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
@@ -73,6 +76,10 @@ pub struct AppState {
     pub mock_chat_sig: bool,
     /// On-chain hash anchoring service.
     pub anchor_service: std::sync::Arc<crate::services::anchor::AnchorService>,
+    /// Shared rate limiter with tier cache.
+    pub rate_limiter: Arc<RateLimiter>,
+    /// Admin auth token for privileged endpoints.
+    pub admin_token: Option<String>,
 }
 
 /// Build the Axum router with all API routes.
@@ -93,15 +100,17 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             .allow_headers(Any)
     };
 
-    let rate_limiter = std::sync::Arc::new(crate::ratelimit::RateLimiter::new());
-
     Router::new()
         .route("/v1/health", get(health))
         .route("/v1/status", get(status::get))
         .route("/v1/network", get(network::get))
         .route("/v1/network/price", get(network::price))
+        .route("/v1/network/price/history", get(network::price_history))
         .route("/v1/network/explorer", get(network::explorer))
         .route("/v1/fees/estimate", get(network::fees_estimate))
+        .route("/v1/price-alerts", post(price_alerts::create).get(price_alerts::list))
+        .route("/v1/price-alerts/:id", delete(price_alerts::delete))
+        .route("/v1/price-alerts/:id/trigger", patch(price_alerts::trigger))
         .route("/v1/compile", post(compile::compile))
         .route("/v1/escrows", get(escrows::list).post(escrows::create))
         .route("/v1/escrows/export", get(escrows::export_csv))
@@ -139,6 +148,8 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/subscriptions/:id/cancel", post(subscriptions::cancel))
         .route("/v1/subscriptions/:id/draw", post(subscriptions::draw))
         .route("/v1/stats", get(escrows::stats))
+        .route("/v1/stats/daily", get(stats::daily))
+        .route("/v1/stats/summary", get(stats::summary))
         .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))
         .route("/v1/offers/:id/accept", post(offers::accept))
@@ -216,11 +227,16 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/tokens/:ticker", patch(tokens::update))
         .route("/v1/tokens/:ticker/chart", get(tokens::chart))
         .route("/v1/ws", get(websocket_handler))
+        // Tier management (admin only)
+        .route(
+            "/v1/apps/:id/keys/:key_id/tier",
+            patch(apps::update_key_tier),
+        )
         .layer(cors)
         .layer(axum::middleware::from_fn(request_id_middleware))
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
         .route_layer(axum::middleware::from_fn_with_state(
-            rate_limiter.clone(),
+            state.rate_limiter.clone(),
             crate::ratelimit::rate_limit_mw,
         ))
         .with_state(state.clone())

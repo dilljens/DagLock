@@ -212,16 +212,16 @@ pub fn validate_trade_hash(hash_hex: &str) -> Result<bool, JsError> {
 #[wasm_bindgen]
 pub fn compile_vault(
     owner_key: &str,
-    timeout: i64,
+    lock_duration: i64,
     treasury_key: &str,
     heir_key: &str,
-    heir_timeout: i64,
+    inherit_lock_duration: i64,
 ) -> Result<String, JsError> {
     let owner = parse_hex32(owner_key, "owner_key")?;
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
     let heir = parse_hex32(heir_key, "heir_key")?;
     Ok(compile_result_json(
-        &daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury, &heir, heir_timeout),
+        &daglock_contracts::compile_daglock_vault(&owner, lock_duration, &treasury, &heir, inherit_lock_duration),
     ))
 }
 
@@ -231,7 +231,7 @@ pub fn compile_vault_softlock(
     owner_key: &str,
     beneficiary_key: &str,
     password_hash: &str,
-    timeout: i64,
+    lock_duration: i64,
     treasury_key: &str,
 ) -> Result<String, JsError> {
     let owner = parse_hex32(owner_key, "owner_key")?;
@@ -243,7 +243,7 @@ pub fn compile_vault_softlock(
             &owner,
             &beneficiary,
             &password,
-            timeout,
+            lock_duration,
             &treasury,
         ),
     ))
@@ -255,7 +255,7 @@ pub fn compile_vault_multisig(
     key1: &str,
     key2: &str,
     key3: &str,
-    timeout: i64,
+    lock_duration: i64,
     treasury_key: &str,
 ) -> Result<String, JsError> {
     let k1 = parse_hex32(key1, "key1")?;
@@ -263,7 +263,7 @@ pub fn compile_vault_multisig(
     let k3 = parse_hex32(key3, "key3")?;
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
     Ok(compile_result_json(
-        &daglock_contracts::compile_daglock_vault_multisig(&k1, &k2, &k3, timeout, &treasury),
+        &daglock_contracts::compile_daglock_vault_multisig(&k1, &k2, &k3, lock_duration, &treasury),
     ))
 }
 
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn compile_vault_returns_valid_json() {
         let zero = "0000000000000000000000000000000000000000000000000000000000000000";
-        let result = compile_vault(zero, 1_700_000_000, zero, zero, 0);
+        let result = compile_vault(zero, 500, zero, zero, 0);
         assert!(result.is_ok());
         let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         assert!(!json["script"].as_str().unwrap().is_empty());

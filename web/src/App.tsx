@@ -27,6 +27,9 @@ const JuryPage = lazy(() => import("./pages/JuryPage").then((m) => ({ default: m
 const SwapPage = lazy(() => import("./pages/SwapPage").then((m) => ({ default: m.SwapPage })));
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
 const HelpPage = lazy(() => import("./pages/HelpPage").then((m) => ({ default: m.HelpPage })));
+const SecurityPage = lazy(() =>
+	import("./pages/SecurityPage").then((m) => ({ default: m.SecurityPage })),
+);
 const PayInvoicePage = lazy(() =>
 	import("./pages/PayInvoicePage").then((m) => ({ default: m.PayInvoicePage })),
 );
@@ -35,6 +38,7 @@ const TokenDetailPage = lazy(() =>
 );
 const TokensPage = lazy(() => import("./pages/TokensPage").then((m) => ({ default: m.TokensPage })));
 const CreateTokenPage = lazy(() => import("./pages/CreateTokenPage").then((m) => ({ default: m.CreateTokenPage })));
+const StatsPage = lazy(() => import("./pages/StatsPage").then((m) => ({ default: m.StatsPage })));
 const TestnetPage = lazy(() => import("./pages/TestnetPage").then((m) => ({ default: m.TestnetPage })));
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 import { OnboardingModal } from "./components/OnboardingModal";
@@ -123,10 +127,14 @@ function AppInner() {
 							return <DocsPage />;
 						case "/help":
 							return <HelpPage />;
+						case "/security":
+							return <SecurityPage />;
 						case "/tokens":
 							return <TokensPage />;
 						case "/tokens/create":
 							return <CreateTokenPage />;
+						case "/stats":
+							return <StatsPage />;
 						case "/testnet":
 							return <TestnetPage />;
 						case "/settings":

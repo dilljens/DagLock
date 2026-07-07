@@ -10,8 +10,10 @@ use serde_json::{json, Value};
 
 use crate::api::AppState;
 use crate::db::queries;
+use crate::ratelimit::ApiTier;
 use crate::types::*;
 /// Verify X-Daglock-Api-Key header and return app_id on success.
+/// Also populates the rate-limiter tier cache.
 async fn verify_api_key(
     state: &AppState,
     headers: &axum::http::HeaderMap,
@@ -35,8 +37,8 @@ async fn verify_api_key(
         .as_bytes()
         .to_vec();
 
-    let app_id: Option<String> = sqlx::query_scalar(
-        "SELECT a.id FROM apps a
+    let key_info: Option<(String, String, bool)> = sqlx::query_as::<_, (String, String, i64)>(
+        "SELECT a.id, k.tier, k.webhooks_enabled FROM apps a
          INNER JOIN api_keys k ON k.app_id = a.id
          WHERE k.key_hash = ?1 AND k.is_active = 1 AND a.is_active = 1",
     )
@@ -51,10 +53,16 @@ async fn verify_api_key(
                 "Failed to verify API key"
             ))),
         )
-    })?;
+    })?
+    .map(|(id, tier, wh)| (id, tier, wh != 0));
 
-    match app_id {
-        Some(id) => {
+    match key_info {
+        Some((id, tier, _webhooks_enabled)) => {
+            // Populate rate-limiter tier cache
+            state
+                .rate_limiter
+                .cache_tier(key_hash.clone(), ApiTier::from(tier.as_str()));
+
             // Touch last_used_at
             let _ = sqlx::query("UPDATE api_keys SET last_used_at = ?1 WHERE key_hash = ?2")
                 .bind(chrono::Utc::now().timestamp())
@@ -267,6 +275,104 @@ pub async fn create_key(
             "warning": "Save this API key — it will only be shown once."
         })),
     ))
+}
+
+/// Verify X-Daglock-Admin header matches the configured admin token.
+fn verify_admin(
+    state: &AppState,
+    headers: &axum::http::HeaderMap,
+) -> Result<(), (StatusCode, Json<Value>)> {
+    let admin_token = state.admin_token.as_deref().ok_or_else(|| {
+        (
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "admin_disabled",
+                "Admin endpoints are not configured on this server."
+            ))),
+        )
+    })?;
+
+    let header_token = headers
+        .get("x-daglock-admin")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(json!(ApiError::new(
+                    "unauthorized",
+                    "X-Daglock-Admin header required."
+                ))),
+            )
+        })?;
+
+    if header_token != admin_token {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new("forbidden", "Invalid admin token."))),
+        ));
+    }
+
+    Ok(())
+}
+
+/// PATCH /v1/apps/:id/keys/:key_id/tier
+///
+/// Admin-only. Updates the API key's tier and webhooks_enabled flag.
+/// Body: { "tier": "free" | "pro" | "whale" }
+pub async fn update_key_tier(
+    State(state): State<AppState>,
+    Path((app_id, key_id)): Path<(String, String)>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    verify_admin(&state, &headers)?;
+
+    let tier = body
+        .get("tier")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new("invalid_tier", "Field 'tier' is required (free, pro, whale)."))),
+            )
+        })?;
+
+    match tier {
+        "free" | "pro" | "whale" => {}
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new(
+                    "invalid_tier",
+                    "Tier must be one of: free, pro, whale."
+                ))),
+            ));
+        }
+    }
+
+    let updated = queries::update_key_tier(&state.db, &key_id, &app_id, tier).await.map_err(|_e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!(ApiError::new(
+                "internal_error",
+                "Failed to update key tier."
+            ))),
+        )
+    })?;
+
+    if !updated {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!(ApiError::new("key_not_found", "Key not found."))),
+        ));
+    }
+
+    Ok(Json(json!({
+        "status": "updated",
+        "key_id": key_id,
+        "app_id": app_id,
+        "tier": tier,
+    })))
 }
 
 /// DELETE /v1/apps/:id/keys/:key_id

@@ -1810,6 +1810,243 @@ code {
 	margin: 0;
 }
 
+/* ─── Security Page (Try to Break) ─── */
+
+.security-page {
+	max-width: 900px;
+}
+
+.security-stats-bar {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 28px;
+	padding: 16px 20px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	background: var(--color-bg-card);
+	backdrop-filter: blur(12px);
+}
+
+.security-stat {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+
+.security-stat-value {
+	font-size: 1.6rem;
+	font-weight: 700;
+	color: var(--color-primary);
+	line-height: 1.2;
+}
+
+.security-stat-label {
+	font-size: 11px;
+	color: var(--color-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.security-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.security-card {
+	border-radius: var(--radius-lg);
+	background: var(--color-bg-card);
+	backdrop-filter: blur(12px);
+	padding: 20px;
+	border: 1px solid var(--color-border);
+	transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.security-card--activated {
+	box-shadow: 0 0 24px var(--scenario-glow);
+}
+
+.security-card-header {
+	display: flex;
+	gap: 14px;
+	align-items: flex-start;
+	margin-bottom: 12px;
+}
+
+.security-card-icon {
+	font-size: 28px;
+	line-height: 1;
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.security-card-header h3 {
+	margin: 0 0 2px;
+	font-size: 15px;
+	font-weight: 700;
+}
+
+.security-card-question {
+	margin: 0;
+	font-size: 13px;
+	color: var(--color-text-secondary);
+	line-height: 1.5;
+}
+
+.security-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	border: 1px solid var(--scenario-border, var(--color-error));
+	background: color-mix(in srgb, var(--scenario-border, var(--color-error)) 10%, transparent);
+	color: var(--scenario-border, var(--color-error));
+	padding: 10px 18px;
+	border-radius: var(--radius-full);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+
+.security-trigger:hover {
+	background: color-mix(in srgb, var(--scenario-border, var(--color-error)) 20%, transparent);
+}
+
+.security-result {
+	animation: securityFadeIn 0.3s ease;
+}
+
+@keyframes securityFadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.security-animation {
+	padding: 16px;
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: var(--radius-md);
+	margin-bottom: 12px;
+	text-align: center;
+	font-size: 22px;
+	letter-spacing: 4px;
+}
+
+.security-shield {
+	display: inline-block;
+}
+
+.security-verdict {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	background: rgba(255, 68, 68, 0.1);
+	border: 1px solid rgba(255, 68, 68, 0.25);
+	border-radius: var(--radius-sm);
+	color: var(--color-error);
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 12px;
+}
+
+.security-cross {
+	font-size: 16px;
+	font-weight: 700;
+}
+
+.security-explanation {
+	margin: 0 0 14px;
+	font-size: 13px;
+	color: var(--color-text-secondary);
+	line-height: 1.7;
+}
+
+.security-code-block {
+	margin-bottom: 14px;
+}
+
+.security-code-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--color-text-muted);
+	margin-bottom: 6px;
+}
+
+.security-code {
+	background: rgba(0, 0, 0, 0.4);
+	border: 1px solid rgba(83, 215, 105, 0.12);
+	border-radius: var(--radius-sm);
+	padding: 12px 14px;
+	font-family: "JetBrains Mono", "Fira Code", monospace;
+	font-size: 12px;
+	line-height: 1.6;
+	color: var(--color-primary);
+	overflow-x: auto;
+	white-space: pre;
+	margin: 0;
+}
+
+.security-reset {
+	background: transparent;
+	border: 1px solid var(--color-border);
+	color: var(--color-text-muted);
+	padding: 8px 16px;
+	border-radius: var(--radius-full);
+	font-size: 12px;
+	cursor: pointer;
+	transition: border-color 0.15s, color 0.15s;
+}
+
+.security-reset:hover {
+	border-color: var(--color-text-secondary);
+	color: var(--color-text-secondary);
+}
+
+.security-footer h3 {
+	margin: 0 0 8px;
+	font-size: 15px;
+}
+
+.security-footer p {
+	margin: 0 0 10px;
+	font-size: 13px;
+	color: var(--color-text-secondary);
+	line-height: 1.7;
+}
+
+.security-footer p:last-child {
+	margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+	.security-stats-bar {
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.security-stat {
+		flex-direction: row;
+		justify-content: space-between;
+	}
+
+	.security-stat-value {
+		font-size: 1.2rem;
+	}
+
+	.security-card-header {
+		flex-direction: column;
+	}
+}
+
 .help-links {
 	list-style: none;
 	padding: 0;
