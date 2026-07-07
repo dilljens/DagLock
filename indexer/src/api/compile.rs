@@ -32,7 +32,7 @@ pub async fn compile(
         "daglock_vault" => compile_vault_template(&state, &body.params),
         "daglock_vault_softlock" => compile_vault_softlock_template(&state, &body.params),
         "daglock_vault_multisig" => compile_vault_multisig_template(&state, &body.params),
-        "daglock_krc20" => compile_krc20_template(&body.params),
+        "daglock_krc20" => compile_krc20_template(&state, &body.params),
         other => Err((
             StatusCode::BAD_REQUEST,
             Json(json!(ApiError::new(
@@ -347,13 +347,80 @@ fn compile_vault_multisig_template(
 }
 
 fn compile_krc20_template(
-    _params: &std::collections::HashMap<String, String>,
+    state: &AppState,
+    params: &std::collections::HashMap<String, String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!(ApiError::new(
-            "not_implemented",
-            "KRC-20 compilation requires KCC-20 template metadata. Not yet available via REST API."
-        ))),
-    ))
+    let buyer = hex_param(params, "buyer_key")?;
+    let seller = hex_param(params, "seller_key")?;
+    let trade_hash = params.get("trade_hash")
+        .map(|v| hex::decode(v).unwrap_or(vec![0u8; 32]))
+        .unwrap_or_else(|| vec![0u8; 32]);
+    let timeout = int_param(params, "timeout")?;
+    let treasury = optional_or_enforced_treasury(params, state)?;
+
+    // KCC-20 template metadata — required for ICC validation
+    // If not provided, compile in dev mode (kcc20TemplatePrefixLen = 0)
+    let kcc20_prefix_len = params.get("kcc20_template_prefix_len")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(0);
+    let kcc20_suffix_len = params.get("kcc20_template_suffix_len")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(0);
+    let kcc20_expected_hash = params.get("kcc20_expected_template_hash")
+        .map(|v| hex::decode(v).unwrap_or(vec![0u8; 32]))
+        .unwrap_or_else(|| vec![0u8; 32]);
+    let kcc20_prefix = params.get("kcc20_template_prefix")
+        .map(|v| hex::decode(v).unwrap_or_default())
+        .unwrap_or_default();
+    let kcc20_suffix = params.get("kcc20_template_suffix")
+        .map(|v| hex::decode(v).unwrap_or_default())
+        .unwrap_or_default();
+    let kcc20_covenant_id = params.get("kcc20_covenant_id")
+        .map(|v| hex::decode(v).unwrap_or(vec![0u8; 32]))
+        .unwrap_or_else(|| vec![0u8; 32]);
+
+    if buyer.len() != 32 || seller.len() != 32 || treasury.len() != 32 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_param",
+                "buyer_key, seller_key, and treasury_key must be 32 bytes (64 hex chars)"
+            ))),
+        ));
+    }
+    if trade_hash.len() != 32 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_param",
+                "trade_hash must be 32 bytes (64 hex chars)"
+            ))),
+        ));
+    }
+    if kcc20_expected_hash.len() != 32 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_param",
+                "kcc20_expected_template_hash must be 32 bytes (64 hex chars)"
+            ))),
+        ));
+    }
+    if kcc20_covenant_id.len() != 32 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_param",
+                "kcc20_covenant_id must be 32 bytes (64 hex chars)"
+            ))),
+        ));
+    }
+
+    let compiled = daglock_contracts::compile_daglock_krc20(
+        &buyer, &seller, &trade_hash, timeout, &treasury,
+        kcc20_prefix_len, kcc20_suffix_len,
+        &kcc20_expected_hash, &kcc20_prefix, &kcc20_suffix,
+        &kcc20_covenant_id,
+    );
+    Ok(compile_result(&compiled))
 }

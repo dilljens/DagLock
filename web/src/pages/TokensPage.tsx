@@ -79,7 +79,12 @@ export function TokensPage() {
 			<div>
 				<div className="page-header">
 					<h1>KRC-20 Tokens</h1>
-					<p>Browse tokens traded on DagLock escrow. Data from on-chain offers and settlements.</p>
+					<p>KRC-20 tokens traded on DagLock</p>
+					<div style={{ marginTop: "12px" }}>
+						<button className="button primary" onClick={() => navigate("/tokens/create")}>
+							+ Create Token
+						</button>
+					</div>
 				</div>
 
 				{/* Search + sort bar */}
