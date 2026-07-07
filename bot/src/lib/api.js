@@ -247,6 +247,193 @@ export class ApiClient {
 		return this.request(`/escrows/${encodeURIComponent(escrowId)}/evidence`);
 	}
 
+	// ── Fees ──────────────────────────────────────────────────────────
+
+	feeEstimate(amountKas) {
+		return this.request(`/fees/estimate?amount_kas=${encodeURIComponent(amountKas)}`);
+	}
+
+	// ── Blocklist ─────────────────────────────────────────────────────
+
+	blockUser(blockedAddress, reason, auth) {
+		return this.request(
+			"/blocks",
+			{
+				method: "POST",
+				body: JSON.stringify({ blocked_address: blockedAddress, reason }),
+			},
+			auth,
+		);
+	}
+
+	unblockUser(blockId, auth) {
+		return this.request(`/blocks/${encodeURIComponent(blockId)}`, {
+			method: "POST",
+		}, auth);
+	}
+
+	listBlocks(address, auth) {
+		return this.request(`/blocks?address=${encodeURIComponent(address)}`, undefined, auth);
+	}
+
+	// ── Reports ───────────────────────────────────────────────────────
+
+	reportUser(reportedAddress, reason, escrowId, auth) {
+		return this.request(
+			"/reports",
+			{
+				method: "POST",
+				body: JSON.stringify({ reported_address: reportedAddress, reason, escrow_id: escrowId }),
+			},
+			auth,
+		);
+	}
+
+	// ── Trade Feedback ────────────────────────────────────────────────
+
+	submitFeedback(escrowId, rating, comment, auth) {
+		return this.request(
+			`/escrows/${encodeURIComponent(escrowId)}/feedback`,
+			{
+				method: "POST",
+				body: JSON.stringify({ rating, comment }),
+			},
+			auth,
+		);
+	}
+
+	// ── Milestones ────────────────────────────────────────────────────
+
+	listMilestones(address) {
+		return this.request(`/milestones?address=${encodeURIComponent(address)}`);
+	}
+
+	getMilestone(id) {
+		return this.request(`/milestones/${encodeURIComponent(id)}`);
+	}
+
+	createMilestone(data) {
+		return this.request("/milestones", {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	}
+
+	releaseMilestone(id) {
+		return this.request(`/milestones/${encodeURIComponent(id)}/release`, {
+			method: "POST",
+		});
+	}
+
+	listFeedback(escrowId) {
+		return this.request(`/escrows/${encodeURIComponent(escrowId)}/feedback`);
+	}
+
+	// ── Multi-party escrows ───────────────────────────────────────────
+
+	listMultiEscrows(address) {
+		return this.request(`/multi-escrows?address=${encodeURIComponent(address)}`);
+	}
+
+	getMultiEscrow(id) {
+		return this.request(`/multi-escrows/${encodeURIComponent(id)}`);
+	}
+
+	createMultiEscrow(data) {
+		return this.request("/multi-escrows", {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	}
+
+	signMultiEscrow(id, address) {
+		return this.request(`/multi-escrows/${encodeURIComponent(id)}/sign`, {
+			method: "POST",
+			body: JSON.stringify({ address }),
+		});
+	}
+
+	refundMultiEscrow(id) {
+		return this.request(`/multi-escrows/${encodeURIComponent(id)}/refund`, {
+			method: "POST",
+		});
+	}
+
+	swapMultiEscrow(id) {
+		return this.request(`/multi-escrows/${encodeURIComponent(id)}/swap`, {
+			method: "POST",
+		});
+	}
+
+	// ── AI Mediation ──────────────────────────────────────────────────
+
+	mediateEscrow(id, buyerClaim, sellerClaim, auth) {
+		return this.request(`/escrows/${encodeURIComponent(id)}/mediate`, {
+			method: "POST",
+			body: JSON.stringify({ buyer_claim: buyerClaim, seller_claim: sellerClaim }),
+		}, auth);
+	}
+
+	acceptMediation(id, party, auth) {
+		return this.request(`/escrows/${encodeURIComponent(id)}/mediate/${party}/accept`, {
+			method: "POST",
+			body: JSON.stringify({ accept: true }),
+		}, auth);
+	}
+
+	getMediation(id) {
+		return this.request(`/escrows/${encodeURIComponent(id)}/mediate`);
+	}
+
+	// ── Compile ───────────────────────────────────────────────────────
+
+	compileEscrow(params) {
+		return this.request("/compile", {
+			method: "POST",
+			body: JSON.stringify({ template: "daglock", params }),
+		});
+	}
+
+	// ── Network / Explorer ────────────────────────────────────────────
+
+	getExplorerUrl() {
+		return this.request("/network/explorer");
+	}
+
+	// ── Counter-offers ────────────────────────────────────────────────
+
+	// ── offers API (with auth) ────────────────────────────────────────
+
+	makeAuth(address, message) {
+		// Mock auth for testnet — HMAC-SHA256 of the message
+		const crypto = require("crypto");
+		const msgHash = crypto.createHash("sha256").update(message).digest();
+		const key = address.padEnd(64, "0").slice(0, 64);
+		const sig = crypto.createHmac("sha256", Buffer.from(key, "hex")).update(msgHash).digest();
+		const fullSig = Buffer.concat([sig, msgHash.slice(0, 32)]).toString("hex");
+		return {
+			"X-Daglock-Address": address,
+			"X-Daglock-Signature": fullSig,
+			"X-Daglock-Message": message,
+		};
+	}
+
+	counterOffer(offerId, amountSompi, message, address) {
+		const msg = `counter_offer:${offerId}:${Math.floor(Date.now() / 1000)}`;
+		return this.request(
+			`/offers/${encodeURIComponent(offerId)}/counter`,
+			{
+				method: "POST",
+				body: JSON.stringify({ amount_sompi: amountSompi, message }),
+				headers: this.makeAuth(address, msg),
+			},
+		);
+	}
+
+	listCounters(offerId) {
+		return this.request(`/offers/${encodeURIComponent(offerId)}/counters`);
+	}
+
 	// ── Stats & Health ────────────────────────────────────────────────
 
 	getStats() {

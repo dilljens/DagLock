@@ -35,6 +35,12 @@ pub async fn price(State(_state): State<AppState>) -> Json<Value> {
     }))
 }
 
+/// GET /v1/network/explorer
+/// Returns the Kaspa block explorer base URL.
+pub async fn explorer(State(state): State<AppState>) -> Json<Value> {
+    Json(json!({ "base_url": state.explorer_base_url }))
+}
+
 /// GET /v1/fees/estimate?amount_kas=...
 pub async fn fees_estimate(
     State(_state): State<AppState>,

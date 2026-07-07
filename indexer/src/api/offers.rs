@@ -97,6 +97,11 @@ pub async fn create(
         ));
     }
 
+    // Default expiry: 72 hours from now if not specified
+    let expires_at = body.expires_at.or_else(|| {
+        Some(chrono::Utc::now().timestamp() + 259_200) // 72 hours
+    });
+
     let offer = Offer {
         id: format!(
             "off_{}",
@@ -109,7 +114,7 @@ pub async fn create(
         amount_sompi: body.amount_sompi,
         counterparty_address: body.counterparty_address,
         status: "proposed".to_string(),
-        expires_at: body.expires_at,
+        expires_at,
         created_at: chrono::Utc::now().timestamp(),
         price_type,
         price_offset: body.price_offset,

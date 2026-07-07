@@ -2,27 +2,48 @@
 
 pub mod apps;
 pub mod auth;
+pub mod blocks;
+pub mod counteroffers;
+pub mod deposits;
 pub mod escrows;
 pub mod evidence;
+pub mod feedback;
 pub mod identity;
 pub mod invoices;
 pub mod jury;
+pub mod mediations;
 pub mod messages;
+pub mod milestones;
+pub mod multi_escrows;
+pub mod notifications;
 pub mod offers;
+pub mod reports;
 pub mod reputation;
+pub mod subscriptions;
+pub mod tokens;
 pub mod vaults;
 pub mod vouches;
 
 pub use apps::*;
 pub use auth::*;
+pub use blocks::*;
+pub use counteroffers::*;
+pub use deposits::*;
 pub use escrows::*;
 pub use evidence::*;
+pub use feedback::*;
 pub use identity::*;
 pub use invoices::*;
 pub use jury::*;
+pub use mediations::*;
 pub use messages::*;
+pub use milestones::*;
+pub use multi_escrows::*;
+pub use notifications::*;
 pub use offers::*;
+pub use reports::*;
 pub use reputation::*;
+pub use tokens::*;
 pub use vaults::*;
 pub use vouches::*;
 
@@ -63,6 +84,17 @@ mod tests {
             price_source: None,
             price_type: None,
             invoice_id: None,
+            memo: None,
+            auto_settle_timeout: None,
+            mediation_status: None,
+            mediation_buyer_claim: None,
+            mediation_seller_claim: None,
+            mediation_result: None,
+            mediation_expires_at: None,
+            mediation_buyer_accepted: None,
+            mediation_seller_accepted: None,
+            chat_pubkey_buyer: None,
+            chat_pubkey_seller: None,
         }
     }
 

@@ -39,7 +39,7 @@ export async function setupApiMocks(page: Page): Promise<void> {
 			status: 200,
 			contentType: "application/json",
 			body: JSON.stringify({
-				network: "testnet-12",
+				network: "testnet-10",
 				daa_score: 123456,
 				block_count: 50000,
 				difficulty: 12345.67,

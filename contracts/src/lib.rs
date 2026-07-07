@@ -102,21 +102,192 @@ pub fn compile_daglock_arbiter(
         .expect("daglock_arbiter.sil should compile — if this fails, fix the .sil syntax")
 }
 
+/// The daglock_advanced.sil source embedded at compile time.
+pub fn daglock_advanced_source() -> &'static str {
+    include_str!("daglock_advanced.sil")
+}
+
+/// The daglock_subscription.sil source embedded at compile time.
+pub fn daglock_subscription_source() -> &'static str {
+    include_str!("daglock_subscription.sil")
+}
+
+/// The daglock_milestone.sil source embedded at compile time.
+pub fn daglock_milestone_source() -> &'static str {
+    include_str!("daglock_milestone.sil")
+}
+
+/// The daglock_multi.sil source embedded at compile time.
+pub fn daglock_multi_source() -> &'static str {
+    include_str!("daglock_multi.sil")
+}
+
+/// The daglock_deposit.sil source embedded at compile time.
+pub fn daglock_deposit_source() -> &'static str {
+    include_str!("daglock_deposit.sil")
+}
+
+/// Compile the DagLock Advanced covenant (time extension + partial swap).
+pub fn compile_daglock_advanced(
+    buyer_pk: &[u8],
+    seller_pk: &[u8],
+    trade_hash: &[u8],
+    timeout: i64,
+    treasury_pk: &[u8],
+) -> CompiledContract<'static> {
+    let source = daglock_advanced_source();
+    let args = vec![
+        Expr::bytes(buyer_pk.to_vec()),
+        Expr::bytes(seller_pk.to_vec()),
+        Expr::bytes(trade_hash.to_vec()),
+        Expr::int(timeout),
+        Expr::bytes(treasury_pk.to_vec()),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_advanced.sil should compile")
+}
+
+/// Compile the DagLock Subscription covenant for recurring payments.
+/// Arguments: payer_key, recipient_key, total_amount, installment_amount,
+///            interval_seconds, start_time, treasury_key
+pub fn compile_daglock_subscription(
+    payer_pk: &[u8],
+    recipient_pk: &[u8],
+    total_amount: i64,
+    installment_amount: i64,
+    interval_seconds: i64,
+    start_time: i64,
+    treasury_pk: &[u8],
+) -> CompiledContract<'static> {
+    let source = daglock_subscription_source();
+    let args = vec![
+        Expr::bytes(payer_pk.to_vec()),
+        Expr::bytes(recipient_pk.to_vec()),
+        Expr::int(total_amount),
+        Expr::int(installment_amount),
+        Expr::int(interval_seconds),
+        Expr::int(start_time),
+        Expr::bytes(treasury_pk.to_vec()),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_subscription.sil should compile")
+}
+
+/// Compile the DagLock Milestone covenant for milestone-based partial escrow.
+/// Arguments (in order):
+/// - `buyer_pk`: 32-byte compressed public key
+/// - `seller_pk`: 32-byte compressed public key
+/// - `total_amount`: total locked amount in sompi
+/// - `milestone_amounts`: array of 5 milestone amounts (0 = unused)
+/// - `milestone_timeouts`: array of 5 Unix timestamps (0 = no timeout)
+/// - `current_milestone_index`: which milestone is active (0-based)
+/// - `treasury_pk`: 32-byte compressed public key
+pub fn compile_daglock_milestone(
+    buyer_pk: &[u8],
+    seller_pk: &[u8],
+    total_amount: i64,
+    milestone_amounts: Vec<i64>,
+    milestone_timeouts: Vec<i64>,
+    current_milestone_index: i64,
+    treasury_pk: &[u8],
+) -> CompiledContract<'static> {
+    let source = daglock_milestone_source();
+    let args = vec![
+        Expr::bytes(buyer_pk.to_vec()),
+        Expr::bytes(seller_pk.to_vec()),
+        Expr::int(total_amount),
+        milestone_amounts.into(),       // Vec<i64> → Expr::Array of ints
+        milestone_timeouts.into(),      // Vec<i64> → Expr::Array of ints
+        Expr::int(current_milestone_index),
+        Expr::bytes(treasury_pk.to_vec()),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_milestone.sil should compile")
+}
+
+/// Compile the DagLock Multi-Party covenant for 3+ party escrow.
+/// Arguments (in order):
+/// - `party1_pk` through `party4_pk`: 32-byte compressed public keys (zeros = unused)
+/// - `shares`: array of 4 basis-point shares (sum = 10000)
+/// - `trade_hash`: 32-byte SHA-256 hash (or zeroes if unused)
+/// - `timeout`: Unix timestamp
+/// - `treasury_pk`: 32-byte compressed public key
+pub fn compile_daglock_multi(
+    party1_pk: &[u8],
+    party2_pk: &[u8],
+    party3_pk: &[u8],
+    party4_pk: &[u8],
+    shares: Vec<i64>,
+    trade_hash: &[u8],
+    timeout: i64,
+    treasury_pk: &[u8],
+) -> CompiledContract<'static> {
+    let source = daglock_multi_source();
+    let args = vec![
+        Expr::bytes(party1_pk.to_vec()),
+        Expr::bytes(party2_pk.to_vec()),
+        Expr::bytes(party3_pk.to_vec()),
+        Expr::bytes(party4_pk.to_vec()),
+        shares.into(),                  // Vec<i64> → Expr::Array of ints
+        Expr::bytes(trade_hash.to_vec()),
+        Expr::int(timeout),
+        Expr::bytes(treasury_pk.to_vec()),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_multi.sil should compile")
+}
+
+/// Compile the DagLock Deposit covenant for security deposits.
+/// Arguments (in order):
+/// - `party1_pk`: 32-byte compressed public key
+/// - `party2_pk`: 32-byte compressed public key
+/// - `jury_pk`: 32-byte compressed public key (for forfeit rulings)
+/// - `deposit_amount`: amount each party stakes
+/// - `timeout`: Unix timestamp
+/// - `treasury_pk`: 32-byte compressed public key
+pub fn compile_daglock_deposit(
+    party1_pk: &[u8],
+    party2_pk: &[u8],
+    jury_pk: &[u8],
+    deposit_amount: i64,
+    timeout: i64,
+    treasury_pk: &[u8],
+) -> CompiledContract<'static> {
+    let source = daglock_deposit_source();
+    let args = vec![
+        Expr::bytes(party1_pk.to_vec()),
+        Expr::bytes(party2_pk.to_vec()),
+        Expr::bytes(jury_pk.to_vec()),
+        Expr::int(deposit_amount),
+        Expr::int(timeout),
+        Expr::bytes(treasury_pk.to_vec()),
+    ];
+    compile_contract(source, &args, CompileOptions::default())
+        .expect("daglock_deposit.sil should compile")
+}
+
 /// Compile the DagLock Vault covenant with the given constructor arguments.
 ///
 /// Arguments (in order):
 /// - `owner_key`: 32-byte compressed public key
 /// - `timeout`: Unix timestamp (i64)
+/// - `treasury_key`: 32-byte compressed public key
+/// - `heir_key`: 32-byte compressed public key (or zeroes for no heir)
+/// - `heir_timeout`: Unix timestamp for inheritance claim
 pub fn compile_daglock_vault(
     owner_key: &[u8],
     timeout: i64,
     treasury_key: &[u8],
+    heir_key: &[u8],
+    heir_timeout: i64,
 ) -> CompiledContract<'static> {
     let source = daglock_vault_source();
     let args = vec![
         Expr::bytes(owner_key.to_vec()),
         Expr::int(timeout),
         Expr::bytes(treasury_key.to_vec()),
+        Expr::bytes(heir_key.to_vec()),
+        Expr::int(heir_timeout),
     ];
     compile_contract(source, &args, CompileOptions::default())
         .expect("daglock_vault.sil should compile — if this fails, fix the .sil syntax")
@@ -264,8 +435,24 @@ pub mod entrypoints {
     pub const WITHDRAW_PASSWORD: &str = "withdrawPassword";
     pub const WITHDRAW_TIMEOUT: &str = "withdrawTimeout";
     pub const SWEEP: &str = "sweep";
+    pub const RELOCK: &str = "relock";
+    pub const EARLY_EXIT: &str = "early_exit";
+    pub const HEIR_WITHDRAW: &str = "heir_withdraw";
+    pub const AUTO_SETTLE: &str = "auto_settle";
     pub const EMERGENCY_REFUND: &str = "emergencyRefund";
+    pub const EMERGENCY_REFUND_NOSIG: &str = "emergency_refund";
+    pub const SPLIT: &str = "split";
+    pub const ARBITRATE_SPLIT: &str = "arbitrateSplit";
     pub const RECORD_TRADE: &str = "recordTrade";
+    // Milestone entrypoints
+    pub const RELEASE_MILESTONE: &str = "release_milestone";
+    pub const APPROVE_MILESTONE: &str = "approve_milestone";
+    pub const COMPLETE: &str = "complete";
+    pub const REFUND_REMAINING: &str = "refund_remaining";
+    // Multi-party entrypoints
+    // release, swap, refund shared with base
+    // Deposit entrypoints
+    pub const FORFEIT: &str = "forfeit";
 }
 
 #[cfg(test)]
@@ -280,6 +467,7 @@ mod tests {
         assert!(src.contains("entrypoint function release"));
         assert!(src.contains("entrypoint function swap"));
         assert!(src.contains("entrypoint function refund"));
+        assert!(src.contains("entrypoint function auto_settle"));
     }
 
     #[test]
@@ -298,12 +486,15 @@ mod tests {
         let zero_hash = [0u8; 32];
         let compiled = compile_daglock(&zero_pk, &zero_pk, &zero_hash, 1_700_000_000, &zero_pk);
 
-        // Verify 3 entrypoints in ABI
-        assert_eq!(compiled.abi.len(), 3);
+        // Verify 6 entrypoints in ABI
+        assert_eq!(compiled.abi.len(), 6);
         let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"release"));
+        assert!(names.contains(&"split"));
         assert!(names.contains(&"swap"));
         assert!(names.contains(&"refund"));
+        assert!(names.contains(&"emergency_refund"));
+        assert!(names.contains(&"auto_settle"));
 
         // Script should be non-empty
         assert!(!compiled.script.is_empty());
@@ -391,13 +582,14 @@ mod tests {
         let zero = [0u8; 32];
         let compiled = compile_daglock_arbiter(&zero, &zero, &zero, 1_700_000_000, &zero, &zero);
 
-        assert_eq!(compiled.abi.len(), 6);
+        assert_eq!(compiled.abi.len(), 7);
         let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"release"));
         assert!(names.contains(&"swap"));
         assert!(names.contains(&"refundAfterTimeout"));
         assert!(names.contains(&"disputeSellerWins"));
         assert!(names.contains(&"disputeBuyerWins"));
+        assert!(names.contains(&"arbitrateSplit"));
         assert!(!compiled.script.is_empty());
     }
 
@@ -467,7 +659,7 @@ mod tests {
         let multisig_hex: String = multisig_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_vault_multisig_template_hash={}", multisig_hex);
 
-        let vault = compile_daglock_vault(&zero, 1_700_000_000, &zero);
+        let vault = compile_daglock_vault(&zero, 1_700_000_000, &zero, &zero, 0);
         let (_, _, vault_hash) = template_parts_and_hash(&vault);
         let vault_hex: String = vault_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_vault_template_hash={}", vault_hex);
@@ -476,6 +668,18 @@ mod tests {
         let (_, _, rep_hash) = template_parts_and_hash(&reputation);
         let rep_hex: String = rep_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_reputation_template_hash={}", rep_hex);
+
+        let adv = compile_daglock_advanced(&zero, &zero, &zero_hash, 1_700_000_000, &zero);
+        let (_, _, adv_hash) = template_parts_and_hash(&adv);
+        let adv_hex: String = adv_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_advanced_template_hash={}", adv_hex);
+
+        let sub = compile_daglock_subscription(
+            &zero, &zero, 1_000_000_000, 100_000_000, 86400, 1_700_000_000, &zero,
+        );
+        let (_, _, sub_hash) = template_parts_and_hash(&sub);
+        let sub_hex: String = sub_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_subscription_template_hash={}", sub_hex);
     }
     #[test]
     fn arbiter_zero_key_and_nonzero_key_produce_different_scripts() {
@@ -510,6 +714,116 @@ mod tests {
         let pk = [0u8; 32];
         let c1 = compile_daglock_vault_multisig(&pk, &pk, &pk, 1_700_000_000, &pk);
         let c2 = compile_daglock_vault_multisig(&pk, &pk, &pk, 1_700_000_000, &pk);
+        let (_, _, h1) = template_parts_and_hash(&c1);
+        let (_, _, h2) = template_parts_and_hash(&c2);
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 20);
+    }
+
+    // ── Milestone tests ─────────────────────────────────────────────
+
+    #[test]
+    fn milestone_source_is_non_empty() {
+        let src = daglock_milestone_source();
+        assert!(src.contains("contract DagLockMilestone"));
+        assert!(src.contains("entrypoint function release_milestone"));
+        assert!(src.contains("entrypoint function complete"));
+    }
+
+    #[test]
+    fn compiles_daglock_milestone_with_valid_params() {
+        let pk = [0u8; 32];
+        let amounts = vec![1_000_000, 2_000_000, 0i64, 0, 0];
+        let timeouts = vec![1_800_000_000, 1_900_000_000, 0i64, 0, 0];
+        let compiled = compile_daglock_milestone(
+            &pk, &pk, 3_000_000, amounts, timeouts, 0, &pk,
+        );
+        assert_eq!(compiled.abi.len(), 5);
+        let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"release_milestone"));
+        assert!(names.contains(&"approve_milestone"));
+        assert!(names.contains(&"dispute"));
+        assert!(names.contains(&"refund_remaining"));
+        assert!(names.contains(&"complete"));
+        assert!(!compiled.script.is_empty());
+    }
+
+    #[test]
+    fn milestone_template_hash_is_deterministic() {
+        let pk = [0u8; 32];
+        let amounts = vec![1_000_000, 2_000_000, 0i64, 0, 0];
+        let timeouts = vec![1_800_000_000, 1_900_000_000, 0i64, 0, 0];
+        let c1 = compile_daglock_milestone(&pk, &pk, 3_000_000, amounts.clone(), timeouts.clone(), 0, &pk);
+        let c2 = compile_daglock_milestone(&pk, &pk, 3_000_000, amounts, timeouts, 0, &pk);
+        let (_, _, h1) = template_parts_and_hash(&c1);
+        let (_, _, h2) = template_parts_and_hash(&c2);
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 20);
+    }
+
+    // ── Multi-party tests ───────────────────────────────────────────
+
+    #[test]
+    fn multi_source_is_non_empty() {
+        let src = daglock_multi_source();
+        assert!(src.contains("contract DagLockMulti"));
+        assert!(src.contains("entrypoint function release"));
+        assert!(src.contains("entrypoint function refund"));
+    }
+
+    #[test]
+    fn compiles_daglock_multi_with_valid_params() {
+        let pk = [0u8; 32];
+        let shares = vec![5_000i64, 3_000, 1_500, 500];
+        let compiled = compile_daglock_multi(&pk, &pk, &pk, &pk, shares, &[0u8; 32], 1_700_000_000, &pk);
+        assert_eq!(compiled.abi.len(), 3);
+        let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"release"));
+        assert!(names.contains(&"swap"));
+        assert!(names.contains(&"refund"));
+        assert!(!compiled.script.is_empty());
+    }
+
+    #[test]
+    fn multi_template_hash_is_deterministic() {
+        let pk = [0u8; 32];
+        let shares = vec![5_000i64, 3_000, 1_500, 500];
+        let c1 = compile_daglock_multi(&pk, &pk, &pk, &pk, shares.clone(), &[0u8; 32], 1_700_000_000, &pk);
+        let c2 = compile_daglock_multi(&pk, &pk, &pk, &pk, shares, &[0u8; 32], 1_700_000_000, &pk);
+        let (_, _, h1) = template_parts_and_hash(&c1);
+        let (_, _, h2) = template_parts_and_hash(&c2);
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 20);
+    }
+
+    // ── Deposit tests ───────────────────────────────────────────────
+
+    #[test]
+    fn deposit_source_is_non_empty() {
+        let src = daglock_deposit_source();
+        assert!(src.contains("contract DagLockDeposit"));
+        assert!(src.contains("entrypoint function forfeit"));
+        assert!(src.contains("entrypoint function release"));
+        assert!(src.contains("entrypoint function sweep"));
+    }
+
+    #[test]
+    fn compiles_daglock_deposit_with_valid_params() {
+        let pk = [0u8; 32];
+        let compiled = compile_daglock_deposit(&pk, &pk, &pk, 100_000, 1_700_000_000, &pk);
+        assert_eq!(compiled.abi.len(), 3);
+        let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"forfeit"));
+        assert!(names.contains(&"release"));
+        assert!(names.contains(&"sweep"));
+        assert!(!compiled.script.is_empty());
+    }
+
+    #[test]
+    fn deposit_template_hash_is_deterministic() {
+        let pk = [0u8; 32];
+        let c1 = compile_daglock_deposit(&pk, &pk, &pk, 100_000, 1_700_000_000, &pk);
+        let c2 = compile_daglock_deposit(&pk, &pk, &pk, 100_000, 1_700_000_000, &pk);
         let (_, _, h1) = template_parts_and_hash(&c1);
         let (_, _, h2) = template_parts_and_hash(&c2);
         assert_eq!(h1, h2);

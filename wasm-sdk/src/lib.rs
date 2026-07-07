@@ -103,7 +103,7 @@ pub fn compile_escrow(
 ///
 /// # Arguments
 /// * `script_hex` - Hex-encoded compiled covenant script (from `compile_escrow`)
-/// * `network` - Network prefix: "mainnet", "testnet-12", or "devnet"
+/// * `network` - Network prefix: "mainnet", "testnet-10", or "devnet"
 ///
 /// # Returns
 /// The P2SH address string (e.g. "kaspa:pq...")
@@ -210,11 +210,18 @@ pub fn validate_trade_hash(hash_hex: &str) -> Result<bool, JsError> {
 
 /// Compile a DagLock Vault covenant.
 #[wasm_bindgen]
-pub fn compile_vault(owner_key: &str, timeout: i64, treasury_key: &str) -> Result<String, JsError> {
+pub fn compile_vault(
+    owner_key: &str,
+    timeout: i64,
+    treasury_key: &str,
+    heir_key: &str,
+    heir_timeout: i64,
+) -> Result<String, JsError> {
     let owner = parse_hex32(owner_key, "owner_key")?;
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
+    let heir = parse_hex32(heir_key, "heir_key")?;
     Ok(compile_result_json(
-        &daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury),
+        &daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury, &heir, heir_timeout),
     ))
 }
 
@@ -343,7 +350,7 @@ mod tests {
         let json: serde_json::Value = serde_json::from_str(&compile_result).unwrap();
         let script_hex = json["script"].as_str().unwrap();
 
-        let address = compute_covenant_address(script_hex, "testnet-12").unwrap();
+        let address = compute_covenant_address(script_hex, "testnet-10").unwrap();
         assert!(
             address.starts_with("kaspatest:p"),
             "P2SH address should start with kaspatest:p, got {}",
@@ -361,7 +368,7 @@ mod tests {
     #[test]
     fn compile_vault_returns_valid_json() {
         let zero = "0000000000000000000000000000000000000000000000000000000000000000";
-        let result = compile_vault(zero, 1_700_000_000, zero);
+        let result = compile_vault(zero, 1_700_000_000, zero, zero, 0);
         assert!(result.is_ok());
         let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         assert!(!json["script"].as_str().unwrap().is_empty());

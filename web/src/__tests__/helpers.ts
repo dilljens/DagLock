@@ -4,7 +4,7 @@ export function mockApi() {
 	return {
 		// Health / network
 		health: vi.fn().mockResolvedValue({ status: "ok", version: "0.1.0" }),
-		network: vi.fn().mockResolvedValue({ network: "testnet-12", daa_score: 100 }),
+		network: vi.fn().mockResolvedValue({ network: "testnet-10", daa_score: 100 }),
 		networkPrice: vi.fn().mockResolvedValue({ kas_usd: 0.15, updated_at: Date.now() }),
 		stats: vi.fn().mockResolvedValue({ total_escrows: 10, active_escrows: 2, settled_escrows: 8 }),
 		compile: vi.fn().mockResolvedValue({ script: "deadbeef", template_hash: "aa", abi: [] }),
@@ -34,6 +34,7 @@ export function mockApi() {
 		// Messages
 		sendMessage: vi.fn().mockResolvedValue({ status: "sent" }),
 		listMessages: vi.fn().mockResolvedValue({ messages: [], total: 0 }),
+		submitChatPubkey: vi.fn().mockResolvedValue({ status: "ok", escrow_id: "esc_1" }),
 
 		// Evidence
 		submitEvidence: vi.fn().mockResolvedValue({ id: "ev_1", content: "test" }),

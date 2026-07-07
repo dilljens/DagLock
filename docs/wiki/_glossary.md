@@ -110,9 +110,25 @@
   - On-chain UTXO verification via wRPC (used at settlement time) | Context: `indexer/src/verification.rs`
 - **Borsh**
   - Binary encoding format used by Kaspa wRPC for inter-process communication. DagLock uses Borsh for direct wRPC connections. | Context: `indexer/src/listener.rs`
+- **Counter-offer**
+  - Negotiation mechanism where a user proposes modified terms on an existing offer. DB-backed with accept/decline lifecycle. | Context: `indexer/src/api/counteroffers.rs`
+- **CSV Export**
+  - Download all escrows as a CSV file for tax reporting. Endpoint: `GET /v1/escrows/export`. | Context: `indexer/src/api/escrows.rs`
+- **DagLockAdvanced**
+  - Extended covenant with `extendTimeout` and `swap_partial` entrypoints. Template hash: `98afa7aa...` | Context: `contracts/src/daglock_advanced.sil`
+- **DagLockSubscription**
+  - Recurring payment covenant. Payers lock funds, recipients claim installments. Template hash: `3e7e1870...` | Context: `contracts/src/daglock_subscription.sil`
+- **Email Notifications**
+  - SMTP-based email alerts for escrow lifecycle events. Opt-in per user, rate-limited. | Context: `indexer/src/services/email.rs`
+- **Escrow Memo**
+  - Free-text note attached to an escrow (invoice number, order ID, description). | Context: `indexer/src/db/schema.rs`
 - **ICC (Inter-Covenant Communication)**
   - SilverScript pattern for cross-covenant state introspection. Uses `OpCovInputIdx`, `readInputStateWithTemplate`, and `validateOutputStateWithTemplate` builtins. | Context: `contracts/src/daglock_krc20.sil`
 - **MockVerifier**
   - Offline UTXO verification mode. Always returns success — no actual on-chain check. Used with `--no-wrpc` flag. | Context: `indexer/src/verification.rs`
+- **Invoice**
+  - Escrow-based invoice: freelancer creates shareable link → client pays via escrow → auto-settles. No covenant changes — invoice is DB metadata linked to an escrow. | Context: `indexer/src/api/invoices.rs`, `web/src/pages/PayInvoicePage.tsx`
+- **Manual mode**
+  - Wallet-less testnet mode: enter `kaspa:` address manually, use mock signatures. For users whose wallet doesn't support testnet-12. | Context: `web/src/layout/Sidebar.tsx`
 - **PNN (Public Node Network)**
   - Kaspa's decentralized pool of community-operated resolver nodes (`kaspa.stream`, `kaspa.red`, `kaspa.green`, `kaspa.blue`). Currently down during wRPC v2 migration. | Context: `indexer/src/listener.rs`

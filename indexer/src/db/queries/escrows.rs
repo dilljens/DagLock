@@ -5,12 +5,15 @@ use crate::types::*;
 
 pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), sqlx::Error> {
     sqlx::query(
-         "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
+          "INSERT INTO escrows (id, lock_tx_id, lock_tx_output_index, status, asset_type,
          buyer_address, seller_address, amount_sompi, fee_sompi, template_hash,
          expiration_daa_score, disputed_at, dispute_reason, cancelled_at, expired_at,
          created_at, settled_at, refunded_at, mediator_key, dispute_mode, dispute_outcome, dispute_resolved_at, price_at_creation, price_currency, trade_hash,
-         price_lock_time, price_at_settlement, price_source, price_type, invoice_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30)"
+         price_lock_time, price_at_settlement, price_source, price_type, invoice_id, memo, auto_settle_timeout,
+         mediation_status, mediation_buyer_claim, mediation_seller_claim, mediation_result, mediation_expires_at,
+         mediation_buyer_accepted, mediation_seller_accepted,
+         chat_pubkey_buyer, chat_pubkey_seller)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39, ?40, ?41)"
     )
     .bind(&escrow.id).bind(&escrow.lock_tx_id)
     .bind(escrow.lock_tx_output_index as i64).bind(escrow.status.as_str())
@@ -28,6 +31,17 @@ pub async fn insert_escrow(pool: &Pool<Sqlite>, escrow: &Escrow) -> Result<(), s
     .bind(&escrow.price_source)
     .bind(&escrow.price_type)
     .bind(&escrow.invoice_id)
+    .bind(&escrow.memo)
+    .bind(escrow.auto_settle_timeout)
+    .bind(&escrow.mediation_status)
+    .bind(&escrow.mediation_buyer_claim)
+    .bind(&escrow.mediation_seller_claim)
+    .bind(&escrow.mediation_result)
+    .bind(escrow.mediation_expires_at)
+    .bind(escrow.mediation_buyer_accepted)
+    .bind(escrow.mediation_seller_accepted)
+    .bind(&escrow.chat_pubkey_buyer)
+    .bind(&escrow.chat_pubkey_seller)
     .execute(pool).await?;
     Ok(())
 }
@@ -298,6 +312,17 @@ pub(crate) fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
     let price_source: Option<String> = row.try_get("price_source").ok().flatten();
     let price_type: Option<String> = row.try_get("price_type").ok().flatten();
     let invoice_id: Option<String> = row.try_get("invoice_id").ok().flatten();
+    let memo: Option<String> = row.try_get("memo").ok().flatten();
+    let auto_settle_timeout: Option<i64> = row.try_get("auto_settle_timeout").ok().flatten();
+    let mediation_status: Option<String> = row.try_get("mediation_status").ok().flatten();
+    let mediation_buyer_claim: Option<String> = row.try_get("mediation_buyer_claim").ok().flatten();
+    let mediation_seller_claim: Option<String> = row.try_get("mediation_seller_claim").ok().flatten();
+    let mediation_result: Option<String> = row.try_get("mediation_result").ok().flatten();
+    let mediation_expires_at: Option<i64> = row.try_get("mediation_expires_at").ok().flatten();
+    let mediation_buyer_accepted: Option<bool> = row.try_get("mediation_buyer_accepted").ok().flatten();
+    let mediation_seller_accepted: Option<bool> = row.try_get("mediation_seller_accepted").ok().flatten();
+    let chat_pubkey_buyer: Option<String> = row.try_get("chat_pubkey_buyer").ok().flatten();
+    let chat_pubkey_seller: Option<String> = row.try_get("chat_pubkey_seller").ok().flatten();
 
     Escrow {
         id,
@@ -331,6 +356,17 @@ pub(crate) fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
         price_source,
         price_type,
         invoice_id,
+        memo,
+        auto_settle_timeout,
+        mediation_status,
+        mediation_buyer_claim,
+        mediation_seller_claim,
+        mediation_result,
+        mediation_expires_at,
+        mediation_buyer_accepted,
+        mediation_seller_accepted,
+        chat_pubkey_buyer,
+        chat_pubkey_seller,
     }
 }
 
@@ -350,4 +386,82 @@ pub async fn count_escrows_by_buyer_recent(
     .fetch_one(pool)
     .await?;
     row.try_get("cnt")
+}
+
+/// Mark an escrow as auto-settled if it's active and the timeout has elapsed.
+pub async fn auto_settle_escrow_atomic(pool: &Pool<Sqlite>, id: &str) -> Result<bool, sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    let result = sqlx::query(
+        "UPDATE escrows SET status = 'settled', settled_at = ?1
+         WHERE id = ?2 AND status = 'active'
+           AND auto_settle_timeout IS NOT NULL
+           AND auto_settle_timeout <= ?1",
+    )
+    .bind(now)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Find all escrows eligible for auto-settlement.
+pub async fn find_auto_settleable_escrows(
+    pool: &Pool<Sqlite>,
+) -> Result<Vec<Escrow>, sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    let rows = sqlx::query(
+        "SELECT * FROM escrows WHERE status = 'active' AND auto_settle_timeout IS NOT NULL AND auto_settle_timeout <= ?1",
+    )
+    .bind(now)
+    .fetch_all(pool)
+    .await?;
+    Ok(rows.into_iter().map(row_to_escrow).collect())
+}
+
+/// Force settle a disputed escrow (used by mediation acceptance).
+pub async fn force_settle_disputed(pool: &Pool<Sqlite>, id: &str) -> Result<bool, sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    let result = sqlx::query(
+        "UPDATE escrows SET status = 'settled', settled_at = ?1, dispute_resolved_at = ?1, dispute_outcome = 'mediation_refund'
+         WHERE id = ?2 AND status = 'disputed'",
+    )
+    .bind(now)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Force refund a disputed escrow (used by mediation acceptance).
+pub async fn force_refund_disputed(pool: &Pool<Sqlite>, id: &str) -> Result<bool, sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    let result = sqlx::query(
+        "UPDATE escrows SET status = 'refunded', refunded_at = ?1, dispute_resolved_at = ?1, dispute_outcome = 'mediation_refund'
+         WHERE id = ?2 AND status = 'disputed'",
+    )
+    .bind(now)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Resolve a disputed escrow via split outcome.
+pub async fn resolve_dispute_with_split(
+    pool: &Pool<Sqlite>,
+    id: &str,
+    outcome: &str,
+    _buyer_share_basis: i64,
+) -> Result<bool, sqlx::Error> {
+    let now = chrono::Utc::now().timestamp();
+    let result = sqlx::query(
+        "UPDATE escrows SET status = 'settled', settled_at = ?1, dispute_resolved_at = ?1, dispute_outcome = ?2
+         WHERE id = ?3 AND status = 'disputed'",
+    )
+    .bind(now)
+    .bind(outcome)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
 }

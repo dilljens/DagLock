@@ -108,6 +108,10 @@ export type Escrow = {
 	dispute_outcome?: string | null;
 	dispute_resolved_at?: number | null;
 	trade_hash?: string | null;
+	memo?: string | null;
+	auto_settle_timeout?: number | null;
+	chat_pubkey_buyer?: string | null;
+	chat_pubkey_seller?: string | null;
 };
 
 export type CreateEscrowRequest = {
@@ -125,6 +129,9 @@ export type CreateEscrowRequest = {
 	trade_hash?: string;
 	price_type?: string;
 	invoice_id?: string;
+	memo?: string;
+	auto_settle_timeout?: number;
+	chat_pubkey?: string;
 };
 
 export type AuthHeaders = {
@@ -221,6 +228,9 @@ export type JuryCase = {
 	decided_at?: number | null;
 	outcome?: string | null;
 	jurors: string[];
+	escalation_level: number;
+	escalation_deadline?: number | null;
+	mediation_log?: string | null;
 };
 
 export type JuryVote = {
@@ -248,12 +258,106 @@ export type EscrowMessage = {
 	id: string;
 	escrow_id: string;
 	sender_address: string;
-	content: string;
+	content?: string;
+	content_enc?: string;
+	nonce?: string;
+	chat_sig?: string;
+	seq?: number;
 	created_at: number;
 };
 
 export type SendMessageRequest = {
-	content: string;
+	content?: string;
+	content_enc?: string;
+	nonce?: string;
+	chat_sig?: string;
+};
+
+// ── Deposit Types ──────────────────────────────────────────────
+
+export type Deposit = {
+	id: string;
+	escrow_id: string;
+	party1_address: string;
+	party2_address: string;
+	deposit_amount: number;
+	status: string;
+	deposit_tx_id?: string | null;
+	timeout: number;
+	created_at: number;
+	released_at?: number | null;
+	forfeited_at?: number | null;
+	forfeited_to?: string | null;
+};
+
+export type CreateDepositRequest = {
+	party1_address: string;
+	party2_address: string;
+	deposit_amount: number;
+	deposit_tx_id?: string;
+	party1_pubkey?: string;
+	party2_pubkey?: string;
+	timeout?: number;
+};
+
+export type ReleaseDepositRequest = {
+	party1_address: string;
+	party2_address: string;
+	party1_signature: string;
+	party2_signature: string;
+};
+
+export type ForfeitDepositRequest = {
+	forfeited_to: string;
+	jury_signature: string;
+};
+
+// ── Multi-Party Escrow Types ────────────────────────────────────
+
+export type MultiEscrow = {
+	id: string;
+	lock_tx_id: string;
+	parties: string[];
+	shares: number[];
+	total_amount: number;
+	status: string;
+	created_at: number;
+	settled_at: number | null;
+	refunded_at: number | null;
+	signatures: string[];
+};
+
+export type CreateMultiRequest = {
+	lock_tx_id: string;
+	parties: string[];
+	shares: number[];
+	total_amount: number;
+};
+
+// ── Milestone Types ──────────────────────────────────────────────
+
+export type MilestoneEscrow = {
+	id: string;
+	lock_tx_id: string;
+	buyer_address: string;
+	seller_address: string;
+	total_amount: number;
+	milestone_amounts: number[];
+	milestone_timeouts: number[];
+	current_milestone: number;
+	milestone_statuses: string[];
+	status: string;
+	created_at: number;
+	completed_at: number | null;
+};
+
+export type CreateMilestoneRequest = {
+	lock_tx_id: string;
+	buyer_address: string;
+	seller_address: string;
+	total_amount: number;
+	milestone_amounts: number[];
+	milestone_timeouts: number[];
 };
 
 export type Vouch = {
@@ -264,6 +368,36 @@ export type Vouch = {
 	note?: string | null;
 	created_at: number;
 	expires_at: number;
+};
+
+// ── Mediation Types ───────────────────────────────────────────────
+
+export type MediationResult = {
+	outcome: "refund" | "payout" | "split";
+	buyer_share_basis: number;
+	reasoning: string;
+};
+
+export type MediationStatus = {
+	escrow_id: string;
+	mediation_status: string;
+	recommendation: MediationResult | null;
+	expires_at: number | null;
+	buyer_accepted: boolean;
+	seller_accepted: boolean;
+	both_accepted: boolean;
+};
+
+export type MediationRequest = {
+	buyer_claim: string;
+	seller_claim: string;
+};
+
+export type MediationResponse = {
+	case_id: string;
+	recommendation: MediationResult | null;
+	expires_at: number;
+	mediation_status: string;
 };
 
 export type DisputeEvidence = {
@@ -421,12 +555,34 @@ export const api = {
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/cancel`,
 		),
+	autoSettleEscrow: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string; method: string }>(
+			`/v1/escrows/${encodeURIComponent(id)}/auto-settle`,
+		),
 	swapEscrow: (id: string, preimage: string) =>
 		postJson<{ status: string; escrow_id: string; method: string; preimage_hash: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/swap`,
 			{ preimage },
 		),
 	generateSwap: () => loadJson<{ secret: string; hash: string }>("/v1/swap/generate"),
+
+	// Deposits (security deposit covenant)
+	createDeposit: (escrowId: string, req: CreateDepositRequest) =>
+		postJson<Deposit>(`/v1/escrows/${encodeURIComponent(escrowId)}/deposit`, req),
+	getDeposit: (escrowId: string) =>
+		loadJson<Deposit>(`/v1/escrows/${encodeURIComponent(escrowId)}/deposit`),
+	releaseDeposit: (escrowId: string, req: ReleaseDepositRequest) =>
+		postJson<{ status: string; deposit_id: string; escrow_id: string }>(
+			`/v1/escrows/${encodeURIComponent(escrowId)}/deposit/release`,
+			req,
+		),
+	forfeitDeposit: (escrowId: string, req: ForfeitDepositRequest) =>
+		postJson<{ status: string; deposit_id: string; escrow_id: string; forfeited_to: string }>(
+			`/v1/escrows/${encodeURIComponent(escrowId)}/deposit/forfeit`,
+			req,
+		),
+	sweepDeposits: () =>
+		postJson<{ swept: string[]; count: number; total_stale: number }>("/v1/deposits/sweep", {}),
 
 	// Invoices
 	getInvoice: (id: string) => loadJson<InvoiceResponse>(`/v1/invoices/${encodeURIComponent(id)}`),
@@ -447,6 +603,25 @@ export const api = {
 		}),
 	cancelOffer: (id: string) =>
 		postEmpty<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/cancel`),
+
+	// Counter-offers
+	counterOffer: (offerId: string, req: { amount_sompi?: number; message?: string }) =>
+		postJson<{ status: string; id: string; offer_id: string }>(
+			`/v1/offers/${encodeURIComponent(offerId)}/counter`,
+			req,
+		),
+	listCounters: (offerId: string) =>
+		loadJson<{ counters: any[]; total: number }>(
+			`/v1/offers/${encodeURIComponent(offerId)}/counters`,
+		),
+	acceptCounter: (counterId: string) =>
+		postEmpty<{ status: string; counter_id: string; offer_id: string }>(
+			`/v1/counteroffers/${encodeURIComponent(counterId)}/accept`,
+		),
+	declineCounter: (counterId: string) =>
+		postEmpty<{ status: string; counter_id: string }>(
+			`/v1/counteroffers/${encodeURIComponent(counterId)}/decline`,
+		),
 
 	// Vouching
 	vouch: (subjectAddress: string, auth: AuthHeaders, escrowId?: string, note?: string) =>
@@ -473,10 +648,16 @@ export const api = {
 		loadJson<{ candidates: JurorRegistration[]; total: number }>("/v1/jury/candidates"),
 
 	// Messages
-	sendMessage: (escrowId: string, content: string, auth: AuthHeaders) =>
+	sendMessage: (escrowId: string, data: SendMessageRequest, auth: AuthHeaders) =>
 		postJson<{ status: string; message: EscrowMessage }>(
 			`/v1/escrows/${encodeURIComponent(escrowId)}/messages`,
-			{ content },
+			data,
+			auth,
+		),
+	submitChatPubkey: (escrowId: string, chatPubkey: string, auth: AuthHeaders) =>
+		postJson<{ status: string; escrow_id: string }>(
+			`/v1/escrows/${encodeURIComponent(escrowId)}/chat-pubkey`,
+			{ chat_pubkey: chatPubkey },
 			auth,
 		),
 	listMessages: (escrowId: string, auth: AuthHeaders) =>
@@ -512,6 +693,104 @@ export const api = {
 	reputation: (address: string) =>
 		loadJson<Reputation>(`/v1/reputation/${encodeURIComponent(address)}`),
 	receipt: (id: string) => loadJson<Receipt>(`/v1/receipts/${encodeURIComponent(id)}`),
+
+	// Email notifications
+	getNotifications: (auth: AuthHeaders) =>
+		loadAuthJson<any>("/v1/notifications", auth),
+	subscribeNotifications: (req: { email: string }, auth: AuthHeaders) =>
+		postJson<any>("/v1/notifications", req, auth),
+	verifyNotifications: (req: { code: string }, auth: AuthHeaders) =>
+		postJson<any>("/v1/notifications/verify", req, auth),
+	updateNotificationPrefs: (req: any, auth: AuthHeaders) =>
+		postJson<any>("/v1/notifications/preferences", req, auth),
+
+	// Milestones
+	milestones: (address: string) =>
+		loadJson<{ milestones: MilestoneEscrow[]; total: number }>(
+			`/v1/milestones?address=${encodeURIComponent(address)}`,
+		),
+	milestone: (id: string) => loadJson<MilestoneEscrow>(`/v1/milestones/${encodeURIComponent(id)}`),
+	createMilestone: (req: CreateMilestoneRequest) => postJson<MilestoneEscrow>("/v1/milestones", req),
+	releaseMilestone: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string }>(
+			`/v1/milestones/${encodeURIComponent(id)}/release`,
+		),
+	approveMilestone: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string }>(
+			`/v1/milestones/${encodeURIComponent(id)}/approve`,
+		),
+	disputeMilestone: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string }>(
+			`/v1/milestones/${encodeURIComponent(id)}/dispute`,
+		),
+	refundMilestone: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string }>(
+			`/v1/milestones/${encodeURIComponent(id)}/refund`,
+		),
+	completeMilestone: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string }>(
+			`/v1/milestones/${encodeURIComponent(id)}/complete`,
+		),
+
+	// Multi-party escrows
+	multiEscrows: (address: string) =>
+		loadJson<{ multi_escrows: MultiEscrow[]; total: number }>(
+			`/v1/multi-escrows?address=${encodeURIComponent(address)}`,
+		),
+	multiEscrow: (id: string) => loadJson<MultiEscrow>(`/v1/multi-escrows/${encodeURIComponent(id)}`),
+	createMultiEscrow: (req: CreateMultiRequest) => postJson<MultiEscrow>("/v1/multi-escrows", req),
+	signMultiEscrow: (id: string, address: string) =>
+		postJson<{ status: string; escrow_id: string; signature_count: number; parties_count: number; all_signed: boolean }>(
+			`/v1/multi-escrows/${encodeURIComponent(id)}/sign`,
+			{ address },
+		),
+	refundMultiEscrow: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string }>(
+			`/v1/multi-escrows/${encodeURIComponent(id)}/refund`,
+		),
+	swapMultiEscrow: (id: string) =>
+		postEmpty<{ status: string; escrow_id: string; method: string }>(
+			`/v1/multi-escrows/${encodeURIComponent(id)}/swap`,
+		),
+
+	// Network / prices
+	networkPrice: () => loadJson<{ kas_usd: number; updated_at: number }>("/v1/network/price"),
+	explorer: () => loadJson<{ base_url: string }>("/v1/network/explorer"),
+
+	// KRC-20 tokens
+	tokens: () => loadJson<{ tokens: any[]; total: number }>("/v1/tokens"),
+	token: (ticker: string) => loadJson<any>(`/v1/tokens/${encodeURIComponent(ticker)}`),
+	tokenChart: (ticker: string, period?: string) =>
+		loadJson<any>(`/v1/tokens/${encodeURIComponent(ticker)}/chart${period ? `?period=${period}` : ""}`),
+	deployToken: (req: any, auth: AuthHeaders) =>
+		postJson<any>("/v1/tokens/deploy", req, auth),
+	updateToken: (ticker: string, req: any, auth: AuthHeaders) =>
+		fetchWithTimeout(`${API_BASE}/v1/tokens/${encodeURIComponent(ticker)}`, {
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Daglock-Address": auth.address,
+				"X-Daglock-Signature": auth.signature,
+				"X-Daglock-Message": auth.message,
+			},
+			body: JSON.stringify(req),
+		}).then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); }),
+
+	// AI Mediation
+	mediateEscrow: (id: string, body: MediationRequest, auth: AuthHeaders) =>
+		postJson<MediationResponse>(
+			`/v1/escrows/${encodeURIComponent(id)}/mediate`,
+			body,
+			auth,
+		),
+	acceptMediation: (id: string, party: string, accept: boolean, auth: AuthHeaders) =>
+		postJson<{ status: string; escrow_id: string; outcome_executed?: boolean; waiting_for_other?: boolean }>(
+			`/v1/escrows/${encodeURIComponent(id)}/mediate/${party}/accept`,
+			{ accept },
+			auth,
+		),
+	getMediation: (id: string) =>
+		loadJson<MediationStatus>(`/v1/escrows/${encodeURIComponent(id)}/mediate`),
 
 	// Evidence
 	submitEvidence: (escrowId: string, content: string, signedMessage?: string, auth?: AuthHeaders) =>

@@ -1,29 +1,14 @@
 pragma silverscript ^0.1.0;
 
-// DagLock Vault — Time-locked KAS storage
-//
-// Two spending paths:
-//   withdraw(sig ownerSig)     — owner reclaims after timeout (requires signature)
-//   sweep()                     — anyone can sweep after timeout, funds go to owner
-//
-// Fee model: 0.1% (1/1000) on every withdrawal. The vault owner pays
-// the fee (it is deducted from their withdrawal). This is lower than
-// the 0.5% escrow fee because vaults are self-custody infrastructure,
-// not trade facilitation.
-// The sweep() path prevents lost vaults: if the owner loses their key,
-// anyone can broadcast sweep() after timeout to return funds to the owner.
-//
-// The sweep() path prevents lost vaults: if the owner loses their key,
-// anyone can broadcast sweep() after timeout to return funds to the owner.
-// The sweeping party cannot redirect funds — output[0] is hardcoded to
-// the owner's P2PK address.
-
 contract DagLockVault(
     byte[32] ownerKey,
-    int timeout,                  // Unix timestamp before which withdrawal is blocked
-    byte[32] treasuryKey          // DagLock fee treasury
+    int timeout,
+    byte[32] treasuryKey,
+    byte[32] heirKey,
+    int heirTimeout
 ) {
-    // ── Path A: Owner Withdraw ─────────────────────────────────
+    int constant MIN_OUT = 1000;
+
     entrypoint function withdraw(sig ownerSig) {
         require(tx.time >= timeout);
         require(checkSig(ownerSig, pubkey(ownerKey)));
@@ -32,14 +17,15 @@ contract DagLockVault(
         int feeAmount = inputValue / 1000;
         int sendAmount = inputValue - feeAmount;
 
+        require(sendAmount >= MIN_OUT);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
-    // ── Path B: Public Sweep ───────────────────────────────────
     entrypoint function sweep() {
         require(tx.time >= timeout);
 
@@ -47,11 +33,63 @@ contract DagLockVault(
         int feeAmount = inputValue / 1000;
         int sendAmount = inputValue - feeAmount;
 
+        require(sendAmount >= MIN_OUT);
         byte[34] ownerScript = new ScriptPubKeyP2PK(pubkey(ownerKey));
         require(tx.outputs[0].scriptPubKey == byte[](ownerScript));
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    entrypoint function relock(sig ownerSig, byte[34] newScript) {
+        require(checkSig(ownerSig, pubkey(ownerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        require(sendAmount >= MIN_OUT);
+        require(tx.outputs[0].scriptPubKey == byte[](newScript));
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    entrypoint function early_exit(sig ownerSig) {
+        require(checkSig(ownerSig, pubkey(ownerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        require(sendAmount >= MIN_OUT);
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    entrypoint function heir_withdraw(sig heirSig) {
+        require(tx.time >= heirTimeout);
+        require(checkSig(heirSig, pubkey(heirKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 1000;
+        int sendAmount = inputValue - feeAmount;
+
+        require(sendAmount >= MIN_OUT);
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }

@@ -1,19 +1,30 @@
 //! REST API routes for the DagLock indexer.
 
 pub mod apps;
+pub mod blocks;
 pub mod compile;
+pub mod counteroffers;
+pub mod deposits;
 pub mod escrows;
 pub mod evidence;
+pub mod feedback;
 pub mod identity;
 pub mod invoices;
 pub mod jury;
+pub mod mediator;
 pub mod messages;
+pub mod milestones;
+pub mod multi_escrows;
 pub mod network;
+pub mod notifications;
 pub mod offers;
 pub mod receipts;
+pub mod reports;
 pub mod reputation;
+pub mod subscriptions;
 pub mod status;
 pub mod swap;
+pub mod tokens;
 pub mod vaults;
 pub mod vouches;
 pub mod webhooks;
@@ -21,7 +32,7 @@ pub mod webhooks;
 use crate::auth::SignatureVerifier;
 use crate::verification::EscrowVerifier;
 use crate::websocket;
-use axum::routing::{get, post};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
@@ -49,6 +60,16 @@ pub struct AppState {
     pub ws_tx: tokio::sync::broadcast::Sender<crate::websocket::WsEvent>,
     /// Canonical treasury public key (64 hex).
     pub treasury_pubkey: Option<String>,
+    /// Kaspa block explorer base URL.
+    pub explorer_base_url: String,
+    /// Email notification service (optional).
+    pub email_service: Option<std::sync::Arc<crate::services::email::EmailService>>,
+    /// AI mediator API key (from env or CLI arg).
+    pub ai_mediator_api_key: Option<String>,
+    /// AI mediator model name.
+    pub ai_mediator_model: Option<String>,
+    /// Skip Ed25519 chat signature verification (dev mode).
+    pub mock_chat_sig: bool,
 }
 
 /// Build the Axum router with all API routes.
@@ -76,9 +97,11 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/status", get(status::get))
         .route("/v1/network", get(network::get))
         .route("/v1/network/price", get(network::price))
+        .route("/v1/network/explorer", get(network::explorer))
         .route("/v1/fees/estimate", get(network::fees_estimate))
         .route("/v1/compile", post(compile::compile))
         .route("/v1/escrows", get(escrows::list).post(escrows::create))
+        .route("/v1/escrows/export", get(escrows::export_csv))
         .route("/v1/escrows/:id", get(escrows::get_by_id))
         .route("/v1/escrows/:id/lock-status", get(escrows::lock_status))
         .route("/v1/escrows/:id/settle", post(escrows::settle))
@@ -86,6 +109,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/escrows/:id/dispute", post(escrows::dispute))
         .route("/v1/escrows/:id/cancel", post(escrows::cancel))
         .route("/v1/escrows/:id/swap", post(escrows::atomic_swap))
+        .route("/v1/escrows/:id/auto-settle", post(escrows::auto_settle))
         .route(
             "/v1/escrows/:id/evidence",
             post(evidence::submit_evidence).get(evidence::list_evidence),
@@ -99,6 +123,10 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             post(messages::send).get(messages::list),
         )
         .route("/v1/openapi.json", get(openapi_spec))
+        .route("/v1/subscriptions", get(subscriptions::list).post(subscriptions::create))
+        .route("/v1/subscriptions/:id", get(subscriptions::get_by_id))
+        .route("/v1/subscriptions/:id/cancel", post(subscriptions::cancel))
+        .route("/v1/subscriptions/:id/draw", post(subscriptions::draw))
         .route("/v1/stats", get(escrows::stats))
         .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))
@@ -130,6 +158,50 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/jury/cases/:id", get(jury::get_case))
         .route("/v1/jury/cases/:id/vote", post(jury::cast_vote))
         .route("/v1/jury/candidates", get(jury::list_candidates))
+        // Blocklist & reports
+        .route("/v1/blocks", get(blocks::list).post(blocks::create))
+        .route("/v1/blocks/:id", post(blocks::delete))
+        .route("/v1/reports", get(reports::list).post(reports::create))
+        // Email notifications
+        .route("/v1/notifications", get(notifications::get).post(notifications::subscribe))
+        .route("/v1/notifications/verify", post(notifications::verify))
+        .route("/v1/notifications/preferences", post(notifications::update_preferences))
+        // Trade feedback
+        .route("/v1/escrows/:id/feedback", get(feedback::list).post(feedback::create))
+        // Security deposits
+        .route("/v1/escrows/:id/deposit", post(deposits::create).get(deposits::get_by_escrow))
+        .route("/v1/escrows/:id/deposit/release", post(deposits::release))
+        .route("/v1/escrows/:id/deposit/forfeit", post(deposits::forfeit))
+        .route("/v1/deposits/sweep", post(deposits::sweep))
+        // Counter-offers
+        .route("/v1/offers/:id/counter", post(counteroffers::create))
+        .route("/v1/offers/:id/counters", get(counteroffers::list))
+        .route("/v1/counteroffers/:id/accept", post(counteroffers::accept))
+        .route("/v1/counteroffers/:id/decline", post(counteroffers::decline))
+        // Milestone escrows
+        .route("/v1/milestones", get(milestones::list).post(milestones::create))
+        .route("/v1/milestones/:id", get(milestones::get_by_id))
+        .route("/v1/milestones/:id/release", post(milestones::release_milestone))
+        .route("/v1/milestones/:id/approve", post(milestones::approve_milestone))
+        .route("/v1/milestones/:id/dispute", post(milestones::dispute))
+        .route("/v1/milestones/:id/refund", post(milestones::refund))
+        .route("/v1/milestones/:id/complete", post(milestones::complete))
+        // AI Mediation
+        .route("/v1/escrows/:id/mediate", post(mediator::mediate).get(mediator::status))
+        .route("/v1/escrows/:id/mediate/:party/accept", post(mediator::accept))
+        // Multi-party escrows
+        .route("/v1/multi-escrows", get(multi_escrows::list).post(multi_escrows::create))
+        .route("/v1/multi-escrows/:id", get(multi_escrows::get_by_id))
+        .route("/v1/multi-escrows/:id/sign", post(multi_escrows::sign))
+        .route("/v1/multi-escrows/:id/refund", post(multi_escrows::refund))
+        .route("/v1/multi-escrows/:id/swap", post(multi_escrows::swap))
+        // KRC-20 token dashboard
+        .route("/v1/tokens", get(tokens::list))
+        .route("/v1/tokens/registered", get(tokens::registered_list))
+        .route("/v1/tokens/deploy", post(tokens::deploy))
+        .route("/v1/tokens/:ticker", get(tokens::get))
+        .route("/v1/tokens/:ticker", patch(tokens::update))
+        .route("/v1/tokens/:ticker/chart", get(tokens::chart))
         .route("/v1/ws", get(websocket_handler))
         .layer(cors)
         .layer(axum::middleware::from_fn(request_id_middleware))

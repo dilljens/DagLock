@@ -5,6 +5,7 @@ import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonStats } from "../ui";
 import { Helmet } from "react-helmet-async";
+import { ExplorerAddressLink } from "../components/ExplorerLink";
 import { EmptyState } from "../components/empty-state";
 import { LinkTelegramForm } from "../components/identity";
 
@@ -157,6 +158,9 @@ function ReputationDisplay({ address }: { address: string }) {
 	const d = state.data;
 	return (
 		<div>
+			<div style={{ marginBottom: "12px" }}>
+				<ExplorerAddressLink address={address} />
+			</div>
 			<div className="stats-grid">
 				<div className="stat-card">
 					<div className="stat-card-label">Score</div>

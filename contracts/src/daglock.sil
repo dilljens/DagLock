@@ -2,16 +2,20 @@ pragma silverscript ^0.1.0;
 
 // DagLock — Trustless escrow & atomic swaps on Kaspa L1
 //
-// Three spending paths:
-//   release(buyerSig, sellerSig)  — both parties sign to settle
-//   swap(secret)                   — hash preimage reveals for atomic swap
-//   refund(buyerSig)               — depositor reclaims after timeout
+// Six spending paths:
+//   release(buyerSig, sellerSig)         — both parties sign to settle
+//   split(buyerSig, sellerSig, basis)    — mutual split at any ratio
+//   swap(secret)                         — hash preimage atomic swap
+//   refund(buyerSig)                     — depositor reclaims after timeout
+//   emergency_refund()                   — no-sig refund after timeout + 30d
+//   auto_settle()                        — any party triggers after timeout
 //
-// Fee model: 0.5% (1/200) deducted from output[0] toward treasury.
-// The party receiving output[0] (seller on release, swap recipient)
-// economically pays the fee. Both parties consent by signing SIGHASH_ALL
-// after reviewing the outputs. On refund, no fee is paid (service not
-// completed).
+// Fee model: 0.5% (1/200) deducted on release/split/swap/auto_settle.
+// The receiving party economically pays the fee. Both parties consent by
+// signing SIGHASH_ALL after reviewing the outputs. refund/emergency_refund
+// pay no fee (service not completed).
+//
+// Dust protection: MIN_OUT = 1000 ensures all outputs carry meaningful value.
 //
 // Constructor parameters use byte[32] (not pubkey) to work around
 // the SilverScript compiler's strict type checking for constructor args.
@@ -24,6 +28,8 @@ contract DagLock(
     int timeout,               // Unix timestamp after which refund is allowed
     byte[32] treasuryKey       // DagLock fee treasury public key
 ) {
+    int constant MIN_OUT = 1000;
+
     // ── Path A: Mutual Release ──────────────────────────────────
     entrypoint function release(sig buyerSig, sig sellerSig) {
         require(checkSig(buyerSig, pubkey(buyerKey)));
@@ -33,14 +39,42 @@ contract DagLock(
         int feeAmount = inputValue / 200;
         int sendAmount = inputValue - feeAmount;
 
+        require(sendAmount >= MIN_OUT);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
-    // ── Path B: Atomic Swap ─────────────────────────────────────
+    // ── Path B: Mutual Split ────────────────────────────────────
+    entrypoint function split(sig buyerSig, sig sellerSig, int buyerShareBasis) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(checkSig(sellerSig, pubkey(sellerKey)));
+
+        require(buyerShareBasis >= 0);
+        require(buyerShareBasis <= 10000);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int distributable = inputValue - feeAmount;
+        int buyerAmount = distributable * buyerShareBasis / 10000;
+        int sellerAmount = distributable * (10000 - buyerShareBasis) / 10000;
+
+        require(buyerAmount >= MIN_OUT);
+        require(tx.outputs[0].value == buyerAmount);
+
+        require(sellerAmount >= MIN_OUT);
+        require(tx.outputs[1].value == sellerAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
+        require(tx.outputs[2].value == feeAmount);
+        require(tx.outputs[2].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path C: Atomic Swap ─────────────────────────────────────
     entrypoint function swap(byte[] secret) {
         require(sha256(secret) == tradeHash);
 
@@ -48,19 +82,54 @@ contract DagLock(
         int feeAmount = inputValue / 200;
         int sendAmount = inputValue - feeAmount;
 
+        require(sendAmount >= MIN_OUT);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
-    // ── Path C: Timeout Refund ──────────────────────────────────
+    // ── Path D: Timeout Refund ──────────────────────────────────
     entrypoint function refund(sig buyerSig) {
         require(tx.time >= timeout);
         require(checkSig(buyerSig, pubkey(buyerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(inputValue >= MIN_OUT);
         require(tx.outputs[0].value == inputValue);
+    }
+
+    // ── Path E: Emergency Timeout Refund ────────────────────────
+    // No signature required. Funds go to buyer. No fee.
+    // Only triggers after timeout + 30 days (2592000 seconds).
+    entrypoint function emergency_refund() {
+        require(tx.time >= timeout + 2592000);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(inputValue >= MIN_OUT);
+        require(tx.outputs[0].value == inputValue);
+    }
+
+    // ── Path F: Auto-Settle ─────────────────────────────────────
+    // Any party can trigger settlement after timeout if the seller
+    // hasn't been paid yet. Funds go to the seller (minus fee).
+    // This prevents stuck funds when the buyer is uncooperative
+    // after receiving goods.
+    entrypoint function auto_settle() {
+        require(tx.time >= timeout);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+
+        require(sendAmount >= MIN_OUT);
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 }

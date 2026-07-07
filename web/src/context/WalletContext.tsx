@@ -75,7 +75,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 			detected: false,
 			connected: true,
 			address,
-			network: "testnet-12",
+			network: "testnet-10",
 			balance: null,
 			loading: false,
 			error: null,

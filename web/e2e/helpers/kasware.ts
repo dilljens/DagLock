@@ -22,7 +22,7 @@ export function createMockKasware(overrides?: Partial<KaswareProvider>): Kasware
 		getAccounts: async () => [TEST_ADDRESS],
 		getPublicKey: async () => TEST_PUBKEY,
 		getBalance: async () => ({ confirmed: 500_000_000, pending: 0 }),
-		getNetwork: async () => "testnet-12",
+		getNetwork: async () => "testnet-10",
 		sendKaspa: async (_to: string, _sompi: number, _opts?: { feeRate?: number }) =>
 			"mock_tx_id_abcdef1234567890",
 		signMessage: async (_message: string, _type?: "ecdsa" | "schnorr") =>
@@ -44,7 +44,7 @@ export async function mockKasware(page: Page, _overrides?: Partial<KaswareProvid
 			getAccounts: async () => ["${addr}"],
 			getPublicKey: async () => "${pubkey}",
 			getBalance: async () => ({ confirmed: 500000000, pending: 0 }),
-			getNetwork: async () => "testnet-12",
+		getNetwork: async () => "testnet-10",
 			sendKaspa: async (_to, _sompi, _opts) => "mock_tx_id_abcdef1234567890",
 			signMessage: async (_msg, _type) => "ff" + "a".repeat(126),
 			getVersion: async () => "1.0.0",

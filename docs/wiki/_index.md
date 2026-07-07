@@ -47,6 +47,21 @@ Use codebase-memory-mcp tools for structural code queries:
 | 2026-06-23 | **Code quality**: All `.unwrap()` removed from production. `FEE_DENOMINATOR` shared constant (i64). Flaky crypto tests fixed. |
 | 2026-06-23 | **VPS hardened**: daglock user, LimitNOFILE=65536. Mainnet binary deployed. 303 tests passing. |
 | 2026-06-23 | **wRPC discovery**: Kaspa PNN resolver down (wRPC v2 migration). Mainnet endpoints found at `troy.kaspa.stream` (borsh). Testnet-12 kaspad patched (1-line fix). |
+| 2026-06-25-26 | **Security audit fixes**: 6 critical/high findings resolved. |
+| 2026-06-26 | **Docs liability fix**: 13 files updated. |
+| 2026-06-26 | **CI green**: All 5 jobs passing. |
+| 2026-06-26 | **Invoice feature**: Escrow-based invoicing. |
+| 2026-06-29 | **Usability sprint**: Fee calculator, explorer links, onboarding, help center, blocklist, trade feedback, testnet-10 migration. |
+| 2026-06-29 | **Trade bot + offer expiry**: Bot populates offer board, stale offers auto-cleaned. |
+| 2026-06-30 | **Atomic swap wizard**: 6-step guided wizard with deep links. |
+| 2026-07-01 | **KRC-20 token dashboard**: `/tokens` with price charts, trade history, token detail. |
+| 2026-07-01 | **Bot-native escrow create**: Full Telegram wizard with Kaspium deep links, `/settle`, `/refund`. |
+| 2026-07-02 | **Counter-offers**: In-app negotiation with accept/decline. Web + bot. |
+| 2026-07-02 | **KRC-20 token launchpad**: Register tokens, bootstrap liquidity. `/tokens/create`. |
+| 2026-07-02 | **Escrow memo field**: Notes on every escrow. |
+| 2026-07-02 | **CSV export**: One-click download for tax reporting. |
+| 2026-07-03 | **Email notifications**: SMTP integration, opt-in per event, `/settings` UI. |
+| 2026-07-03 | **Covenant upgrades**: `daglock_advanced.sil` (extendTimeout + swap_partial), `daglock_subscription.sil` (recurring payments). Design docs ready for audit. |
 
-> Knowledge graph last synced: 6/23/2026
+> Knowledge graph last synced: 6/26/2026
 > Run `/knowledge:sync` to refresh from codebase

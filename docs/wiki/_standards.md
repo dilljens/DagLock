@@ -28,6 +28,10 @@ Check: Use `settle_escrow_atomic()` or `refund_escrow_atomic()`
   - Invalid addresses stored in DB cause failed settlements
 
 Check: Validate with `validate_kaspa_address()`
+- **Rule #8: Invoice is metadata, not a covenant**
+  - Invoices are an indexer-level feature. No covenant changes needed. Invoice links to escrow via `invoice_id` column.
+- **Rule #9: Invoice status lifecycle must be maintained**
+  - `draft → sent → paid → settled / disputed / refunded / cancelled`. Escrow lifecycle events must update linked invoice status.
 
 # Commands
 

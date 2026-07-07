@@ -1,0 +1,111 @@
+pragma silverscript ^0.1.0;
+
+// DagLock Milestone — milestone-based partial escrow payments.
+//
+// Holds total KAS and releases in up to 5 stages (milestones).
+// Each milestone is released individually. State is tracked via
+// UTXO re-lock with an updated currentMilestoneIndex.
+//
+// Entrypoints:
+//   release_milestone(sellerSig, milestoneIndex, newCovenant)  — seller claims after timeout
+//   approve_milestone(buyerSig, milestoneIndex, newCovenant)   — buyer approves early release
+//   dispute(buyerSig)                                          — buyer halts, reclaims remaining
+//   refund_remaining(buyerSig)                                 — buyer reclaims after current milestone timed out
+//   complete(buyerSig, sellerSig)                              — both release everything remaining
+//
+// Fee: 0.5% (1/200) on milestone amount, not remaining balance.
+// Dispute and refund_remaining are fee-free (service not completed).
+
+contract DagLockMilestone(
+    byte[32] buyerKey,
+    byte[32] sellerKey,
+    int totalAmount,
+    int[5] milestoneAmounts,
+    int[5] milestoneTimeouts,
+    int currentMilestoneIndex,
+    byte[32] treasuryKey
+) {
+    // ── Path A: Seller claims milestone after timeout ───────────
+    entrypoint function release_milestone(
+        sig sellerSig,
+        int milestoneIndex,
+        byte[] newCovenantScript
+    ) {
+        require(checkSig(sellerSig, pubkey(sellerKey)));
+        require(milestoneIndex == currentMilestoneIndex);
+        require(tx.time >= milestoneTimeouts[milestoneIndex]);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int milestoneAmount = milestoneAmounts[milestoneIndex];
+        int feeAmount = milestoneAmount / 200;
+        int netAmount = milestoneAmount - feeAmount;
+        int remainingAmount = inputValue - milestoneAmount;
+
+        require(tx.outputs[0].value == netAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+
+        require(tx.outputs[2].value == remainingAmount);
+        require(tx.outputs[2].scriptPubKey == byte[](newCovenantScript));
+    }
+
+    // ── Path B: Buyer approves milestone early ──────────────────
+    entrypoint function approve_milestone(
+        sig buyerSig,
+        int milestoneIndex,
+        byte[] newCovenantScript
+    ) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(milestoneIndex == currentMilestoneIndex);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int milestoneAmount = milestoneAmounts[milestoneIndex];
+        int feeAmount = milestoneAmount / 200;
+        int netAmount = milestoneAmount - feeAmount;
+        int remainingAmount = inputValue - milestoneAmount;
+
+        require(tx.outputs[0].value == netAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+
+        require(tx.outputs[2].value == remainingAmount);
+        require(tx.outputs[2].scriptPubKey == byte[](newCovenantScript));
+    }
+
+    // ── Path C: Dispute — buyer halts all future releases ──────
+    entrypoint function dispute(sig buyerSig) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
+    }
+
+    // ── Path D: Refund remaining after timeout ──────────────────
+    entrypoint function refund_remaining(sig buyerSig) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(tx.time >= milestoneTimeouts[currentMilestoneIndex]);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
+    }
+
+    // ── Path E: Mutual complete — release everything remaining ──
+    entrypoint function complete(sig buyerSig, sig sellerSig) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(checkSig(sellerSig, pubkey(sellerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+}

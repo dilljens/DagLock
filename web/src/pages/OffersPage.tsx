@@ -3,6 +3,7 @@ import { api, type Offer } from "../api";
 import { money, sompi, relativeTime, badge } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
+import { ExplorerAddressLink } from "../components/ExplorerLink";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonOffers, SkeletonTable } from "../ui";
 import { EmptyState } from "../components/empty-state";
@@ -162,7 +163,15 @@ function OfferCard({
 }) {
 	const [loading, setLoading] = useState(false);
 	const [counterparty, setCounterparty] = useState(currentAddress || "");
+	const [showCounter, setShowCounter] = useState(false);
+	const [counterAmount, setCounterAmount] = useState("");
+	const [counterMsg, setCounterMsg] = useState("");
+	const [counterCount, setCounterCount] = useState<number | null>(null);
 	const { notify } = useToast();
+
+	useEffect(() => {
+		api.listCounters(offer.id).then((d) => setCounterCount(d.total)).catch(() => {});
+	}, [offer.id]);
 
 	async function handleAccept() {
 		if (!counterparty.startsWith("kaspa:")) return;
@@ -191,8 +200,31 @@ function OfferCard({
 		}
 	}
 
+	async function handleCounter(e: React.FormEvent) {
+		e.preventDefault();
+		const amountNum = Number.parseFloat(counterAmount);
+		if (!amountNum || amountNum <= 0) return;
+		setLoading(true);
+		try {
+			await api.counterOffer(offer.id, {
+				amount_sompi: sompi(amountNum),
+				message: counterMsg || undefined,
+			});
+			notify("success", "Counter-offer submitted!");
+			setShowCounter(false);
+			setCounterAmount("");
+			setCounterMsg("");
+			setCounterCount((c) => (c || 0) + 1);
+		} catch (err) {
+			notify("error", "Failed", (err as Error).message);
+		} finally {
+			setLoading(false);
+		}
+	}
+
 	const canAct = offer.status === "proposed";
 	const typeBadge = offerTypeBadge(offer.base_asset, offer.quote_asset);
+	const isOwn = currentAddress === offer.creator_address;
 
 	return (
 		<article className="offer">
@@ -226,21 +258,79 @@ function OfferCard({
 			<small className="muted addr">by {offer.creator_address.slice(0, 24)}…</small>
 			<code>{offer.id}</code>
 			<small className="muted">{relativeTime(offer.created_at)}</small>
+
 			{canAct && (
-				<div className="offer-actions">
-					<input
-						value={counterparty}
-						onChange={(e) => setCounterparty(e.target.value)}
-						placeholder="your address"
-						className="offer-input"
-					/>
-					<button className="button primary" disabled={loading} onClick={handleAccept}>
-						Accept
-					</button>
-					<button className="button" disabled={loading} onClick={handleCancel}>
-						Cancel
-					</button>
-				</div>
+				<>
+					{/* Accept/Cancel for offer creator */}
+					{isOwn ? (
+						<div className="offer-actions">
+							<button className="button" disabled={loading} onClick={handleCancel}>
+								Cancel
+							</button>
+							{counterCount != null && counterCount > 0 && (
+								<span className="muted" style={{ fontSize: "12px", marginLeft: "8px" }}>
+									{counterCount} counter{counterCount > 1 ? "s" : ""}
+								</span>
+							)}
+						</div>
+					) : (
+						<>
+							{/* Accept for others */}
+							<div className="offer-actions">
+								<input
+									value={counterparty}
+									onChange={(e) => setCounterparty(e.target.value)}
+									placeholder="your address"
+									className="offer-input"
+								/>
+								<button className="button primary" disabled={loading} onClick={handleAccept}>
+									Accept
+								</button>
+								<button
+									className="button"
+									disabled={loading}
+									onClick={() => setShowCounter(!showCounter)}
+								>
+									Counter{counterCount != null && counterCount > 0 ? ` (${counterCount})` : ""}
+								</button>
+							</div>
+
+							{/* Counter-offer form */}
+							{showCounter && (
+								<form className="form form-stacked" onSubmit={handleCounter} style={{ marginTop: "8px" }}>
+									<div className="form-field">
+										<label style={{ fontSize: "12px" }}>Counter amount (KAS)</label>
+										<input
+											type="number"
+											step="any"
+											value={counterAmount}
+											onChange={(e) => setCounterAmount(e.target.value)}
+											placeholder={((offer.amount_sompi || 0) / 1e8).toFixed(2)}
+											style={{ fontSize: "13px" }}
+										/>
+									</div>
+									<div className="form-field">
+										<label style={{ fontSize: "12px" }}>Message (optional)</label>
+										<input
+											value={counterMsg}
+											onChange={(e) => setCounterMsg(e.target.value)}
+											placeholder="e.g. Can you do this amount?"
+											style={{ fontSize: "13px" }}
+										/>
+									</div>
+									<button
+										className="button primary"
+										type="submit"
+										disabled={loading}
+										style={{ fontSize: "12px", padding: "4px 12px" }}
+									>
+										{loading ? "Submitting..." : "Submit Counter"}
+									</button>
+								</form>
+							)}
+						</>
+					)}
+				</>
 			)}
 		</article>
 	);
@@ -288,20 +378,14 @@ function MyOffers({ address }: { address: string }) {
 				/>
 			)}
 			{filtered?.map((o) => (
-				<article key={o.id} className="offer" style={{ cursor: "default" }}>
-					<div className="offer-top">
-						<strong>
-							{o.side.toUpperCase()} {money(o.amount_sompi)}
-						</strong>
-						<span className={badge(o.status)}>{o.status}</span>
-					</div>
-					<p>
-						{o.base_asset} for {o.quote_asset}
-					</p>
-					<code>{o.id}</code>
-					<small className="muted">{relativeTime(o.created_at)}</small>
-					{o.expires_at && <small className="muted">Expires: {relativeTime(o.expires_at)}</small>}
-				</article>
+				<OfferCard
+					key={o.id}
+					offer={o}
+					currentAddress={address}
+					onMutated={() => {
+						api.offers(address).then((d) => setOffers({ data: d.offers, loading: false }));
+					}}
+				/>
 			))}
 		</div>
 	);

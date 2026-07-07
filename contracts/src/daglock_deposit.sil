@@ -1,0 +1,69 @@
+pragma silverscript ^0.1.0;
+
+// DagLock Deposit — Security deposit bond for escrow participants
+//
+// Both parties stake an equal deposit alongside the main escrow.
+// Deposits are forfeited to the counterparty on a jury ruling of
+// bad faith. No fees are charged — deposits are bonds, not transfers.
+//
+// Three spending paths:
+//   forfeit(jurySig, losingParty) — jury penalizes bad actor
+//   release(party1Sig, party2Sig) — mutual agreement to return
+//   sweep()                       — anyone after timeout, each gets deposit back
+
+contract DagLockDeposit(
+    byte[32] party1Key,
+    byte[32] party2Key,
+    byte[32] juryKey,
+    int depositAmount,
+    int timeout,
+    byte[32] treasuryKey
+) {
+    // ── Path A: Jury Forfeit ────────────────────────────────────
+    // Jury rules that losingParty (1 or 2) acted in bad faith.
+    // The loser's deposit goes to the winner (full UTXO amount).
+    entrypoint function forfeit(sig jurySig, int losingParty) {
+        require(checkSig(jurySig, pubkey(juryKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+
+        byte[34] winnerScript = new ScriptPubKeyP2PK(pubkey(party1Key));
+        if (losingParty == 1) {
+            winnerScript = new ScriptPubKeyP2PK(pubkey(party2Key));
+        }
+
+        require(tx.outputs[0].value == inputValue);
+        require(tx.outputs[0].scriptPubKey == byte[](winnerScript));
+    }
+
+    // ── Path B: Mutual Release ──────────────────────────────────
+    // Both parties agree to release deposits. Each gets their
+    // original deposit back.
+    entrypoint function release(sig party1Sig, sig party2Sig) {
+        require(checkSig(party1Sig, pubkey(party1Key)));
+        require(checkSig(party2Sig, pubkey(party2Key)));
+
+        byte[34] party1Script = new ScriptPubKeyP2PK(pubkey(party1Key));
+        byte[34] party2Script = new ScriptPubKeyP2PK(pubkey(party2Key));
+
+        require(tx.outputs[0].value == depositAmount);
+        require(tx.outputs[0].scriptPubKey == byte[](party1Script));
+        require(tx.outputs[1].value == depositAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](party2Script));
+    }
+
+    // ── Path C: Timeout Sweep ───────────────────────────────────
+    // After timeout, anyone can trigger. Each party gets their
+    // deposit back. Prevents permanently stuck funds.
+    entrypoint function sweep() {
+        require(tx.time >= timeout);
+
+        byte[34] party1Script = new ScriptPubKeyP2PK(pubkey(party1Key));
+        byte[34] party2Script = new ScriptPubKeyP2PK(pubkey(party2Key));
+
+        require(tx.outputs[0].value == depositAmount);
+        require(tx.outputs[0].scriptPubKey == byte[](party1Script));
+        require(tx.outputs[1].value == depositAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](party2Script));
+    }
+}

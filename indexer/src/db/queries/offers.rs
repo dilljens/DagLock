@@ -173,7 +173,6 @@ pub async fn list_offers_by_creator(
 }
 
 /// Reconcile expired offers: mark as expired if expires_at < now
-#[allow(dead_code)]
 pub async fn reconcile_expired_offers(pool: &Pool<Sqlite>) -> Result<u64, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let result = sqlx::query(

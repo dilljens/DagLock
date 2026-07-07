@@ -26,9 +26,19 @@ const ReputationPage = lazy(() =>
 const JuryPage = lazy(() => import("./pages/JuryPage").then((m) => ({ default: m.JuryPage })));
 const SwapPage = lazy(() => import("./pages/SwapPage").then((m) => ({ default: m.SwapPage })));
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
+const HelpPage = lazy(() => import("./pages/HelpPage").then((m) => ({ default: m.HelpPage })));
 const PayInvoicePage = lazy(() =>
 	import("./pages/PayInvoicePage").then((m) => ({ default: m.PayInvoicePage })),
 );
+const TokenDetailPage = lazy(() =>
+	import("./pages/TokenDetailPage").then((m) => ({ default: m.TokenDetailPage })),
+);
+const TokensPage = lazy(() => import("./pages/TokensPage").then((m) => ({ default: m.TokensPage })));
+const CreateTokenPage = lazy(() => import("./pages/CreateTokenPage").then((m) => ({ default: m.CreateTokenPage })));
+const TestnetPage = lazy(() => import("./pages/TestnetPage").then((m) => ({ default: m.TestnetPage })));
+const SettingsPage = lazy(() => import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+import { OnboardingModal } from "./components/OnboardingModal";
+import { FeeCalculator } from "./components/FeeCalculator";
 
 import { api } from "./api";
 import { useWebSocket } from "./hooks/useWebSocket";
@@ -73,18 +83,26 @@ function AppInner() {
 	useEffect(() => setSidebarOpen(false), [route]);
 
 	const pageContent = (
-		<Suspense
-			fallback={
-				<div className="loading" style={{ textAlign: "center", padding: "3rem", color: "#888" }}>
-					Loading…
-				</div>
-			}
-		>
-			<ErrorBoundary key={route}>
-				{(() => {
-					// Invoice payment page — dynamic route /pay/:id
+		<>
+			<OnboardingModal />
+			<Suspense
+				fallback={
+					<div className="loading" style={{ textAlign: "center", padding: "3rem", color: "#888" }}>
+						Loading…
+					</div>
+				}
+			>
+				<ErrorBoundary key={route}>
+					{(() => {
+					// Dynamic routes: /pay/:id and /swap/:id
 					if (window.location.pathname.startsWith("/pay/")) {
 						return <PayInvoicePage />;
+					}
+					if (window.location.pathname.startsWith("/swap/")) {
+						return <SwapPage />;
+					}
+					if (window.location.pathname.startsWith("/tokens/") && !window.location.pathname.startsWith("/tokens/create")) {
+						return <TokenDetailPage ticker={window.location.pathname.replace("/tokens/", "")} />;
 					}
 					switch (route) {
 						case "/":
@@ -103,12 +121,23 @@ function AppInner() {
 							return <SwapPage />;
 						case "/docs":
 							return <DocsPage />;
+						case "/help":
+							return <HelpPage />;
+						case "/tokens":
+							return <TokensPage />;
+						case "/tokens/create":
+							return <CreateTokenPage />;
+						case "/testnet":
+							return <TestnetPage />;
+						case "/settings":
+							return <SettingsPage />;
 						default:
 							return <Dashboard stats={stats} />;
 					}
 				})()}
 			</ErrorBoundary>
 		</Suspense>
+		</>
 	);
 
 	return (
@@ -128,7 +157,7 @@ function AppInner() {
 				</div>
 
 				{/* Testnet banner */}
-				{(!wallet.network || wallet.network === "testnet-12") && (
+				{(!wallet.network || wallet.network === "testnet-10") && (
 					<div
 						style={{
 							background: "#ff9800",

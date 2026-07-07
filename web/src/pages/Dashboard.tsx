@@ -7,6 +7,7 @@ import type { LoadState } from "../helpers";
 import { SkeletonTable, SkeletonStats } from "../ui";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
+import { FeeCalculator } from "../components/FeeCalculator";
 
 interface DashboardProps {
 	stats?: Stats;
@@ -170,6 +171,8 @@ export function Dashboard({ stats }: DashboardProps) {
 							<span className="action-card-desc">API reference, CLI, bot, integrations</span>
 						</div>
 					</div>
+
+					<FeeCalculator />
 				</div>
 			</>
 		);
@@ -208,18 +211,20 @@ export function Dashboard({ stats }: DashboardProps) {
 					</p>
 				</div>
 
-				{/* Stats */}
-				<div className="stats-grid">
-					{highlights.map(([label, value]) => (
-						<div key={label} className="stat-card">
-							<div className="stat-card-label">{label}</div>
-							<div className="stat-card-value">{value}</div>
+				<div className="dashboard-columns">
+					<div className="dashboard-column-main">
+						{/* Stats */}
+						<div className="stats-grid">
+							{highlights.map(([label, value]) => (
+								<div key={label} className="stat-card">
+									<div className="stat-card-label">{label}</div>
+									<div className="stat-card-value">{value}</div>
+								</div>
+							))}
 						</div>
-					))}
-				</div>
 
-				{/* Quick actions */}
-				<h3 style={{ margin: "0 0 12px" }}>Quick Actions</h3>
+						{/* Quick actions */}
+						<h3 style={{ margin: "0 0 12px" }}>Quick Actions</h3>
 				<div className="action-grid">
 					<div className="action-card" onClick={() => navigate("/offers")}>
 						<span className="action-card-icon" />
@@ -273,6 +278,11 @@ export function Dashboard({ stats }: DashboardProps) {
 						description="Tap to close the dashboard empty state."
 					/>
 				)}
+					</div>
+					<div className="dashboard-column-side">
+						<FeeCalculator />
+					</div>
+				</div>
 			</div>
 		</>
 	);

@@ -1,0 +1,164 @@
+pragma silverscript ^0.1.0;
+
+// DagLock Advanced — extends base DagLock with:
+//   - extendTimeout: both parties can extend the timeout
+//   - swap_partial: atomic swap of a portion of locked funds
+//
+// Constructor parameters same as daglock.sil.
+//
+// Spending paths:
+//   release(buyerSig, sellerSig)           — mutual release (full amount)
+//   swap(secret)                            — full atomic swap
+//   swap_partial(secret, amountToSeller)    — partial atomic swap
+//   extendTimeout(buyerSig, sellerSig, newTimeout, byte[] newCovenantScript)  — extend timeout
+//   refund(buyerSig)                        — timeout refund
+
+contract DagLockAdvanced(
+    byte[32] buyerKey,
+    byte[32] sellerKey,
+    byte[32] tradeHash,       // SHA-256 of atomic-swap secret (zeroes if unused)
+    int timeout,               // Unix timestamp after which refund is allowed
+    byte[32] treasuryKey       // DagLock fee treasury public key
+) {
+    int constant MIN_OUT = 1000;
+
+    // ── Path A: Mutual Release (same as daglock.sil) ─────────────
+    entrypoint function release(sig buyerSig, sig sellerSig) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(checkSig(sellerSig, pubkey(sellerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+        require(sendAmount >= MIN_OUT);
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path B: Full Atomic Swap (same as daglock.sil) ───────────
+    entrypoint function swap(byte[] secret) {
+        require(sha256(secret) == tradeHash);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+        require(sendAmount >= MIN_OUT);
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path C: Partial Atomic Swap ──────────────────────────────
+    entrypoint function swap_partial(byte[] secret, int amountToSeller) {
+        require(sha256(secret) == tradeHash);
+        require(amountToSeller > 0);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(amountToSeller <= inputValue);
+
+        int feeAmount = amountToSeller / 200;
+        int netToSeller = amountToSeller - feeAmount;
+        int returnToBuyer = inputValue - amountToSeller + feeAmount;
+        require(netToSeller >= MIN_OUT);
+
+        require(tx.outputs[0].value == netToSeller);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+
+        require(tx.outputs[2].value == returnToBuyer);
+    }
+
+    // ── Path D: Extend Timeout ───────────────────────────────────
+    entrypoint function extendTimeout(sig buyerSig, sig sellerSig, int newTimeout, byte[] newCovenantScript) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(checkSig(sellerSig, pubkey(sellerKey)));
+        require(newTimeout > timeout);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int relockAmount = inputValue - feeAmount;
+        require(relockAmount >= MIN_OUT);
+
+        require(tx.outputs[0].scriptPubKey == byte[](newCovenantScript));
+        require(tx.outputs[0].value == relockAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path E: Timeout Refund (same as daglock.sil) ────────────
+    entrypoint function refund(sig buyerSig) {
+        require(tx.time >= timeout);
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(inputValue >= MIN_OUT);
+        require(tx.outputs[0].value == inputValue);
+    }
+
+    // ── Path F: Auto-Settle (same as daglock.sil) ───────────────
+    entrypoint function auto_settle() {
+        require(tx.time >= timeout);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+        require(sendAmount >= MIN_OUT);
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path G: Mutual Split ─────────────────────────────────────
+    // Both parties agree to split funds at a ratio.
+    // buyerShareBasis: 0-10000 basis points (0 = all to seller, 10000 = all to buyer)
+    entrypoint function split(sig buyerSig, sig sellerSig, int buyerShareBasis) {
+        require(checkSig(buyerSig, pubkey(buyerKey)));
+        require(checkSig(sellerSig, pubkey(sellerKey)));
+        require(buyerShareBasis >= 0);
+        require(buyerShareBasis <= 10000);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int distributable = inputValue - feeAmount;
+        int buyerAmount = distributable * buyerShareBasis / 10000;
+        int sellerAmount = distributable - buyerAmount;
+        require(buyerAmount >= MIN_OUT || buyerShareBasis == 0);
+        require(sellerAmount >= MIN_OUT || buyerShareBasis == 10000);
+
+        byte[34] buyerScript = new ScriptPubKeyP2PK(pubkey(buyerKey));
+        byte[34] sellerScript = new ScriptPubKeyP2PK(pubkey(sellerKey));
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+
+        require(tx.outputs[0].value == buyerAmount);
+        require(tx.outputs[0].scriptPubKey == byte[](buyerScript));
+        require(tx.outputs[1].value == sellerAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](sellerScript));
+        require(tx.outputs[2].value == feeAmount);
+        require(tx.outputs[2].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path H: Emergency Refund ─────────────────────────────────
+    // No signature needed — anyone can trigger after timeout + 30 days.
+    // Funds return to buyer. No fee.
+    entrypoint function emergency_refund() {
+        require(tx.time >= timeout + 2592000);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(inputValue >= MIN_OUT);
+        require(tx.outputs[0].value == inputValue);
+    }
+}

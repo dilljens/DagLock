@@ -16,7 +16,7 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub no_wrpc: bool,
 
-    #[arg(long, default_value = "testnet-12")]
+    #[arg(long, default_value = "testnet-10")]
     pub network: String,
 
     #[arg(long, default_value = "sqlite:daglock.db")]
@@ -64,6 +64,25 @@ pub struct Args {
 
     #[arg(long, default_value_t = false)]
     pub auto_sweep_vaults: bool,
+
+    #[arg(long, default_value_t = false)]
+    pub auto_settle_escrows: bool,
+
+    #[arg(long, default_value_t = false)]
+    pub auto_escalate_disputes: bool,
+
+    #[arg(long, default_value_t = false)]
+    pub auto_sweep_deposits: bool,
+
+    #[arg(long)]
+    pub ai_mediator_api_key: Option<String>,
+
+    #[arg(long, default_value = "gpt-4o")]
+    pub ai_mediator_model: String,
+
+    /// Skip Ed25519 chat signature verification (dev mode only).
+    #[arg(long, default_value_t = false)]
+    pub mock_chat_sig: bool,
 }
 
 impl Args {
@@ -144,7 +163,7 @@ mod tests {
             port: 8543,
             wrpc_url: None,
             no_wrpc: true,
-            network: "testnet-12".into(),
+            network: "testnet-10".into(),
             database_url: "sqlite::memory:".into(),
             daglock_kas_template: None,
             daglock_krc20_template: None,
@@ -158,6 +177,12 @@ mod tests {
             mock_auth: false,
             treasury_pubkey: None,
             auto_sweep_vaults: false,
+            auto_settle_escrows: false,
+            auto_escalate_disputes: false,
+            auto_sweep_deposits: false,
+            ai_mediator_api_key: None,
+            ai_mediator_model: "gpt-4o".to_string(),
+            mock_chat_sig: false,
         }
     }
 

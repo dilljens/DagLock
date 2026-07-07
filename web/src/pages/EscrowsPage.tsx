@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { api, type AuthHeaders, type Escrow } from "../api";
+import { api, type AuthHeaders, type Escrow, type MilestoneEscrow, type MultiEscrow, type Deposit } from "../api";
 import { useRouter } from "../router";
-import { money, badge } from "../helpers";
+import { money, badge, time } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
@@ -10,8 +10,14 @@ import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 import { ReceiptLookup } from "../components/lookup";
 import { CreateInvoiceForm } from "../components/invoice-form";
+import { ExplorerTxLink, ExplorerAddressLink } from "../components/ExplorerLink";
+import { FeeCalculator } from "../components/FeeCalculator";
+import { ChatPanel } from "../components/ChatPanel";
+import { generateChatKeypair, type ChatKeypair } from "../crypto/chat-crypto";
+import { encodeBase64 } from "tweetnacl-util";
+import { saveKeypair } from "../crypto/chat-store";
 
-type Tab = "my-escrows" | "create" | "lookup" | "receipt" | "invoice";
+type Tab = "my-escrows" | "create" | "lookup" | "receipt" | "invoice" | "milestones" | "create-milestone" | "multi" | "create-multi";
 
 export function EscrowsPage() {
 	const [tab, setTab] = useState<Tab>("my-escrows");
@@ -66,6 +72,38 @@ export function EscrowsPage() {
 							Invoice
 						</button>
 					)}
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "milestones" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("milestones")}
+						>
+							Milestones
+						</button>
+					)}
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "create-milestone" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("create-milestone")}
+						>
+							+ Milestone
+						</button>
+					)}
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "multi" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("multi")}
+						>
+							Multi
+						</button>
+					)}
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "create-multi" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("create-multi")}
+						>
+							+ Multi
+						</button>
+					)}
 				</div>
 				{tab === "my-escrows" &&
 					(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
@@ -74,6 +112,14 @@ export function EscrowsPage() {
 				{tab === "lookup" && <EscrowLookup />}
 				{tab === "receipt" && <ReceiptLookup />}
 				{tab === "invoice" && <CreateInvoiceForm />}
+				{tab === "milestones" &&
+					(wallet.connected ? <MyMilestones address={address!} /> : <ConnectPrompt />)}
+				{tab === "create-milestone" &&
+					(wallet.connected ? <CreateMilestoneForm address={address!} /> : <ConnectPrompt />)}
+				{tab === "multi" &&
+					(wallet.connected ? <MyMultiEscrows address={address!} /> : <ConnectPrompt />)}
+				{tab === "create-multi" &&
+					(wallet.connected ? <CreateMultiForm address={address!} /> : <ConnectPrompt />)}
 			</div>
 		</>
 	);
@@ -128,6 +174,16 @@ function MyEscrows({ address }: { address: string }) {
 
 	return (
 		<div>
+			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
+				<a
+					href={`${import.meta.env.VITE_API_URL || ""}/v1/escrows/export?address=${encodeURIComponent(address)}`}
+					download="daglock-escrows.csv"
+					className="button"
+					style={{ fontSize: "12px", padding: "4px 12px", textDecoration: "none" }}
+				>
+					⬇ Export CSV
+				</a>
+			</div>
 			{escrows.data.map((e) => (
 				<article
 					key={e.id}
@@ -143,7 +199,16 @@ function MyEscrows({ address }: { address: string }) {
 						{e.asset_type} · {e.buyer_address.slice(0, 16)}…
 					</p>
 					<code>{e.id}</code>
-					{selectedId === e.id && <EscrowActions escrow={e} onMutated={fetchEscrows} />}
+					<div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+						<ExplorerTxLink txid={e.lock_tx_id} label="View TX" />
+						<ExplorerAddressLink address={e.buyer_address} label="Buyer" />
+					</div>
+					{selectedId === e.id && (
+						<>
+							<EscrowActions escrow={e} onMutated={fetchEscrows} />
+							{address && <ChatPanel escrow={e} onMutated={fetchEscrows} />}
+						</>
+					)}
 				</article>
 			))}
 		</div>
@@ -155,22 +220,52 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 	const { sign } = useWallet();
 	const { notify } = useToast();
 	const [loading, setLoading] = useState("");
+	const [countdown, setCountdown] = useState("");
+	const [deposit, setDeposit] = useState<Deposit | null | undefined>(undefined);
+
+	// Fetch deposit for this escrow
+	useEffect(() => {
+		api.getDeposit(escrow.id)
+			.then((d) => setDeposit(d))
+			.catch(() => setDeposit(null));
+	}, [escrow.id]);
 
 	const isFinal = ["settled", "refunded", "cancelled", "expired"].includes(escrow.status);
 	if (isFinal) return <p className="muted">✓ Finalized — {escrow.status}</p>;
 
-	async function doAction(action: "settle" | "refund" | "cancel") {
+	// Auto-settle countdown timer
+	useEffect(() => {
+		if (!escrow.auto_settle_timeout || escrow.status !== "active") return;
+		function tick() {
+			const diff = escrow.auto_settle_timeout! - Math.floor(Date.now() / 1000);
+			if (diff <= 0) { setCountdown("ready"); return; }
+			const d = Math.floor(diff / 86400);
+			const h = Math.floor((diff % 86400) / 3600);
+			const m = Math.floor((diff % 3600) / 60);
+			setCountdown(d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`);
+		}
+		tick();
+		const id = setInterval(tick, 30_000);
+		return () => clearInterval(id);
+	}, [escrow.auto_settle_timeout, escrow.status]);
+
+	async function doAction(action: "settle" | "refund" | "cancel" | "auto-settle") {
 		setLoading(action);
 		try {
-			const auth: AuthHeaders = {
-				address: escrow.buyer_address,
-				signature: await sign(`${action}:${escrow.id}`),
-				message: `${action}:${escrow.id}`,
-			};
-			if (action === "settle") await api.settleEscrow(escrow.id, auth);
-			else if (action === "refund") await api.refundEscrow(escrow.id, auth);
-			else await api.cancelEscrow(escrow.id);
-			notify("success", `Escrow ${action}ed`);
+			if (action === "auto-settle") {
+				await api.autoSettleEscrow(escrow.id);
+				notify("success", "Escrow auto-settled");
+			} else {
+				const auth: AuthHeaders = {
+					address: escrow.buyer_address,
+					signature: await sign(`${action}:${escrow.id}`),
+					message: `${action}:${escrow.id}`,
+				};
+				if (action === "settle") await api.settleEscrow(escrow.id, auth);
+				else if (action === "refund") await api.refundEscrow(escrow.id, auth);
+				else await api.cancelEscrow(escrow.id);
+				notify("success", `Escrow ${action}ed`);
+			}
 			onMutated();
 		} catch (e) {
 			notify("error", `Failed to ${action}`, (e as Error).message);
@@ -181,6 +276,53 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 
 	return (
 		<div className="offer-actions" style={{ marginTop: "12px" }}>
+			{/* Deposit status badge */}
+			{deposit && (
+				<div
+					style={{
+						marginBottom: "8px",
+						padding: "4px 8px",
+						borderRadius: "4px",
+						fontSize: "12px",
+						background:
+							deposit.status === "locked"
+								? "#fff3cd"
+								: deposit.status === "released"
+									? "#d4edda"
+									: deposit.status === "forfeited"
+										? "#f8d7da"
+										: "#e2e3e5",
+						color:
+							deposit.status === "locked"
+								? "#856404"
+								: deposit.status === "released"
+									? "#155724"
+									: deposit.status === "forfeited"
+										? "#721c24"
+										: "#383d41",
+					}}
+				>
+					🔒 {money(deposit.deposit_amount)} deposit ({deposit.status})
+					{deposit.forfeited_to && ` → ${deposit.forfeited_to.slice(0, 16)}…`}
+				</div>
+			)}
+
+			{/* Auto-settle countdown + button */}
+			{escrow.auto_settle_timeout && escrow.status === "active" && countdown && countdown !== "ready" && (
+				<p className="muted" style={{ fontSize: "13px", marginBottom: "8px" }}>
+					⏳ Auto-settles in {countdown}
+				</p>
+			)}
+			{escrow.auto_settle_timeout && escrow.status === "active" && countdown === "ready" && (
+				<button
+					className="button primary"
+					disabled={!!loading}
+					onClick={() => doAction("auto-settle")}
+					style={{ marginRight: "8px" }}
+				>
+					{loading === "auto-settle" ? "Settling…" : "Auto-settle now"}
+				</button>
+			)}
 			{(escrow.status === "active" || escrow.status === "pending_confirmation") && (
 				<>
 					<button
@@ -198,12 +340,38 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 					</button>
 				</>
 			)}
-			{escrow.status === "active" && (
-				<button className="button" disabled={!!loading} onClick={() => doAction("cancel")}>
-					Cancel
+			{escrow.status === "disputed" && <p className="muted"> Under dispute</p>}
+
+			{/* Forfeit deposit button (jury members only, when deposit is locked) */}
+			{deposit && deposit.status === "locked" && escrow.status === "disputed" && (
+				<button
+					className="button"
+					disabled={!!loading}
+					onClick={async () => {
+						const forfeitTo = prompt("Forfeit deposit to address (buyer or seller):");
+						if (!forfeitTo || !forfeitTo.startsWith("kaspa:")) {
+							notify("error", "Valid kaspa: address required");
+							return;
+						}
+						setLoading("forfeit");
+						try {
+							await api.forfeitDeposit(escrow.id, {
+								forfeited_to: forfeitTo,
+								jury_signature: "placeholder",
+							});
+							notify("success", "Deposit forfeited");
+							onMutated();
+						} catch (e) {
+							notify("error", "Failed to forfeit deposit", (e as Error).message);
+						} finally {
+							setLoading("");
+						}
+					}}
+					style={{ marginRight: "8px" }}
+				>
+					{loading === "forfeit" ? "Forfeiting…" : "Forfeit Deposit"}
 				</button>
 			)}
-			{escrow.status === "disputed" && <p className="muted"> Under dispute</p>}
 		</div>
 	);
 }
@@ -215,9 +383,17 @@ function CreateEscrow({ address }: { address: string }) {
 	const [disputeMode, setDisputeMode] = useState("standard");
 	const [tradeHash, setTradeHash] = useState("");
 	const [tradeSecret, setTradeSecret] = useState("");
+	const [memo, setMemo] = useState("");
+	const [autoSettle, setAutoSettle] = useState(false);
+	const [autoSettleDuration, setAutoSettleDuration] = useState(86400);
 	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 	const [result, setResult] = useState<Escrow | null>(null);
+	const [chatKeypair, setChatKeypair] = useState<ChatKeypair | null>(null);
 	const { notify } = useToast();
+
+	useEffect(() => {
+		setChatKeypair(generateChatKeypair());
+	}, []);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -297,7 +473,11 @@ function CreateEscrow({ address }: { address: string }) {
 				amount_sompi: sompiAmount,
 				dispute_mode: disputeMode,
 				...(tradeHash.trim() ? { trade_hash: tradeHash.trim() } : {}),
+				...(memo.trim() ? { memo: memo.trim() } : {}),
+				...(autoSettle ? { auto_settle_timeout: Math.floor(Date.now() / 1000) + autoSettleDuration } : {}),
+				...(chatKeypair ? { chat_pubkey: encodeBase64(chatKeypair.pubkey) } : {}),
 			});
+			if (chatKeypair) saveKeypair(escrow.id, chatKeypair);
 			setResult(escrow);
 			setStatus("done");
 			notify("success", "Escrow created!");
@@ -331,6 +511,11 @@ function CreateEscrow({ address }: { address: string }) {
 					placeholder="100"
 				/>
 			</FormField>
+			{!(isNaN(Number(amount)) || Number(amount) <= 0) && (
+				<div style={{ margin: "-8px 0 12px" }}>
+					<FeeCalculator />
+				</div>
+			)}
 			<FormField label="Seller address (optional)">
 				<input
 					value={sellerAddress}
@@ -344,6 +529,47 @@ function CreateEscrow({ address }: { address: string }) {
 					<option value="mediator">Specific mediator</option>
 					<option value="jury">Jury (community vote)</option>
 				</select>
+			</FormField>
+			<FormField label="Memo (optional)">
+				<input
+					value={memo}
+					onChange={(e) => setMemo(e.target.value)}
+					placeholder="e.g. Invoice #42 — Website redesign"
+					maxLength={200}
+				/>
+			</FormField>
+			<FormField label="Auto-settle">
+				<label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+					<input
+						type="checkbox"
+						checked={autoSettle}
+						onChange={(e) => setAutoSettle(e.target.checked)}
+					/>
+					Auto-settle after timeout (no signature needed)
+				</label>
+			</FormField>
+			{autoSettle && (
+				<FormField label="Timeout duration">
+					<select value={autoSettleDuration} onChange={(e) => setAutoSettleDuration(Number(e.target.value))}>
+						<option value={3600}>1 hour</option>
+						<option value={7200}>2 hours</option>
+						<option value={14400}>4 hours</option>
+						<option value={43200}>12 hours</option>
+						<option value={86400}>24 hours</option>
+						<option value={259200}>3 days</option>
+						<option value={604800}>7 days</option>
+					</select>
+				</FormField>
+			)}
+			<FormField label="Security deposit">
+				<label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+					<input
+						type="checkbox"
+						checked={false}
+						onChange={() => notify("info", "Security deposit requires both parties to stake 1% bond. Coming soon.")}
+					/>
+					Add security deposit (recommended)
+				</label>
 			</FormField>
 			<FormField label="Trade hash (optional, for atomic swap)">
 				<div style={{ display: "flex", gap: "8px" }}>
@@ -382,6 +608,341 @@ function CreateEscrow({ address }: { address: string }) {
 				style={{ marginTop: "12px" }}
 			>
 				{status === "loading" ? "Creating…" : "Create Escrow"}
+			</button>
+		</form>
+	);
+}
+
+/* ─── Milestone Progress Bar ─── */
+function MilestoneProgressBar({
+	milestoneStatuses,
+	currentMilestone,
+}: { milestoneStatuses: string[]; currentMilestone: number }) {
+	const labels = ["M1", "M2", "M3", "M4", "M5"];
+	return (
+		<div style={{ display: "flex", gap: "4px", alignItems: "center", margin: "8px 0" }}>
+			{milestoneStatuses.map((s, i) => {
+				const done = s === "released" || s === "approved";
+				const active = i === currentMilestone && s === "pending";
+				return (
+					<div
+						key={i}
+						style={{
+							flex: 1,
+							height: "8px",
+							borderRadius: "4px",
+							background: done ? "#4caf50" : active ? "#ff9800" : "#333",
+							transition: "background 0.3s",
+							position: "relative",
+						}}
+						title={`${labels[i]}: ${s}`}
+					>
+						<span
+							style={{
+								position: "absolute",
+								top: "-18px",
+								left: "50%",
+								transform: "translateX(-50%)",
+								fontSize: "10px",
+								color: done ? "#4caf50" : active ? "#ff9800" : "#666",
+							}}
+						>
+							{labels[i]}
+						</span>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+/* ─── My Milestones ─── */
+function MyMilestones({ address }: { address: string }) {
+	const [milestones, setMilestones] = useState<LoadState<MilestoneEscrow[]>>({ loading: true });
+	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const loaded = useRef(false);
+
+	const fetch = useCallback(() => {
+		setMilestones({ loading: true });
+		api
+			.milestones(address)
+			.then((d) => setMilestones({ data: d.milestones, loading: false }))
+			.catch((e) => setMilestones({ error: e.message, loading: false }));
+	}, [address]);
+
+	useEffect(() => {
+		if (loaded.current) return;
+		loaded.current = true;
+		fetch();
+	}, [fetch]);
+
+	if (milestones.loading) return <SkeletonTable rows={3} />;
+	if (milestones.error) return <p className="muted error-text">{milestones.error}</p>;
+	if (!milestones.data?.length)
+		return (
+			<EmptyState
+				icon="🏗️"
+				title="No milestone escrows"
+				description="Create a milestone-based escrow for phased payments."
+			/>
+		);
+
+	return (
+		<div>
+			{milestones.data.map((m) => (
+				<article
+					key={m.id}
+					className="offer"
+					style={{ cursor: "pointer", marginBottom: "8px" }}
+					onClick={() => setSelectedId(selectedId === m.id ? null : m.id)}
+				>
+					<div className="offer-top">
+						<strong>{money(m.total_amount)}</strong>
+						<span className={badge(m.status)}>{m.status}</span>
+					</div>
+					<p>
+						{m.buyer_address.slice(0, 16)}… → {m.seller_address.slice(0, 16)}…
+					</p>
+					<MilestoneProgressBar
+						milestoneStatuses={m.milestone_statuses}
+						currentMilestone={m.current_milestone}
+					/>
+					<code>{m.id}</code>
+					{selectedId === m.id && <MilestoneActions escrow={m} onMutated={fetch} />}
+				</article>
+			))}
+		</div>
+	);
+}
+
+/* ─── Milestone Action Buttons ─── */
+function MilestoneActions({
+	escrow,
+	onMutated,
+}: { escrow: MilestoneEscrow; onMutated: () => void }) {
+	const { notify } = useToast();
+	const [loading, setLoading] = useState("");
+
+	const isFinal = ["completed", "refunded"].includes(escrow.status);
+	if (isFinal) return <p className="muted"> Finalized — {escrow.status}</p>;
+
+	async function doAction(action: "release" | "approve" | "dispute" | "refund" | "complete") {
+		setLoading(action);
+		try {
+			if (action === "release") await api.releaseMilestone(escrow.id);
+			else if (action === "approve") await api.approveMilestone(escrow.id);
+			else if (action === "dispute") await api.disputeMilestone(escrow.id);
+			else if (action === "refund") await api.refundMilestone(escrow.id);
+			else await api.completeMilestone(escrow.id);
+			notify("success", `Milestone ${action} successful`);
+			onMutated();
+		} catch (e) {
+			notify("error", `Failed to ${action}`, (e as Error).message);
+		} finally {
+			setLoading("");
+		}
+	}
+
+	const idx = escrow.current_milestone;
+	const currentPending = idx < escrow.milestone_statuses.length && escrow.milestone_statuses[idx] === "pending";
+
+	return (
+		<div className="offer-actions" style={{ marginTop: "12px" }}>
+			{escrow.status === "active" && currentPending && (
+				<>
+					<button
+						className="button primary"
+						disabled={!!loading}
+						onClick={() => doAction("release")}
+						style={{ marginRight: "8px" }}
+					>
+						{loading === "release" ? "Releasing…" : "Release M" + (idx + 1)}
+					</button>
+					<button
+						className="button"
+						disabled={!!loading}
+						onClick={() => doAction("approve")}
+						style={{ marginRight: "8px" }}
+					>
+						{loading === "approve" ? "Approving…" : "Approve M" + (idx + 1)}
+					</button>
+				</>
+			)}
+			{escrow.status === "active" && (
+				<button
+					className="button"
+					disabled={!!loading}
+					onClick={() => doAction("complete")}
+					style={{ marginRight: "8px" }}
+				>
+					{loading === "complete" ? "Completing…" : "Complete All"}
+				</button>
+			)}
+			{(escrow.status === "active" || escrow.status === "disputed") && (
+				<button
+					className="button"
+					disabled={!!loading}
+					onClick={() => doAction("refund")}
+					style={{ marginRight: "8px" }}
+				>
+					{loading === "refund" ? "Refunding…" : "Refund"}
+				</button>
+			)}
+			{escrow.status === "active" && (
+				<button className="button" disabled={!!loading} onClick={() => doAction("dispute")}>
+					{loading === "dispute" ? "Disputing…" : "Dispute"}
+				</button>
+			)}
+			{escrow.status === "disputed" && <p className="muted"> Under dispute</p>}
+		</div>
+	);
+}
+
+/* ─── Create Milestone Form ─── */
+function CreateMilestoneForm({ address }: { address: string }) {
+	const [sellerAddress, setSellerAddress] = useState("");
+	const [totalAmount, setTotalAmount] = useState("");
+	const [milestoneCount, setMilestoneCount] = useState(3);
+	const [amounts, setAmounts] = useState<string[]>(["", "", ""]);
+	const [timeouts, setTimeouts] = useState<string[]>(["", "", ""]);
+	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
+	const [result, setResult] = useState<MilestoneEscrow | null>(null);
+	const { notify } = useToast();
+
+	function handleCountChange(count: number) {
+		const clamped = Math.max(1, Math.min(5, count));
+		setMilestoneCount(clamped);
+		setAmounts((prev) => {
+			const next = [...prev];
+			while (next.length < clamped) next.push("");
+			return next.slice(0, clamped);
+		});
+		setTimeouts((prev) => {
+			const next = [...prev];
+			while (next.length < clamped) next.push("");
+			return next.slice(0, clamped);
+		});
+	}
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		const totalNum = Number.parseFloat(totalAmount);
+		if (!totalNum || totalNum <= 0) return;
+
+		const amountNums = amounts.map((a) => Number.parseFloat(a));
+		if (amountNums.some((a) => isNaN(a) || a <= 0)) return;
+
+		const timeoutNums = timeouts.map((t) => {
+			const days = Number.parseFloat(t);
+			return isNaN(days) || days <= 0 ? 0 : Math.floor(Date.now() / 1000) + days * 86400;
+		});
+
+		const sompiAmounts = amountNums.map((a) => Math.round(a * 100_000_000));
+		const sompiTotal = Math.round(totalNum * 100_000_000);
+
+		setStatus("loading");
+		try {
+			const lockTxId = prompt("Enter lock transaction ID:") || "";
+			if (!lockTxId) throw new Error("Transaction ID required");
+
+			const escrow = await api.createMilestone({
+				lock_tx_id: lockTxId,
+				buyer_address: address,
+				seller_address: sellerAddress,
+				total_amount: sompiTotal,
+				milestone_amounts: sompiAmounts,
+				milestone_timeouts: timeoutNums,
+			});
+			setResult(escrow);
+			setStatus("done");
+			notify("success", "Milestone escrow created!");
+		} catch (e) {
+			notify("error", "Failed to create milestone", (e as Error).message);
+			setStatus("idle");
+		}
+	}
+
+	if (status === "done" && result) {
+		return (
+			<EmptyState
+				icon="✅"
+				title="Milestone escrow created!"
+				description={`ID: ${result.id} | Status: ${result.status} | ${result.milestone_amounts.length} milestones`}
+			/>
+		);
+	}
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
+				You: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
+			</div>
+			<FormField label="Seller address">
+				<input
+					value={sellerAddress}
+					onChange={(e) => setSellerAddress(e.target.value)}
+					placeholder="kaspa:..."
+					required
+				/>
+			</FormField>
+			<FormField label="Total amount (KAS)">
+				<input
+					type="number"
+					step="any"
+					value={totalAmount}
+					onChange={(e) => setTotalAmount(e.target.value)}
+					placeholder="1000"
+					required
+				/>
+			</FormField>
+			<FormField label="Number of milestones">
+				<input
+					type="number"
+					min={1}
+					max={5}
+					value={milestoneCount}
+					onChange={(e) => handleCountChange(Number.parseInt(e.target.value) || 1)}
+				/>
+			</FormField>
+			{amounts.map((amt, i) => (
+				<div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+					<FormField label={`M${i + 1} amount (KAS)`}>
+						<input
+							type="number"
+							step="any"
+							value={amt}
+							onChange={(e) => {
+								const next = [...amounts];
+								next[i] = e.target.value;
+								setAmounts(next);
+							}}
+							placeholder="333"
+							required
+						/>
+					</FormField>
+					<FormField label={`M${i + 1} timeout (days)`}>
+						<input
+							type="number"
+							min={1}
+							value={timeouts[i]}
+							onChange={(e) => {
+								const next = [...timeouts];
+								next[i] = e.target.value;
+								setTimeouts(next);
+							}}
+							placeholder="7"
+							required
+						/>
+					</FormField>
+				</div>
+			))}
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+				style={{ marginTop: "12px" }}
+			>
+				{status === "loading" ? "Creating…" : "Create Milestone Escrow"}
 			</button>
 		</form>
 	);
@@ -435,13 +996,27 @@ function EscrowLookup() {
 							<strong>{money(escrow.data.amount_sompi)}</strong>
 						</div>
 						<div className="row">
+							<span>Fee (0.5%)</span>
+							<strong>{money(Math.round(escrow.data.amount_sompi / 200))}</strong>
+						</div>
+						<div className="row">
+							<span>Lock TX</span>
+							<ExplorerTxLink txid={escrow.data.lock_tx_id} />
+						</div>
+						<div className="row">
 							<span>Buyer</span>
-							<strong className="addr">{escrow.data.buyer_address}</strong>
+							<strong className="addr">
+								{escrow.data.buyer_address.slice(0, 20)}…
+								<ExplorerAddressLink address={escrow.data.buyer_address} />
+							</strong>
 						</div>
 						{escrow.data.seller_address && (
 							<div className="row">
 								<span>Seller</span>
-								<strong className="addr">{escrow.data.seller_address}</strong>
+								<strong className="addr">
+									{escrow.data.seller_address.slice(0, 20)}…
+									<ExplorerAddressLink address={escrow.data.seller_address} />
+								</strong>
 							</div>
 						)}
 						{escrow.data.dispute_reason && (
@@ -456,9 +1031,290 @@ function EscrowLookup() {
 								<strong>{escrow.data.dispute_mode}</strong>
 							</div>
 						)}
+						{escrow.data.memo && (
+							<div className="row">
+								<span>Memo</span>
+								<strong>{escrow.data.memo}</strong>
+							</div>
+						)}
 					</div>
 				</div>
 			)}
 		</div>
+	);
+}
+
+/* ─── Multi-Party Escrows ─── */
+function MyMultiEscrows({ address }: { address: string }) {
+	const [escrows, setEscrows] = useState<LoadState<MultiEscrow[]>>({ loading: true });
+	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const loaded = useRef(false);
+
+	const fetch = useCallback(() => {
+		setEscrows({ loading: true });
+		api
+			.multiEscrows(address)
+			.then((d) => setEscrows({ data: d.multi_escrows, loading: false }))
+			.catch((e) => setEscrows({ error: e.message, loading: false }));
+	}, [address]);
+
+	useEffect(() => {
+		if (loaded.current) return;
+		loaded.current = true;
+		fetch();
+	}, [fetch]);
+
+	if (escrows.loading) return <SkeletonTable rows={3} />;
+	if (escrows.error) return <p className="muted error-text">{escrows.error}</p>;
+	if (!escrows.data?.length)
+		return (
+			<EmptyState
+				icon="👥"
+				title="No multi-party escrows"
+				description="Create a multi-party escrow to distribute KAS among up to 4 parties."
+			/>
+		);
+
+	return (
+		<div>
+			{escrows.data.map((m) => (
+				<article
+					key={m.id}
+					className="offer"
+					style={{ cursor: "pointer", marginBottom: "8px" }}
+					onClick={() => setSelectedId(selectedId === m.id ? null : m.id)}
+				>
+					<div className="offer-top">
+						<strong>{money(m.total_amount)}</strong>
+						<span className={badge(m.status)}>{m.status}</span>
+					</div>
+					<p>{m.parties.length} parties · {m.signatures.length}/{m.parties.length} signed</p>
+					<code>{m.id}</code>
+					{selectedId === m.id && <MultiEscrowActions escrow={m} onMutated={fetch} />}
+				</article>
+			))}
+		</div>
+	);
+}
+
+function MultiEscrowActions({ escrow, onMutated }: { escrow: MultiEscrow; onMutated: () => void }) {
+	const { notify } = useToast();
+	const { sign, state } = useWallet();
+	const walletAddress = state.address;
+	const [loading, setLoading] = useState("");
+
+	const isFinal = ["settled", "refunded"].includes(escrow.status);
+	if (isFinal) return <p className="muted"> Finalized — {escrow.status}</p>;
+
+	const myIndex = escrow.parties.findIndex((p) => p === walletAddress);
+	const hasSigned = escrow.signatures.includes(walletAddress || "");
+	const allSigned = escrow.signatures.length === escrow.parties.length;
+
+	async function doSign() {
+		if (!walletAddress) return;
+		setLoading("sign");
+		try {
+			const result = await api.signMultiEscrow(escrow.id, walletAddress);
+			notify("success", `Signed! (${result.signature_count}/${result.parties_count})`);
+			onMutated();
+		} catch (e) {
+			notify("error", "Failed to sign", (e as Error).message);
+		} finally {
+			setLoading("");
+		}
+	}
+
+	async function doSwap() {
+		setLoading("swap");
+		try {
+			await api.swapMultiEscrow(escrow.id);
+			notify("success", "Multi-party escrow settled");
+			onMutated();
+		} catch (e) {
+			notify("error", "Failed to settle", (e as Error).message);
+		} finally {
+			setLoading("");
+		}
+	}
+
+	async function doRefund() {
+		setLoading("refund");
+		try {
+			await api.refundMultiEscrow(escrow.id);
+			notify("success", "Multi-party escrow refunded");
+			onMutated();
+		} catch (e) {
+			notify("error", "Failed to refund", (e as Error).message);
+		} finally {
+			setLoading("");
+		}
+	}
+
+	return (
+		<div className="offer-actions" style={{ marginTop: "12px" }}>
+			<div style={{ marginBottom: "8px", fontSize: "13px" }}>
+				{escrow.parties.map((p, i) => {
+					const signed = escrow.signatures.includes(p);
+					const share = ((escrow.shares[i] || 0) / 100).toFixed(1);
+					return (
+						<div key={i} style={{ color: signed ? "#4caf50" : "#888", marginBottom: "2px" }}>
+							{signed ? "✓" : "○"} {p.slice(0, 16)}… — {share}%
+						</div>
+					);
+				})}
+			</div>
+			{!hasSigned && myIndex !== -1 && (
+				<button className="button primary" disabled={!!loading} onClick={doSign} style={{ marginRight: "8px" }}>
+					{loading === "sign" ? "Signing…" : "Sign Release"}
+				</button>
+			)}
+			{hasSigned && !allSigned && <p className="muted" style={{ fontSize: "12px" }}>Waiting for other parties…</p>}
+			{allSigned && (
+				<button className="button primary" disabled={!!loading} onClick={doSwap} style={{ marginRight: "8px" }}>
+					{loading === "swap" ? "Settling…" : "Execute Swap"}
+				</button>
+			)}
+			<button className="button" disabled={!!loading} onClick={doRefund}>
+				{loading === "refund" ? "Refunding…" : "Refund"}
+			</button>
+		</div>
+	);
+}
+
+function CreateMultiForm({ address }: { address: string }) {
+	const [parties, setParties] = useState<string[]>([address, ""]);
+	const [shares, setShares] = useState<string[]>(["", ""]);
+	const [totalAmount, setTotalAmount] = useState("");
+	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
+	const [result, setResult] = useState<MultiEscrow | null>(null);
+	const { notify } = useToast();
+
+	function addParty() {
+		if (parties.length >= 4) return;
+		setParties([...parties, ""]);
+		setShares([...shares, ""]);
+	}
+
+	function removeParty(i: number) {
+		if (parties.length <= 2) return;
+		setParties(parties.filter((_, idx) => idx !== i));
+		setShares(shares.filter((_, idx) => idx !== i));
+	}
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		const totalNum = Number.parseFloat(totalAmount);
+		if (!totalNum || totalNum <= 0) return;
+
+		const shareNums = shares.map((s) => Math.round(Number.parseFloat(s) * 100));
+		if (shareNums.some((s) => isNaN(s) || s <= 0)) return;
+		const totalShares = shareNums.reduce((a, b) => a + b, 0);
+		if (totalShares !== 10000) {
+			notify("error", `Shares must sum to 100.00%, got ${(totalShares / 100).toFixed(2)}%`);
+			return;
+		}
+		if (parties.some((p) => !p.startsWith("kaspa:"))) {
+			notify("error", "All parties must have valid kaspa: addresses");
+			return;
+		}
+		const unique = new Set(parties);
+		if (unique.size !== parties.length) {
+			notify("error", "Duplicate party addresses not allowed");
+			return;
+		}
+
+		const sompiTotal = Math.round(totalNum * 100_000_000);
+
+		setStatus("loading");
+		try {
+			const lockTxId = prompt("Enter lock transaction ID:") || "";
+			if (!lockTxId) throw new Error("Transaction ID required");
+
+			const escrow = await api.createMultiEscrow({
+				lock_tx_id: lockTxId,
+				parties,
+				shares: shareNums,
+				total_amount: sompiTotal,
+			});
+			setResult(escrow);
+			setStatus("done");
+			notify("success", "Multi-party escrow created!");
+		} catch (e) {
+			notify("error", "Failed to create multi-party escrow", (e as Error).message);
+			setStatus("idle");
+		}
+	}
+
+	if (status === "done" && result) {
+		return (
+			<EmptyState
+				icon="✅"
+				title="Multi-party escrow created!"
+				description={`ID: ${result.id} | ${result.parties.length} parties`}
+			/>
+		);
+	}
+
+	const totalPct = shares.reduce((a, s) => a + (Number.parseFloat(s) || 0), 0);
+
+	return (
+		<form className="form form-stacked" onSubmit={handleSubmit}>
+			<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
+				You: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
+			</div>
+			<FormField label="Total amount (KAS)">
+				<input type="number" step="any" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="10000" required />
+			</FormField>
+			{parties.map((party, i) => (
+				<div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "flex-end" }}>
+					<div style={{ flex: 1 }}>
+						<FormField label={`Party ${i + 1} address`}>
+							<input
+								value={party}
+								onChange={(e) => {
+									const next = [...parties];
+									next[i] = e.target.value;
+									setParties(next);
+								}}
+								placeholder="kaspa:..."
+								required
+							/>
+						</FormField>
+					</div>
+					<div style={{ width: "120px" }}>
+						<FormField label="Share %">
+							<input
+								type="number"
+								step="0.01"
+								value={shares[i]}
+								onChange={(e) => {
+									const next = [...shares];
+									next[i] = e.target.value;
+									setShares(next);
+								}}
+								placeholder="25"
+								required
+							/>
+						</FormField>
+					</div>
+					{parties.length > 2 && (
+						<button type="button" className="button" onClick={() => removeParty(i)} style={{ padding: "4px 8px", fontSize: "12px", marginBottom: "8px" }}>
+							✕
+						</button>
+					)}
+				</div>
+			))}
+			<div style={{ fontSize: "12px", color: totalPct > 100 ? "#f44336" : totalPct === 100 ? "#4caf50" : "#888", marginBottom: "8px" }}>
+				Total: {totalPct.toFixed(2)}% {totalPct === 100 ? "(✓)" : totalPct > 100 ? "(over)" : ""}
+			</div>
+			{parties.length < 4 && (
+				<button type="button" className="button" onClick={addParty} style={{ marginBottom: "12px" }}>
+					+ Add Party
+				</button>
+			)}
+			<button className="button primary" type="submit" disabled={status === "loading"} style={{ marginTop: "12px" }}>
+				{status === "loading" ? "Creating…" : "Create Multi-Party Escrow"}
+			</button>
+		</form>
 	);
 }

@@ -644,6 +644,17 @@ mod tests {
             price_source: None,
             price_type: None,
             invoice_id: None,
+            memo: None,
+            auto_settle_timeout: None,
+            mediation_status: None,
+            mediation_buyer_claim: None,
+            mediation_seller_claim: None,
+            mediation_result: None,
+            mediation_expires_at: None,
+            mediation_buyer_accepted: None,
+            mediation_seller_accepted: None,
+            chat_pubkey_buyer: None,
+            chat_pubkey_seller: None,
         }
     }
 
@@ -899,7 +910,7 @@ mod tests {
 
     #[test]
     fn create_verifier_returns_mock() {
-        let v = create_verifier("testnet-12", true);
+        let v = create_verifier("testnet-10", true);
         assert!(v.verify_signature("kaspa:test", "anything", "msg").is_ok());
     }
 

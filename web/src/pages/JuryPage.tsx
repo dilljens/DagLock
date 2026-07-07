@@ -6,6 +6,7 @@ import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
+import { MediationPanel } from "../components/MediationPanel";
 
 type Tab = "my-cases" | "register" | "candidates";
 
@@ -71,6 +72,9 @@ export function JuryPage() {
 								<strong>Timeout:</strong> If no verdict is reached within 72 hours, seller wins by
 								default.
 							</li>
+							<li>
+								<strong>Escalation Tiers:</strong> Disputes auto-escalate through levels if unresolved: mediation (2 days) → jury vote (5 days) → admin override (10 days).
+							</li>
 						</ul>
 						<p style={{ margin: 0 }}>
 							Jury decisions are recorded on-chain via the arbiter covenant. The winning party must
@@ -78,6 +82,9 @@ export function JuryPage() {
 						</p>
 					</div>
 				</details>
+
+				{/* Escrow dispute lookup — show mediation panel for any escrow */}
+				<DisputeMediationLookup />
 
 				<div className="tab-bar">
 					{wallet.connected && (
@@ -108,6 +115,54 @@ export function JuryPage() {
 				{tab === "candidates" && <CandidatesSection />}
 			</div>
 		</>
+	);
+}
+
+/* ─── Dispute Mediation Lookup ─── */
+function DisputeMediationLookup() {
+	const [escrowId, setEscrowId] = useState("");
+	const [searched, setSearched] = useState(false);
+	const [mediation, setMediation] = useState<any>(null);
+	const [error, setError] = useState("");
+
+	async function handleLookup() {
+		if (!escrowId.trim()) return;
+		setSearched(false);
+		setError("");
+		setMediation(null);
+		try {
+			const s = await api.getMediation(escrowId.trim());
+			setMediation(s);
+		} catch {
+			setError("No mediation found for this escrow.");
+		}
+		setSearched(true);
+	}
+
+	return (
+		<div className="panel" style={{ marginBottom: "16px", padding: "12px 16px" }}>
+			<h4 style={{ margin: "0 0 8px" }}>🔍 Check Mediation Status</h4>
+			<p className="muted" style={{ fontSize: "13px", marginBottom: "8px" }}>
+				Enter an escrow ID to view its AI mediation status and accept/reject the outcome.
+			</p>
+			<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+				<input
+					value={escrowId}
+					onChange={(e) => setEscrowId(e.target.value)}
+					placeholder="esc_abc123..."
+					style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid var(--color-border)" }}
+				/>
+				<button className="button secondary" onClick={handleLookup}>
+					Check
+				</button>
+			</div>
+			{searched && mediation && (
+				<div style={{ marginTop: "12px" }}>
+					<MediationPanel escrowId={escrowId.trim()} />
+				</div>
+			)}
+			{error && <p className="muted error-text" style={{ marginTop: "8px" }}>{error}</p>}
+		</div>
 	);
 }
 
@@ -155,27 +210,46 @@ function MyCases({ address }: { address: string }) {
 
 	return (
 		<div>
-			{cases.data.map((c) => (
-				<article
-					key={c.id}
-					className="offer"
-					style={{ cursor: "pointer", marginBottom: "8px" }}
-					onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
-				>
-					<div className="offer-top">
-						<strong>Case {c.id.slice(0, 16)}…</strong>
-						<span className={badge(c.status)}>{c.status}</span>
-					</div>
-					<p>
-						Escrow: {c.escrow_id} · Votes: {c.votes_for_seller + c.votes_for_buyer}/{c.juror_count}{" "}
-						· Threshold: {c.threshold}
-					</p>
-					<code>{c.id}</code>
-					{selectedId === c.id && c.status === "voting" && (
-						<VotePanel case={c} address={address} onVoted={load} />
-					)}
-				</article>
-			))}
+			{cases.data.map((c) => {
+				const escalationLabels = ["Mediation", "Jury Vote", "Admin Override"];
+				const deadlineMs = c.escalation_deadline ? c.escalation_deadline * 1000 : null;
+				const remaining = deadlineMs ? deadlineMs - Date.now() : 0;
+				const remainingDays = remaining > 0 ? Math.ceil(remaining / 86400000) : 0;
+				return (
+					<article
+						key={c.id}
+						className="offer"
+						style={{ cursor: "pointer", marginBottom: "8px" }}
+						onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
+					>
+						<div className="offer-top">
+							<strong>Case {c.id.slice(0, 16)}…</strong>
+							<span>
+								<span className={badge(c.status)}>{c.status}</span>
+								<span className="pill" style={{ marginLeft: "6px" }}>
+									{escalationLabels[c.escalation_level] || "Unknown"}
+								</span>
+							</span>
+						</div>
+						<p>
+							Escrow: {c.escrow_id} · Votes: {c.votes_for_seller + c.votes_for_buyer}/{c.juror_count}{" "}
+							· Threshold: {c.threshold}
+							{remaining > 0 && ` · Escalates in ${remainingDays}d`}
+						</p>
+						<code>{c.id}</code>
+						{selectedId === c.id && (
+							<>
+								{c.escalation_level <= 1 && (
+									<MediationPanel escrowId={c.escrow_id} disputeMode="jury" />
+								)}
+								{c.status === "voting" && (
+									<VotePanel case={c} address={address} onVoted={load} />
+								)}
+							</>
+						)}
+					</article>
+				);
+			})}
 		</div>
 	);
 }

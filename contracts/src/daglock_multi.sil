@@ -1,0 +1,102 @@
+pragma silverscript ^0.1.0;
+
+// DagLock Multi-Party Escrow — distribute locked KAS to up to 4 parties
+//
+// Shares are in basis points (e.g. 7000 = 70%, 2500 = 25%, 500 = 5%).
+// Sum of shares must = 10000 (100%) at creation time.
+// Zero share + zero key = unused party slot (skipped in output construction).
+// party1 (buyer/depositor) is always active.
+//
+// Spending paths:
+//   release                    — all active parties sign for distribution
+//   swap(secret)               — atomic swap to party2 (first non-buyer)
+//   refund(buyerSig)           — party1 reclaims after timeout
+
+contract DagLockMulti(
+    byte[32] party1Key,
+    byte[32] party2Key,
+    byte[32] party3Key,
+    byte[32] party4Key,
+    int[4] shares,
+    byte[32] tradeHash,
+    int timeout,
+    byte[32] treasuryKey
+) {
+    // ── Path A: Mutual Release ──────────────────────────────────
+    // Requires all active (non-zero-share) parties to sign.
+    // Output layout: [party1] [party2] ... [partyN] [treasury]
+    entrypoint function release(sig party1Sig, sig party2Sig, sig party3Sig, sig party4Sig) {
+        require(checkSig(party1Sig, pubkey(party1Key)));
+        if (shares[1] > 0) { require(checkSig(party2Sig, pubkey(party2Key))); }
+        if (shares[2] > 0) { require(checkSig(party3Sig, pubkey(party3Key))); }
+        if (shares[3] > 0) { require(checkSig(party4Sig, pubkey(party4Key))); }
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int distributable = inputValue - feeAmount;
+
+        byte[34] party1Script = new ScriptPubKeyP2PK(pubkey(party1Key));
+        byte[34] party2Script = new ScriptPubKeyP2PK(pubkey(party2Key));
+        byte[34] party3Script = new ScriptPubKeyP2PK(pubkey(party3Key));
+        byte[34] party4Script = new ScriptPubKeyP2PK(pubkey(party4Key));
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+
+        int outIdx = 0;
+
+        int amt1 = distributable * shares[0] / 10000;
+        require(tx.outputs[outIdx].value == amt1);
+        require(tx.outputs[outIdx].scriptPubKey == byte[](party1Script));
+        outIdx = outIdx + 1;
+
+        if (shares[1] > 0) {
+            int amt2 = distributable * shares[1] / 10000;
+            require(tx.outputs[outIdx].value == amt2);
+            require(tx.outputs[outIdx].scriptPubKey == byte[](party2Script));
+            outIdx = outIdx + 1;
+        }
+
+        if (shares[2] > 0) {
+            int amt3 = distributable * shares[2] / 10000;
+            require(tx.outputs[outIdx].value == amt3);
+            require(tx.outputs[outIdx].scriptPubKey == byte[](party3Script));
+            outIdx = outIdx + 1;
+        }
+
+        if (shares[3] > 0) {
+            int amt4 = distributable * shares[3] / 10000;
+            require(tx.outputs[outIdx].value == amt4);
+            require(tx.outputs[outIdx].scriptPubKey == byte[](party4Script));
+            outIdx = outIdx + 1;
+        }
+
+        require(tx.outputs[outIdx].value == feeAmount);
+        require(tx.outputs[outIdx].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path B: Atomic Swap ─────────────────────────────────────
+    // All funds (minus fee) go to party2, the first non-buyer party.
+    // Outputs: [party2_amount] [treasury_fee]
+    entrypoint function swap(byte[] secret) {
+        require(sha256(secret) == tradeHash);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path C: Timeout Refund ──────────────────────────────────
+    // Party1 reclaims full locked amount after timeout. No fee.
+    entrypoint function refund(sig buyerSig) {
+        require(tx.time >= timeout);
+        require(checkSig(buyerSig, pubkey(party1Key)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(tx.outputs[0].value == inputValue);
+    }
+}

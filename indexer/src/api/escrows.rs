@@ -81,6 +81,79 @@ pub async fn list(
     })))
 }
 
+/// GET /v1/escrows/export?address=&role=&status=
+/// Returns a CSV file of escrows for the given address.
+pub async fn export_csv(
+    State(state): State<AppState>,
+    Query(params): Query<ListQuery>,
+) -> Result<(StatusCode, [(String, String); 1], String), (StatusCode, Json<Value>)> {
+    let address = params.address.as_deref().unwrap_or("");
+    if address.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_address",
+                "address query parameter is required"
+            ))),
+        ));
+    }
+
+    // Fetch ALL escrows for this address (no pagination limit for export)
+    let (escrows, _total) = queries::list_escrows_by_address(
+        &state.db,
+        address,
+        params.role.as_deref(),
+        params.status.as_deref(),
+        10000,
+        0,
+    )
+    .await
+    .map_err(|_e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!(ApiError::new(
+                "internal_error",
+                "Failed to fetch escrows for export"
+            ))),
+        )
+    })?;
+
+    // Build CSV
+    let mut csv = String::from(
+        "ID,Status,Asset,Amount,Amount(KAS),Fee,Fee(KAS),Buyer,Seller,Created,Settled,Memo,TX ID,Dispute Mode,Dispute Reason\n"
+    );
+
+    for e in &escrows {
+        csv.push_str(&format!(
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            e.id,
+            e.status.as_str(),
+            e.asset_type,
+            e.amount_sompi,
+            e.amount_sompi as f64 / 100_000_000.0,
+            e.fee_sompi,
+            e.fee_sompi as f64 / 100_000_000.0,
+            e.buyer_address,
+            e.seller_address.as_deref().unwrap_or(""),
+            e.created_at,
+            e.settled_at.map_or("".to_string(), |t| t.to_string()),
+            e.memo.as_deref().unwrap_or(""),
+            e.lock_tx_id,
+            e.dispute_mode.as_deref().unwrap_or(""),
+            e.dispute_reason.as_deref().unwrap_or(""),
+        ));
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(
+            "Content-Type".to_string(),
+            "text/csv; charset=utf-8".to_string(),
+        )],
+        csv,
+    ))
+}
+
 /// GET /v1/escrows/{id}
 pub async fn get_by_id(
     State(state): State<AppState>,
@@ -157,6 +230,7 @@ pub async fn atomic_swap(
         &state.ws_tx,
         state.sig_verifier.clone(),
         state.verifier.clone(),
+        state.email_service.clone(),
     );
     svc.atomic_swap(&id, &body.preimage)
         .await
@@ -274,7 +348,18 @@ pub async fn create(
         },
         price_type: body.price_type.clone(),
         invoice_id: body.invoice_id.clone(),
-    };
+            memo: body.memo.clone(),
+            auto_settle_timeout: body.auto_settle_timeout,
+            mediation_status: None,
+            mediation_buyer_claim: None,
+            mediation_seller_claim: None,
+            mediation_result: None,
+            mediation_expires_at: None,
+            mediation_buyer_accepted: None,
+            mediation_seller_accepted: None,
+            chat_pubkey_buyer: body.chat_pubkey.clone(),
+            chat_pubkey_seller: None,
+        };
 
     queries::insert_escrow(&state.db, &escrow)
         .await
@@ -428,6 +513,7 @@ pub async fn settle(
         &state.ws_tx,
         state.sig_verifier.clone(),
         state.verifier.clone(),
+        state.email_service.clone(),
     );
     svc.settle(&id, &headers)
         .await
@@ -451,6 +537,7 @@ pub async fn refund(
         &state.ws_tx,
         state.sig_verifier.clone(),
         state.verifier.clone(),
+        state.email_service.clone(),
     );
     svc.refund(&id, &headers)
         .await
@@ -664,6 +751,7 @@ pub async fn cancel(
         &state.ws_tx,
         state.sig_verifier.clone(),
         state.verifier.clone(),
+        state.email_service.clone(),
     );
     svc.cancel(&id, &headers)
         .await
@@ -673,6 +761,29 @@ pub async fn cancel(
 #[derive(Deserialize)]
 pub struct AtomicSwapRequest {
     pub preimage: String,
+}
+
+/// POST /v1/escrows/{id}/auto-settle
+///
+/// Anyone can trigger auto-settlement after the timeout has elapsed.
+/// The covenant's auto_settle() entrypoint enforces the timeout on-chain.
+pub async fn auto_settle(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let svc = crate::services::escrow_service::EscrowService::new(
+        state.db.clone(),
+        &state.ws_tx,
+        state.sig_verifier.clone(),
+        state.verifier.clone(),
+        state.email_service.clone(),
+    );
+    svc.auto_settle(&id)
+        .await
+        .map(|_| {
+            Json(json!({ "status": "settled", "escrow_id": id, "method": "auto_settle" }))
+        })
+        .map_err(service_error)
 }
 
 /// Convert a service error to an HTTP error response.

@@ -246,7 +246,15 @@ fn compile_vault_template(
     let owner = hex_param(params, "owner_key")?;
     let timeout = int_param(params, "timeout")?;
     let treasury = optional_or_enforced_treasury(params, state)?;
-    if owner.len() != 32 || treasury.len() != 32 {
+    let heir = params
+        .get("heir_key")
+        .map(|v| hex::decode(v).unwrap_or(vec![0u8; 32]))
+        .unwrap_or_else(|| vec![0u8; 32]);
+    let heir_timeout = params
+        .get("heir_timeout")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(0);
+    if owner.len() != 32 || treasury.len() != 32 || heir.len() != 32 {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(json!(ApiError::new(
@@ -255,7 +263,8 @@ fn compile_vault_template(
             ))),
         ));
     }
-    let compiled = daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury);
+    let compiled =
+        daglock_contracts::compile_daglock_vault(&owner, timeout, &treasury, &heir, heir_timeout);
     Ok(compile_result(&compiled))
 }
 

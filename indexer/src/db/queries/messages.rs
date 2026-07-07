@@ -53,3 +53,35 @@ pub async fn count_messages(pool: &Pool<Sqlite>, escrow_id: &str) -> Result<i64,
             .await?;
     Ok(count)
 }
+
+/// Get the chat pubkey for a party in an escrow.
+/// Returns `None` if the address is not a party or no pubkey was registered.
+pub async fn get_chat_pubkey(
+    pool: &Pool<Sqlite>,
+    escrow_id: &str,
+    address: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT chat_pubkey_buyer, chat_pubkey_seller FROM escrows WHERE id = ?1"
+    )
+    .bind(escrow_id)
+    .fetch_optional(pool)
+    .await?;
+    match row {
+        Some(r) => {
+            let buyer_pubkey: Option<String> = r.try_get("chat_pubkey_buyer").ok().flatten();
+            let seller_pubkey: Option<String> = r.try_get("chat_pubkey_seller").ok().flatten();
+            // Check if address is buyer or seller and return the matching pubkey
+            let buyer_addr: String = r.try_get("buyer_address").unwrap_or_default();
+            let seller_addr: Option<String> = r.try_get("seller_address").ok().flatten();
+            if address == buyer_addr {
+                Ok(buyer_pubkey)
+            } else if seller_addr.as_deref() == Some(address) {
+                Ok(seller_pubkey)
+            } else {
+                Ok(None)
+            }
+        }
+        None => Ok(None),
+    }
+}

@@ -72,7 +72,7 @@ pub fn spawn(
 }
 
 /// Resolve a network string to a NetworkId.
-/// Preserves the testnet/ simnet suffix number (e.g. testnet-12 → suffix 12).
+/// Preserves the testnet/ simnet suffix number (e.g. testnet-10 → suffix 10).
 pub fn parse_network_id(network: &str) -> NetworkId {
     match network {
         "mainnet" => NetworkId::new(NetworkType::Mainnet),
@@ -98,8 +98,8 @@ pub fn parse_network_id(network: &str) -> NetworkId {
             NetworkId::with_suffix(NetworkType::Devnet, suffix)
         }
         _ => {
-            warn!("Unknown network '{network}', defaulting to testnet-12");
-            NetworkId::with_suffix(NetworkType::Testnet, 12)
+            warn!("Unknown network '{network}', defaulting to testnet-10");
+            NetworkId::with_suffix(NetworkType::Testnet, 10)
         }
     }
 }
@@ -491,6 +491,8 @@ pub fn spawn_vault_sweeper(
                                         &owner_key,
                                         0,
                                         &treasury_key,
+                                        &[0u8; 32],
+                                        0,
                                     );
                                     let fee_amount = *amount_sompi as u64 / 1000;
                                     let send_amount = *amount_sompi as u64 - fee_amount;

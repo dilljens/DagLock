@@ -64,6 +64,7 @@ pub struct EscrowService<'a> {
     ws_tx: &'a Sender<WsEvent>,
     sig_verifier: Arc<dyn SignatureVerifier>,
     verifier: Arc<dyn crate::verification::EscrowVerifier>,
+    email_service: Option<std::sync::Arc<crate::services::email::EmailService>>,
 }
 
 #[allow(dead_code)]
@@ -73,12 +74,14 @@ impl<'a> EscrowService<'a> {
         ws_tx: &'a Sender<WsEvent>,
         sig_verifier: Arc<dyn SignatureVerifier>,
         verifier: Arc<dyn crate::verification::EscrowVerifier>,
+        email_service: Option<std::sync::Arc<crate::services::email::EmailService>>,
     ) -> Self {
         Self {
             db,
             ws_tx,
             sig_verifier,
             verifier,
+            email_service,
         }
     }
 
@@ -182,6 +185,17 @@ impl<'a> EscrowService<'a> {
             },
             price_type: body.price_type.clone(),
             invoice_id: body.invoice_id.clone(),
+            memo: body.memo.clone(),
+            auto_settle_timeout: body.auto_settle_timeout,
+            mediation_status: None,
+            mediation_buyer_claim: None,
+            mediation_seller_claim: None,
+            mediation_result: None,
+            mediation_expires_at: None,
+            mediation_buyer_accepted: None,
+            mediation_seller_accepted: None,
+            chat_pubkey_buyer: body.chat_pubkey.clone(),
+            chat_pubkey_seller: None,
         };
 
         queries::insert_escrow(&self.db, &escrow)
@@ -190,6 +204,7 @@ impl<'a> EscrowService<'a> {
 
         let _ = self.ws_tx.send(WsEvent::escrow_created(&escrow.id));
         webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowCreated(&escrow.id));
+        dispatch_email_notifications(&self.db, &self.email_service, &escrow, "created", "pending_confirmation").await;
 
         Ok(escrow)
     }
@@ -226,6 +241,7 @@ impl<'a> EscrowService<'a> {
 
         let _ = self.ws_tx.send(WsEvent::escrow_settled(id));
         webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowSettled(id));
+        dispatch_email_notifications(&self.db, &self.email_service, &current, "settled", "settled").await;
         Ok(())
     }
 
@@ -261,6 +277,7 @@ impl<'a> EscrowService<'a> {
 
         let _ = self.ws_tx.send(WsEvent::escrow_refunded(id));
         webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowRefunded(id));
+        dispatch_email_notifications(&self.db, &self.email_service, &current, "refunded", "refunded").await;
         Ok(())
     }
 
@@ -422,6 +439,79 @@ impl<'a> EscrowService<'a> {
         Ok(())
     }
 
+    // ── Auto-Settle ─────────────────────────────────────────────
+
+    /// Auto-settle an escrow after timeout. No auth required — the
+    /// covenant's auto_settle() entrypoint enforces the timeout on-chain.
+    pub async fn auto_settle(&self, id: &str) -> Result<(), ServiceError> {
+        let current = self.get_settleable_escrow(id).await?;
+
+        let now = chrono::Utc::now().timestamp();
+        let timeout = current
+            .auto_settle_timeout
+            .ok_or_else(|| ServiceError::InvalidInput("Escrow has no auto-settle timeout".into()))?;
+
+        if now < timeout {
+            return Err(ServiceError::Forbidden(
+                "Auto-settle timeout has not elapsed yet".into(),
+            ));
+        }
+
+        let settled = queries::auto_settle_escrow_atomic(&self.db, id)
+            .await
+            .map_err(|_| ServiceError::Internal("Failed to auto-settle escrow".into()))?;
+
+        if !settled {
+            return Err(ServiceError::Conflict(
+                "Escrow could not be auto-settled (not active or timeout not reached)".into(),
+            ));
+        }
+
+        let _ = self.ws_tx.send(WsEvent::escrow_settled(id));
+        webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowSettled(id));
+        dispatch_email_notifications(
+            &self.db,
+            &self.email_service,
+            &current,
+            "settled",
+            "settled",
+        )
+        .await;
+        Ok(())
+    }
+
+    // ── Mediation Outcome Execution ─────────────────────────────
+
+    /// Force settle a disputed escrow (mediation accepted: payout outcome).
+    pub async fn force_settle(&self, id: &str) -> Result<(), ServiceError> {
+        let settled = queries::force_settle_disputed(&self.db, id)
+            .await
+            .map_err(|_| ServiceError::Internal("Failed to force settle escrow".into()))?;
+        if !settled {
+            return Err(ServiceError::Conflict(
+                "Escrow is not in disputed state".into(),
+            ));
+        }
+        let _ = self.ws_tx.send(WsEvent::escrow_settled(id));
+        webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowSettled(id));
+        Ok(())
+    }
+
+    /// Force refund a disputed escrow (mediation accepted: refund outcome).
+    pub async fn force_refund(&self, id: &str) -> Result<(), ServiceError> {
+        let refunded = queries::force_refund_disputed(&self.db, id)
+            .await
+            .map_err(|_| ServiceError::Internal("Failed to force refund escrow".into()))?;
+        if !refunded {
+            return Err(ServiceError::Conflict(
+                "Escrow is not in disputed state".into(),
+            ));
+        }
+        let _ = self.ws_tx.send(WsEvent::escrow_refunded(id));
+        webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowRefunded(id));
+        Ok(())
+    }
+
     // ── Internal helpers ────────────────────────────────────────
 
     /// Get an escrow that can be settled or refunded (active or pending_confirmation).
@@ -466,6 +556,66 @@ pub enum DisputeResponse {
         juror_count: i64,
         threshold: i64,
     },
+}
+
+/// Dispatch email notifications for an escrow event.
+/// Queries the DB for verified email subscribers who opted into this event type,
+/// and sends them a notification via the EmailService.
+pub async fn dispatch_email_notifications(
+    db: &Pool<Sqlite>,
+    email_service: &Option<std::sync::Arc<crate::services::email::EmailService>>,
+    escrow: &Escrow,
+    event_type: &str,
+    status: &str,
+) {
+    let email_service = match email_service {
+        Some(s) => s,
+        None => return,
+    };
+    if !email_service.is_configured() {
+        return;
+    }
+
+    let event_column = match event_type {
+        "created" => "notify_created",
+        "settled" => "notify_settled",
+        "disputed" => "notify_disputed",
+        "refunded" => "notify_refunded",
+        "expired" => "notify_expired",
+        _ => return,
+    };
+
+    // Fetch subscribers for both buyer and seller
+    let subscribers = match queries::get_verified_subscribers_for_event(db, event_column).await {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!("Failed to fetch email subscribers: {e}");
+            return;
+        }
+    };
+
+    // Filter subscribers who are involved in this escrow
+    for sub in &subscribers {
+        if sub.address != escrow.buyer_address
+            && sub.address != escrow.seller_address.as_deref().unwrap_or("")
+        {
+            continue;
+        }
+
+        if let Err(e) = email_service
+            .notify_escrow_event(
+                &sub.email,
+                &sub.address,
+                event_type,
+                &escrow.id,
+                escrow.amount_sompi,
+                status,
+            )
+            .await
+        {
+            tracing::warn!("Failed to send email notification to {}: {e}", sub.email);
+        }
+    }
 }
 
 // validate_kaspa_address removed — use daglock_shared::validate_kaspa_address instead

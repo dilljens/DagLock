@@ -17,6 +17,11 @@ const NAV_ITEMS: NavItem[] = [
 	{ route: "/reputation", label: "Reputation" },
 	{ route: "/jury", label: "Jury" },
 	{ route: "/docs", label: "Docs" },
+	{ route: "/tokens", label: "Tokens" },
+	{ route: "/tokens/create", label: "Create Token" },
+	{ route: "/testnet", label: "Testnet" },
+	{ route: "/settings", label: "Settings" },
+	{ route: "/help", label: "Help" },
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -36,7 +41,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 		try {
 			await connect();
 			// Check for network mismatch — KasWare only supports testnet-10/11
-			if (state.network && state.network !== "testnet-12" && state.network !== "mainnet") {
+			if (state.network && state.network !== "testnet-10" && state.network !== "mainnet") {
 				setNetworkWarning(state.network);
 			}
 		} catch {
@@ -103,7 +108,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 							}}
 						>
 							KasWare connected to <strong>{networkWarning}</strong>, but DagLock runs on{" "}
-							<strong>testnet-12</strong>. KasWare doesn't support testnet-12 yet.{" "}
+							<strong>testnet-10</strong>. KasWare doesn't support testnet-10 yet.{" "}
 							<button
 								type="button"
 								onClick={() => {
@@ -205,6 +210,22 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 					{state.network && state.network !== "mainnet" && (
 						<div className="sidebar-network"> {state.network}</div>
 					)}
+					<button
+						type="button"
+						className="sidebar-manual"
+						onClick={() => {
+							localStorage.removeItem("daglock_onboarded");
+							window.location.reload();
+						}}
+						style={{
+							background: "transparent",
+							border: "1px solid #333",
+							fontSize: "11px",
+							marginTop: "4px",
+						}}
+					>
+						Show tour
+					</button>
 				</div>
 			</aside>
 		</>

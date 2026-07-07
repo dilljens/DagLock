@@ -73,65 +73,138 @@ pub fn calculate_reputation_score(
     raw_score.clamp(1.0, 5.0)
 }
 
+/// Helper: run a COUNT query across all escrow-like tables using UNION.
+/// Each table must expose `buyer_address`, `seller_address`, `status`, `created_at` columns.
+/// The `escrows` table has `buyer_address`/`seller_address` and `status` values like 'settled','refunded'.
+/// New escrow types use their own tables with compatible column names.
+async fn count_all_trades(
+    pool: &Pool<Sqlite>,
+    address: &str,
+    ninety_days_ago: i64,
+) -> Result<(i64, i64, i64, i64, i64, i64, Option<i64>), sqlx::Error> {
+    // COUNT(*) across all escrow-like tables
+    let (trade_count,): (i64,) = sqlx::query_as(&format!(
+        "SELECT COUNT(*) FROM (
+            SELECT buyer_address as a, seller_address as b FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1
+            UNION ALL
+            SELECT buyer_address as a, seller_address as b FROM milestone_escrows WHERE buyer_address = ?1 OR seller_address = ?1
+            UNION ALL
+            SELECT payer_address as a, recipient_address as b FROM subscriptions WHERE payer_address = ?1 OR recipient_address = ?1
+            UNION ALL
+            SELECT party1_address as a, party2_address as b FROM deposits WHERE party1_address = ?1 OR party2_address = ?1
+        )"
+    ))
+    .bind(address)
+    .fetch_one(pool).await?;
+
+    // Settled/completed count across all tables
+    let (settled_count,): (i64,) = sqlx::query_as(&format!(
+        "SELECT COUNT(*) FROM (
+            SELECT status FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'
+            UNION ALL
+            SELECT status FROM milestone_escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'completed'
+            UNION ALL
+            SELECT status FROM subscriptions WHERE (payer_address = ?1 OR recipient_address = ?1) AND status = 'completed'
+        )"
+    ))
+    .bind(address)
+    .fetch_one(pool).await?;
+
+    // Refunded/cancelled count
+    let (refunded_count,): (i64,) = sqlx::query_as(&format!(
+        "SELECT COUNT(*) FROM (
+            SELECT status FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded'
+            UNION ALL
+            SELECT status FROM milestone_escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded'
+        )"
+    ))
+    .bind(address)
+    .fetch_one(pool).await?;
+
+    // Recent trades (last 90 days)
+    let (recent_trade_count,): (i64,) = sqlx::query_as(&format!(
+        "SELECT COUNT(*) FROM (
+            SELECT created_at FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND created_at >= ?2
+            UNION ALL
+            SELECT created_at FROM milestone_escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND created_at >= ?2
+            UNION ALL
+            SELECT created_at FROM subscriptions WHERE (payer_address = ?1 OR recipient_address = ?1) AND created_at >= ?2
+            UNION ALL
+            SELECT created_at FROM deposits WHERE (party1_address = ?1 OR party2_address = ?1) AND created_at >= ?2
+        )"
+    ))
+    .bind(address).bind(ninety_days_ago)
+    .fetch_one(pool).await?;
+
+    // Recent refunded
+    let (recent_refunded_count,): (i64,) = sqlx::query_as(&format!(
+        "SELECT COUNT(*) FROM (
+            SELECT status, created_at FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded' AND created_at >= ?2
+            UNION ALL
+            SELECT status, created_at FROM milestone_escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded' AND created_at >= ?2
+        )"
+    ))
+    .bind(address).bind(ninety_days_ago)
+    .fetch_one(pool).await?;
+
+    // Volume (SUM of settled/completed amounts)
+    let (volume,): (Option<i64>,) = sqlx::query_as(&format!(
+        "SELECT SUM(amount) FROM (
+            SELECT amount_sompi as amount FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'
+            UNION ALL
+            SELECT total_amount as amount FROM milestone_escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'completed'
+            UNION ALL
+            SELECT total_amount as amount FROM subscriptions WHERE (payer_address = ?1 OR recipient_address = ?1) AND status = 'completed'
+        )"
+    ))
+    .bind(address)
+    .fetch_one(pool).await?;
+
+    // First trade timestamp (oldest across all tables)
+    let (first_trade_at,): (Option<i64>,) = sqlx::query_as(&format!(
+        "SELECT MIN(created_at) FROM (
+            SELECT created_at FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1
+            UNION ALL
+            SELECT created_at FROM milestone_escrows WHERE buyer_address = ?1 OR seller_address = ?1
+            UNION ALL
+            SELECT created_at FROM subscriptions WHERE payer_address = ?1 OR recipient_address = ?1
+            UNION ALL
+            SELECT created_at FROM deposits WHERE party1_address = ?1 OR party2_address = ?1
+        )"
+    ))
+    .bind(address)
+    .fetch_one(pool).await?;
+
+    Ok((
+        trade_count, settled_count, refunded_count,
+        recent_trade_count, recent_refunded_count,
+        volume.unwrap_or(0), first_trade_at,
+    ))
+}
+
 pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputation, sqlx::Error> {
-    let (trade_count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1",
-    )
-    .bind(address)
-    .fetch_one(pool)
-    .await?;
-
-    let (settled_count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'"
-    ).bind(address).fetch_one(pool).await?;
-
-    let (refunded_count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded'"
-    ).bind(address).fetch_one(pool).await?;
-
-    // Recent trades (last 90 days) — weighted 2x in score formula
-    // to prevent "build trust then scam" attacks.
     let ninety_days_ago = chrono::Utc::now().timestamp() - 90 * 86_400;
-    let (recent_trade_count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND created_at >= ?2"
-    ).bind(address).bind(ninety_days_ago).fetch_one(pool).await?;
 
-    let (recent_refunded_count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'refunded' AND created_at >= ?2"
-    ).bind(address).bind(ninety_days_ago).fetch_one(pool).await?;
-
-    // Dispute info for display purposes (does not affect Beta score calculation).
-    // The terminal state (settled vs refunded) determines success/failure; dispute
-    // flags can double-count with terminal states.
-    let (disputed_count_raw,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND disputed_at IS NOT NULL"
-    ).bind(address).fetch_one(pool).await?;
-
-    // Count upheld disputes (dispute was valid, this address was the at-fault party).
-    // Uses dispute_outcome='uphold' which means the dispute filer was correct.
-    let (_upheld_count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1)
-         AND dispute_outcome = 'uphold'",
-    )
-    .bind(address)
-    .fetch_one(pool)
-    .await?;
-
-    let (volume,): (Option<i64>,) = sqlx::query_as(
-        "SELECT SUM(amount_sompi) FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'"
-    ).bind(address).fetch_one(pool).await?;
-
-    let (first_trade_at,): (Option<i64>,) = sqlx::query_as(
-        "SELECT MIN(created_at) FROM escrows WHERE buyer_address = ?1 OR seller_address = ?1",
-    )
-    .bind(address)
-    .fetch_one(pool)
-    .await?;
+    let (
+        trade_count, settled_count, refunded_count,
+        recent_trade_count, recent_refunded_count,
+        total_volume, first_trade_at,
+    ) = count_all_trades(pool, address, ninety_days_ago).await?;
 
     let age_days = first_trade_at
         .map(|ts| ((chrono::Utc::now().timestamp() - ts).max(0) / 86_400).max(0))
         .unwrap_or(0);
-    let total_volume = volume.unwrap_or(0);
+
+    // Dispute count: query escrows (disputed_at field) and milestone_escrows (status = 'disputed')
+    let (disputed_count_raw,): (i64,) = sqlx::query_as(&format!(
+        "SELECT COUNT(*) FROM (
+            SELECT disputed_at FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND disputed_at IS NOT NULL
+            UNION ALL
+            SELECT created_at FROM milestone_escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'disputed'
+        )"
+    ))
+    .bind(address)
+    .fetch_one(pool).await?;
 
     // Scoring uses refunded_count as Beta failures (mutually exclusive with settled).
     // Dispute rates are informational only — the terminal state tells the real story.
@@ -203,20 +276,30 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
 }
 
 pub async fn get_network_counts(pool: &Pool<Sqlite>) -> Result<(u64, u64, f64), sqlx::Error> {
-    let total: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM escrows")
-        .fetch_one(pool)
-        .await?;
-    let settled: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM escrows WHERE status = 'settled'")
-        .fetch_one(pool)
-        .await?;
+    let (escrow_total,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM escrows")
+        .fetch_one(pool).await?;
+    let (milestone_total,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM milestone_escrows")
+        .fetch_one(pool).await?;
+    let (sub_total,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM subscriptions")
+        .fetch_one(pool).await?;
+    let total = escrow_total.max(0) + milestone_total.max(0) + sub_total.max(0);
+
+    let (escrow_settled,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM escrows WHERE status = 'settled'")
+        .fetch_one(pool).await?;
+    let (milestone_completed,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM milestone_escrows WHERE status = 'completed'")
+        .fetch_one(pool).await?;
+    let (sub_completed,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM subscriptions WHERE status = 'completed'")
+        .fetch_one(pool).await?;
+    let settled = escrow_settled.max(0) + milestone_completed.max(0) + sub_completed.max(0);
+
     let avg_fee: (Option<f64>,) =
         sqlx::query_as("SELECT AVG(fee_sompi) FROM escrows WHERE fee_sompi > 0")
             .fetch_one(pool)
             .await?;
 
     Ok((
-        total.0.max(0) as u64,
-        settled.0.max(0) as u64,
+        total as u64,
+        settled as u64,
         avg_fee.0.unwrap_or(0.0) / 100_000_000.0,
     ))
 }
@@ -228,13 +311,18 @@ pub async fn calculate_trading_concentration(
     pool: &Pool<Sqlite>,
     address: &str,
 ) -> Result<f64, sqlx::Error> {
-    // Get total volume with all counterparties
-    // For each escrow, identify which party this address is, and get the other side
+    // Get total volume with all counterparties across all escrow-like tables
     let rows = sqlx::query_as::<_, (String, i64)>(
-        "SELECT CASE WHEN buyer_address = ?1 THEN seller_address ELSE buyer_address END as counterparty, SUM(amount_sompi)
-         FROM escrows
-         WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'
-         GROUP BY counterparty"
+        "SELECT counterparty, SUM(amount) as total FROM (
+            SELECT CASE WHEN buyer_address = ?1 THEN seller_address ELSE buyer_address END as counterparty, amount_sompi as amount
+             FROM escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'settled'
+            UNION ALL
+            SELECT CASE WHEN buyer_address = ?1 THEN seller_address ELSE buyer_address END as counterparty, total_amount as amount
+             FROM milestone_escrows WHERE (buyer_address = ?1 OR seller_address = ?1) AND status = 'completed'
+            UNION ALL
+            SELECT CASE WHEN payer_address = ?1 THEN recipient_address ELSE payer_address END as counterparty, total_amount as amount
+             FROM subscriptions WHERE (payer_address = ?1 OR recipient_address = ?1) AND status = 'completed'
+        ) GROUP BY counterparty"
     )
     .bind(address)
     .fetch_all(pool).await?;

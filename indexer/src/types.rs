@@ -94,6 +94,20 @@ pub struct Escrow {
     pub price_source: Option<String>,
     pub price_type: Option<String>,
     pub invoice_id: Option<String>,
+    pub memo: Option<String>,
+    pub auto_settle_timeout: Option<i64>,
+    // ── Mediation columns ────────────────────────────────────────────
+    pub mediation_status: Option<String>,
+    pub mediation_buyer_claim: Option<String>,
+    pub mediation_seller_claim: Option<String>,
+    pub mediation_result: Option<String>,
+    pub mediation_expires_at: Option<i64>,
+    pub mediation_buyer_accepted: Option<bool>,
+    pub mediation_seller_accepted: Option<bool>,
+    /// Hex-encoded Ed25519 public key for client-side chat encryption.
+    pub chat_pubkey_buyer: Option<String>,
+    /// Hex-encoded Ed25519 public key for client-side chat encryption.
+    pub chat_pubkey_seller: Option<String>,
 }
 
 /// Create escrow request (from POST endpoint).
@@ -120,6 +134,12 @@ pub struct CreateEscrowRequest {
     #[serde(default)]
     pub price_type: Option<String>,
     pub invoice_id: Option<String>,
+    pub memo: Option<String>,
+    #[serde(default)]
+    pub auto_settle_timeout: Option<i64>,
+    /// Creator's Ed25519 public key hex for client-side chat encryption.
+    #[serde(default)]
+    pub chat_pubkey: Option<String>,
 }
 
 /// App registered by an integrator.
@@ -287,6 +307,22 @@ pub struct FeeEstimate {
     pub miner_fee_budget: String,
 }
 
+// ── Multi-Party Escrow Types ────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiEscrow {
+    pub id: EscrowId,
+    pub lock_tx_id: TxId,
+    pub parties: Vec<String>,
+    pub shares: Vec<i64>,
+    pub total_amount: i64,
+    pub status: String,
+    pub created_at: i64,
+    pub settled_at: Option<i64>,
+    pub refunded_at: Option<i64>,
+    pub signatures: Vec<String>,
+}
+
 /// Stats response.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatsResponse {
@@ -353,6 +389,9 @@ pub struct JuryCase {
     pub decided_at: Option<i64>,
     pub outcome: Option<String>,
     pub jurors: Vec<String>,
+    pub escalation_level: i64,
+    pub escalation_deadline: Option<i64>,
+    pub mediation_log: Option<String>,
 }
 
 /// Cast vote request.
@@ -360,6 +399,49 @@ pub struct JuryCase {
 pub struct CastVoteRequest {
     pub vote: String,
     pub reasoning: Option<String>,
+}
+
+// ── AI Mediation Types ───────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MediationOutcome {
+    Refund,
+    Payout,
+    Split,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediationMessage {
+    pub role: String,
+    pub content: String,
+    pub timestamp: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediationResult {
+    pub outcome: MediationOutcome,
+    pub buyer_share_basis: i64,
+    pub reasoning: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediationRequest {
+    pub buyer_claim: String,
+    pub seller_claim: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediationResponse {
+    pub case_id: String,
+    pub recommendation: Option<MediationResult>,
+    pub expires_at: i64,
+    pub mediation_status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediationAccept {
+    pub accept: bool,
 }
 
 /// Mediator stats for reputation display.
@@ -372,20 +454,27 @@ pub struct MediatorStats {
     pub score: f64,
 }
 
-/// Escrow message record (encrypted at rest).
+/// Escrow message record.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowMessage {
     pub id: String,
     pub escrow_id: EscrowId,
     pub sender_address: Address,
-    pub content: String, // decrypted plaintext
+    #[deprecated(note = "Use content_enc from list response instead")]
+    pub content: String,
     pub created_at: i64,
 }
 
-/// Send message request.
+/// Send message request — client-side encrypted.
+/// The server stores ciphertext only; it never sees plaintext.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendMessageRequest {
-    pub content: String,
+    /// Hex-encoded ciphertext (client-side encrypted).
+    pub content_enc: String,
+    /// Hex-encoded 12-byte nonce (24 hex chars).
+    pub nonce: String,
+    /// Ed25519 signature hex (128 hex chars) over sha256(content_enc || nonce || escrow_id || seq).
+    pub chat_sig: String,
 }
 
 /// Message list response.
@@ -415,6 +504,12 @@ pub enum ApiErrorCode {
     InsufficientJurors,
     PreimageMismatch,
     InvalidPreimage,
+    DepositNotFound,
+    DepositAlreadyFinalized,
+    MediationInProgress,
+    MediationNotFound,
+    MediationAlreadyAccepted,
+    MediationExpired,
 }
 
 impl ApiErrorCode {
@@ -442,6 +537,12 @@ impl ApiErrorCode {
             Self::InsufficientJurors => "insufficient_jurors",
             Self::PreimageMismatch => "preimage_mismatch",
             Self::InvalidPreimage => "invalid_preimage",
+            Self::DepositNotFound => "deposit_not_found",
+            Self::DepositAlreadyFinalized => "deposit_already_finalized",
+            Self::MediationInProgress => "mediation_in_progress",
+            Self::MediationNotFound => "mediation_not_found",
+            Self::MediationAlreadyAccepted => "mediation_already_accepted",
+            Self::MediationExpired => "mediation_expired",
         }
     }
 
@@ -469,6 +570,12 @@ impl ApiErrorCode {
             Self::InsufficientJurors => "Not enough registered jurors.",
             Self::PreimageMismatch => "Preimage does not match trade hash.",
             Self::InvalidPreimage => "Preimage must be valid hex.",
+            Self::DepositNotFound => "No deposit found for this escrow.",
+            Self::DepositAlreadyFinalized => "Deposit is already finalized.",
+            Self::MediationInProgress => "Mediation is already in progress for this escrow.",
+            Self::MediationNotFound => "No mediation found for this escrow.",
+            Self::MediationAlreadyAccepted => "You have already accepted the mediation outcome.",
+            Self::MediationExpired => "Mediation has expired. Escalate to jury.",
         }
     }
 }
@@ -512,6 +619,55 @@ pub struct CreateVouchRequest {
     pub subject_address: Address,
     pub escrow_id: Option<String>,
     pub note: Option<String>,
+}
+
+// ── Deposit (Security Deposit Covenant) Types ────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Deposit {
+    pub id: String,
+    pub escrow_id: EscrowId,
+    pub party1_address: Address,
+    pub party2_address: Address,
+    pub deposit_amount: i64,
+    pub status: String,
+    pub deposit_tx_id: Option<String>,
+    pub timeout: i64,
+    pub created_at: i64,
+    pub released_at: Option<i64>,
+    pub forfeited_at: Option<i64>,
+    pub forfeited_to: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateDepositRequest {
+    pub party1_address: Address,
+    pub party2_address: Address,
+    pub deposit_amount: i64,
+    pub deposit_tx_id: Option<String>,
+    pub party1_pubkey: Option<String>,
+    pub party2_pubkey: Option<String>,
+    pub timeout: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReleaseDepositRequest {
+    pub party1_address: Address,
+    pub party2_address: Address,
+    pub party1_signature: String,
+    pub party2_signature: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForfeitDepositRequest {
+    pub forfeited_to: String,
+    pub jury_signature: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SweepDepositsResponse {
+    pub swept: Vec<String>,
+    pub count: usize,
 }
 
 // ── Vault Types ─────────────────────────────────────────────────
@@ -595,6 +751,40 @@ pub struct TransferVaultRequest {
     pub signature: String,
 }
 
+// ── Milestone Escrow Types ────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MilestoneEscrow {
+    pub id: EscrowId,
+    pub lock_tx_id: TxId,
+    pub buyer_address: Address,
+    pub seller_address: Address,
+    pub total_amount: i64,
+    pub milestone_amounts: Vec<i64>,
+    pub milestone_timeouts: Vec<i64>,
+    pub current_milestone: i32,
+    pub milestone_statuses: Vec<String>,
+    pub status: String,
+    pub created_at: i64,
+    pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateMilestoneRequest {
+    pub lock_tx_id: TxId,
+    pub buyer_address: Address,
+    pub seller_address: Address,
+    pub total_amount: i64,
+    pub milestone_amounts: Vec<i64>,
+    pub milestone_timeouts: Vec<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MilestoneListResponse {
+    pub milestones: Vec<MilestoneEscrow>,
+    pub total: i64,
+}
+
 // ── Invoices ──────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -659,6 +849,53 @@ pub struct CreateInvoiceRequest {
     pub amount_sompi: i64,
     pub due_date: Option<i64>,
     pub client_email: Option<String>,
+}
+
+// ── Subscription Types ────────────────────────────────────────────
+
+/// Recurring subscription payment record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Subscription {
+    pub id: String,
+    pub payer_address: Address,
+    pub recipient_address: Address,
+    pub total_amount: i64,
+    pub installment_amount: i64,
+    pub interval_seconds: i64,
+    pub start_time: i64,
+    pub current_period: i64,
+    pub max_periods: i64,
+    pub status: String,
+    pub created_at: i64,
+    pub cancelled_at: Option<i64>,
+    pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateSubscriptionRequest {
+    pub id: Option<String>,
+    pub payer_address: Address,
+    pub recipient_address: Address,
+    pub total_amount: i64,
+    pub installment_amount: i64,
+    pub interval_seconds: i64,
+    pub start_time: i64,
+    pub max_periods: i64,
+    pub current_period: Option<i64>,
+    pub lock_tx_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscriptionListResponse {
+    pub subscriptions: Vec<Subscription>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DrawSubscriptionRequest {
+    pub recipient_address: Address,
 }
 
 // ── Shared Helpers ────────────────────────────────────────────────

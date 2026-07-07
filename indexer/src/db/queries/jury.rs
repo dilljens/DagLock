@@ -102,16 +102,20 @@ pub async fn create_jury_case(
     );
     let now = chrono::Utc::now().timestamp();
 
+    // Escalation: start at mediation (level 0), deadline = now + 2 days
+    let escalation_deadline = now + 172_800;
+
     // Insert case
     sqlx::query(
-        "INSERT INTO jury_cases (id, escrow_id, status, juror_count, threshold, votes_for_seller, votes_for_buyer, created_at)
-         VALUES (?1, ?2, 'voting', ?3, ?4, 0, 0, ?5)"
+        "INSERT INTO jury_cases (id, escrow_id, status, juror_count, threshold, votes_for_seller, votes_for_buyer, created_at, escalation_level, escalation_deadline)
+         VALUES (?1, ?2, 'voting', ?3, ?4, 0, 0, ?5, 0, ?6)"
     )
     .bind(&case_id)
     .bind(escrow_id)
     .bind(juror_count)
     .bind(threshold)
     .bind(now)
+    .bind(escalation_deadline)
     .execute(pool).await?;
 
     // Insert jury_votes rows for each juror (pre-assigned, votes NULL)
@@ -167,6 +171,9 @@ pub async fn get_jury_case(
         decided_at: row.try_get("decided_at").unwrap_or(None),
         outcome: row.try_get("outcome").unwrap_or(None),
         jurors,
+        escalation_level: row.try_get("escalation_level").unwrap_or(0),
+        escalation_deadline: row.try_get("escalation_deadline").unwrap_or(None),
+        mediation_log: row.try_get("mediation_log").unwrap_or(None),
     }))
 }
 
@@ -207,6 +214,9 @@ pub async fn get_jury_case_by_escrow(
         decided_at: row.try_get("decided_at").unwrap_or(None),
         outcome: row.try_get("outcome").unwrap_or(None),
         jurors,
+        escalation_level: row.try_get("escalation_level").unwrap_or(0),
+        escalation_deadline: row.try_get("escalation_deadline").unwrap_or(None),
+        mediation_log: row.try_get("mediation_log").unwrap_or(None),
     }))
 }
 
@@ -328,7 +338,64 @@ pub async fn list_active_jury_cases_for_juror(
             decided_at: row.try_get("decided_at").unwrap_or(None),
             outcome: row.try_get("outcome").unwrap_or(None),
             jurors,
+            escalation_level: row.try_get("escalation_level").unwrap_or(0),
+            escalation_deadline: row.try_get("escalation_deadline").unwrap_or(None),
+            mediation_log: row.try_get("mediation_log").unwrap_or(None),
         });
     }
     Ok(cases)
+}
+
+pub async fn update_escalation_level(
+    pool: &Pool<Sqlite>,
+    case_id: &str,
+    level: i64,
+    deadline: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE jury_cases SET escalation_level = ?1, escalation_deadline = ?2 WHERE id = ?3"
+    )
+    .bind(level)
+    .bind(deadline)
+    .bind(case_id)
+    .execute(pool).await?;
+    Ok(())
+}
+
+pub async fn auto_decide_case(
+    pool: &Pool<Sqlite>,
+    case_id: &str,
+    outcome: &str,
+    now: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE jury_cases SET status = 'decided', outcome = ?1, decided_at = ?2 WHERE id = ?3 AND status != 'decided'"
+    )
+    .bind(outcome)
+    .bind(now)
+    .bind(case_id)
+    .execute(pool).await?;
+    Ok(())
+}
+
+pub async fn find_escalatable_cases(
+    pool: &Pool<Sqlite>,
+    now: i64,
+) -> Result<Vec<(String, i64, String)>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, escalation_level, status FROM jury_cases
+         WHERE escalation_deadline IS NOT NULL
+           AND escalation_deadline <= ?1
+           AND status IN ('voting', 'mediation')
+           AND escalation_level < 2"
+    )
+    .bind(now)
+    .fetch_all(pool).await?;
+
+    Ok(rows.into_iter().filter_map(|row| {
+        let id: String = row.try_get("id").ok()?;
+        let level: i64 = row.try_get("escalation_level").ok()?;
+        let status: String = row.try_get("status").ok()?;
+        Some((id, level, status))
+    }).collect())
 }

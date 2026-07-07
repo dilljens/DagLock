@@ -1,0 +1,67 @@
+pragma silverscript ^0.1.0;
+
+// DagLock Subscription — recurring payment escrow.
+//
+// A payer locks N KAS for M installments. The recipient claims
+// one installment at a time. The payer can cancel anytime.
+//
+// Entrypoints:
+//   claim(recipientSig)  — claim current installment
+//   cancel(payerSig)     — cancel, remaining returned to payer (minus fee)
+//   release(bothSigs)    — mutual release, all to recipient (minus fee)
+
+contract DagLockSubscription(
+    byte[32] payerKey,
+    byte[32] recipientKey,
+    int totalAmount,
+    int installmentAmount,
+    int intervalSeconds,
+    int startTime,
+    byte[32] treasuryKey
+) {
+    // ── Claim one installment ───────────────────────────────────
+    entrypoint function claim(sig recipientSig) {
+        require(checkSig(recipientSig, pubkey(recipientKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = installmentAmount / 200;
+        int netAmount = installmentAmount - feeAmount;
+
+        require(tx.outputs[0].value == netAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Cancel ──────────────────────────────────────────────────
+    entrypoint function cancel(sig payerSig) {
+        require(checkSig(payerSig, pubkey(payerKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int returnAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == returnAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Full release ────────────────────────────────────────────
+    entrypoint function release(sig payerSig, sig recipientSig) {
+        require(checkSig(payerSig, pubkey(payerKey)));
+        require(checkSig(recipientSig, pubkey(recipientKey)));
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+    }
+}

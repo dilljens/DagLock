@@ -2,25 +2,25 @@ pragma silverscript ^0.1.0;
 
 // DagLock Arbiter — Trustless escrow with optional mediator
 //
-// Five spending paths:
-//   release(buyerSig, sellerSig)           — both parties sign to settle
-//   swap(secret)                            — hash preimage reveals for atomic swap
-//   refundAfterTimeout(arbiterSig, buyerSig) — mediator must co-sign timeout refund
-//   disputeSellerWins(...)                 — mediator + seller, seller gets paid
-//   disputeBuyerWins(...)                  — mediator + buyer, buyer gets refund
+// Seven spending paths:
+//   release(buyerSig, sellerSig)                    — both parties sign to settle
+//   swap(secret)                                     — hash preimage reveals for atomic swap
+//   refundAfterTimeout(arbiterSig, buyerSig)          — mediator must co-sign timeout refund
+//   disputeSellerWins(arbiterSig, sellerSig, fee)    — mediator + seller, seller gets paid
+//   disputeBuyerWins(arbiterSig, buyerSig, fee)      — mediator + buyer, buyer gets refund
+//   arbitrateSplit(arbiterSig, buyerShareBasis)      — mediator splits funds proportionally
+//   emergencyRefund(buyerSig)                        — buyer reclaims after timeout + 30 days
 //
-// Fee model: 0.5% (1/200) on release and swap paths — same as basic escrow.
-// On dispute paths, the 0.5% protocol fee still applies (output[1]=treasury).
-// The party receiving output[0] economically pays. On timeout refund, no fee.
-// Mediator fee is a separate output (output[2]) set per-dispute as entrypoint
-// argument — NOT fixed at deploy time. This keeps the template hash stable.
+// Fee model: 0.5% (1/200) on release, swap, split, and dispute paths.
+// On release/swap/split, output[1] = treasury. On disputes, output[1] = treasury
+// and output[2] = mediator fee (set per-dispute as entrypoint argument).
+// On timeout refund and emergency refund, no fee.
 //
-// If arbiterKey is all-zeroes, dispute paths are unreachable (cannot
+// If arbiterKey is all-zeroes, dispute/split paths are unreachable (cannot
 // forge the mediator's signature).
 //
-// Sixth path: emergencyRefund(buyerSig) — buyer can reclaim solo after
-// timeout + 30 days. This is a backstop if the mediator disappears.
-// The 30-day grace period gives the mediator time to act. No fee.
+// Dust floor: all output values must be >= MIN_OUT (1000 sompi) unless
+// explicitly zero (mediator fee may be waived).
 
 contract DagLockArbiter(
     byte[32] buyerKey,
@@ -30,6 +30,8 @@ contract DagLockArbiter(
     byte[32] treasuryKey,      // DagLock fee treasury public key
     byte[32] arbiterKey        // Mediator public key (zeroes = dispute paths unreachable)
 ) {
+    int constant MIN_OUT = 1000;
+
     // ── Path A: Mutual Release ──────────────────────────────────
     entrypoint function release(sig buyerSig, sig sellerSig) {
         require(checkSig(buyerSig, pubkey(buyerKey)));
@@ -39,6 +41,8 @@ contract DagLockArbiter(
         int feeAmount = inputValue / 200;
         int sendAmount = inputValue - feeAmount;
 
+        require(sendAmount >= MIN_OUT);
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
@@ -54,6 +58,8 @@ contract DagLockArbiter(
         int feeAmount = inputValue / 200;
         int sendAmount = inputValue - feeAmount;
 
+        require(sendAmount >= MIN_OUT);
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
@@ -71,6 +77,7 @@ contract DagLockArbiter(
         require(checkSig(buyerSig, pubkey(buyerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(inputValue >= MIN_OUT);
         require(tx.outputs[0].value == inputValue);
     }
 
@@ -87,6 +94,9 @@ contract DagLockArbiter(
         int sendAmount = inputValue - feeAmount - mediatorFee;
         require(sendAmount > 0);
 
+        require(sendAmount >= MIN_OUT);
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
+        require(mediatorFee >= MIN_OUT || mediatorFee == 0);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
@@ -110,6 +120,9 @@ contract DagLockArbiter(
         int sendAmount = inputValue - feeAmount - mediatorFee;
         require(sendAmount > 0);
 
+        require(sendAmount >= MIN_OUT);
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
+        require(mediatorFee >= MIN_OUT || mediatorFee == 0);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
@@ -121,7 +134,34 @@ contract DagLockArbiter(
         require(tx.outputs[2].scriptPubKey == byte[](mediatorScript));
     }
 
-    // ── Path F: Emergency Refund ────────────────────────────────
+    // ── Path F: Arbitrate Split ─────────────────────────────────
+    // Mediator rules a proportional split between buyer and seller.
+    // buyerShareBasis is in basis points (0-10000). Three outputs:
+    // [buyerAmount] [sellerAmount] [feeAmount → treasury].
+    // No mediator fee — the split IS the mediation result.
+    entrypoint function arbitrateSplit(sig arbiterSig, int buyerShareBasis) {
+        require(checkSig(arbiterSig, pubkey(arbiterKey)));
+        require(buyerShareBasis >= 0);
+        require(buyerShareBasis <= 10000);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int distributable = inputValue - feeAmount;
+        int buyerAmount = distributable * buyerShareBasis / 10000;
+        int sellerAmount = distributable * (10000 - buyerShareBasis) / 10000;
+
+        require(buyerAmount >= MIN_OUT);
+        require(sellerAmount >= MIN_OUT);
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
+        require(tx.outputs[0].value == buyerAmount);
+        require(tx.outputs[1].value == sellerAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(tx.outputs[2].value == feeAmount);
+        require(tx.outputs[2].scriptPubKey == byte[](treasuryScript));
+    }
+
+    // ── Path G: Emergency Refund ────────────────────────────────
     // Buyer can reclaim solo after timeout + 30 days.
     // No mediator signature needed. No fee.
     // This prevents funds from being stuck if the mediator disappears.
@@ -130,6 +170,7 @@ contract DagLockArbiter(
         require(checkSig(buyerSig, pubkey(buyerKey)));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(inputValue >= MIN_OUT);
         require(tx.outputs[0].value == inputValue);
     }
 }

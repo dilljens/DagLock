@@ -12,7 +12,12 @@ export type Route =
 	| "/vaults"
 	| "/reputation"
 	| "/jury"
-	| "/docs";
+	| "/docs"
+	| "/help"
+	| "/tokens"
+	| "/testnet"
+	| "/tokens/create"
+	| "/settings";
 
 interface RouterContextValue {
 	route: Route;
@@ -30,6 +35,11 @@ const VALID_ROUTES: readonly Route[] = [
 	"/jury",
 	"/swap",
 	"/docs",
+	"/help",
+	"/tokens",
+	"/testnet",
+	"/tokens/create",
+	"/settings",
 ];
 
 /** Read the current pathname and normalize to a valid Route */

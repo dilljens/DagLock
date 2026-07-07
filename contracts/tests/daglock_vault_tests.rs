@@ -49,9 +49,15 @@ fn vault_withdraw_succeeds_after_timeout() {
     let timeout: i64 = 1_600_000_000; // past timestamp
     let treasury = random_keypair();
 
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
+    let compiled = compile_daglock_vault(
+        &pubkey_bytes(&owner),
+        timeout,
+        &pubkey_bytes(&treasury),
+        &[0u8; 32],
+        0,
+    );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -124,9 +130,15 @@ fn vault_withdraw_fails_before_timeout() {
     let timeout: i64 = 3_000_000_000; // future timestamp
     let treasury = random_keypair();
 
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
+    let compiled = compile_daglock_vault(
+        &pubkey_bytes(&owner),
+        timeout,
+        &pubkey_bytes(&treasury),
+        &[0u8; 32],
+        0,
+    );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -196,9 +208,15 @@ fn vault_withdraw_fails_wrong_signature() {
     let timeout: i64 = 1_600_000_000;
     let treasury = random_keypair();
 
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
+    let compiled = compile_daglock_vault(
+        &pubkey_bytes(&owner),
+        timeout,
+        &pubkey_bytes(&treasury),
+        &[0u8; 32],
+        0,
+    );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -301,7 +319,7 @@ fn softlock_password_withdraw_succeeds_correct_password() {
         &pubkey_bytes(&treasury),
     );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -381,7 +399,7 @@ fn softlock_password_withdraw_fails_wrong_password() {
         &pubkey_bytes(&treasury),
     );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -450,7 +468,7 @@ fn softlock_timeout_withdraw_succeeds_after_timeout() {
         &pubkey_bytes(&treasury),
     );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -533,7 +551,7 @@ fn softlock_timeout_withdraw_fails_before_timeout() {
         &pubkey_bytes(&treasury),
     );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -598,9 +616,15 @@ fn vault_sweep_succeeds_after_timeout() {
     let timeout: i64 = 1_600_000_000;
     let treasury = random_keypair();
 
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
+    let compiled = compile_daglock_vault(
+        &pubkey_bytes(&owner),
+        timeout,
+        &pubkey_bytes(&treasury),
+        &[0u8; 32],
+        0,
+    );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -660,9 +684,15 @@ fn vault_sweep_fails_before_timeout() {
     let owner = random_keypair();
     let timeout: i64 = 3_000_000_000;
     let treasury = random_keypair();
-    let compiled = compile_daglock_vault(&pubkey_bytes(&owner), timeout, &pubkey_bytes(&treasury));
+    let compiled = compile_daglock_vault(
+        &pubkey_bytes(&owner),
+        timeout,
+        &pubkey_bytes(&treasury),
+        &[0u8; 32],
+        0,
+    );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -723,7 +753,7 @@ fn multisig_sweep_succeeds_with_single_key() {
         &pubkey_bytes(&treasury),
     );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
@@ -804,7 +834,7 @@ fn multisig_sweep_fails_with_wrong_key() {
         &pubkey_bytes(&treasury),
     );
 
-    let input_value: u64 = 500_000;
+    let input_value: u64 = 2_000_000;
     let fee_amount = input_value / 1000;
     let send_amount = input_value - fee_amount;
     let outputs = vec![
