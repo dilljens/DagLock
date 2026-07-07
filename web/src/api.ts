@@ -949,14 +949,12 @@ export const api = {
 			{ encrypted_chat_key: encryptedKey },
 			auth,
 		),
-	getEvidence: (caseId: string, auth?: AuthHeaders) =>
+	getEvidence: (caseId: string, auth: AuthHeaders) =>
 		loadAuthJson<{
 			evidence: EvidenceMessage[];
 			chat_pubkey_buyer: string | null;
 			chat_pubkey_seller: string | null;
-			revealed: boolean;
-			cleared: boolean;
-		}>(`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence`),
+		}>(`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence`, auth),
 	clearEvidence: (caseId: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string }>(
 			`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence/clear`,
