@@ -43,8 +43,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 		setNetworkWarning(null);
 		try {
 			await connect();
-			// Check for network mismatch — KasWare only supports testnet-10/11
-			if (state.network && state.network !== "testnet-10" && state.network !== "mainnet") {
+			// Check for network mismatch — KasWare only supports testnet-11
+			if (state.network && state.network !== "testnet-11" && state.network !== "mainnet") {
 				setNetworkWarning(state.network);
 			}
 		} catch {
@@ -111,7 +111,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 							}}
 						>
 							KasWare connected to <strong>{networkWarning}</strong>, but DagLock runs on{" "}
-							<strong>testnet-10</strong>. KasWare doesn't support testnet-10 yet.{" "}
+							<strong>testnet-11</strong>.{" "}
 							<button
 								type="button"
 								onClick={() => {

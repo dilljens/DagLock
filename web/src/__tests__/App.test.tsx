@@ -41,7 +41,7 @@ describe("App", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Browse Offers")).toBeInTheDocument();
 		});
-		expect(screen.getByText("Developer Docs")).toBeInTheDocument();
+		expect(screen.getByText("Atomic Swap")).toBeInTheDocument();
 	});
 
 	it("renders feature cards explaining DagLock", async () => {
@@ -50,6 +50,8 @@ describe("App", () => {
 			expect(screen.getByText("Time-Locked Vaults")).toBeInTheDocument();
 		});
 		expect(screen.getByText("Atomic Swaps")).toBeInTheDocument();
+		expect(screen.getByText("AI Mediation")).toBeInTheDocument();
+		expect(screen.getByText("E2E On-Chain Chat")).toBeInTheDocument();
 	});
 
 	it("renders How It Works section", async () => {
@@ -64,11 +66,12 @@ describe("App", () => {
 
 	it("renders footer with fee info", () => {
 		render(<App />);
-		expect(screen.getAllByText(/0.5% escrow fee/).length).toBeGreaterThanOrEqual(1);
+		const feeElements = screen.getAllByText(/0.5% escrow fee/);
+		expect(feeElements.length).toBeGreaterThanOrEqual(1);
 	});
 
 	it("renders sidebar Docs link", () => {
 		render(<App />);
-		expect(screen.getByText("Docs")).toBeInTheDocument();
+		expect(screen.getAllByText("Docs").length).toBeGreaterThanOrEqual(1);
 	});
 });

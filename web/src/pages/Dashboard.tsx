@@ -49,6 +49,9 @@ export function Dashboard({ stats }: DashboardProps) {
 							<strong>0.5% escrow fee</strong> (and <strong>0.1% vault fee</strong>) is enforced by
 							the covenant and paid to the DagLock treasury.
 						</p>
+						<p style={{ fontSize: "14px", opacity: 0.8, marginTop: "8px" }}>
+							✨ Milestone payments · Subscriptions · Multi-party escrow · AI mediation · E2E chat · Atomic swaps · Analytics
+						</p>
 						{wallet.detected ? (
 							<button
 								className="button primary"
@@ -74,31 +77,91 @@ export function Dashboard({ stats }: DashboardProps) {
 					{/* What is DagLock — feature cards */}
 					<h2 style={{ marginTop: "36px", marginBottom: "4px" }}>What is DagLock?</h2>
 					<p className="muted" style={{ marginTop: 0, marginBottom: "20px" }}>
-						Three ways to use Kaspa's covenant system without writing SilverScript yourself.
+						An escrow platform that physically can't steal — powered by Kaspa covenants.
 					</p>
-					<div className="feature-cards">
+					<div className="feature-cards" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
 						<div className="feature-card">
 							<div className="feature-card-icon">🤝</div>
 							<h3>Trustless Escrow</h3>
 							<p>
-								Lock KAS or KRC-20 tokens in a SilverScript covenant. Only the buyer or seller can
-								settle — neither can steal.
+								Lock KAS or KRC-20 tokens in a SilverScript covenant. Auto-release protects sellers. Split paths for fair dispute outcomes.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🏦</div>
 							<h3>Time-Locked Vaults</h3>
 							<p>
-								Self-custody storage with configurable timeouts. Standard, password-recoverable, or
-								multi-sig vaults. 0.1% fee on withdrawal.
+								Dual-key vaults with check-in, early exit, and inheritance. DAA-block enforced maturity. Password and multisig variants.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🔄</div>
 							<h3>Atomic Swaps</h3>
 							<p>
-								Cross-asset trades via hash preimage. Both parties commit funds, then reveal the
-								secret to settle.
+								Hash-preimage swaps with guided wizard. Generate secret, share link, counterparty claims. Full receipt on completion.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">📊</div>
+							<h3>Milestone Payments</h3>
+							<p>
+								Release funds in stages. Up to 5 milestones, time-based or buyer-approved. Perfect for freelance and service escrows.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">🔄</div>
+							<h3>Recurring Subscriptions</h3>
+							<p>
+								Pre-fund and draw periodically. Auto-draw service, cancel anytime. For memberships, SaaS, and recurring deals.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">👥</div>
+							<h3>Multi-Party Escrow</h3>
+							<p>
+								Up to 4 parties with customizable split ratios. Buyer, seller, broker, arbiter — all in one covenant.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">⚖️</div>
+							<h3>AI Mediation</h3>
+							<p>
+								Non-binding AI proposal before jury. OpenAI analyzes evidence, suggests fair split. Resolves most disputes in minutes.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">💬</div>
+							<h3>E2E On-Chain Chat</h3>
+							<p>
+								Encrypted messaging with Ed25519 keys. Message hashes anchored on Kaspa. Dispute reveal gives jury read-only access.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">🛡️</div>
+							<h3>Security Deposits</h3>
+							<p>
+								Both parties stake a bond. Jury can forfeit on bad behavior. Economic deterrent for anonymous trading.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">📋</div>
+							<h3>Escrow Widget</h3>
+							<p>
+								Add escrow payments to any site with a &lt;daglock-pay&gt; tag. Like Stripe for crypto — no redirect, no custody.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">🌐</div>
+							<h3>Telegram Bot</h3>
+							<p>
+								35+ commands to create, settle, dispute, and manage escrows. Meet Kaspa users where they are.
+							</p>
+						</div>
+						<div className="feature-card">
+							<div className="feature-card-icon">🔑</div>
+							<h3>AI Trading Bot API</h3>
+							<p>
+								Rate-limited API tiers for automated trading. Webhooks for escrow events. Free/Pro/Whale pricing.
 							</p>
 						</div>
 					</div>
@@ -165,15 +228,30 @@ export function Dashboard({ stats }: DashboardProps) {
 							<span className="action-card-label">Create Escrow</span>
 							<span className="action-card-desc">Lock funds in a trustless covenant</span>
 						</div>
+						<div className="action-card" onClick={() => navigate("/swap")}>
+							<span className="action-card-icon">🔄</span>
+							<span className="action-card-label">Atomic Swap</span>
+							<span className="action-card-desc">Guided 6-step swap wizard</span>
+						</div>
+						<div className="action-card" onClick={() => navigate("/merchant")}>
+							<span className="action-card-icon">📋</span>
+							<span className="action-card-label">Accept Payments</span>
+							<span className="action-card-desc">Embed escrow on your site</span>
+						</div>
+						<div className="action-card" onClick={() => navigate("/stats")}>
+							<span className="action-card-icon">📊</span>
+							<span className="action-card-label">Analytics</span>
+							<span className="action-card-desc">Volume, escrows, KAS price charts</span>
+						</div>
 						<div className="action-card" onClick={() => navigate("/docs")}>
 							<span className="action-card-icon">📖</span>
-							<span className="action-card-label">Developer Docs</span>
-							<span className="action-card-desc">API reference, CLI, bot, integrations</span>
+							<span className="action-card-label">Docs</span>
+							<span className="action-card-desc">API, CLI, bot, widget integration</span>
 						</div>
 						<div className="action-card" onClick={() => navigate("/security")}>
 							<span className="action-card-icon">🔒</span>
 							<span className="action-card-label">Try to Break It</span>
-							<span className="action-card-desc">See why DagLock's covenant stops every attack</span>
+							<span className="action-card-desc">See why the covenant stops every attack</span>
 						</div>
 					</div>
 
