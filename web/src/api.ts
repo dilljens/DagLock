@@ -264,6 +264,24 @@ export type EscrowMessage = {
 	chat_sig?: string;
 	seq?: number;
 	created_at: number;
+	anchor_tx_id?: string | null;
+	anchor_daa_score?: number | null;
+	anchor_batch_hash?: string | null;
+};
+
+export type AnchorBatch = {
+	batch_hash: string;
+	anchor_tx_id: string | null;
+	anchor_daa_score: number | null;
+	message_count: number;
+	from_time: number;
+	to_time: number;
+};
+
+export type AnchorSummary = {
+	escrow_id: string;
+	batch_count: number;
+	batches: AnchorBatch[];
 };
 
 export type SendMessageRequest = {
@@ -408,6 +426,19 @@ export type DisputeEvidence = {
 	content_hash: string;
 	signed_message?: string | null;
 	created_at: number;
+};
+
+export type EvidenceMessage = {
+	id: string;
+	sender_address: string;
+	decrypted_content: string;
+	created_at: number;
+	anchor_tx_id?: string | null;
+	anchor_daa_score?: number | null;
+};
+
+export type RevealChatKeyRequest = {
+	encrypted_chat_key: string;
 };
 
 // ── Vault Types ─────────────────────────────────────────────────
@@ -666,6 +697,8 @@ export const api = {
 			total: number;
 			escrow_id: string;
 		}>(`/v1/escrows/${encodeURIComponent(escrowId)}/messages`, auth),
+	getMessageAnchors: (escrowId: string, auth: AuthHeaders) =>
+		loadAuthJson<AnchorSummary>(`/v1/escrows/${encodeURIComponent(escrowId)}/messages/anchors`, auth),
 
 	// Identity
 	createIdentity: (
@@ -808,5 +841,23 @@ export const api = {
 	juryActiveCases: (address: string) =>
 		loadJson<{ count: number; cases: JuryCase[] }>(
 			`/v1/jury/cases/active/${encodeURIComponent(address)}`,
+		),
+
+	// Chat reveal / evidence
+	revealChatKey: (escrowId: string, encryptedKey: string, auth?: AuthHeaders) =>
+		postJson<{ status: string; evidence_count: number }>(
+			`/v1/escrows/${encodeURIComponent(escrowId)}/messages/reveal`,
+			{ encrypted_chat_key: encryptedKey },
+			auth,
+		),
+	getEvidence: (caseId: string, auth?: AuthHeaders) =>
+		loadAuthJson<{ evidence: EvidenceMessage[]; chat_pubkey_buyer: string | null; chat_pubkey_seller: string | null; revealed: boolean; cleared: boolean }>(
+			`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence`,
+			auth,
+		),
+	clearEvidence: (caseId: string, auth?: AuthHeaders) =>
+		postEmpty<{ status: string }>(
+			`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence/clear`,
+			auth,
 		),
 };

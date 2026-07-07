@@ -83,6 +83,21 @@ pub struct Args {
     /// Skip Ed25519 chat signature verification (dev mode only).
     #[arg(long, default_value_t = false)]
     pub mock_chat_sig: bool,
+
+    /// Interval between anchor batch flushes (seconds).
+    #[arg(long, default_value_t = 300)]
+    pub anchor_interval_seconds: u64,
+
+    /// Optional private key hex for broadcasting anchor txs.
+    /// If set, the service tries to construct and broadcast Kaspa self-pay
+    /// transactions carrying the anchor payload.  Without this flag, payloads
+    /// are logged for manual broadcast.
+    #[arg(long)]
+    pub anchor_wallet_key: Option<String>,
+
+    /// Hours after case resolution to auto-wipe revealed chat evidence.
+    #[arg(long, default_value_t = 24)]
+    pub evidence_auto_wipe_hours: u64,
 }
 
 impl Args {
@@ -183,6 +198,9 @@ mod tests {
             ai_mediator_api_key: None,
             ai_mediator_model: "gpt-4o".to_string(),
             mock_chat_sig: false,
+            anchor_interval_seconds: 300,
+            anchor_wallet_key: None,
+            evidence_auto_wipe_hours: 24,
         }
     }
 

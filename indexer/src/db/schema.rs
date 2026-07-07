@@ -111,6 +111,8 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_deposits_table(pool).await?;
     ensure_mediation_columns(pool).await?;
     ensure_chat_columns(pool).await?;
+    ensure_anchor_columns(pool).await?;
+    ensure_chat_reveal_columns(pool).await?;
 
     Ok(())
 }
@@ -641,6 +643,93 @@ pub async fn ensure_mediation_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::E
         sqlx::query("ALTER TABLE escrows ADD COLUMN mediation_seller_accepted INTEGER DEFAULT 0")
             .execute(pool)
             .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_anchor_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(escrow_messages)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+
+    if !existing.contains("anchor_tx_id") {
+        sqlx::query("ALTER TABLE escrow_messages ADD COLUMN anchor_tx_id TEXT")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("anchor_daa_score") {
+        sqlx::query("ALTER TABLE escrow_messages ADD COLUMN anchor_daa_score INTEGER")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("anchor_batch_hash") {
+        sqlx::query("ALTER TABLE escrow_messages ADD COLUMN anchor_batch_hash TEXT")
+            .execute(pool)
+            .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_chat_reveal_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let jc_rows = sqlx::query("PRAGMA table_info(jury_cases)")
+        .fetch_all(pool)
+        .await?;
+    let existing_jc = jc_rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+
+    if !existing_jc.contains("revealed_chat_key_enc") {
+        sqlx::query("ALTER TABLE jury_cases ADD COLUMN revealed_chat_key_enc TEXT")
+            .execute(pool)
+            .await?;
+    }
+    if !existing_jc.contains("revealed_at") {
+        sqlx::query("ALTER TABLE jury_cases ADD COLUMN revealed_at INTEGER")
+            .execute(pool)
+            .await?;
+    }
+    if !existing_jc.contains("evidence_cleared_at") {
+        sqlx::query("ALTER TABLE jury_cases ADD COLUMN evidence_cleared_at INTEGER")
+            .execute(pool)
+            .await?;
+    }
+
+    let me_rows = sqlx::query("PRAGMA table_info(mediation_evidence)")
+        .fetch_all(pool)
+        .await?;
+    let existing_me = me_rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+
+    if !existing_me.contains("id") {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS mediation_evidence (
+                id TEXT PRIMARY KEY,
+                case_id TEXT NOT NULL,
+                message_id TEXT,
+                sender_address TEXT NOT NULL,
+                decrypted_content TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                anchor_tx_id TEXT,
+                anchor_daa_score INTEGER
+            )"
+        )
+        .execute(pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_mediation_evidence_case_id ON mediation_evidence(case_id)"
+        )
+        .execute(pool)
+        .await?;
     }
 
     Ok(())

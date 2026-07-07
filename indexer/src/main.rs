@@ -131,6 +131,13 @@ async fn main() {
         }
     };
 
+    let anchor_service = Arc::new(crate::services::anchor::AnchorService::new(
+        pool.clone(),
+        args.wrpc_url.clone(),
+        args.anchor_wallet_key.clone(),
+    ));
+    let anchor_bg = anchor_service.clone();
+
     let state = AppState {
         db: pool,
         started_at: Instant::now(),
@@ -149,7 +156,26 @@ async fn main() {
         ai_mediator_api_key: args.ai_mediator_api_key.clone(),
         ai_mediator_model: Some(args.ai_mediator_model.clone()),
         mock_chat_sig: args.mock_chat_sig,
+        anchor_service,
     };
+
+    // Background task: flush anchor batches every N seconds
+    {
+        let anchor_service = anchor_bg;
+        let interval_secs = args.anchor_interval_seconds;
+        tokio::spawn(async move {
+            let mut interval =
+                tokio::time::interval(std::time::Duration::from_secs(interval_secs));
+            loop {
+                interval.tick().await;
+                anchor_service.flush_pending().await;
+            }
+        });
+        info!(
+            "Anchor flush task started (interval: {}s)",
+            interval_secs
+        );
+    }
 
     if let Some(wrpc_url) = state.wrpc_url.clone() {
         listener::spawn(
@@ -357,6 +383,36 @@ async fn main() {
                         }
                     }
                     Err(e) => warn!("Auto-escalate query failed: {}", e),
+                }
+            }
+        });
+    }
+
+    // Background task: auto-wipe revealed chat evidence after resolution
+    {
+        let db = state.db.clone();
+        let wipe_hours = args.evidence_auto_wipe_hours;
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
+            loop {
+                interval.tick().await;
+                match crate::db::queries::get_active_reveals(&db).await {
+                    Ok(reveals) => {
+                        let now = chrono::Utc::now().timestamp();
+                        for (case_id, revealed_at) in &reveals {
+                            let elapsed = now - revealed_at;
+                            if elapsed > (wipe_hours as i64) * 3600 {
+                                if let Err(e) =
+                                    crate::db::queries::clear_evidence(&db, case_id).await
+                                {
+                                    warn!("Failed to auto-wipe evidence for case {}: {}", case_id, e);
+                                } else {
+                                    info!("Auto-wiped evidence for case {} ({}h old)", case_id, wipe_hours);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => warn!("Failed to find active reveals for wipe: {e}"),
                 }
             }
         });

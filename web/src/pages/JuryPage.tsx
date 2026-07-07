@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { api, type AuthHeaders, type JuryCase, type JurorRegistration } from "../api";
+import { api, type AuthHeaders, type JuryCase, type JurorRegistration, type EvidenceMessage } from "../api";
 import { badge, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
@@ -245,6 +245,7 @@ function MyCases({ address }: { address: string }) {
 								{c.status === "voting" && (
 									<VotePanel case={c} address={address} onVoted={load} />
 								)}
+								<EvidenceSection caseId={c.id} escrowId={c.escrow_id} status={c.status} />
 							</>
 						)}
 					</article>
@@ -401,6 +402,150 @@ function CandidatesSection() {
 					</small>
 				</article>
 			))}
+		</div>
+	);
+}
+
+/* ─── Chat Evidence ─── */
+function EvidenceSection({ caseId, escrowId, status }: { caseId: string; escrowId: string; status: string }) {
+	const { sign } = useWallet();
+	const { notify } = useToast();
+	const address = useAddress();
+	const [evidence, setEvidence] = useState<LoadState<{
+		evidence: EvidenceMessage[];
+		chat_pubkey_buyer: string | null;
+		chat_pubkey_seller: string | null;
+	} | null>>({ loading: true });
+	const [showRevealModal, setShowRevealModal] = useState(false);
+	const [revealing, setRevealing] = useState(false);
+
+	const loadEvidence = useCallback(() => {
+		setEvidence({ loading: true });
+		(async () => {
+			try {
+				const auth: AuthHeaders = {
+					address: address!,
+					signature: await sign(`evidence:${caseId}`),
+					message: `evidence:${caseId}`,
+				};
+				const data = await api.getEvidence(caseId, auth);
+				setEvidence({ data, loading: false });
+			} catch {
+				setEvidence({ data: null, loading: false });
+			}
+		})();
+	}, [caseId, address, sign]);
+
+	useEffect(() => {
+		if (address) loadEvidence();
+		else setEvidence({ data: null, loading: false });
+	}, [address, loadEvidence]);
+
+	async function handleReveal() {
+		setRevealing(true);
+		try {
+			const auth: AuthHeaders = {
+				address: address!,
+				signature: await sign(`reveal:${escrowId}`),
+				message: `reveal:${escrowId}`,
+			};
+			const result = await api.revealChatKey(escrowId, "placeholder_chat_key", auth);
+			notify("success", `Chat revealed! ${result.evidence_count} messages decrypted.`);
+			setShowRevealModal(false);
+			loadEvidence();
+		} catch (e) {
+			notify("error", "Reveal failed", (e as Error).message);
+		} finally {
+			setRevealing(false);
+		}
+	}
+
+	return (
+		<div className="panel" style={{ marginTop: "12px" }}>
+			<h4 style={{ margin: "0 0 12px" }}>Chat Evidence</h4>
+			{evidence.loading && <p className="muted">Loading evidence status...</p>}
+			{evidence.error && <p className="muted">Could not load evidence</p>}
+			{!evidence.loading && !evidence.error && evidence.data === null && status === "decided" && (
+				<p className="muted">Evidence cleared</p>
+			)}
+			{!evidence.loading && evidence.data && !evidence.data.revealed && status !== "decided" && (
+				<>
+					<p className="muted">No party has revealed the chat yet.</p>
+					<button
+						className="button secondary"
+						style={{ marginTop: "8px" }}
+						onClick={() => setShowRevealModal(true)}
+					>
+						Reveal my chat key
+					</button>
+				</>
+			)}
+			{!evidence.loading && evidence.data && evidence.data.revealed && !evidence.data.cleared && (
+				<>
+					<p className="muted" style={{ marginBottom: "8px" }}>
+						Chat revealed — {evidence.data.evidence.length} messages
+					</p>
+					{evidence.data.chat_pubkey_buyer && (
+						<p className="muted" style={{ fontSize: "12px" }}>
+							Buyer pubkey: <code>{evidence.data.chat_pubkey_buyer.slice(0, 16)}...</code>
+						</p>
+					)}
+					{evidence.data.chat_pubkey_seller && (
+						<p className="muted" style={{ fontSize: "12px" }}>
+							Seller pubkey: <code>{evidence.data.chat_pubkey_seller.slice(0, 16)}...</code>
+						</p>
+					)}
+					<div style={{ maxHeight: "300px", overflowY: "auto", marginTop: "8px" }}>
+						{evidence.data.evidence.map((m) => (
+							<div key={m.id} style={{ padding: "8px", borderBottom: "1px solid var(--color-border)", fontSize: "13px" }}>
+								<div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+									<code style={{ fontSize: "11px" }}>{m.sender_address.slice(0, 16)}...</code>
+									<span className="muted" style={{ fontSize: "11px" }}>
+										{new Date(m.created_at * 1000).toLocaleString()}
+									</span>
+								</div>
+								<div>{m.decrypted_content}</div>
+								{m.anchor_tx_id && (
+									<a
+										href={`https://kas.fyi/transaction/${m.anchor_tx_id}`}
+										target="_blank"
+										rel="noopener noreferrer"
+										style={{ fontSize: "11px" }}
+									>
+										Anchored
+									</a>
+								)}
+							</div>
+						))}
+					</div>
+				</>
+			)}
+			{!evidence.loading && evidence.data && evidence.data.cleared && (
+				<p className="muted">Evidence has been cleared after case resolution.</p>
+			)}
+
+			{showRevealModal && (
+				<div className="modal-overlay" onClick={() => setShowRevealModal(false)}>
+					<div className="modal" onClick={(e) => e.stopPropagation()}>
+						<h3 style={{ margin: "0 0 12px" }}>Reveal chat to jury?</h3>
+						<p style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginBottom: "16px" }}>
+							This gives the jury read-only access to ALL your messages on this escrow.
+							The jury will be able to read the decrypted message thread.
+						</p>
+						<p style={{ fontSize: "13px", color: "#cc6666", marginBottom: "16px" }}>
+							This action cannot be undone.
+						</p>
+						<div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+							<button className="button secondary" onClick={() => setShowRevealModal(false)}>
+								Cancel
+							</button>
+							<button className="button primary" onClick={handleReveal} disabled={revealing}>
+								{revealing ? "Revealing..." : "Confirm Reveal"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

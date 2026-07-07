@@ -134,6 +134,8 @@ bot.api.setMyCommands([
 	{ command: "mediate_accept", description: "Accept AI mediation outcome" },
 	{ command: "mediate_status", description: "Check AI mediation status" },
 	{ command: "fee", description: "Calculate escrow fee for an amount" },
+	{ command: "reveal", description: "Reveal chat key to jury (via web)" },
+	{ command: "evidence", description: "Check chat evidence status for a jury case" },
 	{ command: "block", description: "Block a user (via web)" },
 	{ command: "feedback", description: "Leave trade feedback (via web)" },
 	{ command: "create_milestone", description: "Create a milestone escrow" },
@@ -778,6 +780,64 @@ bot.command("messages", async (ctx) => {
 		await ctx.reply(msg, { parse_mode: "Markdown" });
 	} catch (err) {
 		await ctx.reply("❌ Could not fetch messages: " + err.message);
+	}
+});
+
+// ── Chat reveal command ──────────────────────────────────────────────
+
+bot.command("reveal", async (ctx) => {
+	const escrowId = ctx.match?.trim();
+	if (!escrowId) return await ctx.reply("Usage: /reveal <escrow-id>");
+
+	await ctx.reply(
+		"🔑 *Reveal Chat to Jury*\n\n" +
+			`Escrow: \`${escrowId}\`\n\n` +
+			"To reveal your chat key to the jury, please use the web dashboard:\n\n" +
+			`🔗 https://daglock.com/escrows/${encodeURIComponent(escrowId)}\n\n` +
+			"_The bot cannot access your chat key. The web dashboard will guide you through signing with your wallet._",
+		{ parse_mode: "Markdown" },
+	);
+});
+
+// ── Chat evidence status command ─────────────────────────────────
+
+bot.command("chat_evidence", async (ctx) => {
+	const caseId = ctx.match?.trim();
+	if (!caseId) return await ctx.reply("Usage: /chat_evidence <jury-case-id>");
+
+	try {
+		const data = await api.request(`/jury/cases/${encodeURIComponent(caseId)}/evidence`);
+		if (data.cleared) {
+			return await ctx.reply(
+				`📋 *Chat Evidence — \`${caseId.slice(0, 16)}…*\n\n` +
+					"Status: ✅ *Cleared*\n\n" +
+					"_Evidence was wiped after case resolution._",
+				{ parse_mode: "Markdown" },
+			);
+		}
+		if (data.revealed) {
+			return await ctx.reply(
+				`📋 *Chat Evidence — \`${caseId.slice(0, 16)}…*\n\n` +
+					`Status: 🔓 *Revealed*\n` +
+					`Messages: ${data.evidence?.length || 0} decrypted\n\n` +
+					"_View the decrypted messages on the web dashboard._",
+				{ parse_mode: "Markdown" },
+			);
+		}
+		await ctx.reply(
+			`📋 *Chat Evidence — \`${caseId.slice(0, 16)}…*\n\n` +
+				"Status: 🔒 *Not yet revealed*\n\n" +
+				"_Neither party has revealed their chat key yet._",
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		try {
+			const errBody = JSON.parse(err.message);
+			if (errBody?.error?.code === "not_found") {
+				return await ctx.reply("❌ Jury case not found.");
+			}
+		} catch {}
+		await ctx.reply("❌ Could not fetch evidence status: " + err.message);
 	}
 });
 

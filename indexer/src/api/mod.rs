@@ -18,6 +18,7 @@ pub mod multi_escrows;
 pub mod network;
 pub mod notifications;
 pub mod offers;
+pub mod reveal;
 pub mod receipts;
 pub mod reports;
 pub mod reputation;
@@ -70,6 +71,8 @@ pub struct AppState {
     pub ai_mediator_model: Option<String>,
     /// Skip Ed25519 chat signature verification (dev mode).
     pub mock_chat_sig: bool,
+    /// On-chain hash anchoring service.
+    pub anchor_service: std::sync::Arc<crate::services::anchor::AnchorService>,
 }
 
 /// Build the Axum router with all API routes.
@@ -122,6 +125,14 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             "/v1/escrows/:id/messages",
             post(messages::send).get(messages::list),
         )
+        .route(
+            "/v1/escrows/:id/messages/anchors",
+            get(messages::anchors),
+        )
+        .route(
+            "/v1/escrows/:id/messages/reveal",
+            post(reveal::reveal),
+        )
         .route("/v1/openapi.json", get(openapi_spec))
         .route("/v1/subscriptions", get(subscriptions::list).post(subscriptions::create))
         .route("/v1/subscriptions/:id", get(subscriptions::get_by_id))
@@ -157,6 +168,8 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/jury/cases/active/:address", get(jury::active_cases))
         .route("/v1/jury/cases/:id", get(jury::get_case))
         .route("/v1/jury/cases/:id/vote", post(jury::cast_vote))
+        .route("/v1/jury/cases/:id/evidence", get(reveal::evidence))
+        .route("/v1/jury/cases/:id/evidence/clear", post(reveal::clear_evidence))
         .route("/v1/jury/candidates", get(jury::list_candidates))
         // Blocklist & reports
         .route("/v1/blocks", get(blocks::list).post(blocks::create))

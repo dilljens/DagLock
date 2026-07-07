@@ -44,6 +44,51 @@ pub async fn list_messages_raw(
         .collect())
 }
 
+pub async fn list_messages_with_anchors(
+    pool: &Pool<Sqlite>,
+    escrow_id: &str,
+) -> Result<Vec<AnchoredMessage>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, sender_address, content_enc, nonce, created_at, anchor_tx_id, anchor_daa_score, anchor_batch_hash
+         FROM escrow_messages WHERE escrow_id = ?1 ORDER BY created_at ASC"
+    )
+    .bind(escrow_id)
+    .fetch_all(pool).await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            AnchoredMessage {
+                id: r.try_get::<String, _>("id").unwrap_or_default(),
+                sender_address: r.try_get::<String, _>("sender_address").unwrap_or_default(),
+                content_enc: r.try_get::<String, _>("content_enc").unwrap_or_default(),
+                nonce: r.try_get::<String, _>("nonce").unwrap_or_default(),
+                created_at: r.try_get::<i64, _>("created_at").unwrap_or(0),
+                anchor_tx_id: r.try_get("anchor_tx_id").ok().flatten(),
+                anchor_daa_score: r.try_get("anchor_daa_score").ok().flatten(),
+                anchor_batch_hash: r.try_get("anchor_batch_hash").ok().flatten(),
+            }
+        })
+        .collect())
+}
+
+pub async fn update_message_anchor(
+    pool: &Pool<Sqlite>,
+    msg_id: &str,
+    anchor_tx_id: Option<&str>,
+    anchor_daa_score: Option<i64>,
+    anchor_batch_hash: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE escrow_messages SET anchor_tx_id = ?1, anchor_daa_score = ?2, anchor_batch_hash = ?3 WHERE id = ?4"
+    )
+    .bind(anchor_tx_id)
+    .bind(anchor_daa_score)
+    .bind(anchor_batch_hash)
+    .bind(msg_id)
+    .execute(pool).await?;
+    Ok(())
+}
+
 #[allow(dead_code)]
 pub async fn count_messages(pool: &Pool<Sqlite>, escrow_id: &str) -> Result<i64, sqlx::Error> {
     let (count,): (i64,) =
@@ -52,6 +97,45 @@ pub async fn count_messages(pool: &Pool<Sqlite>, escrow_id: &str) -> Result<i64,
             .fetch_one(pool)
             .await?;
     Ok(count)
+}
+
+pub async fn count_unanchored_messages(pool: &Pool<Sqlite>, escrow_id: &str) -> Result<i64, sqlx::Error> {
+    let (count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM escrow_messages WHERE escrow_id = ?1 AND anchor_batch_hash IS NULL")
+            .bind(escrow_id)
+            .fetch_one(pool)
+            .await?;
+    Ok(count)
+}
+
+pub async fn get_anchor_summary(
+    pool: &Pool<Sqlite>,
+    escrow_id: &str,
+) -> Result<Vec<AnchorBatch>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT anchor_batch_hash, anchor_tx_id, anchor_daa_score,
+                COUNT(*) as message_count,
+                MIN(created_at) as from_time, MAX(created_at) as to_time
+         FROM escrow_messages
+         WHERE escrow_id = ?1 AND anchor_batch_hash IS NOT NULL
+         GROUP BY anchor_batch_hash
+         ORDER BY MIN(created_at) ASC"
+    )
+    .bind(escrow_id)
+    .fetch_all(pool).await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            AnchorBatch {
+                batch_hash: r.try_get::<String, _>("anchor_batch_hash").unwrap_or_default(),
+                anchor_tx_id: r.try_get("anchor_tx_id").ok().flatten(),
+                anchor_daa_score: r.try_get("anchor_daa_score").ok().flatten(),
+                message_count: r.try_get::<i64, _>("message_count").unwrap_or(0),
+                from_time: r.try_get::<i64, _>("from_time").unwrap_or(0),
+                to_time: r.try_get::<i64, _>("to_time").unwrap_or(0),
+            }
+        })
+        .collect())
 }
 
 /// Get the chat pubkey for a party in an escrow.
@@ -71,7 +155,6 @@ pub async fn get_chat_pubkey(
         Some(r) => {
             let buyer_pubkey: Option<String> = r.try_get("chat_pubkey_buyer").ok().flatten();
             let seller_pubkey: Option<String> = r.try_get("chat_pubkey_seller").ok().flatten();
-            // Check if address is buyer or seller and return the matching pubkey
             let buyer_addr: String = r.try_get("buyer_address").unwrap_or_default();
             let seller_addr: Option<String> = r.try_get("seller_address").ok().flatten();
             if address == buyer_addr {

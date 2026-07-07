@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import nacl from "tweetnacl";
 import { api, type AuthHeaders, type Escrow, type EscrowMessage } from "../api";
 import { useWallet } from "../context/WalletContext";
-import { loadOrCreateKeypair, saveKeypair } from "../crypto/chat-store";
+import { loadKeypair, saveKeypair } from "../crypto/chat-store";
 import { encodeBase64, decodeBase64 } from "tweetnacl-util";
 import {
   deriveSharedSecret,
@@ -9,6 +10,7 @@ import {
   decryptMessage,
   signChatMessage,
   verifyChatMessage,
+  generateChatKeypair,
   type ChatKeypair,
 } from "../crypto/chat-crypto";
 import { useToast } from "../layout/Toast";
@@ -31,9 +33,11 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
   const [sharedSecret, setSharedSecret] = useState<Uint8Array | null>(null);
   const [myPubkeySubmitted, setMyPubkeySubmitted] = useState(false);
   const [pubkeySubmitting, setPubkeySubmitting] = useState(false);
-  const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
+	const [verifying, setVerifying] = useState(false);
+	const [verifyResult, setVerifyResult] = useState<string | null>(null);
+	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isBuyer = address === escrow.buyer_address;
   const counterpartyPubkey = isBuyer
@@ -45,8 +49,8 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
 
   useEffect(() => {
     if (!address) return;
-    const kp = loadOrCreateKeypair(escrow.id);
-    setKeypair(kp);
+    const kp = loadKeypair(escrow.id);
+    if (kp) setKeypair(kp);
   }, [escrow.id, address]);
 
   const submitPubkey = useCallback(async () => {
@@ -152,7 +156,87 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function handleSend(e: React.FormEvent) {
+	async function verifyIntegrity() {
+		if (verifying) return;
+		setVerifying(true);
+		setVerifyResult(null);
+		try {
+			const batchMap = new Map<string, { msgs: EscrowMessage[] }>();
+			for (const m of messages) {
+				if (m.anchor_batch_hash) {
+					if (!batchMap.has(m.anchor_batch_hash)) {
+						batchMap.set(m.anchor_batch_hash, { msgs: [] });
+					}
+					batchMap.get(m.anchor_batch_hash)!.msgs.push(m);
+				}
+			}
+			let allValid = true;
+			let verified = 0;
+			for (const [batchHash, batch] of batchMap) {
+				const encoder = new TextEncoder();
+				const hashPromises = batch.msgs.map(async (m) => {
+					const data = encoder.encode(m.content_enc || "");
+					const hashBuf = await crypto.subtle.digest("SHA-256", data);
+					return new Uint8Array(hashBuf);
+				});
+				const msgHashes = await Promise.all(hashPromises);
+				const combined = new Uint8Array(msgHashes.reduce((acc, h) => acc + h.length, 0));
+				let offset = 0;
+				for (const h of msgHashes) {
+					combined.set(h, offset);
+					offset += h.length;
+				}
+				const rootBuf = await crypto.subtle.digest("SHA-256", combined);
+				const rootHex = Array.from(new Uint8Array(rootBuf))
+					.map((b) => b.toString(16).padStart(2, "0"))
+					.join("");
+				if (rootHex !== batchHash) {
+					allValid = false;
+				} else {
+					verified++;
+				}
+			}
+			if (allValid && verified > 0) {
+				setVerifyResult(`✅ All ${verified} batch(es) verified`);
+			} else if (verified === 0) {
+				setVerifyResult("ℹ️ No anchored messages to verify");
+			} else {
+				setVerifyResult("❌ Some batches failed integrity check");
+			}
+		} catch (e) {
+			setVerifyResult("❌ Verification error: " + (e as Error).message);
+		} finally {
+			setVerifying(false);
+		}
+	}
+
+  function handleRestore() {
+    const b64 = prompt("Paste your Chat Private Key (from your recovery sheet):");
+    if (!b64) return;
+    try {
+      const seed = decodeBase64(b64);
+      if (seed.length !== 32) {
+        notify("error", "Invalid key — expected 32 bytes");
+        return;
+      }
+      const edKp = nacl.sign.keyPair.fromSeed(seed);
+      const kp: ChatKeypair = { pubkey: edKp.publicKey, secret: seed };
+      saveKeypair(escrow.id, kp);
+      setKeypair(kp);
+      notify("success", "Chat keys restored!");
+    } catch {
+      notify("error", "Invalid key format — check your recovery sheet");
+    }
+  }
+
+  function handleGenerate() {
+    const kp = generateChatKeypair();
+    saveKeypair(escrow.id, kp);
+    setKeypair(kp);
+    notify("success", "New chat keys generated");
+  }
+
+	async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || !address || !wallet.connected || !keypair) return;
 
@@ -210,37 +294,87 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
         borderBottom: "1px solid #333",
         padding: "8px 12px",
       }}>
-        <strong style={{ fontSize: "14px" }}>
-          💬 Encrypted Chat
-        </strong>
-        {!myPubkeySubmitted && (
-          <span style={{ fontSize: "11px", color: "#ff9800" }}>
-            ⏳ Submitting chat key…
-          </span>
-        )}
-        {myPubkeySubmitted && !canChat && (
-          <span style={{ fontSize: "11px", color: "#ff9800" }}>
-            ⏳ Waiting for counterparty's chat key…
-          </span>
-        )}
-        {canChat && (
-          <span style={{ fontSize: "11px", color: "#4caf50" }}>
-            ✓ E2E encrypted
-          </span>
-        )}
+			<strong style={{ fontSize: "14px" }}>
+				💬 Encrypted Chat
+			</strong>
+			<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+				{!myPubkeySubmitted && (
+					<span style={{ fontSize: "11px", color: "#ff9800" }}>
+						⏳ Submitting chat key…
+					</span>
+				)}
+				{myPubkeySubmitted && !canChat && (
+					<span style={{ fontSize: "11px", color: "#ff9800" }}>
+						⏳ Waiting for counterparty's chat key…
+					</span>
+				)}
+				{canChat && (
+					<span style={{ fontSize: "11px", color: "#4caf50" }}>
+						✓ E2E encrypted
+					</span>
+				)}
+				{messages.length > 0 && (
+					<button
+						onClick={verifyIntegrity}
+						disabled={verifying}
+						title="Verify on-chain anchor integrity"
+						style={{
+							fontSize: "10px",
+							padding: "2px 6px",
+							background: "transparent",
+							border: "1px solid #555",
+							color: "#aaa",
+							borderRadius: "4px",
+							cursor: "pointer",
+						}}
+					>
+						{verifying ? "…" : "🔗 Verify"}
+					</button>
+				)}
+			</div>
       </div>
 
-      <div
-        style={{
-          maxHeight: "300px",
-          overflowY: "auto",
-          padding: "8px 12px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "6px",
-        }}
-      >
-        {loading && <p className="muted" style={{ textAlign: "center", fontSize: "12px" }}>Loading messages…</p>}
+		{!keypair ? (
+			<div style={{ padding: "24px", textAlign: "center" }}>
+				<p style={{ marginBottom: "12px", fontSize: "14px", color: "#ff9800" }}>
+					🔑 Chat keys not found
+				</p>
+				<p style={{ fontSize: "12px", marginBottom: "16px", color: "#aaa" }}>
+					Restore from your recovery sheet or generate a new keypair.
+				</p>
+				<div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+					<button className="button primary" onClick={handleRestore}>
+						Restore chat keys
+					</button>
+					<button className="button" onClick={handleGenerate}>
+						Generate new
+					</button>
+				</div>
+			</div>
+		) : (
+			<>
+		{verifyResult && (
+			<div style={{
+				fontSize: "11px",
+				padding: "4px 12px",
+				background: verifyResult.startsWith("✅") ? "#1a3a2a" : "#3a2a1a",
+				color: verifyResult.startsWith("✅") ? "#4caf50" : "#ff9800",
+				borderBottom: "1px solid #333",
+			}}>
+				{verifyResult}
+			</div>
+		)}
+		<div
+			style={{
+				maxHeight: "300px",
+				overflowY: "auto",
+				padding: "8px 12px",
+				display: "flex",
+				flexDirection: "column",
+				gap: "6px",
+			}}
+		>
+			{loading && <p className="muted" style={{ textAlign: "center", fontSize: "12px" }}>Loading messages…</p>}
         {!loading && messages.length === 0 && (
           <p className="muted" style={{ textAlign: "center", fontSize: "12px", padding: "16px 0" }}>
             No messages yet. Send the first encrypted message!
@@ -265,14 +399,24 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
               }}
             >
               <div style={{ color: "#ddd" }}>{displayText}</div>
-              <div style={{
-                fontSize: "10px",
-                color: "#666",
-                marginTop: "2px",
-                textAlign: "right",
-              }}>
-                {new Date(m.created_at * 1000).toLocaleTimeString()}
-              </div>
+				<div style={{
+					fontSize: "10px",
+					color: "#666",
+					marginTop: "2px",
+					textAlign: "right",
+				}}>
+					{new Date(m.created_at * 1000).toLocaleTimeString()}
+				</div>
+				{m.anchor_batch_hash && (
+					<div style={{
+						fontSize: "9px",
+						color: "#4caf50",
+						marginTop: "1px",
+						textAlign: "right",
+					}}>
+						🔗 {m.anchor_daa_score ? `DAA ${m.anchor_daa_score}` : "anchored"}
+					</div>
+				)}
             </div>
           );
         })}
@@ -304,6 +448,8 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
           {sending ? "…" : "Send"}
         </button>
       </form>
+			</>
+		)}
     </div>
   );
 }

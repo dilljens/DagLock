@@ -174,6 +174,9 @@ pub async fn get_jury_case(
         escalation_level: row.try_get("escalation_level").unwrap_or(0),
         escalation_deadline: row.try_get("escalation_deadline").unwrap_or(None),
         mediation_log: row.try_get("mediation_log").unwrap_or(None),
+        revealed_chat_key_enc: row.try_get("revealed_chat_key_enc").ok().flatten(),
+        revealed_at: row.try_get("revealed_at").ok().flatten(),
+        evidence_cleared_at: row.try_get("evidence_cleared_at").ok().flatten(),
     }))
 }
 
@@ -217,6 +220,9 @@ pub async fn get_jury_case_by_escrow(
         escalation_level: row.try_get("escalation_level").unwrap_or(0),
         escalation_deadline: row.try_get("escalation_deadline").unwrap_or(None),
         mediation_log: row.try_get("mediation_log").unwrap_or(None),
+        revealed_chat_key_enc: row.try_get("revealed_chat_key_enc").ok().flatten(),
+        revealed_at: row.try_get("revealed_at").ok().flatten(),
+        evidence_cleared_at: row.try_get("evidence_cleared_at").ok().flatten(),
     }))
 }
 
@@ -341,6 +347,9 @@ pub async fn list_active_jury_cases_for_juror(
             escalation_level: row.try_get("escalation_level").unwrap_or(0),
             escalation_deadline: row.try_get("escalation_deadline").unwrap_or(None),
             mediation_log: row.try_get("mediation_log").unwrap_or(None),
+            revealed_chat_key_enc: row.try_get("revealed_chat_key_enc").ok().flatten(),
+            revealed_at: row.try_get("revealed_at").ok().flatten(),
+            evidence_cleared_at: row.try_get("evidence_cleared_at").ok().flatten(),
         });
     }
     Ok(cases)

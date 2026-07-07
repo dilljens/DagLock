@@ -392,6 +392,9 @@ pub struct JuryCase {
     pub escalation_level: i64,
     pub escalation_deadline: Option<i64>,
     pub mediation_log: Option<String>,
+    pub revealed_chat_key_enc: Option<String>,
+    pub revealed_at: Option<i64>,
+    pub evidence_cleared_at: Option<i64>,
 }
 
 /// Cast vote request.
@@ -455,6 +458,23 @@ pub struct MediatorStats {
 }
 
 /// Escrow message record.
+/// Request to reveal chat key to jury.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RevealChatKeyRequest {
+    pub encrypted_chat_key: String,
+}
+
+/// Decrypted message evidence for jury.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvidenceMessage {
+    pub id: String,
+    pub sender_address: Address,
+    pub decrypted_content: String,
+    pub created_at: i64,
+    pub anchor_tx_id: Option<String>,
+    pub anchor_daa_score: Option<i64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowMessage {
     pub id: String,
@@ -478,6 +498,38 @@ pub struct SendMessageRequest {
 }
 
 /// Message list response.
+
+/// Anchored message with on-chain proof.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnchoredMessage {
+    pub id: String,
+    pub sender_address: Address,
+    pub content_enc: String,
+    pub nonce: String,
+    pub created_at: i64,
+    pub anchor_tx_id: Option<String>,
+    pub anchor_daa_score: Option<i64>,
+    pub anchor_batch_hash: Option<String>,
+}
+
+/// Anchor batch summary for an escrow.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnchorBatch {
+    pub batch_hash: String,
+    pub anchor_tx_id: Option<String>,
+    pub anchor_daa_score: Option<i64>,
+    pub message_count: i64,
+    pub from_time: i64,
+    pub to_time: i64,
+}
+
+/// Anchor summary response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnchorSummary {
+    pub escrow_id: String,
+    pub batch_count: i64,
+    pub batches: Vec<AnchorBatch>,
+}
 
 /// Typed error codes for structured API responses.
 #[derive(Debug, Clone, Copy)]

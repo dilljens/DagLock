@@ -3,6 +3,7 @@
 pub mod apps;
 pub mod auth;
 pub mod blocks;
+pub mod chat_evidence;
 pub mod counteroffers;
 pub mod deposits;
 pub mod escrows;
@@ -27,6 +28,7 @@ pub mod vouches;
 pub use apps::*;
 pub use auth::*;
 pub use blocks::*;
+pub use chat_evidence::*;
 pub use counteroffers::*;
 pub use deposits::*;
 pub use escrows::*;

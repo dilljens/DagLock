@@ -16,6 +16,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { generateChatKeypair, type ChatKeypair } from "../crypto/chat-crypto";
 import { encodeBase64 } from "tweetnacl-util";
 import { saveKeypair } from "../crypto/chat-store";
+import { downloadRecoverySheet } from "../crypto/recovery-sheet";
 
 type Tab = "my-escrows" | "create" | "lookup" | "receipt" | "invoice" | "milestones" | "create-milestone" | "multi" | "create-multi";
 
@@ -489,11 +490,44 @@ function CreateEscrow({ address }: { address: string }) {
 
 	if (status === "done" && result) {
 		return (
-			<EmptyState
-				icon="✅"
-				title="Escrow created!"
-				description={`ID: ${result.id} | Status: ${result.status}`}
-			/>
+			<div>
+				<EmptyState
+					icon="✅"
+					title="Escrow created!"
+					description={`ID: ${result.id} | Status: ${result.status}`}
+				/>
+				{chatKeypair && (
+					<div
+						style={{
+							marginTop: "16px",
+							padding: "16px",
+							background: "#1a2a1a",
+							borderRadius: "8px",
+							textAlign: "center",
+						}}
+					>
+						<p style={{ marginBottom: "8px", fontSize: "14px", color: "#4caf50" }}>
+							📥 Download your chat recovery sheet
+						</p>
+						<p style={{ fontSize: "12px", color: "#aaa", marginBottom: "12px" }}>
+							Keep this file safe. You'll need it to restore encrypted chat on another device.
+						</p>
+						<button
+							className="button primary"
+							onClick={() =>
+								downloadRecoverySheet({
+									escrowId: result.id,
+									chatPubkey: encodeBase64(chatKeypair.pubkey),
+									chatSecret: encodeBase64(chatKeypair.secret),
+									createdAt: new Date().toISOString(),
+								})
+							}
+						>
+							Download Recovery Sheet
+						</button>
+					</div>
+				)}
+			</div>
 		);
 	}
 
