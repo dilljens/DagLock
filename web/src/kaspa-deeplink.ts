@@ -15,11 +15,7 @@
  * Generate a kaspa: URI for sending KAS.
  * Example: kaspa:qabc...xyz?amount=1000
  */
-export function kaspaSendUri(
-	address: string,
-	amountSompi: number,
-	memo?: string,
-): string {
+export function kaspaSendUri(address: string, amountSompi: number, memo?: string): string {
 	const kasAmount = (amountSompi / 100_000_000).toFixed(8);
 	let uri = `kaspa:${address}?amount=${kasAmount}`;
 	if (memo) uri += `&memo=${encodeURIComponent(memo)}`;
@@ -53,10 +49,7 @@ export function openDeepLink(uri: string): void {
 /**
  * Generate a deep link to open a specific escrow in KasWare/Kaspium.
  */
-export function escrowDeepLink(
-	escrowId: string,
-	action: "settle" | "refund" | "dispute",
-): string {
+export function escrowDeepLink(escrowId: string, action: "settle" | "refund" | "dispute"): string {
 	const baseUrl = import.meta.env.VITE_APP_URL || "https://daglock.com";
 	return `${baseUrl}/escrows?id=${escrowId}&action=${action}`;
 }

@@ -116,10 +116,11 @@ export function StatsPage() {
 		);
 	}
 
-	const sompiToKas = (v: number) => (v / 100_000_000).toLocaleString(undefined, {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	});
+	const sompiToKas = (v: number) =>
+		(v / 100_000_000).toLocaleString(undefined, {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2,
+		});
 
 	return (
 		<div>

@@ -50,7 +50,8 @@ export function Dashboard({ stats }: DashboardProps) {
 							the covenant and paid to the DagLock treasury.
 						</p>
 						<p style={{ fontSize: "14px", opacity: 0.8, marginTop: "8px" }}>
-							✨ Milestone payments · Subscriptions · Multi-party escrow · AI mediation · E2E chat · Atomic swaps · Analytics
+							✨ Milestone payments · Subscriptions · Multi-party escrow · AI mediation · E2E chat ·
+							Atomic swaps · Analytics
 						</p>
 						{wallet.detected ? (
 							<button
@@ -79,89 +80,104 @@ export function Dashboard({ stats }: DashboardProps) {
 					<p className="muted" style={{ marginTop: 0, marginBottom: "20px" }}>
 						An escrow platform that physically can't steal — powered by Kaspa covenants.
 					</p>
-					<div className="feature-cards" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
+					<div
+						className="feature-cards"
+						style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}
+					>
 						<div className="feature-card">
 							<div className="feature-card-icon">🤝</div>
 							<h3>Trustless Escrow</h3>
 							<p>
-								Lock KAS or KRC-20 tokens in a SilverScript covenant. Auto-release protects sellers. Split paths for fair dispute outcomes.
+								Lock KAS or KRC-20 tokens in a SilverScript covenant. Auto-release protects sellers.
+								Split paths for fair dispute outcomes.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🏦</div>
 							<h3>Time-Locked Vaults</h3>
 							<p>
-								Dual-key vaults with check-in, early exit, and inheritance. DAA-block enforced maturity. Password and multisig variants.
+								Dual-key vaults with check-in, early exit, and inheritance. DAA-block enforced
+								maturity. Password and multisig variants.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🔄</div>
 							<h3>Atomic Swaps</h3>
 							<p>
-								Hash-preimage swaps with guided wizard. Generate secret, share link, counterparty claims. Full receipt on completion.
+								Hash-preimage swaps with guided wizard. Generate secret, share link, counterparty
+								claims. Full receipt on completion.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">📊</div>
 							<h3>Milestone Payments</h3>
 							<p>
-								Release funds in stages. Up to 5 milestones, time-based or buyer-approved. Perfect for freelance and service escrows.
+								Release funds in stages. Up to 5 milestones, time-based or buyer-approved. Perfect
+								for freelance and service escrows.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🔄</div>
 							<h3>Recurring Subscriptions</h3>
 							<p>
-								Pre-fund and draw periodically. Auto-draw service, cancel anytime. For memberships, SaaS, and recurring deals.
+								Pre-fund and draw periodically. Auto-draw service, cancel anytime. For memberships,
+								SaaS, and recurring deals.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">👥</div>
 							<h3>Multi-Party Escrow</h3>
 							<p>
-								Up to 4 parties with customizable split ratios. Buyer, seller, broker, arbiter — all in one covenant.
+								Up to 4 parties with customizable split ratios. Buyer, seller, broker, arbiter — all
+								in one covenant.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">⚖️</div>
 							<h3>AI Mediation</h3>
 							<p>
-								Non-binding AI proposal before jury. OpenAI analyzes evidence, suggests fair split. Resolves most disputes in minutes.
+								Non-binding AI proposal before jury. OpenAI analyzes evidence, suggests fair split.
+								Resolves most disputes in minutes.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">💬</div>
 							<h3>E2E On-Chain Chat</h3>
 							<p>
-								Encrypted messaging with Ed25519 keys. Message hashes anchored on Kaspa. Dispute reveal gives jury read-only access.
+								Encrypted messaging with Ed25519 keys. Message hashes anchored on Kaspa. Dispute
+								reveal gives jury read-only access.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🛡️</div>
 							<h3>Security Deposits</h3>
 							<p>
-								Both parties stake a bond. Jury can forfeit on bad behavior. Economic deterrent for anonymous trading.
+								Both parties stake a bond. Jury can forfeit on bad behavior. Economic deterrent for
+								anonymous trading.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">📋</div>
 							<h3>Escrow Widget</h3>
 							<p>
-								Add escrow payments to any site with a &lt;daglock-pay&gt; tag. Like Stripe for crypto — no redirect, no custody.
+								Add escrow payments to any site with a &lt;daglock-pay&gt; tag. Like Stripe for
+								crypto — no redirect, no custody.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🌐</div>
 							<h3>Telegram Bot</h3>
 							<p>
-								35+ commands to create, settle, dispute, and manage escrows. Meet Kaspa users where they are.
+								35+ commands to create, settle, dispute, and manage escrows. Meet Kaspa users where
+								they are.
 							</p>
 						</div>
 						<div className="feature-card">
 							<div className="feature-card-icon">🔑</div>
 							<h3>AI Trading Bot API</h3>
 							<p>
-								Rate-limited API tiers for automated trading. Webhooks for escrow events. Free/Pro/Whale pricing.
+								Rate-limited API tiers for automated trading. Webhooks for escrow events.
+								Free/Pro/Whale pricing.
 							</p>
 						</div>
 					</div>
@@ -308,59 +324,59 @@ export function Dashboard({ stats }: DashboardProps) {
 
 						{/* Quick actions */}
 						<h3 style={{ margin: "0 0 12px" }}>Quick Actions</h3>
-				<div className="action-grid">
-					<div className="action-card" onClick={() => navigate("/offers")}>
-						<span className="action-card-icon" />
-						<span className="action-card-label">Create Offer</span>
-						<span className="action-card-desc">List a trade for others to accept</span>
-					</div>
-					<div className="action-card" onClick={() => navigate("/escrows")}>
-						<span className="action-card-icon" />
-						<span className="action-card-label">Create Escrow</span>
-						<span className="action-card-desc">Lock funds in a trustless covenant</span>
-					</div>
-					<div className="action-card" onClick={() => navigate("/vaults")}>
-						<span className="action-card-icon" />
-						<span className="action-card-label">Create Vault</span>
-						<span className="action-card-desc">Time-locked self-custody storage</span>
-					</div>
-				</div>
-
-				{/* My active escrows */}
-				<h3 style={{ margin: "24px 0 12px" }}>Active Escrows</h3>
-				{escrows.loading && <SkeletonTable rows={4} />}
-				{activeEscrows.length === 0 && !escrows.loading && (
-					<EmptyState
-						icon="🤝"
-						title="No active escrows"
-						description="Create your first escrow to start trading trustlessly."
-						action={{ label: "Create Escrow", onClick: () => navigate("/escrows") }}
-					/>
-				)}
-				{activeEscrows.slice(0, 5).map((e) => (
-					<article
-						key={e.id}
-						className="offer"
-						style={{ cursor: "pointer", marginBottom: "8px" }}
-						onClick={() => navigate("/escrows")}
-					>
-						<div className="offer-top">
-							<strong>{money(e.amount_sompi)}</strong>
-							<span className="pill">{e.status}</span>
+						<div className="action-grid">
+							<div className="action-card" onClick={() => navigate("/offers")}>
+								<span className="action-card-icon" />
+								<span className="action-card-label">Create Offer</span>
+								<span className="action-card-desc">List a trade for others to accept</span>
+							</div>
+							<div className="action-card" onClick={() => navigate("/escrows")}>
+								<span className="action-card-icon" />
+								<span className="action-card-label">Create Escrow</span>
+								<span className="action-card-desc">Lock funds in a trustless covenant</span>
+							</div>
+							<div className="action-card" onClick={() => navigate("/vaults")}>
+								<span className="action-card-icon" />
+								<span className="action-card-label">Create Vault</span>
+								<span className="action-card-desc">Time-locked self-custody storage</span>
+							</div>
 						</div>
-						<p>
-							{e.asset_type} · {e.buyer_address.slice(0, 16)}…
-						</p>
-						<code>{e.id}</code>
-					</article>
-				))}
-				{settledCount > 0 && !escrows.loading && (
-					<EmptyState
-						icon="📊"
-						title={`${settledCount} settled escrows`}
-						description="Tap to close the dashboard empty state."
-					/>
-				)}
+
+						{/* My active escrows */}
+						<h3 style={{ margin: "24px 0 12px" }}>Active Escrows</h3>
+						{escrows.loading && <SkeletonTable rows={4} />}
+						{activeEscrows.length === 0 && !escrows.loading && (
+							<EmptyState
+								icon="🤝"
+								title="No active escrows"
+								description="Create your first escrow to start trading trustlessly."
+								action={{ label: "Create Escrow", onClick: () => navigate("/escrows") }}
+							/>
+						)}
+						{activeEscrows.slice(0, 5).map((e) => (
+							<article
+								key={e.id}
+								className="offer"
+								style={{ cursor: "pointer", marginBottom: "8px" }}
+								onClick={() => navigate("/escrows")}
+							>
+								<div className="offer-top">
+									<strong>{money(e.amount_sompi)}</strong>
+									<span className="pill">{e.status}</span>
+								</div>
+								<p>
+									{e.asset_type} · {e.buyer_address.slice(0, 16)}…
+								</p>
+								<code>{e.id}</code>
+							</article>
+						))}
+						{settledCount > 0 && !escrows.loading && (
+							<EmptyState
+								icon="📊"
+								title={`${settledCount} settled escrows`}
+								description="Tap to close the dashboard empty state."
+							/>
+						)}
 					</div>
 					<div className="dashboard-column-side">
 						<FeeCalculator />

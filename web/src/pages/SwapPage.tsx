@@ -19,7 +19,11 @@ function SwapCountdown({ expiresAt }: { expiresAt: number }) {
 	const h = Math.floor((diff % 86400000) / 3600000);
 	const m = Math.floor((diff % 3600000) / 60000);
 	const s = Math.floor((diff % 60000) / 1000);
-	return <span>{d}d {h}h {m}m {s}s</span>;
+	return (
+		<span>
+			{d}d {h}h {m}m {s}s
+		</span>
+	);
 }
 
 export function SwapPage() {
@@ -143,14 +147,11 @@ function ClaimSwap() {
 		);
 	}
 
-	const escrowLink = escrowId
-		? `${window.location.origin}/swap/${escrowId}`
-		: "";
+	const escrowLink = escrowId ? `${window.location.origin}/swap/${escrowId}` : "";
 
 	const isBuyer = !!(address && escrow?.buyer_address === address);
 	const isSeller = !!(address && escrow?.seller_address === address);
-	const canClaim =
-		!isBuyer && (isSeller || !escrow?.seller_address);
+	const canClaim = !isBuyer && (isSeller || !escrow?.seller_address);
 	const isNeither =
 		!!escrow && !!escrow.buyer_address && !!escrow.seller_address && !isBuyer && !isSeller;
 
@@ -231,11 +232,7 @@ function ClaimSwap() {
 
 					<FormField label="Deep Link">
 						<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-							<input
-								value={escrowLink}
-								readOnly
-								style={{ flex: 1, fontSize: "12px" }}
-							/>
+							<input value={escrowLink} readOnly style={{ flex: 1, fontSize: "12px" }} />
 							<button className="button" onClick={copyLink}>
 								Copy
 							</button>
@@ -249,9 +246,7 @@ function ClaimSwap() {
 								alt="QR Code for swap link"
 								style={{ borderRadius: "8px", border: "1px solid #333" }}
 							/>
-							<p style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}>
-								Scan to claim
-							</p>
+							<p style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}>Scan to claim</p>
 						</div>
 					)}
 				</div>
@@ -376,12 +371,12 @@ function HowItWorks() {
 						anyone with it can settle the escrow.
 					</li>
 					<li>
-						<strong>Save the secret before navigating away</strong>. It's generated client-side
-						and never stored on the server.
+						<strong>Save the secret before navigating away</strong>. It's generated client-side and
+						never stored on the server.
 					</li>
 					<li>
-						<strong>If the timeout expires</strong> without the swap being claimed, the buyer
-						can refund the funds.
+						<strong>If the timeout expires</strong> without the swap being claimed, the buyer can
+						refund the funds.
 					</li>
 				</ul>
 			</div>

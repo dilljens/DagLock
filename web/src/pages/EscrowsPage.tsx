@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { api, type AuthHeaders, type Escrow, type MilestoneEscrow, type MultiEscrow, type Deposit } from "../api";
+import {
+	api,
+	type AuthHeaders,
+	type Escrow,
+	type MilestoneEscrow,
+	type MultiEscrow,
+	type Deposit,
+} from "../api";
 import { useRouter } from "../router";
 import { money, badge, time, moneyCompact } from "../helpers";
 import type { LoadState } from "../helpers";
@@ -19,7 +26,17 @@ import { saveKeypair } from "../crypto/chat-store";
 import { downloadRecoverySheet } from "../crypto/recovery-sheet";
 import { useQuery } from "@tanstack/react-query";
 
-type Tab = "my-escrows" | "my-swaps" | "create" | "lookup" | "receipt" | "invoice" | "milestones" | "create-milestone" | "multi" | "create-multi";
+type Tab =
+	| "my-escrows"
+	| "my-swaps"
+	| "create"
+	| "lookup"
+	| "receipt"
+	| "invoice"
+	| "milestones"
+	| "create-milestone"
+	| "multi"
+	| "create-multi";
 
 const DEAL_PRESETS = {
 	goods: {
@@ -266,7 +283,14 @@ function MyEscrows({ address }: { address: string }) {
 
 	return (
 		<div>
-			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "space-between",
+					alignItems: "center",
+					marginBottom: "8px",
+				}}
+			>
 				<div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
 					<span style={{ fontSize: "12px", color: "#888" }}>Filter:</span>
 					{["all", "goods", "otc", "service", "custom"].map((f) => (
@@ -289,49 +313,51 @@ function MyEscrows({ address }: { address: string }) {
 					⬇ Export CSV
 				</a>
 			</div>
-			{escrows.data.filter((e) => {
-				if (dealTypeFilter === "all") return true;
-				const dt = dealTypeFromTimeout(e);
-				if (dealTypeFilter === "custom") return dt?.key === "custom" || dt === null;
-				return dt?.key === dealTypeFilter;
-			}).map((e) => (
-				<article
-					key={e.id}
-					className="offer"
-					style={{ cursor: "pointer", marginBottom: "8px" }}
-					onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}
-				>
-					<div className="offer-top">
-						<strong>{money(e.amount_sompi)}</strong>
-						{usdPrice && (
-							<span style={{ fontSize: "12px", color: "#888" }}>
-								({formatUsd(e.amount_sompi, usdPrice)})
-							</span>
-						)}
-						<DealTypeBadge escrow={e} />
-						<span className={badge(e.status)}>{e.status}</span>
-					</div>
-					<p>
-						{e.asset_type} · {e.buyer_address.slice(0, 16)}…
-					</p>
-					<code>{e.id}</code>
-					{e.price_at_creation && (
-						<div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
-							~${e.price_at_creation.toFixed(2)} USD at creation
+			{escrows.data
+				.filter((e) => {
+					if (dealTypeFilter === "all") return true;
+					const dt = dealTypeFromTimeout(e);
+					if (dealTypeFilter === "custom") return dt?.key === "custom" || dt === null;
+					return dt?.key === dealTypeFilter;
+				})
+				.map((e) => (
+					<article
+						key={e.id}
+						className="offer"
+						style={{ cursor: "pointer", marginBottom: "8px" }}
+						onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}
+					>
+						<div className="offer-top">
+							<strong>{money(e.amount_sompi)}</strong>
+							{usdPrice && (
+								<span style={{ fontSize: "12px", color: "#888" }}>
+									({formatUsd(e.amount_sompi, usdPrice)})
+								</span>
+							)}
+							<DealTypeBadge escrow={e} />
+							<span className={badge(e.status)}>{e.status}</span>
 						</div>
-					)}
-					<div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
-						<ExplorerTxLink txid={e.lock_tx_id} label="View TX" />
-						<ExplorerAddressLink address={e.buyer_address} label="Buyer" />
-					</div>
-					{selectedId === e.id && (
-						<>
-							<EscrowActions escrow={e} onMutated={fetchEscrows} />
-							{address && <ChatPanel escrow={e} onMutated={fetchEscrows} />}
-						</>
-					)}
-				</article>
-			))}
+						<p>
+							{e.asset_type} · {e.buyer_address.slice(0, 16)}…
+						</p>
+						<code>{e.id}</code>
+						{e.price_at_creation && (
+							<div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
+								~${e.price_at_creation.toFixed(2)} USD at creation
+							</div>
+						)}
+						<div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+							<ExplorerTxLink txid={e.lock_tx_id} label="View TX" />
+							<ExplorerAddressLink address={e.buyer_address} label="Buyer" />
+						</div>
+						{selectedId === e.id && (
+							<>
+								<EscrowActions escrow={e} onMutated={fetchEscrows} />
+								{address && <ChatPanel escrow={e} onMutated={fetchEscrows} />}
+							</>
+						)}
+					</article>
+				))}
 		</div>
 	);
 }
@@ -362,7 +388,11 @@ function MySwaps({ address }: { address: string }) {
 
 	function swapStatus(escrow: Escrow): string {
 		if (escrow.status === "settled") return "Complete (settled)";
-		if (escrow.status === "refunded" || escrow.status === "expired" || escrow.status === "cancelled")
+		if (
+			escrow.status === "refunded" ||
+			escrow.status === "expired" ||
+			escrow.status === "cancelled"
+		)
 			return "Refunded / Expired";
 		if (escrow.status === "active" || escrow.status === "pending_confirmation")
 			return "Waiting for counterparty";
@@ -452,7 +482,8 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 
 	// Fetch deposit for this escrow
 	useEffect(() => {
-		api.getDeposit(escrow.id)
+		api
+			.getDeposit(escrow.id)
 			.then((d) => setDeposit(d))
 			.catch(() => setDeposit(null));
 	}, [escrow.id]);
@@ -465,7 +496,10 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 		if (!escrow.auto_settle_timeout || escrow.status !== "active") return;
 		function tick() {
 			const diff = escrow.auto_settle_timeout! - Math.floor(Date.now() / 1000);
-			if (diff <= 0) { setCountdown("ready"); return; }
+			if (diff <= 0) {
+				setCountdown("ready");
+				return;
+			}
 			const d = Math.floor(diff / 86400);
 			const h = Math.floor((diff % 86400) / 3600);
 			const m = Math.floor((diff % 3600) / 60);
@@ -535,11 +569,14 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 			)}
 
 			{/* Auto-settle countdown + button */}
-			{escrow.auto_settle_timeout && escrow.status === "active" && countdown && countdown !== "ready" && (
-				<p className="muted" style={{ fontSize: "13px", marginBottom: "8px" }}>
-					⏳ Auto-settles in {countdown}
-				</p>
-			)}
+			{escrow.auto_settle_timeout &&
+				escrow.status === "active" &&
+				countdown &&
+				countdown !== "ready" && (
+					<p className="muted" style={{ fontSize: "13px", marginBottom: "8px" }}>
+						⏳ Auto-settles in {countdown}
+					</p>
+				)}
 			{escrow.auto_settle_timeout && escrow.status === "active" && countdown === "ready" && (
 				<button
 					className="button primary"
@@ -604,7 +641,7 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 }
 
 /* ─── Create Escrow (using wallet address) ─── */
-	function CreateEscrow({ address }: { address: string }) {
+function CreateEscrow({ address }: { address: string }) {
 	const [amount, setAmount] = useState("");
 	const [sellerAddress, setSellerAddress] = useState("");
 	const [disputeMode, setDisputeMode] = useState("standard");
@@ -702,7 +739,9 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 				dispute_mode: disputeMode,
 				...(tradeHash.trim() ? { trade_hash: tradeHash.trim() } : {}),
 				...(memo.trim() ? { memo: memo.trim() } : {}),
-				...(autoSettle ? { auto_settle_timeout: Math.floor(Date.now() / 1000) + autoSettleDuration } : {}),
+				...(autoSettle
+					? { auto_settle_timeout: Math.floor(Date.now() / 1000) + autoSettleDuration }
+					: {}),
 				...(chatKeypair ? { chat_pubkey: encodeBase64(chatKeypair.pubkey) } : {}),
 			});
 			if (chatKeypair) saveKeypair(escrow.id, chatKeypair);
@@ -783,10 +822,17 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 							type="button"
 							className={`button ${selectedPreset === key ? "primary" : ""}`}
 							onClick={() => handlePresetSelect(key)}
-							style={{ fontSize: "12px", padding: "6px 10px", textAlign: "center", lineHeight: 1.3 }}
+							style={{
+								fontSize: "12px",
+								padding: "6px 10px",
+								textAlign: "center",
+								lineHeight: 1.3,
+							}}
 						>
 							<div>{preset.label}</div>
-							<div style={{ fontSize: "10px", fontWeight: 400, opacity: 0.7 }}>{preset.description}</div>
+							<div style={{ fontSize: "10px", fontWeight: 400, opacity: 0.7 }}>
+								{preset.description}
+							</div>
 						</button>
 					))}
 				</div>
@@ -839,7 +885,10 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 			</FormField>
 			{autoSettle && (
 				<FormField label="Timeout duration">
-					<select value={autoSettleDuration} onChange={(e) => setAutoSettleDuration(Number(e.target.value))}>
+					<select
+						value={autoSettleDuration}
+						onChange={(e) => setAutoSettleDuration(Number(e.target.value))}
+					>
 						<option value={3600}>1 hour</option>
 						<option value={7200}>2 hours</option>
 						<option value={14400}>4 hours</option>
@@ -855,7 +904,12 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 					<input
 						type="checkbox"
 						checked={false}
-						onChange={() => notify("info", "Security deposit requires both parties to stake 1% bond. Coming soon.")}
+						onChange={() =>
+							notify(
+								"info",
+								"Security deposit requires both parties to stake 1% bond. Coming soon.",
+							)
+						}
 					/>
 					Add security deposit (recommended)
 				</label>
@@ -1033,7 +1087,8 @@ function MilestoneActions({
 	}
 
 	const idx = escrow.current_milestone;
-	const currentPending = idx < escrow.milestone_statuses.length && escrow.milestone_statuses[idx] === "pending";
+	const currentPending =
+		idx < escrow.milestone_statuses.length && escrow.milestone_statuses[idx] === "pending";
 
 	return (
 		<div className="offer-actions" style={{ marginTop: "12px" }}>
@@ -1390,7 +1445,9 @@ function MyMultiEscrows({ address }: { address: string }) {
 						<strong>{money(m.total_amount)}</strong>
 						<span className={badge(m.status)}>{m.status}</span>
 					</div>
-					<p>{m.parties.length} parties · {m.signatures.length}/{m.parties.length} signed</p>
+					<p>
+						{m.parties.length} parties · {m.signatures.length}/{m.parties.length} signed
+					</p>
 					<code>{m.id}</code>
 					{selectedId === m.id && <MultiEscrowActions escrow={m} onMutated={fetch} />}
 				</article>
@@ -1466,13 +1523,27 @@ function MultiEscrowActions({ escrow, onMutated }: { escrow: MultiEscrow; onMuta
 				})}
 			</div>
 			{!hasSigned && myIndex !== -1 && (
-				<button className="button primary" disabled={!!loading} onClick={doSign} style={{ marginRight: "8px" }}>
+				<button
+					className="button primary"
+					disabled={!!loading}
+					onClick={doSign}
+					style={{ marginRight: "8px" }}
+				>
 					{loading === "sign" ? "Signing…" : "Sign Release"}
 				</button>
 			)}
-			{hasSigned && !allSigned && <p className="muted" style={{ fontSize: "12px" }}>Waiting for other parties…</p>}
+			{hasSigned && !allSigned && (
+				<p className="muted" style={{ fontSize: "12px" }}>
+					Waiting for other parties…
+				</p>
+			)}
 			{allSigned && (
-				<button className="button primary" disabled={!!loading} onClick={doSwap} style={{ marginRight: "8px" }}>
+				<button
+					className="button primary"
+					disabled={!!loading}
+					onClick={doSwap}
+					style={{ marginRight: "8px" }}
+				>
 					{loading === "swap" ? "Settling…" : "Execute Swap"}
 				</button>
 			)}
@@ -1565,10 +1636,20 @@ function CreateMultiForm({ address }: { address: string }) {
 				You: <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 			</div>
 			<FormField label="Total amount (KAS)">
-				<input type="number" step="any" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="10000" required />
+				<input
+					type="number"
+					step="any"
+					value={totalAmount}
+					onChange={(e) => setTotalAmount(e.target.value)}
+					placeholder="10000"
+					required
+				/>
 			</FormField>
 			{parties.map((party, i) => (
-				<div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "flex-end" }}>
+				<div
+					key={i}
+					style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "flex-end" }}
+				>
 					<div style={{ flex: 1 }}>
 						<FormField label={`Party ${i + 1} address`}>
 							<input
@@ -1600,21 +1681,42 @@ function CreateMultiForm({ address }: { address: string }) {
 						</FormField>
 					</div>
 					{parties.length > 2 && (
-						<button type="button" className="button" onClick={() => removeParty(i)} style={{ padding: "4px 8px", fontSize: "12px", marginBottom: "8px" }}>
+						<button
+							type="button"
+							className="button"
+							onClick={() => removeParty(i)}
+							style={{ padding: "4px 8px", fontSize: "12px", marginBottom: "8px" }}
+						>
 							✕
 						</button>
 					)}
 				</div>
 			))}
-			<div style={{ fontSize: "12px", color: totalPct > 100 ? "#f44336" : totalPct === 100 ? "#4caf50" : "#888", marginBottom: "8px" }}>
+			<div
+				style={{
+					fontSize: "12px",
+					color: totalPct > 100 ? "#f44336" : totalPct === 100 ? "#4caf50" : "#888",
+					marginBottom: "8px",
+				}}
+			>
 				Total: {totalPct.toFixed(2)}% {totalPct === 100 ? "(✓)" : totalPct > 100 ? "(over)" : ""}
 			</div>
 			{parties.length < 4 && (
-				<button type="button" className="button" onClick={addParty} style={{ marginBottom: "12px" }}>
+				<button
+					type="button"
+					className="button"
+					onClick={addParty}
+					style={{ marginBottom: "12px" }}
+				>
 					+ Add Party
 				</button>
 			)}
-			<button className="button primary" type="submit" disabled={status === "loading"} style={{ marginTop: "12px" }}>
+			<button
+				className="button primary"
+				type="submit"
+				disabled={status === "loading"}
+				style={{ marginTop: "12px" }}
+			>
 				{status === "loading" ? "Creating…" : "Create Multi-Party Escrow"}
 			</button>
 		</form>

@@ -26,7 +26,9 @@ const ReputationPage = lazy(() =>
 const JuryPage = lazy(() => import("./pages/JuryPage").then((m) => ({ default: m.JuryPage })));
 const SwapPage = lazy(() => import("./pages/SwapPage").then((m) => ({ default: m.SwapPage })));
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
-const MerchantPage = lazy(() => import("./pages/MerchantPage").then((m) => ({ default: m.MerchantPage })));
+const MerchantPage = lazy(() =>
+	import("./pages/MerchantPage").then((m) => ({ default: m.MerchantPage })),
+);
 const HelpPage = lazy(() => import("./pages/HelpPage").then((m) => ({ default: m.HelpPage })));
 const SecurityPage = lazy(() =>
 	import("./pages/SecurityPage").then((m) => ({ default: m.SecurityPage })),
@@ -37,11 +39,19 @@ const PayInvoicePage = lazy(() =>
 const TokenDetailPage = lazy(() =>
 	import("./pages/TokenDetailPage").then((m) => ({ default: m.TokenDetailPage })),
 );
-const TokensPage = lazy(() => import("./pages/TokensPage").then((m) => ({ default: m.TokensPage })));
-const CreateTokenPage = lazy(() => import("./pages/CreateTokenPage").then((m) => ({ default: m.CreateTokenPage })));
+const TokensPage = lazy(() =>
+	import("./pages/TokensPage").then((m) => ({ default: m.TokensPage })),
+);
+const CreateTokenPage = lazy(() =>
+	import("./pages/CreateTokenPage").then((m) => ({ default: m.CreateTokenPage })),
+);
 const StatsPage = lazy(() => import("./pages/StatsPage").then((m) => ({ default: m.StatsPage })));
-const TestnetPage = lazy(() => import("./pages/TestnetPage").then((m) => ({ default: m.TestnetPage })));
-const SettingsPage = lazy(() => import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const TestnetPage = lazy(() =>
+	import("./pages/TestnetPage").then((m) => ({ default: m.TestnetPage })),
+);
+const SettingsPage = lazy(() =>
+	import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
 import { OnboardingModal } from "./components/OnboardingModal";
 import { FeeCalculator } from "./components/FeeCalculator";
 
@@ -84,7 +94,6 @@ function AppInner() {
 	useWebSocket();
 
 	// Close sidebar on route change
-	// biome-ignore lint/correctness/useExhaustiveDependencies: route used intentionally to close sidebar on navigation
 	useEffect(() => setSidebarOpen(false), [route]);
 
 	const pageContent = (
@@ -99,55 +108,58 @@ function AppInner() {
 			>
 				<ErrorBoundary key={route}>
 					{(() => {
-					// Dynamic routes: /pay/:id and /swap/:id
-					if (window.location.pathname.startsWith("/pay/")) {
-						return <PayInvoicePage />;
-					}
-					if (window.location.pathname.startsWith("/swap/")) {
-						return <SwapPage />;
-					}
-					if (window.location.pathname.startsWith("/tokens/") && !window.location.pathname.startsWith("/tokens/create")) {
-						return <TokenDetailPage ticker={window.location.pathname.replace("/tokens/", "")} />;
-					}
-					switch (route) {
-						case "/":
-							return <Dashboard stats={stats} />;
-						case "/offers":
-							return <OffersPage />;
-						case "/escrows":
-							return <EscrowsPage />;
-						case "/vaults":
-							return <VaultsPage />;
-						case "/reputation":
-							return <ReputationPage />;
-						case "/jury":
-							return <JuryPage />;
-						case "/swap":
+						// Dynamic routes: /pay/:id and /swap/:id
+						if (window.location.pathname.startsWith("/pay/")) {
+							return <PayInvoicePage />;
+						}
+						if (window.location.pathname.startsWith("/swap/")) {
 							return <SwapPage />;
-						case "/docs":
-							return <DocsPage />;
-						case "/merchant":
-							return <MerchantPage />;
-						case "/help":
-							return <HelpPage />;
-						case "/security":
-							return <SecurityPage />;
-						case "/tokens":
-							return <TokensPage />;
-						case "/tokens/create":
-							return <CreateTokenPage />;
-						case "/stats":
-							return <StatsPage />;
-						case "/testnet":
-							return <TestnetPage />;
-						case "/settings":
-							return <SettingsPage />;
-						default:
-							return <Dashboard stats={stats} />;
-					}
-				})()}
-			</ErrorBoundary>
-		</Suspense>
+						}
+						if (
+							window.location.pathname.startsWith("/tokens/") &&
+							!window.location.pathname.startsWith("/tokens/create")
+						) {
+							return <TokenDetailPage ticker={window.location.pathname.replace("/tokens/", "")} />;
+						}
+						switch (route) {
+							case "/":
+								return <Dashboard stats={stats} />;
+							case "/offers":
+								return <OffersPage />;
+							case "/escrows":
+								return <EscrowsPage />;
+							case "/vaults":
+								return <VaultsPage />;
+							case "/reputation":
+								return <ReputationPage />;
+							case "/jury":
+								return <JuryPage />;
+							case "/swap":
+								return <SwapPage />;
+							case "/docs":
+								return <DocsPage />;
+							case "/merchant":
+								return <MerchantPage />;
+							case "/help":
+								return <HelpPage />;
+							case "/security":
+								return <SecurityPage />;
+							case "/tokens":
+								return <TokensPage />;
+							case "/tokens/create":
+								return <CreateTokenPage />;
+							case "/stats":
+								return <StatsPage />;
+							case "/testnet":
+								return <TestnetPage />;
+							case "/settings":
+								return <SettingsPage />;
+							default:
+								return <Dashboard stats={stats} />;
+						}
+					})()}
+				</ErrorBoundary>
+			</Suspense>
 		</>
 	);
 

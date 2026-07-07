@@ -109,11 +109,7 @@ export function CreateInvoiceForm() {
 				/>
 			</FormField>
 			<FormField label="Due date (optional)">
-				<input
-					type="date"
-					value={dueDate}
-					onChange={(e) => setDueDate(e.target.value)}
-				/>
+				<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
 			</FormField>
 			<button className="button primary" type="submit" disabled={status === "loading"}>
 				{status === "loading" ? "Creating…" : "Create Invoice"}

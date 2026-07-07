@@ -148,7 +148,15 @@ function BrowseOffers() {
 						onClick={() => setDealTypeFilter(f)}
 						style={{ fontSize: "11px", padding: "2px 8px" }}
 					>
-						{f === "all" ? "All" : f === "goods" ? "🛒 Goods" : f === "otc" ? "🤝 OTC" : f === "service" ? "🛠️ Service" : "⚙️ Custom"}
+						{f === "all"
+							? "All"
+							: f === "goods"
+								? "🛒 Goods"
+								: f === "otc"
+									? "🤝 OTC"
+									: f === "service"
+										? "🛠️ Service"
+										: "⚙️ Custom"}
 					</button>
 				))}
 			</div>
@@ -160,8 +168,10 @@ function BrowseOffers() {
 					.filter((o) => o.status === "proposed")
 					.filter((o) => {
 						if (dealTypeFilter === "all") return true;
-						if (dealTypeFilter === "otc") return o.base_asset === "KAS" && o.quote_asset.startsWith("KRC20");
-						if (dealTypeFilter === "goods" || dealTypeFilter === "service") return o.base_asset === "KAS" && o.quote_asset === "KAS";
+						if (dealTypeFilter === "otc")
+							return o.base_asset === "KAS" && o.quote_asset.startsWith("KRC20");
+						if (dealTypeFilter === "goods" || dealTypeFilter === "service")
+							return o.base_asset === "KAS" && o.quote_asset === "KAS";
 						return false;
 					})
 					.map((o) => (
@@ -212,7 +222,10 @@ function OfferCard({
 	const { notify } = useToast();
 
 	useEffect(() => {
-		api.listCounters(offer.id).then((d) => setCounterCount(d.total)).catch(() => {});
+		api
+			.listCounters(offer.id)
+			.then((d) => setCounterCount(d.total))
+			.catch(() => {});
 	}, [offer.id]);
 
 	async function handleAccept() {
@@ -344,7 +357,11 @@ function OfferCard({
 
 							{/* Counter-offer form */}
 							{showCounter && (
-								<form className="form form-stacked" onSubmit={handleCounter} style={{ marginTop: "8px" }}>
+								<form
+									className="form form-stacked"
+									onSubmit={handleCounter}
+									style={{ marginTop: "8px" }}
+								>
 									<div className="form-field">
 										<label style={{ fontSize: "12px" }}>Counter amount (KAS)</label>
 										<input

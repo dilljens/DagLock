@@ -41,10 +41,18 @@ function SwapCountdown({ expiresAt }: { expiresAt: number }) {
 	const h = Math.floor((diff % 86400000) / 3600000);
 	const m = Math.floor((diff % 3600000) / 60000);
 	const s = Math.floor((diff % 60000) / 1000);
-	return <span>{d}d {h}h {m}m {s}s</span>;
+	return (
+		<span>
+			{d}d {h}h {m}m {s}s
+		</span>
+	);
 }
 
-function ReceiptJson({ escrow, secret, preimage }: { escrow: Escrow; secret: string; preimage: string }) {
+function ReceiptJson({
+	escrow,
+	secret,
+	preimage,
+}: { escrow: Escrow; secret: string; preimage: string }) {
 	const receipt = {
 		swap_id: escrow.id,
 		amount_sompi: escrow.amount_sompi,
@@ -209,12 +217,8 @@ export function AtomicSwapWizard() {
 		}
 	}
 
-	const escrowLink = s.escrowId
-		? `${window.location.origin}/swap/${s.escrowId}`
-		: "";
-	const telegramLink = s.escrowId
-		? `https://t.me/DagLock_bot?start=swap_${s.escrowId}`
-		: "";
+	const escrowLink = s.escrowId ? `${window.location.origin}/swap/${s.escrowId}` : "";
+	const telegramLink = s.escrowId ? `https://t.me/DagLock_bot?start=swap_${s.escrowId}` : "";
 
 	async function copyToClipboard(text: string) {
 		try {
@@ -237,23 +241,21 @@ export function AtomicSwapWizard() {
 		<div className="swap-wizard">
 			{/* Step indicator */}
 			<div className="swap-wizard-steps">
-				{(["init", "secrets", "create", "waiting", "claim", "done"] as SwapStep[]).map(
-					(st, i) => {
-						const stepIdx = ["init", "secrets", "create", "waiting", "claim", "done"].indexOf(step);
-						const thisIdx = ["init", "secrets", "create", "waiting", "claim", "done"].indexOf(st);
-						const isActive = st === step;
-						const isPast = thisIdx < stepIdx;
-						return (
-							<div
-								key={st}
-								className={`swap-wizard-step ${isActive ? "active" : ""} ${isPast ? "past" : ""}`}
-							>
-								<div className="swap-wizard-step-num">{isPast ? "✓" : i + 1}</div>
-								<span className="swap-wizard-step-label">{STEP_LABELS[st]}</span>
-							</div>
-						);
-					},
-				)}
+				{(["init", "secrets", "create", "waiting", "claim", "done"] as SwapStep[]).map((st, i) => {
+					const stepIdx = ["init", "secrets", "create", "waiting", "claim", "done"].indexOf(step);
+					const thisIdx = ["init", "secrets", "create", "waiting", "claim", "done"].indexOf(st);
+					const isActive = st === step;
+					const isPast = thisIdx < stepIdx;
+					return (
+						<div
+							key={st}
+							className={`swap-wizard-step ${isActive ? "active" : ""} ${isPast ? "past" : ""}`}
+						>
+							<div className="swap-wizard-step-num">{isPast ? "✓" : i + 1}</div>
+							<span className="swap-wizard-step-label">{STEP_LABELS[st]}</span>
+						</div>
+					);
+				})}
 			</div>
 
 			<div className="swap-wizard-body">
@@ -360,8 +362,8 @@ export function AtomicSwapWizard() {
 								style={{ marginTop: "2px" }}
 							/>
 							<span>
-								I understand that I must save the secret before continuing. Losing it means
-								losing access to my funds until the timeout expires.
+								I understand that I must save the secret before continuing. Losing it means losing
+								access to my funds until the timeout expires.
 							</span>
 						</label>
 
@@ -371,9 +373,7 @@ export function AtomicSwapWizard() {
 							onClick={handleGenerateSecret}
 							disabled={loading === "generating" || !secretSaved}
 						>
-							{loading === "generating"
-								? "Generating…"
-								: "Generate Secret & Continue"}
+							{loading === "generating" ? "Generating…" : "Generate Secret & Continue"}
 						</button>
 					</div>
 				)}
@@ -474,15 +474,14 @@ export function AtomicSwapWizard() {
 									color: "#888",
 								}}
 							>
-								⏱ Timeout in{" "}
-								<SwapCountdown expiresAt={(s.escrow.created_at + s.timeout) * 1000} />
+								⏱ Timeout in <SwapCountdown expiresAt={(s.escrow.created_at + s.timeout) * 1000} />
 							</div>
 						)}
 
 						<h3 style={{ margin: "16px 0 4px" }}>Create Escrow</h3>
 						<p className="muted" style={{ margin: "0 0 12px" }}>
-							Lock funds in the covenant with the trade hash. Your counterparty will need the
-							secret to claim.
+							Lock funds in the covenant with the trade hash. Your counterparty will need the secret
+							to claim.
 						</p>
 
 						{error && <p className="muted error-text">{error}</p>}
@@ -531,12 +530,8 @@ export function AtomicSwapWizard() {
 
 							{s.escrow?.created_at && (
 								<p style={{ fontSize: "13px", color: "#888" }}>
-									Timeout:{" "}
-									<SwapCountdown expiresAt={(s.escrow.created_at + s.timeout) * 1000} /> (
-									{new Date(
-										(s.escrow.created_at + s.timeout) * 1000,
-									).toLocaleString()}
-									)
+									Timeout: <SwapCountdown expiresAt={(s.escrow.created_at + s.timeout) * 1000} /> (
+									{new Date((s.escrow.created_at + s.timeout) * 1000).toLocaleString()})
 								</p>
 							)}
 						</div>
@@ -552,11 +547,7 @@ export function AtomicSwapWizard() {
 
 						<FormField label="Telegram link">
 							<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-								<input
-									value={telegramLink}
-									readOnly
-									style={{ flex: 1, fontSize: "12px" }}
-								/>
+								<input value={telegramLink} readOnly style={{ flex: 1, fontSize: "12px" }} />
 								<button className="button" onClick={() => copyToClipboard(telegramLink)}>
 									Copy
 								</button>
@@ -666,9 +657,7 @@ export function AtomicSwapWizard() {
 											preimage: s.preimage,
 										});
 										try {
-											await navigator.clipboard.writeText(
-												JSON.stringify(receipt, null, 2),
-											);
+											await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
 											notify("success", "Receipt JSON copied!");
 										} catch {
 											notify("error", "Could not copy receipt");
@@ -700,13 +689,7 @@ export function AtomicSwapWizard() {
 									</div>
 									<div className="row">
 										<span>Counterparty</span>
-										<code>
-											{(s.escrow.seller_address || s.escrow.buyer_address).slice(
-												0,
-												20,
-											)}
-											…
-										</code>
+										<code>{(s.escrow.seller_address || s.escrow.buyer_address).slice(0, 20)}…</code>
 									</div>
 									{s.escrow.trade_hash && (
 										<div className="row">
@@ -719,9 +702,7 @@ export function AtomicSwapWizard() {
 									{s.secret && (
 										<div className="row">
 											<span>Secret</span>
-											<code style={{ fontSize: "10px", wordBreak: "break-all" }}>
-												{s.secret}
-											</code>
+											<code style={{ fontSize: "10px", wordBreak: "break-all" }}>{s.secret}</code>
 										</div>
 									)}
 									<div className="row">
@@ -731,9 +712,7 @@ export function AtomicSwapWizard() {
 									{s.escrow.settled_at && (
 										<div className="row">
 											<span>Settled</span>
-											<span>
-												{new Date(s.escrow.settled_at * 1000).toLocaleString()}
-											</span>
+											<span>{new Date(s.escrow.settled_at * 1000).toLocaleString()}</span>
 										</div>
 									)}
 									<div className="row">

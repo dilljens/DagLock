@@ -39,7 +39,7 @@ const steps = [
 	{
 		step: "3",
 		title: "Create an escrow",
-		desc: 'Go to Escrows → Create tab. Enter an amount (e.g. 100), a counterparty address, then click Create. For TX ID, paste any 64-character hex string.',
+		desc: "Go to Escrows → Create tab. Enter an amount (e.g. 100), a counterparty address, then click Create. For TX ID, paste any 64-character hex string.",
 	},
 	{
 		step: "4",
@@ -81,7 +81,8 @@ export function TestnetPage() {
 					</strong>
 					<p style={{ margin: "8px 0 0", fontSize: "14px", color: "#ccc" }}>
 						DagLock is running on Kaspa Testnet-10. All addresses, transactions, and balances here
-						are for testing. <strong>Never send real KAS (mainnet funds) to any address on this page.</strong>
+						are for testing.{" "}
+						<strong>Never send real KAS (mainnet funds) to any address on this page.</strong>
 					</p>
 				</div>
 
@@ -169,7 +170,14 @@ export function TestnetPage() {
 								<summary style={{ cursor: "pointer", color: "var(--color-text-muted)" }}>
 									Show private key
 								</summary>
-								<code style={{ display: "block", marginTop: "6px", fontSize: "11px", wordBreak: "break-all" }}>
+								<code
+									style={{
+										display: "block",
+										marginTop: "6px",
+										fontSize: "11px",
+										wordBreak: "break-all",
+									}}
+								>
 									{w.privkey}
 								</code>
 							</details>
@@ -219,7 +227,12 @@ export function TestnetPage() {
 					<h3 style={{ margin: "0 0 4px" }}>Try the Telegram Bot</h3>
 					<p className="muted" style={{ margin: "0 0 12px", fontSize: "13px" }}>
 						Open{" "}
-						<a href="https://t.me/DagLock_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>
+						<a
+							href="https://t.me/DagLock_bot"
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{ color: "var(--color-primary)" }}
+						>
 							@DagLock_bot
 						</a>{" "}
 						on Telegram and run these commands:
@@ -256,12 +269,18 @@ export function TestnetPage() {
 						lineHeight: 1.6,
 					}}
 				>
-					<strong>🔒 Security Note:</strong> DagLock is post-audit but pre-mainnet. The covenants have
-					been reviewed internally. Key properties: no admin keys, covenant-enforced rules, open
-					source at{" "}
-					<a href="https://github.com/dilljens/DagLock" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>
+					<strong>🔒 Security Note:</strong> DagLock is post-audit but pre-mainnet. The covenants
+					have been reviewed internally. Key properties: no admin keys, covenant-enforced rules,
+					open source at{" "}
+					<a
+						href="https://github.com/dilljens/DagLock"
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{ color: "var(--color-primary)" }}
+					>
 						github.com/dilljens/DagLock
-					</a>. Testnet funds have no real value. Report issues on GitHub.
+					</a>
+					. Testnet funds have no real value. Report issues on GitHub.
 				</div>
 			</div>
 		</>

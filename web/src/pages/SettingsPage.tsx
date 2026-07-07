@@ -29,23 +29,28 @@ export function SettingsPage() {
 	useEffect(() => {
 		if (!address) return;
 		const msg = `get_notifications:${Math.floor(Date.now() / 1000)}`;
-		sign(msg).then((signature) => {
-			const auth: AuthHeaders = { address, signature, message: msg };
-			api.getNotifications(auth).then((d: any) => {
-				if (d.email) {
-					setEmail(d.email);
-					setSubscribed(true);
-					setVerified(d.email_verified);
-					setPrefs({
-						notify_created: d.notify_created ?? true,
-						notify_settled: d.notify_settled ?? true,
-						notify_disputed: d.notify_disputed ?? true,
-						notify_refunded: d.notify_refunded ?? true,
-						notify_expired: d.notify_expired ?? true,
-					});
-				}
-			}).catch(() => {});
-		}).catch(() => {});
+		sign(msg)
+			.then((signature) => {
+				const auth: AuthHeaders = { address, signature, message: msg };
+				api
+					.getNotifications(auth)
+					.then((d: any) => {
+						if (d.email) {
+							setEmail(d.email);
+							setSubscribed(true);
+							setVerified(d.email_verified);
+							setPrefs({
+								notify_created: d.notify_created ?? true,
+								notify_settled: d.notify_settled ?? true,
+								notify_disputed: d.notify_disputed ?? true,
+								notify_refunded: d.notify_refunded ?? true,
+								notify_expired: d.notify_expired ?? true,
+							});
+						}
+					})
+					.catch(() => {});
+			})
+			.catch(() => {});
 	}, [address]);
 
 	async function handleSubscribe() {
@@ -103,8 +108,14 @@ export function SettingsPage() {
 	if (!wallet.connected) {
 		return (
 			<>
-				<Helmet><title>Settings — DagLock</title></Helmet>
-				<EmptyState icon="⚙️" title="Connect your wallet" description="Connect your wallet to manage notification settings." />
+				<Helmet>
+					<title>Settings — DagLock</title>
+				</Helmet>
+				<EmptyState
+					icon="⚙️"
+					title="Connect your wallet"
+					description="Connect your wallet to manage notification settings."
+				/>
 			</>
 		);
 	}
@@ -156,7 +167,11 @@ export function SettingsPage() {
 								placeholder="your@email.com"
 								style={{ flex: 1 }}
 							/>
-							<button className="button primary" onClick={handleSubscribe} disabled={loading === "subscribe"}>
+							<button
+								className="button primary"
+								onClick={handleSubscribe}
+								disabled={loading === "subscribe"}
+							>
 								{loading === "subscribe" ? "Subscribing..." : "Subscribe"}
 							</button>
 						</div>
@@ -168,7 +183,16 @@ export function SettingsPage() {
 					<div className="panel" style={{ marginBottom: "16px" }}>
 						<h3 style={{ margin: "0 0 12px" }}>Notification Preferences</h3>
 						{(["created", "settled", "disputed", "refunded", "expired"] as const).map((ev) => (
-							<label key={ev} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", cursor: "pointer" }}>
+							<label
+								key={ev}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: "8px",
+									marginBottom: "8px",
+									cursor: "pointer",
+								}}
+							>
 								<input
 									type="checkbox"
 									checked={prefs[`notify_${ev}` as keyof typeof prefs]}
@@ -179,7 +203,12 @@ export function SettingsPage() {
 								</span>
 							</label>
 						))}
-						<button className="button" onClick={handlePrefs} disabled={loading === "prefs"} style={{ marginTop: "8px" }}>
+						<button
+							className="button"
+							onClick={handlePrefs}
+							disabled={loading === "prefs"}
+							style={{ marginTop: "8px" }}
+						>
 							{loading === "prefs" ? "Saving..." : "Save Preferences"}
 						</button>
 					</div>

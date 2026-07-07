@@ -53,11 +53,16 @@ export function TokensPage() {
 		.filter((t) => t.ticker.toLowerCase().includes(search.toLowerCase()))
 		.sort((a, b) => {
 			switch (sortBy) {
-				case "volume": return b.volume_24h_sompi - a.volume_24h_sompi;
-				case "trades": return b.trades_24h - a.trades_24h;
-				case "price": return (b.price_kas || 0) - (a.price_kas || 0);
-				case "name": return a.ticker.localeCompare(b.ticker);
-				default: return 0;
+				case "volume":
+					return b.volume_24h_sompi - a.volume_24h_sompi;
+				case "trades":
+					return b.trades_24h - a.trades_24h;
+				case "price":
+					return (b.price_kas || 0) - (a.price_kas || 0);
+				case "name":
+					return a.ticker.localeCompare(b.ticker);
+				default:
+					return 0;
 			}
 		});
 
@@ -102,7 +107,9 @@ export function TokensPage() {
 
 				{!data.loading && sorted.length === 0 && (
 					<p className="muted" style={{ textAlign: "center", padding: "32px" }}>
-						{search ? "No tokens match your search." : "No KRC-20 tokens found. Be the first to create an offer!"}
+						{search
+							? "No tokens match your search."
+							: "No KRC-20 tokens found. Be the first to create an offer!"}
 					</p>
 				)}
 
@@ -117,9 +124,7 @@ export function TokensPage() {
 						>
 							<div className="token-card-header">
 								<span className="token-card-ticker">{t.ticker}</span>
-								<span className="token-card-price">
-									{formatKasPrice(t.price_kas)} KAS
-								</span>
+								<span className="token-card-price">{formatKasPrice(t.price_kas)} KAS</span>
 							</div>
 							<div className="token-card-stats">
 								<div className="token-card-stat">

@@ -47,10 +47,7 @@ export function ExplorerTxLink({ txid, label }: { txid: string; label?: string }
 /**
  * Links to a Kaspa block explorer for a given address.
  */
-export function ExplorerAddressLink({
-	address,
-	label,
-}: { address: string; label?: string }) {
+export function ExplorerAddressLink({ address, label }: { address: string; label?: string }) {
 	const [baseUrl, setBaseUrl] = useState("https://kas.fyi");
 
 	useEffect(() => {

@@ -59,9 +59,7 @@ export function FeeCalculator() {
 				<div className="fee-breakdown" style={{ marginTop: "12px" }}>
 					<div className="fee-row">
 						<span>Protocol fee (0.5%)</span>
-						<strong style={{ color: "var(--color-warning, #ff9800)" }}>
-							{money(feeSompi)}
-						</strong>
+						<strong style={{ color: "var(--color-warning, #ff9800)" }}>{money(feeSompi)}</strong>
 					</div>
 					<div className="fee-row">
 						<span>Net to seller</span>
@@ -72,7 +70,10 @@ export function FeeCalculator() {
 						<strong>{money(feeSompi)}</strong>
 					</div>
 					{price != null && (
-						<div className="fee-row" style={{ borderTop: "1px solid #333", paddingTop: "8px", marginTop: "8px" }}>
+						<div
+							className="fee-row"
+							style={{ borderTop: "1px solid #333", paddingTop: "8px", marginTop: "8px" }}
+						>
 							<span>USD value</span>
 							<strong>${(amount * price).toLocaleString()}</strong>
 						</div>

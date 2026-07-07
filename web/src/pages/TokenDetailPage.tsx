@@ -116,11 +116,18 @@ export function TokenDetailPage({ ticker }: { ticker: string }) {
 		<>
 			<Helmet>
 				<title>{d.ticker} — DagLock Tokens</title>
-				<meta name="description" content={`${d.ticker} token price, volume, and trades on DagLock escrow.`} />
+				<meta
+					name="description"
+					content={`${d.ticker} token price, volume, and trades on DagLock escrow.`}
+				/>
 			</Helmet>
 			<div>
 				<div className="page-header">
-					<button className="button" onClick={() => navigate("/tokens")} style={{ marginBottom: "8px" }}>
+					<button
+						className="button"
+						onClick={() => navigate("/tokens")}
+						style={{ marginBottom: "8px" }}
+					>
 						← Tokens
 					</button>
 					<h1 style={{ margin: 0 }}>{d.ticker}</h1>
@@ -150,7 +157,14 @@ export function TokenDetailPage({ ticker }: { ticker: string }) {
 				{/* Price chart */}
 				{chartData.length > 1 && (
 					<div className="panel" style={{ marginBottom: "20px" }}>
-						<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+						<div
+							style={{
+								display: "flex",
+								justifyContent: "space-between",
+								alignItems: "center",
+								marginBottom: "12px",
+							}}
+						>
 							<h3 style={{ margin: 0 }}>Price Chart</h3>
 							<div style={{ display: "flex", gap: "4px" }}>
 								{["7d", "30d", "all"].map((p) => (
@@ -171,16 +185,10 @@ export function TokenDetailPage({ ticker }: { ticker: string }) {
 
 				{/* Quick actions */}
 				<div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
-					<button
-						className="button primary"
-						onClick={() => navigate("/escrows" as any)}
-					>
+					<button className="button primary" onClick={() => navigate("/escrows" as any)}>
 						Buy {d.ticker}
 					</button>
-					<button
-						className="button"
-						onClick={() => navigate("/offers" as any)}
-					>
+					<button className="button" onClick={() => navigate("/offers" as any)}>
 						Sell {d.ticker}
 					</button>
 				</div>

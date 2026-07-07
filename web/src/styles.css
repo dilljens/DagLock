@@ -2149,7 +2149,9 @@ code {
 
 /* Loading spinner for swap wizard */
 @keyframes spin {
-	to { transform: rotate(360deg); }
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* ── Token Grid / Cards ── */

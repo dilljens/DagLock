@@ -50,7 +50,7 @@ export function CreateTokenPage() {
 	const [result, setResult] = useState<any>(null);
 
 	// Quick template selection
-	function applyTemplate(t: typeof TEMPLATES[0]) {
+	function applyTemplate(t: (typeof TEMPLATES)[0]) {
 		setSupply(t.supply.toString());
 		setDecimals(t.decimals.toString());
 		setMintMode(t.mode);
@@ -58,13 +58,13 @@ export function CreateTokenPage() {
 
 	function validate(): boolean {
 		const e: Record<string, string> = {};
-		if (name.trim().length < 2 || name.trim().length > 64)
-			e.name = "Name must be 2-64 characters";
+		if (name.trim().length < 2 || name.trim().length > 64) e.name = "Name must be 2-64 characters";
 		const t = ticker.trim().toUpperCase();
 		if (t.length < 3 || t.length > 8) e.ticker = "Ticker must be 3-8 characters";
 		if (!/^[A-Z0-9]+$/.test(t)) e.ticker = "Ticker must be alphanumeric";
 		const s = BigInt(supply || "0");
-		if (s <= 0n || s > 1_000_000_000_000n) e.supply = "Supply must be between 1 and 1,000,000,000,000";
+		if (s <= 0n || s > 1_000_000_000_000n)
+			e.supply = "Supply must be between 1 and 1,000,000,000,000";
 		const d = parseInt(decimals);
 		if (isNaN(d) || d < 0 || d > 18) e.decimals = "Decimals must be 0-18";
 		if (!address) e.address = "Connect your wallet first";
@@ -106,7 +106,9 @@ export function CreateTokenPage() {
 	if (!wallet.connected) {
 		return (
 			<>
-				<Helmet><title>Create Token — DagLock</title></Helmet>
+				<Helmet>
+					<title>Create Token — DagLock</title>
+				</Helmet>
 				<EmptyState
 					icon="🏷️"
 					title="Connect your wallet"
@@ -120,7 +122,10 @@ export function CreateTokenPage() {
 		<>
 			<Helmet>
 				<title>Create Token — DagLock</title>
-				<meta name="description" content="Create a KRC-20 token on Kaspa in a few clicks. Launch your token, bootstrap liquidity with DagLock escrow." />
+				<meta
+					name="description"
+					content="Create a KRC-20 token on Kaspa in a few clicks. Launch your token, bootstrap liquidity with DagLock escrow."
+				/>
 			</Helmet>
 			<div>
 				<div className="page-header">
@@ -129,7 +134,13 @@ export function CreateTokenPage() {
 				</div>
 
 				<div className="tab-bar">
-					<button className={`tab-btn ${step === 1 ? "tab-btn--active" : ""}`} onClick={() => { setStep(1); setResult(null); }}>
+					<button
+						className={`tab-btn ${step === 1 ? "tab-btn--active" : ""}`}
+						onClick={() => {
+							setStep(1);
+							setResult(null);
+						}}
+					>
 						Details
 					</button>
 					<button className={`tab-btn ${step === 2 ? "tab-btn--active" : ""}`} disabled>
@@ -165,22 +176,66 @@ export function CreateTokenPage() {
 							</div>
 						</div>
 
-						<form className="form form-stacked" onSubmit={(e) => { e.preventDefault(); if (validate()) setStep(2); }}>
+						<form
+							className="form form-stacked"
+							onSubmit={(e) => {
+								e.preventDefault();
+								if (validate()) setStep(2);
+							}}
+						>
 							<FormField label="Token name">
-								<input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Kaspa Token" maxLength={64} />
-								{errors.name && <span className="muted error-text" style={{ fontSize: "12px" }}>{errors.name}</span>}
+								<input
+									value={name}
+									onChange={(e) => setName(e.target.value)}
+									placeholder="My Kaspa Token"
+									maxLength={64}
+								/>
+								{errors.name && (
+									<span className="muted error-text" style={{ fontSize: "12px" }}>
+										{errors.name}
+									</span>
+								)}
 							</FormField>
 							<FormField label="Ticker">
-								<input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} placeholder="MKT" maxLength={8} style={{ textTransform: "uppercase" }} />
-								{errors.ticker && <span className="muted error-text" style={{ fontSize: "12px" }}>{errors.ticker}</span>}
+								<input
+									value={ticker}
+									onChange={(e) => setTicker(e.target.value.toUpperCase())}
+									placeholder="MKT"
+									maxLength={8}
+									style={{ textTransform: "uppercase" }}
+								/>
+								{errors.ticker && (
+									<span className="muted error-text" style={{ fontSize: "12px" }}>
+										{errors.ticker}
+									</span>
+								)}
 							</FormField>
 							<FormField label="Total supply">
-								<input type="number" value={supply} onChange={(e) => setSupply(e.target.value)} min={1} />
-								{errors.supply && <span className="muted error-text" style={{ fontSize: "12px" }}>{errors.supply}</span>}
+								<input
+									type="number"
+									value={supply}
+									onChange={(e) => setSupply(e.target.value)}
+									min={1}
+								/>
+								{errors.supply && (
+									<span className="muted error-text" style={{ fontSize: "12px" }}>
+										{errors.supply}
+									</span>
+								)}
 							</FormField>
 							<FormField label="Decimals">
-								<input type="number" value={decimals} onChange={(e) => setDecimals(e.target.value)} min={0} max={18} />
-								{errors.decimals && <span className="muted error-text" style={{ fontSize: "12px" }}>{errors.decimals}</span>}
+								<input
+									type="number"
+									value={decimals}
+									onChange={(e) => setDecimals(e.target.value)}
+									min={0}
+									max={18}
+								/>
+								{errors.decimals && (
+									<span className="muted error-text" style={{ fontSize: "12px" }}>
+										{errors.decimals}
+									</span>
+								)}
 							</FormField>
 							<FormField label="Mint mode">
 								<select value={mintMode} onChange={(e) => setMintMode(e.target.value)}>
@@ -202,22 +257,42 @@ export function CreateTokenPage() {
 						<div className="panel" style={{ marginBottom: "16px" }}>
 							<h3 style={{ margin: "0 0 12px" }}>Review Token</h3>
 							<div className="stack">
-								<div className="row"><span>Name</span><strong>{name}</strong></div>
-								<div className="row"><span>Ticker</span><strong>{ticker.toUpperCase()}</strong></div>
-								<div className="row"><span>Supply</span><strong>{BigInt(supply).toLocaleString()}</strong></div>
-								<div className="row"><span>Decimals</span><strong>{decimals}</strong></div>
-								<div className="row"><span>Mint mode</span><strong>{mintMode}</strong></div>
-								<div className="row"><span>Owner</span><code>{address?.slice(0, 24)}...</code></div>
+								<div className="row">
+									<span>Name</span>
+									<strong>{name}</strong>
+								</div>
+								<div className="row">
+									<span>Ticker</span>
+									<strong>{ticker.toUpperCase()}</strong>
+								</div>
+								<div className="row">
+									<span>Supply</span>
+									<strong>{BigInt(supply).toLocaleString()}</strong>
+								</div>
+								<div className="row">
+									<span>Decimals</span>
+									<strong>{decimals}</strong>
+								</div>
+								<div className="row">
+									<span>Mint mode</span>
+									<strong>{mintMode}</strong>
+								</div>
+								<div className="row">
+									<span>Owner</span>
+									<code>{address?.slice(0, 24)}...</code>
+								</div>
 							</div>
 						</div>
 
 						<p className="muted" style={{ fontSize: "13px" }}>
-							The KRC-20 covenant needs to be compiled and broadcast separately. After
-							registering, you'll get instructions for the on-chain deployment.
+							The KRC-20 covenant needs to be compiled and broadcast separately. After registering,
+							you'll get instructions for the on-chain deployment.
 						</p>
 
 						<div style={{ display: "flex", gap: "8px" }}>
-							<button className="button" onClick={() => setStep(1)}>Back</button>
+							<button className="button" onClick={() => setStep(1)}>
+								Back
+							</button>
 							<button className="button primary" onClick={() => setStep(3)} disabled={loading}>
 								Next: Sign
 							</button>
@@ -231,8 +306,8 @@ export function CreateTokenPage() {
 						<div className="panel" style={{ marginBottom: "16px" }}>
 							<h3 style={{ margin: "0 0 8px" }}>Sign & Register</h3>
 							<p className="muted" style={{ fontSize: "13px" }}>
-								Sign a message with your wallet to prove ownership of this address. This
-								registers the token in the DagLock indexer — no on-chain broadcast yet.
+								Sign a message with your wallet to prove ownership of this address. This registers
+								the token in the DagLock indexer — no on-chain broadcast yet.
 							</p>
 						</div>
 
@@ -258,9 +333,7 @@ export function CreateTokenPage() {
 								<li>Broadcast the covenant transaction from your wallet</li>
 								<li>
 									Update the deployment status:{" "}
-									<code style={{ fontSize: "12px" }}>
-										PATCH /v1/tokens/{ticker.toUpperCase()}
-									</code>
+									<code style={{ fontSize: "12px" }}>PATCH /v1/tokens/{ticker.toUpperCase()}</code>
 								</li>
 								<li>
 									<button
@@ -274,7 +347,10 @@ export function CreateTokenPage() {
 							</ol>
 						</div>
 
-						<button className="button primary" onClick={() => navigate(`/tokens/${ticker.toUpperCase()}` as any)}>
+						<button
+							className="button primary"
+							onClick={() => navigate(`/tokens/${ticker.toUpperCase()}` as any)}
+						>
 							View Token Page
 						</button>
 					</div>

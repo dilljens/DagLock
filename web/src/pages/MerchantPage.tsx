@@ -24,10 +24,22 @@ function generateSnippet(p: CodeSnippetParams): string {
 }
 
 const WEBHOOK_EVENTS = [
-	{ event: "escrow.created", payload: '{ "event": "escrow.created", "data": { "id": "esc_xxx" } }' },
-	{ event: "escrow.settled", payload: '{ "event": "escrow.settled", "data": { "id": "esc_xxx" } }' },
-	{ event: "escrow.disputed", payload: '{ "event": "escrow.disputed", "data": { "id": "esc_xxx", "reason": "..." } }' },
-	{ event: "escrow.refunded", payload: '{ "event": "escrow.refunded", "data": { "id": "esc_xxx" } }' },
+	{
+		event: "escrow.created",
+		payload: '{ "event": "escrow.created", "data": { "id": "esc_xxx" } }',
+	},
+	{
+		event: "escrow.settled",
+		payload: '{ "event": "escrow.settled", "data": { "id": "esc_xxx" } }',
+	},
+	{
+		event: "escrow.disputed",
+		payload: '{ "event": "escrow.disputed", "data": { "id": "esc_xxx", "reason": "..." } }',
+	},
+	{
+		event: "escrow.refunded",
+		payload: '{ "event": "escrow.refunded", "data": { "id": "esc_xxx" } }',
+	},
 ];
 
 const FAQ = [
@@ -95,12 +107,14 @@ export function MerchantPage() {
 			<div style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem 1rem" }}>
 				<h1>Accept Escrow Payments on Your Site</h1>
 				<p className="muted" style={{ fontSize: "1.1rem", lineHeight: 1.6 }}>
-					DagLock Escrow-as-a-Service lets you add trustless escrow payments to any website.
-					Embed a single <code>&lt;daglock-pay&gt;</code> element — no backend integration needed.
-					Funds are held in a SilverScript covenant on the Kaspa blockchain.
+					DagLock Escrow-as-a-Service lets you add trustless escrow payments to any website. Embed a
+					single <code>&lt;daglock-pay&gt;</code> element — no backend integration needed. Funds are
+					held in a SilverScript covenant on the Kaspa blockchain.
 				</p>
 
-				<hr style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }} />
+				<hr
+					style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }}
+				/>
 
 				{/* Three-step setup */}
 				<h2>Setup Guide</h2>
@@ -180,13 +194,13 @@ export function MerchantPage() {
 					))}
 				</div>
 
-				<hr style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }} />
+				<hr
+					style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }}
+				/>
 
 				{/* Code snippet generator */}
 				<h2>Code Snippet</h2>
-				<p className="muted">
-					Customize the snippet below and paste it into your website.
-				</p>
+				<p className="muted">Customize the snippet below and paste it into your website.</p>
 
 				<div
 					style={{
@@ -199,7 +213,9 @@ export function MerchantPage() {
 						borderRadius: "12px",
 					}}
 				>
-					<label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}>
+					<label
+						style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}
+					>
 						Amount (KAS)
 						<input
 							type="number"
@@ -215,7 +231,9 @@ export function MerchantPage() {
 							}}
 						/>
 					</label>
-					<label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}>
+					<label
+						style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}
+					>
 						Seller Address
 						<input
 							type="text"
@@ -233,7 +251,9 @@ export function MerchantPage() {
 							}}
 						/>
 					</label>
-					<label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}>
+					<label
+						style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}
+					>
 						Memo
 						<input
 							type="text"
@@ -249,11 +269,15 @@ export function MerchantPage() {
 							}}
 						/>
 					</label>
-					<label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}>
+					<label
+						style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem" }}
+					>
 						Theme
 						<select
 							value={preview.theme}
-							onChange={(e) => setPreview({ ...preview, theme: e.target.value as "light" | "dark" })}
+							onChange={(e) =>
+								setPreview({ ...preview, theme: e.target.value as "light" | "dark" })
+							}
 							style={{
 								background: "var(--color-bg)",
 								border: "1px solid var(--color-border)",
@@ -310,7 +334,9 @@ export function MerchantPage() {
 					</button>
 				</div>
 
-				<hr style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }} />
+				<hr
+					style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }}
+				/>
 
 				{/* Attributes reference */}
 				<h2>Attributes Reference</h2>
@@ -335,16 +361,20 @@ export function MerchantPage() {
 								["amount", "string", "Yes", "Payment amount in KAS"],
 								["seller", "string", "Yes", "Recipient Kaspa address (kaspa:...)"],
 								["asset", "string", "No", 'Asset type (default: "KAS")'],
-								["memo", "string", "No", 'Optional memo/order reference'],
-								["api-key", "string", "No", 'Your DagLock API key for session creation'],
+								["memo", "string", "No", "Optional memo/order reference"],
+								["api-key", "string", "No", "Your DagLock API key for session creation"],
 								["theme", '"dark" | "light"', "No", 'Color theme (default: "dark")'],
 								["label", "string", "No", 'Button label (default: "Pay with KasWare")'],
 							].map(([attr, type, req, desc]) => (
 								<tr key={attr} style={{ borderBottom: "1px solid var(--color-border)" }}>
-									<td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: "0.85rem" }}>
+									<td
+										style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: "0.85rem" }}
+									>
 										{attr}
 									</td>
-									<td style={{ padding: "10px 12px", fontSize: "0.85rem", color: "#888" }}>{type}</td>
+									<td style={{ padding: "10px 12px", fontSize: "0.85rem", color: "#888" }}>
+										{type}
+									</td>
 									<td style={{ padding: "10px 12px", fontSize: "0.85rem" }}>{req}</td>
 									<td style={{ padding: "10px 12px", fontSize: "0.85rem" }}>{desc}</td>
 								</tr>
@@ -353,14 +383,17 @@ export function MerchantPage() {
 					</table>
 				</div>
 
-				<hr style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }} />
+				<hr
+					style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }}
+				/>
 
 				{/* Webhook reference */}
 				<h2>Webhooks</h2>
 				<p className="muted">
 					When you create a payment session with a <code>webhook_url</code>, DagLock sends HTTP POST
-					notifications for lifecycle events. Webhooks include a <code>X-Daglock-Webhook-Id</code> header
-					for idempotency and are retried up to 3 times with exponential backoff (1s, 4s, 10s).
+					notifications for lifecycle events. Webhooks include a <code>X-Daglock-Webhook-Id</code>{" "}
+					header for idempotency and are retried up to 3 times with exponential backoff (1s, 4s,
+					10s).
 				</p>
 
 				<h3>Events</h3>
@@ -408,7 +441,9 @@ export function MerchantPage() {
 					</table>
 				</div>
 
-				<hr style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }} />
+				<hr
+					style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "2rem 0" }}
+				/>
 
 				{/* FAQ */}
 				<h2>FAQ</h2>

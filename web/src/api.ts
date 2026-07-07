@@ -668,7 +668,10 @@ export const api = {
 	createInvoice: (req: CreateInvoiceRequest, auth: AuthHeaders) =>
 		postJson<{ id: string; link: string; invoice: InvoiceData }>("/v1/invoices", req, auth),
 	listInvoices: (address: string, auth: AuthHeaders) =>
-		loadAuthJson<{ invoices: InvoiceData[]; total: number }>(`/v1/invoices?address=${encodeURIComponent(address)}`, auth),
+		loadAuthJson<{ invoices: InvoiceData[]; total: number }>(
+			`/v1/invoices?address=${encodeURIComponent(address)}`,
+			auth,
+		),
 
 	// Offers
 	offers: (creator?: string) =>
@@ -746,7 +749,10 @@ export const api = {
 			escrow_id: string;
 		}>(`/v1/escrows/${encodeURIComponent(escrowId)}/messages`, auth),
 	getMessageAnchors: (escrowId: string, auth: AuthHeaders) =>
-		loadAuthJson<AnchorSummary>(`/v1/escrows/${encodeURIComponent(escrowId)}/messages/anchors`, auth),
+		loadAuthJson<AnchorSummary>(
+			`/v1/escrows/${encodeURIComponent(escrowId)}/messages/anchors`,
+			auth,
+		),
 
 	// Identity
 	createIdentity: (
@@ -776,8 +782,7 @@ export const api = {
 	receipt: (id: string) => loadJson<Receipt>(`/v1/receipts/${encodeURIComponent(id)}`),
 
 	// Email notifications
-	getNotifications: (auth: AuthHeaders) =>
-		loadAuthJson<any>("/v1/notifications", auth),
+	getNotifications: (auth: AuthHeaders) => loadAuthJson<any>("/v1/notifications", auth),
 	subscribeNotifications: (req: { email: string }, auth: AuthHeaders) =>
 		postJson<any>("/v1/notifications", req, auth),
 	verifyNotifications: (req: { code: string }, auth: AuthHeaders) =>
@@ -791,7 +796,8 @@ export const api = {
 			`/v1/milestones?address=${encodeURIComponent(address)}`,
 		),
 	milestone: (id: string) => loadJson<MilestoneEscrow>(`/v1/milestones/${encodeURIComponent(id)}`),
-	createMilestone: (req: CreateMilestoneRequest) => postJson<MilestoneEscrow>("/v1/milestones", req),
+	createMilestone: (req: CreateMilestoneRequest) =>
+		postJson<MilestoneEscrow>("/v1/milestones", req),
 	releaseMilestone: (id: string) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/milestones/${encodeURIComponent(id)}/release`,
@@ -821,10 +827,13 @@ export const api = {
 	multiEscrow: (id: string) => loadJson<MultiEscrow>(`/v1/multi-escrows/${encodeURIComponent(id)}`),
 	createMultiEscrow: (req: CreateMultiRequest) => postJson<MultiEscrow>("/v1/multi-escrows", req),
 	signMultiEscrow: (id: string, address: string) =>
-		postJson<{ status: string; escrow_id: string; signature_count: number; parties_count: number; all_signed: boolean }>(
-			`/v1/multi-escrows/${encodeURIComponent(id)}/sign`,
-			{ address },
-		),
+		postJson<{
+			status: string;
+			escrow_id: string;
+			signature_count: number;
+			parties_count: number;
+			all_signed: boolean;
+		}>(`/v1/multi-escrows/${encodeURIComponent(id)}/sign`, { address }),
 	refundMultiEscrow: (id: string) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/multi-escrows/${encodeURIComponent(id)}/refund`,
@@ -836,23 +845,24 @@ export const api = {
 
 	// API key management
 	upgradeKeyTier: (appId: string, keyId: string, tier: string, adminToken: string) =>
-		fetchWithTimeout(`${API_BASE}/v1/apps/${encodeURIComponent(appId)}/keys/${encodeURIComponent(keyId)}/tier`, {
-			method: "PATCH",
-			headers: {
-				"Content-Type": "application/json",
-				"X-Daglock-Admin": adminToken,
+		fetchWithTimeout(
+			`${API_BASE}/v1/apps/${encodeURIComponent(appId)}/keys/${encodeURIComponent(keyId)}/tier`,
+			{
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Daglock-Admin": adminToken,
+				},
+				body: JSON.stringify({ tier }),
 			},
-			body: JSON.stringify({ tier }),
-		}).then((r) => {
+		).then((r) => {
 			if (!r.ok) throw new Error(r.statusText);
 			return r.json() as Promise<{ status: string; key_id: string; app_id: string; tier: string }>;
 		}),
 
 	// Stats / analytics
 	getDailyStats: (days?: number) =>
-		loadJson<{ stats: DailyStat[]; days: number }>(
-			`/v1/stats/daily${days ? `?days=${days}` : ""}`,
-		),
+		loadJson<{ stats: DailyStat[]; days: number }>(`/v1/stats/daily${days ? `?days=${days}` : ""}`),
 	getLiveSummary: () => loadJson<LiveSummary>("/v1/stats/summary"),
 
 	// Price alerts
@@ -882,9 +892,10 @@ export const api = {
 	tokens: () => loadJson<{ tokens: any[]; total: number }>("/v1/tokens"),
 	token: (ticker: string) => loadJson<any>(`/v1/tokens/${encodeURIComponent(ticker)}`),
 	tokenChart: (ticker: string, period?: string) =>
-		loadJson<any>(`/v1/tokens/${encodeURIComponent(ticker)}/chart${period ? `?period=${period}` : ""}`),
-	deployToken: (req: any, auth: AuthHeaders) =>
-		postJson<any>("/v1/tokens/deploy", req, auth),
+		loadJson<any>(
+			`/v1/tokens/${encodeURIComponent(ticker)}/chart${period ? `?period=${period}` : ""}`,
+		),
+	deployToken: (req: any, auth: AuthHeaders) => postJson<any>("/v1/tokens/deploy", req, auth),
 	updateToken: (ticker: string, req: any, auth: AuthHeaders) =>
 		fetchWithTimeout(`${API_BASE}/v1/tokens/${encodeURIComponent(ticker)}`, {
 			method: "PATCH",
@@ -895,21 +906,21 @@ export const api = {
 				"X-Daglock-Message": auth.message,
 			},
 			body: JSON.stringify(req),
-		}).then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); }),
+		}).then((r) => {
+			if (!r.ok) throw new Error(r.statusText);
+			return r.json();
+		}),
 
 	// AI Mediation
 	mediateEscrow: (id: string, body: MediationRequest, auth: AuthHeaders) =>
-		postJson<MediationResponse>(
-			`/v1/escrows/${encodeURIComponent(id)}/mediate`,
-			body,
-			auth,
-		),
+		postJson<MediationResponse>(`/v1/escrows/${encodeURIComponent(id)}/mediate`, body, auth),
 	acceptMediation: (id: string, party: string, accept: boolean, auth: AuthHeaders) =>
-		postJson<{ status: string; escrow_id: string; outcome_executed?: boolean; waiting_for_other?: boolean }>(
-			`/v1/escrows/${encodeURIComponent(id)}/mediate/${party}/accept`,
-			{ accept },
-			auth,
-		),
+		postJson<{
+			status: string;
+			escrow_id: string;
+			outcome_executed?: boolean;
+			waiting_for_other?: boolean;
+		}>(`/v1/escrows/${encodeURIComponent(id)}/mediate/${party}/accept`, { accept }, auth),
 	getMediation: (id: string) =>
 		loadJson<MediationStatus>(`/v1/escrows/${encodeURIComponent(id)}/mediate`),
 
@@ -939,10 +950,13 @@ export const api = {
 			auth,
 		),
 	getEvidence: (caseId: string, auth?: AuthHeaders) =>
-		loadAuthJson<{ evidence: EvidenceMessage[]; chat_pubkey_buyer: string | null; chat_pubkey_seller: string | null; revealed: boolean; cleared: boolean }>(
-			`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence`,
-			auth,
-		),
+		loadAuthJson<{
+			evidence: EvidenceMessage[];
+			chat_pubkey_buyer: string | null;
+			chat_pubkey_seller: string | null;
+			revealed: boolean;
+			cleared: boolean;
+		}>(`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence`, auth),
 	clearEvidence: (caseId: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string }>(
 			`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence/clear`,

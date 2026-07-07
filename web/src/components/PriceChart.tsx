@@ -69,10 +69,7 @@ export function PriceChart({ days = 30 }: { days?: number }) {
 						</linearGradient>
 					</defs>
 					{/* Area fill */}
-					<path
-						d={`${pathD} L${width},${height} L0,${height} Z`}
-						fill="url(#price-grad)"
-					/>
+					<path d={`${pathD} L${width},${height} L0,${height} Z`} fill="url(#price-grad)" />
 					{/* Line */}
 					<path
 						d={pathD}

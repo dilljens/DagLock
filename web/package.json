@@ -9,7 +9,7 @@
 		"preview": "vite preview",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"lint": "biome check src/",
+		"lint": "biome lint src/",
 		"test:e2e": "PLAYWRIGHT_CHROMIUM_HEADLESS_MODE=1 playwright test",
 		"test:headed": "playwright test --headed",
 		"test:ui": "playwright test --ui",

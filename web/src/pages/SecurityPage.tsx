@@ -97,11 +97,13 @@ function ScenarioCard({ s }: { s: Scenario }) {
 	return (
 		<article
 			className={`security-card ${activated ? "security-card--activated" : ""}`}
-			style={{
-				"--scenario-border": colors.border,
-				"--scenario-glow": colors.glow,
-				borderColor: activated ? colors.border : "var(--color-border)",
-			} as React.CSSProperties}
+			style={
+				{
+					"--scenario-border": colors.border,
+					"--scenario-glow": colors.glow,
+					borderColor: activated ? colors.border : "var(--color-border)",
+				} as React.CSSProperties
+			}
 		>
 			<div className="security-card-header">
 				<span className="security-card-icon">{s.icon}</span>
@@ -129,11 +131,7 @@ function ScenarioCard({ s }: { s: Scenario }) {
 						<div className="security-code-label">SilverScript covenant rule</div>
 						<pre className="security-code">{s.code}</pre>
 					</div>
-					<button
-						type="button"
-						className="security-reset"
-						onClick={() => setActivated(false)}
-					>
+					<button type="button" className="security-reset" onClick={() => setActivated(false)}>
 						Reset
 					</button>
 				</div>
@@ -188,12 +186,12 @@ export function SecurityPage() {
 						Every DagLock escrow is a UTXO locked by a SilverScript covenant — code that runs on
 						Kaspa L1. The covenant defines exactly who can spend the funds, when, and to which
 						addresses. No admin key, no backdoor, no upgrade mechanism can change the rules after
-						the funds are locked. The attacks above fail because the covenant has no code path
-						that allows them.
+						the funds are locked. The attacks above fail because the covenant has no code path that
+						allows them.
 					</p>
 					<p>
-						This is not a simulation. Every security property shown here is enforced by the
-						Kaspa network itself. If you find a way around the covenant,{" "}
+						This is not a simulation. Every security property shown here is enforced by the Kaspa
+						network itself. If you find a way around the covenant,{" "}
 						<a
 							href="https://github.com/dilljens/DagLock"
 							target="_blank"

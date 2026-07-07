@@ -80,16 +80,22 @@ export function PayInvoicePage() {
 
 	if (!invoiceId) {
 		return (
-			<EmptyState
-				icon="📄"
-				title="Invoice not found"
-				description="No invoice ID in the URL."
-			/>
+			<EmptyState icon="📄" title="Invoice not found" description="No invoice ID in the URL." />
 		);
 	}
 
-	if (invoice.loading) return <p className="muted" style={{ padding: "2rem", textAlign: "center" }}>Loading invoice…</p>;
-	if (invoice.error) return <p className="muted error-text" style={{ padding: "2rem", textAlign: "center" }}>{invoice.error}</p>;
+	if (invoice.loading)
+		return (
+			<p className="muted" style={{ padding: "2rem", textAlign: "center" }}>
+				Loading invoice…
+			</p>
+		);
+	if (invoice.error)
+		return (
+			<p className="muted error-text" style={{ padding: "2rem", textAlign: "center" }}>
+				{invoice.error}
+			</p>
+		);
 	if (!invoice.data) return null;
 
 	const inv = invoice.data.invoice;
@@ -107,7 +113,10 @@ export function PayInvoicePage() {
 		<>
 			<Helmet>
 				<title>Invoice — DagLock</title>
-				<meta name="description" content={`Invoice for ${money(inv.amount_sompi)} KAS — ${inv.description}`} />
+				<meta
+					name="description"
+					content={`Invoice for ${money(inv.amount_sompi)} KAS — ${inv.description}`}
+				/>
 				<meta property="og:title" content={`Invoice for ${money(inv.amount_sompi)} KAS`} />
 				<meta property="og:description" content={inv.description} />
 				<meta property="og:type" content="website" />
@@ -202,7 +211,10 @@ export function PayInvoicePage() {
 									Connect Wallet to Pay
 								</button>
 							)}
-							<p className="muted" style={{ fontSize: "0.75rem", textAlign: "center", marginTop: "8px" }}>
+							<p
+								className="muted"
+								style={{ fontSize: "0.75rem", textAlign: "center", marginTop: "8px" }}
+							>
 								Funds are held in a SilverScript covenant. You only pay when terms are met.
 							</p>
 						</div>

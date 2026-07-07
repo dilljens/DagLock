@@ -172,7 +172,8 @@ export class DaglockPay extends HTMLElement {
 	private render() {
 		const s = this.state;
 		this.btn.disabled = s.step !== "ready";
-		this.btn.className = s.step === "ready" ? "primary" : s.step === "error" ? "outline" : "secondary";
+		this.btn.className =
+			s.step === "ready" ? "primary" : s.step === "error" ? "outline" : "secondary";
 
 		switch (s.step) {
 			case "ready":

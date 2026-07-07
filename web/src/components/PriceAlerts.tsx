@@ -72,10 +72,16 @@ export function PriceAlertsSettings({ address }: { address: string }) {
 				</button>
 			</div>
 
-			{loading && <p className="muted" style={{ fontSize: "13px" }}>Loading alerts…</p>}
+			{loading && (
+				<p className="muted" style={{ fontSize: "13px" }}>
+					Loading alerts…
+				</p>
+			)}
 
 			{alerts.length === 0 && !loading && (
-				<p className="muted" style={{ fontSize: "13px" }}>No price alerts yet.</p>
+				<p className="muted" style={{ fontSize: "13px" }}>
+					No price alerts yet.
+				</p>
 			)}
 
 			{alerts.map((alert) => (
@@ -97,8 +103,7 @@ export function PriceAlertsSettings({ address }: { address: string }) {
 							}}
 						>
 							{alert.triggered ? "🔔 " : "⏰ "}
-							{alert.direction === "above" ? "Above" : "Below"} $
-							{alert.target_price.toFixed(4)}
+							{alert.direction === "above" ? "Above" : "Below"} ${alert.target_price.toFixed(4)}
 						</span>
 						{alert.triggered && alert.triggered_at && (
 							<span className="muted" style={{ marginLeft: "8px", fontSize: "12px" }}>

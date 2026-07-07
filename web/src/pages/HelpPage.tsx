@@ -140,7 +140,11 @@ export function HelpPage() {
 							</a>
 						</li>
 						<li>
-							<a href="https://github.com/dilljens/DagLock" target="_blank" rel="noopener noreferrer">
+							<a
+								href="https://github.com/dilljens/DagLock"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
 								GitHub — Source code, issues, contribute
 							</a>
 						</li>

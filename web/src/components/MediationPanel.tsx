@@ -37,9 +37,17 @@ export function MediationPanel({ escrowId, disputeMode }: Props) {
 		return (
 			<div className="panel" style={{ marginBottom: "16px", padding: "12px 16px" }}>
 				<p className="muted">
-					<a href="#" onClick={(e) => { e.preventDefault(); connect(); }} style={{ cursor: "pointer" }}>
+					<a
+						href="#"
+						onClick={(e) => {
+							e.preventDefault();
+							connect();
+						}}
+						style={{ cursor: "pointer" }}
+					>
 						Connect your wallet
-					</a> to use AI mediation.
+					</a>{" "}
+					to use AI mediation.
 				</p>
 			</div>
 		);
@@ -51,9 +59,7 @@ export function MediationPanel({ escrowId, disputeMode }: Props) {
 		const isPending = status.mediation_status === "pending";
 		const isEscalated = status.mediation_status === "escalated";
 
-		const remaining = status.expires_at
-			? Math.max(0, status.expires_at * 1000 - Date.now())
-			: 0;
+		const remaining = status.expires_at ? Math.max(0, status.expires_at * 1000 - Date.now()) : 0;
 		const remainingHrs = Math.ceil(remaining / 3600000);
 
 		return (
@@ -151,8 +157,8 @@ export function MediationPanel({ escrowId, disputeMode }: Props) {
 			<h4 style={{ margin: "0 0 8px" }}>🤖 AI Mediation Available</h4>
 			<p className="muted" style={{ fontSize: "13px", marginBottom: "12px" }}>
 				Before going to a jury vote, try AI mediation. It's <strong>free and non-binding</strong> —
-				the AI analyzes the evidence and proposes a fair outcome. Takes about 2 minutes.
-				If either party disagrees, it escalates to jury automatically.
+				the AI analyzes the evidence and proposes a fair outcome. Takes about 2 minutes. If either
+				party disagrees, it escalates to jury automatically.
 			</p>
 
 			{!showForm ? (

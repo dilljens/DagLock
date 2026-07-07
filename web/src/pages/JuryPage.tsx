@@ -1,5 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
-import { api, type AuthHeaders, type JuryCase, type JurorRegistration, type EvidenceMessage } from "../api";
+import {
+	api,
+	type AuthHeaders,
+	type JuryCase,
+	type JurorRegistration,
+	type EvidenceMessage,
+} from "../api";
 import { badge, type LoadState } from "../helpers";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
@@ -73,7 +79,8 @@ export function JuryPage() {
 								default.
 							</li>
 							<li>
-								<strong>Escalation Tiers:</strong> Disputes auto-escalate through levels if unresolved: mediation (2 days) → jury vote (5 days) → admin override (10 days).
+								<strong>Escalation Tiers:</strong> Disputes auto-escalate through levels if
+								unresolved: mediation (2 days) → jury vote (5 days) → admin override (10 days).
 							</li>
 						</ul>
 						<p style={{ margin: 0 }}>
@@ -150,7 +157,12 @@ function DisputeMediationLookup() {
 					value={escrowId}
 					onChange={(e) => setEscrowId(e.target.value)}
 					placeholder="esc_abc123..."
-					style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid var(--color-border)" }}
+					style={{
+						flex: 1,
+						padding: "8px",
+						borderRadius: "6px",
+						border: "1px solid var(--color-border)",
+					}}
 				/>
 				<button className="button secondary" onClick={handleLookup}>
 					Check
@@ -161,7 +173,11 @@ function DisputeMediationLookup() {
 					<MediationPanel escrowId={escrowId.trim()} />
 				</div>
 			)}
-			{error && <p className="muted error-text" style={{ marginTop: "8px" }}>{error}</p>}
+			{error && (
+				<p className="muted error-text" style={{ marginTop: "8px" }}>
+					{error}
+				</p>
+			)}
 		</div>
 	);
 }
@@ -232,8 +248,8 @@ function MyCases({ address }: { address: string }) {
 							</span>
 						</div>
 						<p>
-							Escrow: {c.escrow_id} · Votes: {c.votes_for_seller + c.votes_for_buyer}/{c.juror_count}{" "}
-							· Threshold: {c.threshold}
+							Escrow: {c.escrow_id} · Votes: {c.votes_for_seller + c.votes_for_buyer}/
+							{c.juror_count} · Threshold: {c.threshold}
 							{remaining > 0 && ` · Escalates in ${remainingDays}d`}
 						</p>
 						<code>{c.id}</code>
@@ -242,9 +258,7 @@ function MyCases({ address }: { address: string }) {
 								{c.escalation_level <= 1 && (
 									<MediationPanel escrowId={c.escrow_id} disputeMode="jury" />
 								)}
-								{c.status === "voting" && (
-									<VotePanel case={c} address={address} onVoted={load} />
-								)}
+								{c.status === "voting" && <VotePanel case={c} address={address} onVoted={load} />}
 								<EvidenceSection caseId={c.id} escrowId={c.escrow_id} status={c.status} />
 							</>
 						)}
@@ -407,15 +421,21 @@ function CandidatesSection() {
 }
 
 /* ─── Chat Evidence ─── */
-function EvidenceSection({ caseId, escrowId, status }: { caseId: string; escrowId: string; status: string }) {
+function EvidenceSection({
+	caseId,
+	escrowId,
+	status,
+}: { caseId: string; escrowId: string; status: string }) {
 	const { sign } = useWallet();
 	const { notify } = useToast();
 	const address = useAddress();
-	const [evidence, setEvidence] = useState<LoadState<{
-		evidence: EvidenceMessage[];
-		chat_pubkey_buyer: string | null;
-		chat_pubkey_seller: string | null;
-	} | null>>({ loading: true });
+	const [evidence, setEvidence] = useState<
+		LoadState<{
+			evidence: EvidenceMessage[];
+			chat_pubkey_buyer: string | null;
+			chat_pubkey_seller: string | null;
+		} | null>
+	>({ loading: true });
 	const [showRevealModal, setShowRevealModal] = useState(false);
 	const [revealing, setRevealing] = useState(false);
 
@@ -497,8 +517,17 @@ function EvidenceSection({ caseId, escrowId, status }: { caseId: string; escrowI
 					)}
 					<div style={{ maxHeight: "300px", overflowY: "auto", marginTop: "8px" }}>
 						{evidence.data.evidence.map((m) => (
-							<div key={m.id} style={{ padding: "8px", borderBottom: "1px solid var(--color-border)", fontSize: "13px" }}>
-								<div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+							<div
+								key={m.id}
+								style={{
+									padding: "8px",
+									borderBottom: "1px solid var(--color-border)",
+									fontSize: "13px",
+								}}
+							>
+								<div
+									style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}
+								>
 									<code style={{ fontSize: "11px" }}>{m.sender_address.slice(0, 16)}...</code>
 									<span className="muted" style={{ fontSize: "11px" }}>
 										{new Date(m.created_at * 1000).toLocaleString()}
@@ -528,9 +557,15 @@ function EvidenceSection({ caseId, escrowId, status }: { caseId: string; escrowI
 				<div className="modal-overlay" onClick={() => setShowRevealModal(false)}>
 					<div className="modal" onClick={(e) => e.stopPropagation()}>
 						<h3 style={{ margin: "0 0 12px" }}>Reveal chat to jury?</h3>
-						<p style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginBottom: "16px" }}>
-							This gives the jury read-only access to ALL your messages on this escrow.
-							The jury will be able to read the decrypted message thread.
+						<p
+							style={{
+								fontSize: "13px",
+								color: "var(--color-text-secondary)",
+								marginBottom: "16px",
+							}}
+						>
+							This gives the jury read-only access to ALL your messages on this escrow. The jury
+							will be able to read the decrypted message thread.
 						</p>
 						<p style={{ fontSize: "13px", color: "#cc6666", marginBottom: "16px" }}>
 							This action cannot be undone.
