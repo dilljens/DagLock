@@ -14,6 +14,10 @@ export const test = base.extend<Fixtures>({
 		if (kaswareMock) {
 			await mockKasware(page, kaswareMock);
 		}
+		// Dismiss onboarding overlay on first page load
+		await page.addInitScript(() => {
+			localStorage.setItem("daglock_onboarded", "true");
+		});
 		await use(page);
 	},
 });

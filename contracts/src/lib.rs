@@ -527,11 +527,12 @@ mod tests {
             &zero_pk,
         );
 
-        assert_eq!(compiled.abi.len(), 3);
+        assert_eq!(compiled.abi.len(), 4);
         let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"release"));
         assert!(names.contains(&"swap"));
         assert!(names.contains(&"refund"));
+        assert!(names.contains(&"auto_settle"));
         assert!(!compiled.script.is_empty());
     }
 
@@ -584,6 +585,7 @@ mod tests {
         assert!(src.contains("entrypoint function release"));
         assert!(src.contains("entrypoint function swap"));
         assert!(src.contains("entrypoint function refundAfterTimeout"));
+        assert!(src.contains("entrypoint function emergencyRefund"));
     }
 
     #[test]

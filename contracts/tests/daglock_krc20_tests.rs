@@ -32,11 +32,12 @@ fn krc20_compiles_with_valid_params() {
         &zero_key(), // kcc20_covenant_id
     );
 
-    assert_eq!(compiled.abi.len(), 3);
+    assert_eq!(compiled.abi.len(), 4);
     let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
     assert!(names.contains(&"release"));
     assert!(names.contains(&"swap"));
     assert!(names.contains(&"refund"));
+    assert!(names.contains(&"auto_settle"));
     assert!(!compiled.script.is_empty());
 }
 
@@ -178,7 +179,7 @@ fn krc20_entrypoint_count() {
 
     assert_eq!(
         krc20.abi.len(),
-        3,
-        "KRC-20 covenant should have 3 entrypoints"
+        4,
+        "KRC-20 covenant should have 4 entrypoints (release, swap, refund, auto_settle)"
     );
 }

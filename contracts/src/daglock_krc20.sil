@@ -53,6 +53,7 @@ contract DagLockKRC20(
     }
 
     byte constant IDENTIFIER_COVENANT_ID = 0x02;
+    int constant MIN_OUT = 1000;
 
     // ── Helper: ICC Validation ─────────────────────────────────────
     // Validates that the DagLockKRC20 covenant controls the KCC-20
@@ -85,15 +86,9 @@ contract DagLockKRC20(
     }
 
     // ── Path A: Mutual Release ─────────────────────────────────────
-    // Both buyer and seller sign. The KCC-20 branch transitions to
-    // seller ownership. A KAS fee goes to treasury.
-    //
-    // Output layout:
-    //   output[0]: Recipient (KCC-20 token output or KAS change)
-    //   output[1]: Treasury fee (must equal this UTXO's input value)
-    //
-    // The DagLockKRC20 UTXO is deployed with KAS value equal to the
-    // protocol fee. The ENTIRE value of this UTXO goes to treasury.
+    // Both parties sign. The fee UTXO goes to treasury.
+    // Token transfer is handled by KCC-20 ICC — output[0] must be the
+    // KCC-20 token output (recipient P2PK script).
     entrypoint function release(sig buyerSig, sig sellerSig) {
         require(checkSig(buyerSig, buyerPubKey));
         require(checkSig(sellerSig, sellerPubKey));
@@ -101,9 +96,9 @@ contract DagLockKRC20(
         // ICC: validate KCC-20 input ownership (S3 fix)
         validateKcc20Input();
 
-        // Exact fee enforcement: the DagLockKRC20 UTXO's value IS the fee
+        // The DagLockKRC20 UTXO's value IS the fee
         int feeValue = tx.inputs[this.activeInputIndex].value;
-        require(feeValue > 0);
+        require(feeValue >= MIN_OUT);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
         require(tx.outputs[1].value == feeValue);
@@ -111,15 +106,15 @@ contract DagLockKRC20(
     }
 
     // ── Path B: Atomic Swap ────────────────────────────────────────
+    // Hash preimage reveals to the counterparty. Fee goes to treasury.
     entrypoint function swap(byte[] secret) {
         require(sha256(secret) == tradeHash);
 
         // ICC: validate KCC-20 input ownership (S3 fix)
         validateKcc20Input();
 
-        // Exact fee enforcement: the DagLockKRC20 UTXO's value IS the fee
         int feeValue = tx.inputs[this.activeInputIndex].value;
-        require(feeValue > 0);
+        require(feeValue >= MIN_OUT);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
         require(tx.outputs[1].value == feeValue);
@@ -127,6 +122,7 @@ contract DagLockKRC20(
     }
 
     // ── Path C: Timeout Refund ─────────────────────────────────────
+    // Buyer signs to reclaim the fee UTXO. Output[0] hardcoded to buyer.
     entrypoint function refund(sig buyerSig) {
         require(tx.time >= timeout);
         require(checkSig(buyerSig, buyerPubKey));
@@ -134,9 +130,33 @@ contract DagLockKRC20(
         // ICC: validate KCC-20 input ownership (S3 fix)
         validateKcc20Input();
 
-        // Refund: the DagLockKRC20 UTXO's full value returns to the buyer
-        // No fee is charged on refund (same as KAS escrow covenant).
         int inputValue = tx.inputs[this.activeInputIndex].value;
+        require(inputValue >= MIN_OUT);
+        byte[34] buyerScript = new ScriptPubKeyP2PK(buyerPubKey);
+        require(tx.outputs[0].scriptPubKey == byte[](buyerScript));
         require(tx.outputs[0].value == inputValue);
+    }
+
+    // ── Path D: Auto-Release ───────────────────────────────────────
+    // After timeout, anyone can trigger. The fee UTXO goes to seller
+    // as KAS compensation (the tokens were already released by the
+    // KCC-20 ICC path or the seller never had them). Seller receives
+    // the fee minus protocol fee.
+    entrypoint function auto_settle() {
+        require(tx.time >= timeout);
+
+        int inputValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = inputValue / 200;
+        int sendAmount = inputValue - feeAmount;
+        require(sendAmount >= MIN_OUT);
+
+        byte[34] sellerScript = new ScriptPubKeyP2PK(sellerPubKey);
+        require(tx.outputs[0].scriptPubKey == byte[](sellerScript));
+        require(tx.outputs[0].value == sendAmount);
+
+        byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
+        require(feeAmount >= MIN_OUT);
+        require(tx.outputs[1].value == feeAmount);
+        require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 }
