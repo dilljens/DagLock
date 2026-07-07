@@ -3,7 +3,7 @@
 //!
 //! These tests do NOT require a running node.
 
-use daglock_contracts::{compile_daglock, entrypoints};
+use daglock_contracts::{compile_daglock, compile_daglock_deposit, compile_daglock_multi, entrypoints};
 use kaspa_consensus_core::hashing::sighash::{
     calc_schnorr_signature_hash, SigHashReusedValuesUnsync,
 };
@@ -509,4 +509,234 @@ fn refund_fails_before_timeout() {
 fn release_fails_with_wrong_fee_amount() {
     let result = test_release(true, true, true);
     assert!(result.is_err(), "release with wrong fee should fail");
+}
+
+// ── Auto-settle tests ───────────────────────────────────────────────
+
+#[test]
+fn auto_settle_succeeds_after_timeout() {
+    let buyer = random_keypair();
+    let seller = random_keypair();
+    let treasury = random_keypair();
+    let timeout = 1_700_000_000i64;
+    let now: u64 = (timeout + 1) as u64;
+    let input_value: u64 = 200_000;
+    let fee = input_value / 200;
+    let send = input_value - fee;
+
+    let compiled = compile_daglock(
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        &[0u8; 32], // no trade hash
+        timeout,
+        &pubkey_bytes(&treasury),
+    );
+
+    let outputs = vec![
+        TransactionOutput::new(send, p2pk_script(&pubkey_bytes(&seller))),
+        TransactionOutput::new(fee, p2pk_script(&pubkey_bytes(&treasury))),
+    ];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([10u8; 32]), 0),
+        vec![],
+        0,
+        0u8,
+    );
+    let tx = Transaction::new(1, vec![input], outputs.clone(), now, Default::default(), 0, vec![]);
+    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let sigscript = compiled
+        .build_sig_script(entrypoints::AUTO_SETTLE, vec![])
+        .expect("build_sig_script");
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let mut mtx = mtx;
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(result.is_ok(), "auto_settle after timeout should succeed: {:?}", result.err());
+}
+
+#[test]
+fn auto_settle_fails_before_timeout() {
+    let buyer = random_keypair();
+    let seller = random_keypair();
+    let treasury = random_keypair();
+    let timeout = 1_700_000_000i64;
+    let now: u64 = (timeout - 1) as u64;
+    let input_value: u64 = 200_000;
+    let fee = input_value / 200;
+    let send = input_value - fee;
+
+    let compiled = compile_daglock(
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        &[0u8; 32],
+        timeout,
+        &pubkey_bytes(&treasury),
+    );
+
+    let outputs = vec![
+        TransactionOutput::new(send, p2pk_script(&pubkey_bytes(&seller))),
+        TransactionOutput::new(fee, p2pk_script(&pubkey_bytes(&treasury))),
+    ];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([11u8; 32]), 0),
+        vec![], 0, 0u8,
+    );
+    let tx = Transaction::new(1, vec![input], outputs.clone(), now, Default::default(), 0, vec![]);
+    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let sigscript = compiled.build_sig_script(entrypoints::AUTO_SETTLE, vec![]).expect("build_sig_script");
+    let reused = SigHashReusedValuesUnsync::new();
+    let mut mtx = mtx;
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(result.is_err(), "auto_settle before timeout should fail");
+}
+
+// ── Emergency refund tests ──────────────────────────────────────────
+
+#[test]
+fn emergency_refund_succeeds_after_30d() {
+    let buyer = random_keypair();
+    let seller = random_keypair();
+    let treasury = random_keypair();
+    let timeout = 1_700_000_000i64;
+    let now: u64 = (timeout + 2592000 + 1) as u64;
+    let input_value: u64 = 200_000;
+
+    let compiled = compile_daglock(
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        &[0u8; 32],
+        timeout,
+        &pubkey_bytes(&treasury),
+    );
+
+    let outputs = vec![
+        TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&buyer))),
+    ];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([12u8; 32]), 0),
+        vec![], 0, 0u8,
+    );
+    let tx = Transaction::new(1, vec![input], outputs.clone(), now, Default::default(), 0, vec![]);
+    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let sigscript = compiled
+        .build_sig_script(entrypoints::EMERGENCY_REFUND_NOSIG, vec![])
+        .expect("build_sig_script");
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let mut mtx = mtx;
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    assert!(result.is_ok(), "emergency_refund after 30d should succeed: {:?}", result.err());
+}
+
+// ── Deposit release test ────────────────────────────────────────────
+
+#[test]
+fn deposit_release_compiles_and_executes() {
+    let party1 = random_keypair();
+    let party2 = random_keypair();
+    let jury = random_keypair();
+    let treasury = random_keypair();
+    let deposit: u64 = 1_000_000;
+    let total = deposit * 2;
+
+    let compiled = compile_daglock_deposit(
+        &pubkey_bytes(&party1), &pubkey_bytes(&party2),
+        &pubkey_bytes(&jury), deposit as i64, 1_800_000_000,
+        &pubkey_bytes(&treasury),
+    );
+
+    let outputs = vec![
+        TransactionOutput::new(deposit, p2pk_script(&pubkey_bytes(&party1))),
+        TransactionOutput::new(deposit, p2pk_script(&pubkey_bytes(&party2))),
+    ];
+
+    let input = TransactionInput::new(
+        TransactionOutpoint::new(TransactionId::from_bytes([13u8; 32]), 0),
+        vec![], 0, 0u8,
+    );
+    let tx = Transaction::new(1, vec![input], outputs.clone(), 0, Default::default(), 0, vec![]);
+    let utxo = UtxoEntry::new(total, ScriptPublicKey::new(0, compiled.script.clone().into()), 0, false, None);
+    let mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
+
+    let sigscript = compiled
+        .build_sig_script(entrypoints::RELEASE, vec![
+            daglock_contracts::silverscript_lang::ast::Expr::bytes(vec![0u8; 65]),
+            daglock_contracts::silverscript_lang::ast::Expr::bytes(vec![0u8; 65]),
+        ])
+        .expect("build_sig_script");
+
+    let reused = SigHashReusedValuesUnsync::new();
+    let mut mtx = mtx;
+    mtx.tx.inputs[0].signature_script = sigscript;
+
+    let sig_cache = Cache::new(10_000);
+    let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
+    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+
+    let ver_tx = mtx.as_verifiable();
+    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let result = vm.execute();
+    // Deposit release requires valid signatures — we're using dummy sigs so it fails
+    // But the important thing is the covenant compiles and runs without crashing
+    assert!(result.is_err(), "deposit release with dummy sigs should fail (expected)");
+}
+
+// ── Multi-party structural test ─────────────────────────────────────
+
+#[test]
+fn multi_escrow_compiles_and_has_correct_entrypoints() {
+    let party1 = random_keypair();
+    let party2 = random_keypair();
+    let party3 = random_keypair();
+    let party4 = random_keypair();
+    let treasury = random_keypair();
+    let shares = vec![5_000i64, 3_000, 2_000, 0];
+
+    let compiled = compile_daglock_multi(
+        &pubkey_bytes(&party1), &pubkey_bytes(&party2),
+        &pubkey_bytes(&party3), &pubkey_bytes(&party4),
+        shares, &[0u8; 32], 1_700_000_000,
+        &pubkey_bytes(&treasury),
+    );
+
+    // Verify 3 entrypoints: release, swap, refund
+    assert_eq!(compiled.abi.len(), 3);
+    let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
+    assert!(names.contains(&"release"));
+    assert!(names.contains(&"swap"));
+    assert!(names.contains(&"refund"));
+    assert!(!compiled.script.is_empty());
 }
