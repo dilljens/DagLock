@@ -589,6 +589,63 @@ export type CompileResponse = {
 	abi: { name: string }[];
 };
 
+// KRC-20 token types
+export type TokenSummary = {
+	ticker: string;
+	price_kas: number | null;
+	volume_24h_sompi: number;
+	trades_24h: number;
+	total_trades: number;
+	active_offers: number;
+	last_trade_at: number | null;
+};
+
+export type TokenTrade = {
+	escrow_id: string;
+	amount_sompi: number;
+	status: string;
+	created_at: number;
+	buyer_address: string;
+	seller_address?: string | null;
+};
+
+export type TokenDetail = TokenSummary & {
+	trades: TokenTrade[];
+};
+
+export type TokenChartPoint = {
+	timestamp: number;
+	volume_kas: number;
+};
+
+export type TokenRegistryEntry = {
+	id: string;
+	ticker: string;
+	name: string;
+	total_supply: number;
+	decimals: number;
+	mint_mode: string;
+	owner_address?: string | null;
+	covenant_address?: string | null;
+	template_hash?: string | null;
+	status: string;
+	created_at: number;
+};
+
+export type DeployTokenRequest = {
+	name: string;
+	ticker: string;
+	total_supply: number;
+	decimals: number;
+	mint_mode: string;
+};
+
+export type UpdateTokenRequest = {
+	status?: string;
+	covenant_address?: string;
+	deploy_tx_id?: string;
+};
+
 export const api = {
 	health: () => loadJson<Health>("/v1/health"),
 	compile: (template: string, params: Record<string, string>) =>
@@ -889,14 +946,19 @@ export const api = {
 	explorer: () => loadJson<{ base_url: string }>("/v1/network/explorer"),
 
 	// KRC-20 tokens
-	tokens: () => loadJson<{ tokens: any[]; total: number }>("/v1/tokens"),
-	token: (ticker: string) => loadJson<any>(`/v1/tokens/${encodeURIComponent(ticker)}`),
+	tokens: () =>
+		loadJson<{ tokens: TokenSummary[]; total: number }>("/v1/tokens"),
+	token: (ticker: string) =>
+		loadJson<TokenDetail>(`/v1/tokens/${encodeURIComponent(ticker)}`),
 	tokenChart: (ticker: string, period?: string) =>
-		loadJson<any>(
+		loadJson<{ points: TokenChartPoint[] }>(
 			`/v1/tokens/${encodeURIComponent(ticker)}/chart${period ? `?period=${period}` : ""}`,
 		),
-	deployToken: (req: any, auth: AuthHeaders) => postJson<any>("/v1/tokens/deploy", req, auth),
-	updateToken: (ticker: string, req: any, auth: AuthHeaders) =>
+	registeredTokens: () =>
+		loadJson<{ tokens: TokenRegistryEntry[]; total: number }>("/v1/tokens/registered"),
+	deployToken: (req: DeployTokenRequest, auth: AuthHeaders) =>
+		postJson<{ status: string; ticker: string }>("/v1/tokens/deploy", req, auth),
+	updateToken: (ticker: string, req: UpdateTokenRequest, auth: AuthHeaders) =>
 		fetchWithTimeout(`${API_BASE}/v1/tokens/${encodeURIComponent(ticker)}`, {
 			method: "PATCH",
 			headers: {

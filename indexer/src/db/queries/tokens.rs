@@ -57,7 +57,9 @@ pub struct TokenTrade {
 #[derive(Debug, Serialize)]
 pub struct TokenChartPoint {
     pub timestamp: i64,
-    pub price_sompi: f64,
+    /// The KAS amount settled in trades at this time (not token price).
+    /// Accurate price-per-token requires a token_amount field on escrows.
+    pub volume_kas: f64,
 }
 
 /// List all KRC-20 tokens that have been traded or offered, with summary stats.
@@ -170,7 +172,7 @@ pub async fn get_token(
             escrow_id: row.get("id"),
             amount_sompi: row.get("amount_sompi"),
             price_sompi: None, // Price discovery from offers
-            side: "sell".to_string(),
+            side: "trade".to_string(), // side depends on viewer's role — mark as generic
             status: row.get("status"),
             created_at: row.get("created_at"),
             buyer_address: row.get("buyer_address"),
@@ -219,7 +221,7 @@ pub async fn get_token_chart(
         .into_iter()
         .map(|row| TokenChartPoint {
             timestamp: row.get("created_at"),
-            price_sompi: row.get::<i64, _>("amount_sompi") as f64 / 100_000_000.0,
+            volume_kas: row.get::<i64, _>("amount_sompi") as f64 / 100_000_000.0,
         })
         .collect();
 

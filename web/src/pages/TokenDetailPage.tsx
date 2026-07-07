@@ -26,29 +26,22 @@ type TokenDetail = {
 
 type ChartPoint = {
 	timestamp: number;
-	price_sompi: number;
+	volume_kas: number;
 };
 
-function formatPrice(price: number | null): string {
-	if (price === null || price === 0) return "—";
-	if (price < 0.0001) return price.toExponential(2);
-	if (price < 1) return price.toFixed(6);
-	return price.toFixed(2);
-}
-
-function SimplePriceChart({ points, height = 120 }: { points: ChartPoint[]; height?: number }) {
+function SimpleVolumeChart({ points, height = 120 }: { points: ChartPoint[]; height?: number }) {
 	if (points.length < 2) return null;
 
-	const prices = points.map((p) => p.price_sompi);
-	const min = Math.min(...prices);
-	const max = Math.max(...prices);
+	const volumes = points.map((p) => p.volume_kas);
+	const min = Math.min(...volumes);
+	const max = Math.max(...volumes);
 	const range = max - min || 1;
 	const width = 400;
 
 	const pathD = points
 		.map((p, i) => {
 			const x = (i / (points.length - 1)) * width;
-			const y = height - ((p.price_sompi - min) / range) * (height - 20) - 10;
+			const y = height - ((p.volume_kas - min) / range) * (height - 20) - 10;
 			return `${i === 0 ? "M" : "L"}${x.toFixed(0)},${y.toFixed(0)}`;
 		})
 		.join(" ");
@@ -59,14 +52,13 @@ function SimplePriceChart({ points, height = 120 }: { points: ChartPoint[]; heig
 			style={{ width: "100%", height: "auto", maxHeight: height }}
 		>
 			<path d={pathD} fill="none" stroke="#53d769" strokeWidth="2" strokeLinecap="round" />
-			{/* Area fill */}
 			<path
 				d={`${pathD} L${width},${height} L0,${height} Z`}
-				fill="url(#priceGradient)"
+				fill="url(#volGradient)"
 				opacity="0.15"
 			/>
 			<defs>
-				<linearGradient id="priceGradient" x1="0" x2="0" y1="0" y2="1">
+				<linearGradient id="volGradient" x1="0" x2="0" y1="0" y2="1">
 					<stop offset="0%" stopColor="#53d769" />
 					<stop offset="100%" stopColor="#53d769" stopOpacity="0" />
 				</linearGradient>
@@ -179,7 +171,10 @@ export function TokenDetailPage({ ticker }: { ticker: string }) {
 								))}
 							</div>
 						</div>
-						<SimplePriceChart points={chartData} />
+						<SimpleVolumeChart points={chartData} />
+						<p className="muted" style={{ fontSize: "11px", marginTop: "4px" }}>
+							KAS trade volume over time (token price requires per-trade token amount data)
+						</p>
 					</div>
 				)}
 
