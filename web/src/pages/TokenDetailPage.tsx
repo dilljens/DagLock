@@ -29,6 +29,13 @@ type ChartPoint = {
 	volume_kas: number;
 };
 
+function formatPrice(price: number | null): string {
+	if (price === null || price === 0) return "—";
+	if (price < 0.0001) return price.toExponential(2);
+	if (price < 1) return price.toFixed(6);
+	return price.toFixed(2);
+}
+
 function SimpleVolumeChart({ points, height = 120 }: { points: ChartPoint[]; height?: number }) {
 	if (points.length < 2) return null;
 

@@ -638,6 +638,7 @@ export type DeployTokenRequest = {
 	total_supply: number;
 	decimals: number;
 	mint_mode: string;
+	owner_address?: string;
 };
 
 export type UpdateTokenRequest = {
