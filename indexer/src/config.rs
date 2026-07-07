@@ -16,7 +16,7 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub no_wrpc: bool,
 
-    #[arg(long, default_value = "testnet-10")]
+    #[arg(long, default_value = "testnet-11")]
     pub network: String,
 
     #[arg(long, default_value = "sqlite:daglock.db")]
@@ -119,9 +119,9 @@ impl Args {
     pub fn validate(&self) {
         // Network must be a known value
         match self.network.as_str() {
-            "mainnet" | "testnet-12" | "testnet-11" | "testnet-10" | "devnet" | "simnet" => {}
+            "mainnet" | "testnet-11" | "testnet-10" | "devnet" | "simnet" => {}
             other => panic!(
-                "Invalid network: '{other}'. Expected: mainnet, testnet-12, testnet-11, testnet-10, devnet, simnet"
+                "Invalid network: '{other}'. Expected: mainnet, testnet-11, testnet-10, devnet, simnet"
             ),
         }
 
@@ -191,7 +191,7 @@ mod tests {
             port: 8543,
             wrpc_url: None,
             no_wrpc: true,
-            network: "testnet-10".into(),
+            network: "testnet-11".into(),
             database_url: "sqlite::memory:".into(),
             daglock_kas_template: None,
             daglock_krc20_template: None,

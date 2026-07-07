@@ -103,7 +103,7 @@ pub fn compile_escrow(
 ///
 /// # Arguments
 /// * `script_hex` - Hex-encoded compiled covenant script (from `compile_escrow`)
-/// * `network` - Network prefix: "mainnet", "testnet-10", or "devnet"
+/// * `network` - Network prefix: "mainnet", "testnet-11", "testnet-10", or "devnet"
 ///
 /// # Returns
 /// The P2SH address string (e.g. "kaspa:pq...")
@@ -126,7 +126,7 @@ pub fn compute_covenant_address(script_hex: &str, network: &str) -> Result<Strin
     // Determine network prefix
     let prefix = match network {
         "mainnet" => kaspa_addresses::Prefix::Mainnet,
-        "testnet-10" | "testnet-11" | "testnet-12" => kaspa_addresses::Prefix::Testnet,
+        "testnet-10" | "testnet-11" => kaspa_addresses::Prefix::Testnet,
         _ => {
             // Default to testnet for dev/simnet
             kaspa_addresses::Prefix::Testnet
@@ -350,7 +350,7 @@ mod tests {
         let json: serde_json::Value = serde_json::from_str(&compile_result).unwrap();
         let script_hex = json["script"].as_str().unwrap();
 
-        let address = compute_covenant_address(script_hex, "testnet-10").unwrap();
+        let address = compute_covenant_address(script_hex, "testnet-11").unwrap();
         assert!(
             address.starts_with("kaspatest:p"),
             "P2SH address should start with kaspatest:p, got {}",

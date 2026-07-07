@@ -206,10 +206,10 @@ cargo build --workspace
 cargo test --workspace
 
 # Run the indexer with mock auth (dev mode)
-cargo run -p daglock-indexer -- --mock-auth --network testnet-12 --database-url sqlite::memory:
+cargo run -p daglock-indexer -- --mock-auth --network testnet-11 --database-url sqlite::memory:
 
 # Run with vault auto-sweep
-cargo run -p daglock-indexer -- --mock-auth --network testnet-12 \
+cargo run -p daglock-indexer -- --mock-auth --network testnet-11 \
   --database-url sqlite:daglock.db \
   --auto-sweep-vaults
 

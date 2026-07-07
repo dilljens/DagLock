@@ -129,6 +129,6 @@
 - **Invoice**
   - Escrow-based invoice: freelancer creates shareable link → client pays via escrow → auto-settles. No covenant changes — invoice is DB metadata linked to an escrow. | Context: `indexer/src/api/invoices.rs`, `web/src/pages/PayInvoicePage.tsx`
 - **Manual mode**
-  - Wallet-less testnet mode: enter `kaspa:` address manually, use mock signatures. For users whose wallet doesn't support testnet-12. | Context: `web/src/layout/Sidebar.tsx`
+  - Wallet-less testnet mode: enter `kaspa:` address manually, use mock signatures. For users whose wallet doesn't support testnet-11. | Context: `web/src/layout/Sidebar.tsx`
 - **PNN (Public Node Network)**
   - Kaspa's decentralized pool of community-operated resolver nodes (`kaspa.stream`, `kaspa.red`, `kaspa.green`, `kaspa.blue`). Currently down during wRPC v2 migration. | Context: `indexer/src/listener.rs`

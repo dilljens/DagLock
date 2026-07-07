@@ -123,7 +123,7 @@ impl AnchorService {
     /// Try to fetch the current DAA score from the Kaspa node.
     async fn fetch_daa_score(&self) -> Option<i64> {
         let url = self.wrpc_url.as_ref()?;
-        match crate::listener::try_connect_wrpc(url, "testnet-12").await {
+        match crate::listener::try_connect_wrpc(url, "testnet-11").await {
             Ok(client) => {
                 let info = client.get_block_dag_info().await.ok()?;
                 Some(info.virtual_daa_score as i64)

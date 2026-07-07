@@ -25,7 +25,7 @@ Enter a test address (see below) and request funds. They arrive instantly.
 
 ### 3. Connect With Manual Mode (No KasWare Needed)
 
-KasWare browser extension doesn't support testnet-10. Use **Manual Mode** instead:
+KasWare browser extension doesn't support testnet-11. Use **Manual Mode** instead:
 
 1. Click **"Use manual mode"** in the sidebar footer
 2. Paste in one of the test addresses below

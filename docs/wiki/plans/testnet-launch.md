@@ -87,7 +87,7 @@ Open Telegram, find `@DagLock_bot`, send `/start`. Should get a welcome message.
 
 ## Phase 1: Provision a Kaspa Node (VPS)
 
-The indexer needs a testnet-12 node to talk to. Public resolver nodes are down (wRPC v2 migration), so we run our own on a cheap VPS.
+The indexer needs a testnet-11 node to talk to. Public resolver nodes are down (wRPC v2 migration), so we run our own on a cheap VPS.
 
 ### 1.1 — Sign up for Hetzner (if needed)
 
@@ -176,7 +176,7 @@ journalctl -u kaspad -f --tail=10
 # Should show block headers syncing
 ```
 
-> Sync takes 1-2 hours for testnet-12 (IBD). The wRPC endpoint is available during sync, but UTXO queries won't return useful data until fully synced.
+> Sync takes 1-2 hours for testnet-11 (IBD). The wRPC endpoint is available during sync, but UTXO queries won't return useful data until fully synced.
 
 ### 1.9 — Test wRPC from your local machine
 
@@ -201,8 +201,8 @@ In Railway dashboard → indexer service → **Variables**:
 In Railway → **Deploy** → **Start Command**, change:
 
 ```diff
-- daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --cors-origin https://daglock.com --no-wrpc
-+ daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-12 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --cors-origin https://daglock.com --wrpc-url ws://<VPS_IP>:16610
+- daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-11 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --cors-origin https://daglock.com --no-wrpc
++ daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network testnet-11 --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --cors-origin https://daglock.com --wrpc-url ws://<VPS_IP>:16610
 ```
 
 Also update `railway.json` to match (so future deploys keep the change).
@@ -213,7 +213,7 @@ Railway auto-rebuilds on start command change. Wait 2-3 minutes, then check logs
 
 ```
 INFO wRPC verifier connected to ws://<VPS_IP>:16610
-INFO wRPC listener starting for testnet-12 at ws://<VPS_IP>:16610
+INFO wRPC listener starting for testnet-11 at ws://<VPS_IP>:16610
 INFO Connected to Kaspa node at ws://<VPS_IP>:16610
 ```
 
@@ -231,7 +231,7 @@ Expected includes `"node_synced": true` (may be `false` until kaspad finishes IB
 curl https://daglock-production.up.railway.app/v1/network
 ```
 
-Expected: `{"network":"testnet-12","daa_score":<number>,...}`
+Expected: `{"network":"testnet-11","daa_score":<number>,...}`
 
 ### 2.5 — Verify price endpoint
 

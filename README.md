@@ -52,7 +52,7 @@ Lock assets directly into Kaspa's BlockDAG state. Release them only when cryptog
 # Prerequisites: Rust 1.91+, Node 22+
 
 # 1. Build and start the indexer (v2.0.1 — Toccata SDK)
-cargo run -p daglock-indexer -- --network testnet-12 --no-wrpc
+cargo run -p daglock-indexer -- --network testnet-11 --no-wrpc
 
 # 2. Start the web UI (separate terminal)
 cd web && npm ci && npm run dev

@@ -20,7 +20,7 @@ CORS_ORIGIN=https://daglock.com DAGLOCK_MESSAGE_KEY=$KEY ./scripts/deploy-mainne
 |------------|----------|---------|-------------|
 | DAGLOCK_MESSAGE_KEY | YES | (ephemeral dev key) | 64 hex chars for AES-256-GCM |
 | --wrpc-url | Yes* | — | Kaspa node wRPC URL (ws://host:port) |
-| --network | Yes | testnet-12 | mainnet/testnet-N/simnet/devnet |
+| --network | Yes | testnet-11 | mainnet/testnet-N/simnet/devnet |
 | --allow-mainnet | No | false | Must set for mainnet (safety) |
 | --cors-origin | No | * | CORS origin (set to domain in prod) |
 | --db-type | No | sqlite | sqlite or postgres |
@@ -61,7 +61,7 @@ cat > ~/.config/daglock/env << 'EOF'
 DATABASE_URL=sqlite:$HOME/.local/share/daglock/daglock.db
 
 # Network
-NETWORK=testnet-12
+NETWORK=testnet-11
 
 # wRPC (use public testnet resolver or your own node)
 WRPC_URL=wss://tn12.kaspa.org:16210

@@ -110,7 +110,7 @@
 │                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
 │  │   kaspad     │  │ daglock-     │  │ daglock-bot       │  │
-│  │ (testnet-12) │◄─┤ indexer      │  │ (Telegram)        │  │
+│  │ (testnet-11) │◄─┤ indexer      │  │ (Telegram)        │  │
 │  │ wRPC :16610  │  │ :8443        │  │                    │  │
 │  └──────────────┘  └──────┬───────┘  └──────────────────┘  │
 │         ❌ No node        │ nginx                          │
@@ -227,7 +227,7 @@ daglock/
 
 ## Current Phase
 
-**Testnet Launch:** Live at `@DagLock_bot` and `daglock.com` since June 17 on testnet-12.
+**Testnet Launch:** Live at `@DagLock_bot` and `daglock.com` since June 17 on testnet-11.
 **Audit: 28/30 items complete.** All 7 critical security items fixed (S3 closed via ICC pattern in covenant). 7 usability items fixed. 7/8 structural items. 5/6 code quality items.
 **Mainnet target: June 30, 2026** (Toccata hard fork activation).
 

@@ -910,7 +910,7 @@ mod tests {
 
     #[test]
     fn create_verifier_returns_mock() {
-        let v = create_verifier("testnet-10", true);
+        let v = create_verifier("testnet-11", true);
         assert!(v.verify_signature("kaspa:test", "anything", "msg").is_ok());
     }
 

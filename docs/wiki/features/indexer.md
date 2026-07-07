@@ -6,7 +6,7 @@ Rust backend serving the DagLock REST API. Handles escrow lifecycle (create, set
 
 | Component | Location | Details |
 |-----------|----------|---------|
-| Indexer | OVH VPS-2 (8GB RAM) | `testnet-10`, `--no-wrpc` (MockVerifier) |
+| Indexer | OVH VPS-2 (8GB RAM) | `testnet-11`, `--no-wrpc` (MockVerifier) |
 | Bot | Same VPS | `@DagLock_bot` on Telegram |
 | Web UI | Cloudflare Pages | `daglock.com` → `api.daglock.com` |
 | kaspad | ❌ Not on VPS | Brief test failed, used `--no-wrpc` instead |

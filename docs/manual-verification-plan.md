@@ -21,7 +21,7 @@ cd web && npm run build
 # Run in terminal 1
 cargo run -p daglock-indexer -- \
   --mock-auth \
-  --network testnet-12 \
+  --network testnet-11 \
   --database-url sqlite::memory: \
   --cors-origin "*"
 ```

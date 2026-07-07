@@ -101,7 +101,7 @@ interface DaglockWalletProvider {
   // Identity
   getPublicKey(): Promise<string>;            // x-only 32-byte hex
   getBalance(): Promise<{confirmed: number; pending: number}>;  // sompi
-  getNetwork(): Promise<string>;              // "mainnet" | "testnet-12"
+  getNetwork(): Promise<string>;              // "mainnet" | "testnet-11"
 
   // Signing
   signMessage(message: string, type?: "ecdsa" | "schnorr"): Promise<string>;
