@@ -956,7 +956,7 @@ export const api = {
 			chat_pubkey_seller: string | null;
 			revealed: boolean;
 			cleared: boolean;
-		}>(`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence`, auth),
+		}>(`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence`),
 	clearEvidence: (caseId: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string }>(
 			`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence/clear`,

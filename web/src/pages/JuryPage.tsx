@@ -488,7 +488,7 @@ function EvidenceSection({
 			{!evidence.loading && !evidence.error && evidence.data === null && status === "decided" && (
 				<p className="muted">Evidence cleared</p>
 			)}
-			{!evidence.loading && evidence.data && !evidence.data.revealed && status !== "decided" && (
+			{!evidence.loading && evidence.data && evidence.data.evidence.length === 0 && status !== "decided" && (
 				<>
 					<p className="muted">No party has revealed the chat yet.</p>
 					<button
@@ -500,7 +500,7 @@ function EvidenceSection({
 					</button>
 				</>
 			)}
-			{!evidence.loading && evidence.data && evidence.data.revealed && !evidence.data.cleared && (
+			{!evidence.loading && evidence.data && evidence.data.evidence.length > 0 && (
 				<>
 					<p className="muted" style={{ marginBottom: "8px" }}>
 						Chat revealed — {evidence.data.evidence.length} messages
@@ -549,7 +549,7 @@ function EvidenceSection({
 					</div>
 				</>
 			)}
-			{!evidence.loading && evidence.data && evidence.data.cleared && (
+			{!evidence.loading && evidence.data && evidence.data.evidence.length === 0 && status === "decided" && (
 				<p className="muted">Evidence has been cleared after case resolution.</p>
 			)}
 

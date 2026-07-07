@@ -180,19 +180,29 @@ async fn main() {
         .expect("Failed to start HTTP server");
 }
 
-/// Spawn all background task loops. Extracted from main() to reduce cyclomatic complexity.
+/// Spawn all background task loops. Delegates to focused sub-functions for each domain.
 async fn spawn_background_tasks(args: &Args, state: &AppState, anchor_bg: Arc<crate::services::anchor::AnchorService>) {
-    // Anchor flush every N seconds
-    {
-        let anchor_service = anchor_bg;
-        let interval_secs = args.anchor_interval_seconds;
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
-            loop { interval.tick().await; anchor_service.flush_pending().await; }
-        });
-    }
+    spawn_anchor_flush(anchor_bg, args.anchor_interval_seconds);
+    spawn_wrpc_listener(args, state).await;
+    spawn_offer_reconciler(state.db.clone());
+    spawn_mediation_escalator(state.db.clone());
+    spawn_dispute_escalator(state.db.clone(), args.auto_escalate_disputes);
+    spawn_evidence_wiper(state.db.clone(), args.evidence_auto_wipe_hours);
+    spawn_auto_settler(state, args.auto_settle_escrows);
+    spawn_daily_stats(state.db.clone(), args.stats_interval_seconds);
+    crate::services::price_oracle::spawn(state.db.clone());
+    spawn_price_alert_checker(state, args.price_alerts_enabled);
+    spawn_deposit_sweeper(state.db.clone(), args.auto_sweep_deposits);
+}
 
-    // wRPC listener
+fn spawn_anchor_flush(anchor_service: Arc<crate::services::anchor::AnchorService>, interval_secs: u64) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
+        loop { interval.tick().await; anchor_service.flush_pending().await; }
+    });
+}
+
+async fn spawn_wrpc_listener(args: &Args, state: &AppState) {
     if let Some(wrpc_url) = state.wrpc_url.clone() {
         crate::listener::spawn(
             wrpc_url.clone(), state.db.clone(), state.network.clone(),
@@ -208,209 +218,190 @@ async fn spawn_background_tasks(args: &Args, state: &AppState, anchor_bg: Arc<cr
     } else if !args.no_wrpc {
         match crate::listener::try_connect_resolver(&args.network).await {
             Ok(client) => {
-                    let db = state.db.clone();
-                    let kas = state.daglock_kas_template.as_ref().and_then(|h| hex::decode(h).ok());
-                    let krc20 = state.daglock_krc20_template.as_ref().and_then(|h| hex::decode(h).ok());
-                    let net = state.network.clone();
-                    tokio::spawn(async move {
-                        crate::listener::run_online_loop_with_reconnect(
-                            client, db, kas, krc20, "resolver://auto", &net,
-                        ).await;
-                    });
+                let db = state.db.clone();
+                let kas = state.daglock_kas_template.as_ref().and_then(|h| hex::decode(h).ok());
+                let krc20 = state.daglock_krc20_template.as_ref().and_then(|h| hex::decode(h).ok());
+                let net = state.network.clone();
+                tokio::spawn(async move {
+                    crate::listener::run_online_loop_with_reconnect(client, db, kas, krc20, "resolver://auto", &net).await;
+                });
             }
             Err(e) => warn!("Resolver connection failed for listener: {e} — running without block scanning"),
         }
     }
+}
 
-    // Expired offers reconciliation every 5 minutes
-    {
-        let db = state.db.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
-            loop {
-                interval.tick().await;
-                match crate::db::queries::reconcile_expired_offers(&db).await {
-                    Ok(count) if count > 0 => info!("Expired {count} stale offers"),
-                    Ok(_) => {}
-                    Err(e) => warn!("Failed to reconcile expired offers: {e}"),
-                }
+fn spawn_offer_reconciler(db: sqlx::Pool<sqlx::Sqlite>) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
+        loop {
+            interval.tick().await;
+            match crate::db::queries::reconcile_expired_offers(&db).await {
+                Ok(count) if count > 0 => info!("Expired {count} stale offers"),
+                Ok(_) => {}
+                Err(e) => warn!("Failed to reconcile expired offers: {e}"),
             }
-        });
-    }
+        }
+    });
+}
 
-    // Mediation → jury escalation every 60 seconds
-    {
-        let db = state.db.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-            loop {
-                interval.tick().await;
-                let now = chrono::Utc::now().timestamp();
-                let cases = match crate::db::queries::find_expired_mediations(&db, now).await {
-                    Ok(c) => c,
-                    Err(e) => { warn!("Failed to find expired mediations: {e}"); continue; }
+fn spawn_mediation_escalator(db: sqlx::Pool<sqlx::Sqlite>) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            let now = chrono::Utc::now().timestamp();
+            let cases = match crate::db::queries::find_expired_mediations(&db, now).await {
+                Ok(c) => c,
+                Err(e) => { warn!("Failed to find expired mediations: {e}"); continue; }
+            };
+            for (escrow_id, amount_sompi) in &cases {
+                let escrow = match crate::db::queries::get_escrow(&db, escrow_id).await {
+                    Ok(Some(e)) => e, _ => continue,
                 };
-                for (escrow_id, amount_sompi) in &cases {
-                    let escrow = match crate::db::queries::get_escrow(&db, escrow_id).await {
-                        Ok(Some(e)) => e,
-                        _ => continue,
+                if escrow.dispute_mode.as_deref() == Some("jury") {
+                    let (juror_count, threshold) = crate::api::jury::juror_count_and_threshold(*amount_sompi);
+                    let eligible = match crate::db::queries::list_eligible_jurors_simple(&db).await {
+                        Ok(e) => e, Err(e) => { warn!("Failed to list jurors: {e}"); continue; }
                     };
-                    if escrow.dispute_mode.as_deref() == Some("jury") {
-                        let (juror_count, threshold) = crate::api::jury::juror_count_and_threshold(*amount_sompi);
-                        let eligible = match crate::db::queries::list_eligible_jurors_simple(&db).await {
-                            Ok(e) => e,
-                            Err(e) => { warn!("Failed to list jurors: {e}"); continue; }
-                        };
-                        if eligible.len() < juror_count as usize {
-                            warn!("Need {juror_count} jurors for {} but only {} registered", escrow_id, eligible.len());
-                            let _ = crate::db::queries::mark_mediation_escalated(&db, escrow_id).await;
-                            continue;
-                        }
-                        let pool = eligible.iter().take((juror_count as usize).saturating_mul(2).min(eligible.len())).collect::<Vec<_>>();
-                        let needed = (juror_count as usize).min(pool.len());
-                        let mut indices: Vec<usize> = (0..pool.len()).collect();
-                        for i in (pool.len() - needed..pool.len()).rev() {
-                            let j = rand::random::<usize>() % (i + 1);
-                            indices.swap(i, j);
-                        }
-                        let selected: Vec<String> = indices[pool.len() - needed..].iter().map(|&i| pool[i].address.clone()).collect();
-                        if let Err(e) = crate::db::queries::create_jury_case(&db, escrow_id, juror_count, threshold, &selected).await {
-                            warn!("Failed to create jury case for mediation escalation: {e}"); continue;
-                        }
+                    if eligible.len() < juror_count as usize {
+                        warn!("Need {juror_count} jurors for {}", escrow_id);
+                        let _ = crate::db::queries::mark_mediation_escalated(&db, escrow_id).await;
+                        continue;
                     }
-                    let _ = crate::db::queries::mark_mediation_escalated(&db, escrow_id).await;
-                }
-            }
-        });
-    }
-
-    // Dispute escalation
-    if args.auto_escalate_disputes {
-        let db = state.db.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-            loop {
-                interval.tick().await;
-                let now = chrono::Utc::now().timestamp();
-                let cases = match crate::db::queries::find_escalatable_cases(&db, now).await {
-                    Ok(c) => c, Err(e) => { warn!("Auto-escalate query failed: {}", e); continue; }
-                };
-                for (case_id, level, _status) in &cases {
-                    let new_level = level + 1;
-                    let deadline = match new_level { 1 => now + 432_000, 2 => now + 864_000, _ => continue };
-                    if let Err(e) = crate::db::queries::update_escalation_level(&db, case_id, new_level, deadline).await {
-                        warn!("Failed to escalate case {}: {}", case_id, e); continue;
+                    let pool = eligible.iter().take((juror_count as usize).saturating_mul(2).min(eligible.len())).collect::<Vec<_>>();
+                    let needed = (juror_count as usize).min(pool.len());
+                    let mut indices: Vec<usize> = (0..pool.len()).collect();
+                    for i in (pool.len() - needed..pool.len()).rev() {
+                        let j = rand::random::<usize>() % (i + 1);
+                        indices.swap(i, j);
                     }
-                    if new_level == 2 {
-                        let _ = crate::db::queries::auto_decide_case(&db, case_id, "seller_wins", now).await;
+                    let selected: Vec<String> = indices[pool.len() - needed..].iter().map(|&i| pool[i].address.clone()).collect();
+                    if let Err(e) = crate::db::queries::create_jury_case(&db, escrow_id, juror_count, threshold, &selected).await {
+                        warn!("Failed to create jury case: {e}"); continue;
                     }
                 }
+                let _ = crate::db::queries::mark_mediation_escalated(&db, escrow_id).await;
             }
-        });
-    }
+        }
+    });
+}
 
-    // Evidence wipe
-    {
-        let db = state.db.clone();
-        let wipe_hours = args.evidence_auto_wipe_hours;
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
-            loop {
-                interval.tick().await;
-                let now = chrono::Utc::now().timestamp();
-                let reveals = match crate::db::queries::get_active_reveals(&db).await {
-                    Ok(r) => r, Err(e) => { warn!("Failed to get reveals: {e}"); continue; }
-                };
-                for (case_id, revealed_at) in &reveals {
-                    if now - revealed_at > (wipe_hours as i64) * 3600 {
-                        if let Err(e) = crate::db::queries::clear_evidence(&db, case_id).await {
-                            warn!("Failed to auto-wipe evidence for case {}: {}", case_id, e);
-                        }
+fn spawn_dispute_escalator(db: sqlx::Pool<sqlx::Sqlite>, enabled: bool) {
+    if !enabled { return; }
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            let now = chrono::Utc::now().timestamp();
+            let cases = match crate::db::queries::find_escalatable_cases(&db, now).await {
+                Ok(c) => c, Err(e) => { warn!("Auto-escalate query failed: {}", e); continue; }
+            };
+            for (case_id, level, _status) in &cases {
+                let new_level = level + 1;
+                let deadline = match new_level { 1 => now + 432_000, 2 => now + 864_000, _ => continue };
+                if let Err(e) = crate::db::queries::update_escalation_level(&db, case_id, new_level, deadline).await {
+                    warn!("Failed to escalate case {}: {}", case_id, e); continue;
+                }
+                if new_level == 2 {
+                    let _ = crate::db::queries::auto_decide_case(&db, case_id, "seller_wins", now).await;
+                }
+            }
+        }
+    });
+}
+
+fn spawn_evidence_wiper(db: sqlx::Pool<sqlx::Sqlite>, wipe_hours: u64) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
+        loop {
+            interval.tick().await;
+            let now = chrono::Utc::now().timestamp();
+            let reveals = match crate::db::queries::get_active_reveals(&db).await {
+                Ok(r) => r, Err(e) => { warn!("Failed to get reveals: {e}"); continue; }
+            };
+            for (case_id, revealed_at) in &reveals {
+                if now - revealed_at > (wipe_hours as i64 * 3600) {
+                    if let Err(e) = crate::db::queries::clear_evidence(&db, case_id).await {
+                        warn!("Failed to auto-wipe evidence for case {}: {}", case_id, e);
                     }
                 }
             }
-        });
-    }
+        }
+    });
+}
 
-    // Auto-settle
-    if args.auto_settle_escrows {
-        let db = state.db.clone();
-        let ws_tx = state.ws_tx.clone();
-        let sig_verifier = state.sig_verifier.clone();
-        let verifier = state.verifier.clone();
-        let email_service = state.email_service.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-            loop {
-                interval.tick().await;
-                let escrows = match crate::db::queries::escrows::find_auto_settleable_escrows(&db).await {
-                    Ok(e) => e, Err(e) => { warn!("Auto-settle query failed: {e}"); continue; }
-                };
-                for escrow in &escrows {
-                    let svc = crate::services::escrow_service::EscrowService::new(db.clone(), &ws_tx, sig_verifier.clone(), verifier.clone(), email_service.clone());
-                    if let Err(e) = svc.auto_settle(&escrow.id).await {
-                        warn!("Auto-settle failed for {}: {e}", escrow.id);
-                    }
+fn spawn_auto_settler(state: &AppState, enabled: bool) {
+    if !enabled { return; }
+    let db = state.db.clone();
+    let ws_tx = state.ws_tx.clone();
+    let sig_verifier = state.sig_verifier.clone();
+    let verifier = state.verifier.clone();
+    let email_service = state.email_service.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            let escrows = match crate::db::queries::escrows::find_auto_settleable_escrows(&db).await {
+                Ok(e) => e, Err(e) => { warn!("Auto-settle query failed: {e}"); continue; }
+            };
+            for escrow in &escrows {
+                let svc = crate::services::escrow_service::EscrowService::new(db.clone(), &ws_tx, sig_verifier.clone(), verifier.clone(), email_service.clone());
+                if let Err(e) = svc.auto_settle(&escrow.id).await {
+                    warn!("Auto-settle failed for {}: {e}", escrow.id);
                 }
             }
-        });
-    }
+        }
+    });
+}
 
-    // Daily stats
-    {
-        let db = state.db.clone();
-        let interval = args.stats_interval_seconds;
-        tokio::spawn(async move {
+fn spawn_daily_stats(db: sqlx::Pool<sqlx::Sqlite>, interval: u64) {
+    tokio::spawn(async move {
+        if let Err(e) = crate::db::queries::compute_and_store_daily_stats(&db).await {
+            tracing::warn!("Failed to compute daily stats: {e}");
+        }
+        let mut timer = tokio::time::interval(std::time::Duration::from_secs(interval));
+        loop {
+            timer.tick().await;
             if let Err(e) = crate::db::queries::compute_and_store_daily_stats(&db).await {
                 tracing::warn!("Failed to compute daily stats: {e}");
             }
-            let mut timer = tokio::time::interval(std::time::Duration::from_secs(interval));
-            loop {
-                timer.tick().await;
-                if let Err(e) = crate::db::queries::compute_and_store_daily_stats(&db).await {
-                    tracing::warn!("Failed to compute daily stats: {e}");
+        }
+    });
+}
+
+fn spawn_price_alert_checker(state: &AppState, enabled: bool) {
+    if !enabled { return; }
+    let db = state.db.clone();
+    let ws_tx = state.ws_tx.clone();
+    let email_service = state.email_service.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
+        loop {
+            interval.tick().await;
+            if let Some(price) = crate::types::fetch_kas_usd_price().await {
+                crate::services::price_alerts::check_alerts(&db, price, &ws_tx, &email_service).await;
+            }
+        }
+    });
+}
+
+fn spawn_deposit_sweeper(db: sqlx::Pool<sqlx::Sqlite>, enabled: bool) {
+    if !enabled { return; }
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            let deposits = match crate::db::queries::find_stale_deposits(&db).await {
+                Ok(d) => d, Err(e) => { warn!("Failed to find stale deposits: {e}"); continue; }
+            };
+            for dep in &deposits {
+                if let Err(e) = crate::db::queries::sweep_deposit(&db, &dep.id).await {
+                    warn!("Failed to sweep deposit {}: {e}", dep.id);
                 }
             }
-        });
-    }
-
-    // Price oracle
-    crate::services::price_oracle::spawn(state.db.clone());
-
-    // Price alerts
-    if args.price_alerts_enabled {
-        let db = state.db.clone();
-        let ws_tx = state.ws_tx.clone();
-        let email_service = state.email_service.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
-            loop {
-                interval.tick().await;
-                if let Some(price) = crate::types::fetch_kas_usd_price().await {
-                    crate::services::price_alerts::check_alerts(&db, price, &ws_tx, &email_service).await;
-                }
-            }
-        });
-    }
-
-    // Stale deposit sweep
-    if args.auto_sweep_deposits {
-        let db = state.db.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-            loop {
-                interval.tick().await;
-                let deposits = match crate::db::queries::find_stale_deposits(&db).await {
-                    Ok(d) => d, Err(e) => { warn!("Failed to find stale deposits: {e}"); continue; }
-                };
-                for dep in &deposits {
-                    if let Err(e) = crate::db::queries::sweep_deposit(&db, &dep.id).await {
-                        warn!("Failed to sweep deposit {}: {e}", dep.id);
-                    }
-                }
-            }
-        });
-    }
+        }
+    });
 }
 
 /// Handle graceful shutdown on SIGTERM/SIGINT.
