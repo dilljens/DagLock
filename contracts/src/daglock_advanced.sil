@@ -106,7 +106,7 @@ contract DagLockAdvanced(
         require(tx.outputs[0].value == inputValue);
     }
 
-    // ── Path F: Auto-Settle (same as daglock.sil) ───────────────
+    // ── Path F: Auto-Settle ─────────────────────────────────────
     entrypoint function auto_settle() {
         require(tx.time >= timeout);
 
@@ -115,6 +115,8 @@ contract DagLockAdvanced(
         int sendAmount = inputValue - feeAmount;
         require(sendAmount >= MIN_OUT);
 
+        byte[34] sellerScript = new ScriptPubKeyP2PK(pubkey(sellerKey));
+        require(tx.outputs[0].scriptPubKey == byte[](sellerScript));
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
@@ -153,12 +155,15 @@ contract DagLockAdvanced(
 
     // ── Path H: Emergency Refund ─────────────────────────────────
     // No signature needed — anyone can trigger after timeout + 30 days.
-    // Funds return to buyer. No fee.
+    // Output[0] hardcoded to buyer's P2PK — prevents third-party theft.
     entrypoint function emergency_refund() {
         require(tx.time >= timeout + 2592000);
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
         require(inputValue >= MIN_OUT);
+
+        byte[34] buyerScript = new ScriptPubKeyP2PK(pubkey(buyerKey));
+        require(tx.outputs[0].scriptPubKey == byte[](buyerScript));
         require(tx.outputs[0].value == inputValue);
     }
 }

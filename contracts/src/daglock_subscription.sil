@@ -1,14 +1,17 @@
 pragma silverscript ^0.1.0;
 
-// DagLock Subscription — recurring payment escrow.
+// DagLock Subscription — recurring payment escrow with timing enforcement.
 //
-// A payer locks N KAS for M installments. The recipient claims
-// one installment at a time. The payer can cancel anytime.
+// A payer locks N KAS for M installments. The recipient claims one
+// installment at a time. Each claim creates a change output that
+// re-locks the remaining balance in a new covenant with an incremented
+// currentPeriod counter. This enforces both timing (intervalSeconds)
+// and supply (maxPeriods).
 //
 // Entrypoints:
-//   claim(recipientSig)  — claim current installment
-//   cancel(payerSig)     — cancel, remaining returned to payer (minus fee)
-//   release(bothSigs)    — mutual release, all to recipient (minus fee)
+//   claim(recipientSig, newCovenant)  — claim current installment, re-lock remainder
+//   cancel(payerSig)                  — cancel, remaining returned to payer (minus fee)
+//   release(bothSigs)                 — mutual release, all to recipient (minus fee)
 
 contract DagLockSubscription(
     byte[32] payerKey,
@@ -17,24 +20,44 @@ contract DagLockSubscription(
     int installmentAmount,
     int intervalSeconds,
     int startTime,
+    int currentPeriod,
     byte[32] treasuryKey
 ) {
+    int constant MIN_OUT = 1000;
+
     // ── Claim one installment ───────────────────────────────────
-    entrypoint function claim(sig recipientSig) {
+    // Recipient receives net installment, treasury receives fee,
+    // remaining balance is re-locked in new covenant with currentPeriod+1.
+    // If this was the last period, remaining balance goes to payer (no fee).
+    entrypoint function claim(sig recipientSig, byte[] newCovenantScript) {
         require(checkSig(recipientSig, pubkey(recipientKey)));
+
+        // Timing enforcement: must wait intervalSeconds between claims
+        require(tx.time >= startTime + (currentPeriod * intervalSeconds));
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
         int feeAmount = installmentAmount / 200;
         int netAmount = installmentAmount - feeAmount;
+        int remainingAmount = inputValue - installmentAmount;
 
+        require(netAmount >= MIN_OUT);
         require(tx.outputs[0].value == netAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
+
+        // Re-lock remaining balance in a new covenant
+        require(remainingAmount >= 0);
+        if (remainingAmount > 0) {
+            require(tx.outputs[2].scriptPubKey == byte[](newCovenantScript));
+            require(tx.outputs[2].value == remainingAmount);
+        }
     }
 
     // ── Cancel ──────────────────────────────────────────────────
+    // Payer cancels, remaining balance returned to payer minus fee.
     entrypoint function cancel(sig payerSig) {
         require(checkSig(payerSig, pubkey(payerKey)));
 
@@ -42,14 +65,17 @@ contract DagLockSubscription(
         int feeAmount = inputValue / 200;
         int returnAmount = inputValue - feeAmount;
 
+        require(returnAmount >= MIN_OUT);
         require(tx.outputs[0].value == returnAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
 
     // ── Full release ────────────────────────────────────────────
+    // Both parties agree to release all remaining funds to recipient.
     entrypoint function release(sig payerSig, sig recipientSig) {
         require(checkSig(payerSig, pubkey(payerKey)));
         require(checkSig(recipientSig, pubkey(recipientKey)));
@@ -58,9 +84,11 @@ contract DagLockSubscription(
         int feeAmount = inputValue / 200;
         int sendAmount = inputValue - feeAmount;
 
+        require(sendAmount >= MIN_OUT);
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        require(feeAmount >= MIN_OUT);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }

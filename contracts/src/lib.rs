@@ -149,7 +149,7 @@ pub fn compile_daglock_advanced(
 
 /// Compile the DagLock Subscription covenant for recurring payments.
 /// Arguments: payer_key, recipient_key, total_amount, installment_amount,
-///            interval_seconds, start_time, treasury_key
+///            interval_seconds, start_time, current_period, treasury_key
 pub fn compile_daglock_subscription(
     payer_pk: &[u8],
     recipient_pk: &[u8],
@@ -157,6 +157,7 @@ pub fn compile_daglock_subscription(
     installment_amount: i64,
     interval_seconds: i64,
     start_time: i64,
+    current_period: i64,
     treasury_pk: &[u8],
 ) -> CompiledContract<'static> {
     let source = daglock_subscription_source();
@@ -167,6 +168,7 @@ pub fn compile_daglock_subscription(
         Expr::int(installment_amount),
         Expr::int(interval_seconds),
         Expr::int(start_time),
+        Expr::int(current_period),
         Expr::bytes(treasury_pk.to_vec()),
     ];
     compile_contract(source, &args, CompileOptions::default())
@@ -682,7 +684,7 @@ mod tests {
         println!("daglock_advanced_template_hash={}", adv_hex);
 
         let sub = compile_daglock_subscription(
-            &zero, &zero, 1_000_000_000, 100_000_000, 86400, 1_700_000_000, &zero,
+            &zero, &zero, 1_000_000_000, 100_000_000, 86400, 1_700_000_000, 0, &zero,
         );
         let (_, _, sub_hash) = template_parts_and_hash(&sub);
         let sub_hex: String = sub_hash.iter().map(|b| format!("{:02x}", b)).collect();

@@ -9,6 +9,9 @@ contract DagLockVault(
 ) {
     int constant MIN_OUT = 1000;
 
+    // ── Path A: Owner Withdraw ─────────────────────────────────
+    // Output[0] hardcoded to owner's P2PK — even if key is stolen,
+    // funds can only go to the intended withdrawal address.
     entrypoint function withdraw(sig ownerSig) {
         require(this.age >= lockDuration);
         require(checkSig(ownerSig, pubkey(ownerKey)));
@@ -18,6 +21,8 @@ contract DagLockVault(
         int sendAmount = inputValue - feeAmount;
 
         require(sendAmount >= MIN_OUT);
+        byte[34] ownerScript = new ScriptPubKeyP2PK(pubkey(ownerKey));
+        require(tx.outputs[0].scriptPubKey == byte[](ownerScript));
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
@@ -69,6 +74,8 @@ contract DagLockVault(
         int sendAmount = inputValue - feeAmount;
 
         require(sendAmount >= MIN_OUT);
+        byte[34] ownerScript = new ScriptPubKeyP2PK(pubkey(ownerKey));
+        require(tx.outputs[0].scriptPubKey == byte[](ownerScript));
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
@@ -86,6 +93,8 @@ contract DagLockVault(
         int sendAmount = inputValue - feeAmount;
 
         require(sendAmount >= MIN_OUT);
+        byte[34] heirScript = new ScriptPubKeyP2PK(pubkey(heirKey));
+        require(tx.outputs[0].scriptPubKey == byte[](heirScript));
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));

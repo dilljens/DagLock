@@ -103,20 +103,23 @@ contract DagLock(
 
     // ── Path E: Emergency Timeout Refund ────────────────────────
     // No signature required. Funds go to buyer. No fee.
+    // Output[0] hardcoded to buyer's P2PK — prevents third-party theft.
     // Only triggers after timeout + 30 days (2592000 seconds).
     entrypoint function emergency_refund() {
         require(tx.time >= timeout + 2592000);
 
         int inputValue = tx.inputs[this.activeInputIndex].value;
         require(inputValue >= MIN_OUT);
+
+        byte[34] buyerScript = new ScriptPubKeyP2PK(pubkey(buyerKey));
+        require(tx.outputs[0].scriptPubKey == byte[](buyerScript));
         require(tx.outputs[0].value == inputValue);
     }
 
     // ── Path F: Auto-Settle ─────────────────────────────────────
     // Any party can trigger settlement after timeout if the seller
-    // hasn't been paid yet. Funds go to the seller (minus fee).
-    // This prevents stuck funds when the buyer is uncooperative
-    // after receiving goods.
+    // hasn't been paid yet. Output[0] hardcoded to seller's P2PK.
+    // This prevents stuck funds when the buyer is uncooperative.
     entrypoint function auto_settle() {
         require(tx.time >= timeout);
 
@@ -125,6 +128,9 @@ contract DagLock(
         int sendAmount = inputValue - feeAmount;
 
         require(sendAmount >= MIN_OUT);
+
+        byte[34] sellerScript = new ScriptPubKeyP2PK(pubkey(sellerKey));
+        require(tx.outputs[0].scriptPubKey == byte[](sellerScript));
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
