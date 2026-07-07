@@ -78,6 +78,9 @@ describe("SwapPage", () => {
 		const secretHeadings = screen.getAllByText(/Generate Secret/);
 		expect(secretHeadings.length).toBeGreaterThanOrEqual(1);
 
+		// Check the safety checkbox first
+		await user.click(screen.getByRole("checkbox"));
+
 		// Click generate secret
 		await user.click(screen.getByRole("button", { name: /generate secret & continue/i }));
 
@@ -101,6 +104,10 @@ describe("SwapPage", () => {
 		await user.type(counterpartyInput, "kaspa:test1234567890");
 
 		await user.click(screen.getByRole("button", { name: /next: generate secret/i }));
+
+		// Check the safety checkbox first
+		await user.click(screen.getByRole("checkbox"));
+
 		await user.click(screen.getByRole("button", { name: /generate secret & continue/i }));
 
 		await waitFor(() => {

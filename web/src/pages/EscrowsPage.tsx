@@ -19,7 +19,7 @@ import { saveKeypair } from "../crypto/chat-store";
 import { downloadRecoverySheet } from "../crypto/recovery-sheet";
 import { useQuery } from "@tanstack/react-query";
 
-type Tab = "my-escrows" | "create" | "lookup" | "receipt" | "invoice" | "milestones" | "create-milestone" | "multi" | "create-multi";
+type Tab = "my-escrows" | "my-swaps" | "create" | "lookup" | "receipt" | "invoice" | "milestones" | "create-milestone" | "multi" | "create-multi";
 
 const DEAL_PRESETS = {
 	goods: {
@@ -109,6 +109,14 @@ export function EscrowsPage() {
 					>
 						My Escrows
 					</button>
+					{wallet.connected && (
+						<button
+							className={`tab-btn ${tab === "my-swaps" ? "tab-btn--active" : ""}`}
+							onClick={() => setTab("my-swaps")}
+						>
+							My Swaps
+						</button>
+					)}
 					<button
 						className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
 						onClick={() => setTab("create")}
@@ -170,6 +178,8 @@ export function EscrowsPage() {
 				</div>
 				{tab === "my-escrows" &&
 					(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
+				{tab === "my-swaps" &&
+					(wallet.connected ? <MySwaps address={address!} /> : <ConnectPrompt />)}
 				{tab === "create" &&
 					(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
 				{tab === "lookup" && <EscrowLookup />}
@@ -322,6 +332,112 @@ function MyEscrows({ address }: { address: string }) {
 					)}
 				</article>
 			))}
+		</div>
+	);
+}
+
+/* ─── My Swaps (atomic swap filter) ─── */
+function MySwaps({ address }: { address: string }) {
+	const { navigate } = useRouter();
+	const [escrows, setEscrows] = useState<LoadState<Escrow[]>>({ loading: true });
+	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const loaded = useRef(false);
+
+	const fetchEscrows = useCallback(() => {
+		setEscrows({ loading: true });
+		api
+			.escrows(address)
+			.then((d) => {
+				const swaps = d.escrows.filter((e) => e.trade_hash && e.trade_hash.length > 0);
+				setEscrows({ data: swaps, loading: false });
+			})
+			.catch((e) => setEscrows({ error: e.message, loading: false }));
+	}, [address]);
+
+	useEffect(() => {
+		if (loaded.current) return;
+		loaded.current = true;
+		fetchEscrows();
+	}, [fetchEscrows]);
+
+	function swapStatus(escrow: Escrow): string {
+		if (escrow.status === "settled") return "Complete (settled)";
+		if (escrow.status === "refunded" || escrow.status === "expired" || escrow.status === "cancelled")
+			return "Refunded / Expired";
+		if (escrow.status === "active" || escrow.status === "pending_confirmation")
+			return "Waiting for counterparty";
+		return escrow.status;
+	}
+
+	function swapStatusEmoji(status: string): string {
+		if (status.startsWith("Complete")) return "🎉";
+		if (status.startsWith("Refunded")) return "↩️";
+		if (status.startsWith("Waiting")) return "⏳";
+		return "❓";
+	}
+
+	if (escrows.loading) {
+		return <SkeletonTable rows={3} />;
+	}
+	if (escrows.error) return <p className="muted error-text">{escrows.error}</p>;
+	if (!escrows.data?.length)
+		return (
+			<EmptyState
+				icon="🔄"
+				title="No atomic swaps"
+				description="Swaps are escrows with a trade hash for preimage-based settlement."
+				action={{ label: "Create Swap", onClick: () => navigate("/swap") }}
+			/>
+		);
+
+	return (
+		<div>
+			{escrows.data.map((e) => {
+				const s = swapStatus(e);
+				return (
+					<article
+						key={e.id}
+						className="offer"
+						style={{ cursor: "pointer", marginBottom: "8px" }}
+						onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}
+					>
+						<div className="offer-top">
+							<strong>{money(e.amount_sompi)}</strong>
+							<span style={{ fontSize: "12px", color: "#888" }}>
+								{swapStatusEmoji(s)} {s}
+							</span>
+						</div>
+						<p>
+							{e.asset_type || "KAS"} · {e.buyer_address.slice(0, 16)}…
+							{e.seller_address ? ` → ${e.seller_address.slice(0, 16)}…` : ""}
+						</p>
+						{e.trade_hash && (
+							<code style={{ fontSize: "10px", wordBreak: "break-all" }}>
+								Hash: {e.trade_hash.slice(0, 32)}…
+							</code>
+						)}
+						<div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+							<ExplorerTxLink txid={e.lock_tx_id} label="View TX" />
+							{e.status === "settled" && (
+								<button
+									className="button"
+									style={{ fontSize: "11px", padding: "2px 8px" }}
+									onClick={async (ev) => {
+										ev.stopPropagation();
+										try {
+											await api.receipt(e.id);
+										} catch {
+											// fallback
+										}
+									}}
+								>
+									🧾 Receipt
+								</button>
+							)}
+						</div>
+					</article>
+				);
+			})}
 		</div>
 	);
 }

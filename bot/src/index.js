@@ -185,7 +185,9 @@ bot.command("start", async (ctx) => {
 			"/claim <id> — Claim an escrow\n" +
 			"/list — List your escrows\n" +
 			"/offers — Browse offers\n" +
-			"/swap <id> <hex> — Atomic swap settle\n" +
+			"/swap create <amount> [addr] — Create atomic swap\n" +
+			"/swap claim <id> <hex> — Claim swap by preimage\n" +
+			"/swap status <id> — Check swap status\n" +
 			"/vaults — List your vaults\n" +
 			"/status <id> — Check escrow\n" +
 			"/receipt <id> — Fetch receipt\n" +
@@ -560,26 +562,184 @@ bot.command("reputation", async (ctx) => {
 	}
 });
 
-// ── Swap command ────────────────────────────────────────────────────
+// ── Swap command (subcommands) ─────────────────────────────────────
 
 bot.command("swap", async (ctx) => {
-	const [id, ...preimageParts] = (ctx.match || "").trim().split(/\s+/);
-	const preimage = preimageParts.join(" ").trim();
-	if (!id || !preimage) {
-		return await ctx.reply("Usage: /swap <escrow-id> <preimage-hex>");
+	const address = getUserAddress(ctx.from.id);
+	const args = (ctx.match || "").trim().split(/\s+/);
+	const sub = args[0];
+
+	// ── /swap create <amount> [counterparty] ──
+	if (sub === "create") {
+		if (!address) {
+			return await ctx.reply(
+				"Please set your address first:\n/setaddress <kaspa-address>",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		const amountStr = args[1];
+		const counterparty = args[2];
+		const amount = parseFloat(amountStr);
+
+		if (isNaN(amount) || amount <= 0) {
+			return await ctx.reply(
+				"*Swap Create*\n\n" +
+					"Usage: `/swap create <amount> [counterparty-address]`\n\n" +
+					"Example:\n" +
+					"`/swap create 100 kaspa:q...`\n\n" +
+					"_Generates a secret + hash for an atomic swap escrow._",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		try {
+			// Generate secret + hash
+			const swapData = await api.generateSwap();
+			const secret = swapData.secret;
+			const hash = swapData.hash;
+
+			// Show secret with warning
+			await ctx.reply(
+				`🔑 *Atomic Swap Secret Generated*\n\n` +
+					`⚠️ *SAVE THIS SECRET — IT IS SHOWN ONLY ONCE!*\n\n` +
+					`Secret: \`${secret}\`\n` +
+					`Hash: \`${hash}\`\n\n` +
+					`_You will need the secret to claim the swap. If you lose it, your funds are locked until the timeout expires._\n\n` +
+					`Now create an escrow using /create and enter the hash above when prompted for a trade hash.`,
+				{ parse_mode: "Markdown" },
+			);
+
+			// Store swap data for later use in wizard
+			startConv(ctx.from.id);
+			updateConv(ctx.from.id, "address", address);
+			updateConv(ctx.from.id, "amount", amount);
+			updateConv(ctx.from.id, "tradeHash", hash);
+			updateConv(ctx.from.id, "secret", secret);
+			if (counterparty && counterparty.startsWith("kaspa:")) {
+				updateConv(ctx.from.id, "seller", counterparty);
+			}
+			advanceConv(ctx.from.id, "timeout");
+
+			const keyboard = new InlineKeyboard()
+				.text("1 hour", "timeout_1h")
+				.text("24 hours", "timeout_24h")
+				.row()
+				.text("3 days", "timeout_3d")
+				.text("7 days", "timeout_7d");
+			return await ctx.reply(
+				`🔄 *Swap Escrow - Step 2/4*\n\n` +
+					`Amount: ${amount} KAS\n` +
+					`${counterparty ? `Counterparty: \`${counterparty}\`\n` : ""}` +
+					`Hash: \`${hash.slice(0, 16)}…\`\n\n` +
+					`Choose a timeout:`,
+				{ parse_mode: "Markdown", reply_markup: keyboard },
+			);
+		} catch (err) {
+			return await ctx.reply("❌ Failed to generate swap: " + err.message);
+		}
 	}
 
-	try {
-		const result = await api.swapEscrow(id, preimage);
-		await ctx.reply(
-			`✅ *Atomic Swap Settled*\n\n` +
-				`Escrow: \`${result.escrow_id}\`\n` +
-				`Method: \`${result.method || "atomic_swap"}\``,
-			{ parse_mode: "Markdown" },
-		);
-	} catch (err) {
-		await ctx.reply("❌ Swap failed: " + err.message);
+	// ── /swap claim <escrow-id> <preimage> ──
+	if (sub === "claim") {
+		const id = args[1];
+		const preimage = args.slice(2).join(" ").trim();
+		if (!id || !preimage) {
+			return await ctx.reply(
+				"Usage: `/swap claim <escrow-id> <preimage>`\n\n" +
+					"Example:\n" +
+					"`/swap claim esc_abc123 <64-char-hex-secret>`",
+				{ parse_mode: "Markdown" },
+			);
+		}
+		if (preimage.length < 32) {
+			return await ctx.reply("❌ Preimage seems too short (expected 32+ hex chars).", {
+				parse_mode: "Markdown",
+			});
+		}
+
+		try {
+			const result = await api.swapEscrow(id, preimage);
+			await ctx.reply(
+				`✅ *Swap Claimed Successfully!*\n\n` +
+					`Escrow: \`${result.escrow_id}\`\n` +
+					`Method: \`${result.method || "atomic_swap"}\`` +
+					`\n\nUse /receipt ${id} to view the receipt.`,
+				{ parse_mode: "Markdown" },
+			);
+		} catch (err) {
+			await ctx.reply("❌ Swap claim failed: " + err.message);
+		}
+		return;
 	}
+
+	// ── /swap status <escrow-id> ──
+	if (sub === "status") {
+		const id = args[1];
+		if (!id) {
+			return await ctx.reply(
+				"Usage: `/swap status <escrow-id>`\n\n" +
+					"Example:\n" +
+					"`/swap status esc_abc123`",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		try {
+			const data = await api.getEscrow(id);
+			const amount = (data.amount_sompi / 1e8).toFixed(2);
+			const created = new Date(data.created_at * 1000)
+				.toISOString()
+				.slice(0, 19)
+				.replace("T", " ");
+
+			const swapStatusEmoji = {
+				pending_confirmation: "⏳",
+				active: "🔄",
+				settled: "🎉",
+				refunded: "↩️",
+				disputed: "⚠️",
+				cancelled: "🛑",
+				expired: "⏰",
+			};
+
+			const link = `https://daglock.com/swap/${id}`;
+
+			await ctx.reply(
+				`🔄 *Atomic Swap Status*\n\n` +
+					`Escrow: \`${data.id}\`\n` +
+					`Amount: ${amount} KAS\n` +
+					`Status: ${swapStatusEmoji[data.status] || "❓"} \`${data.status}\`\n` +
+					`Created: ${created} UTC\n` +
+					(data.trade_hash
+						? `Trade Hash: \`${data.trade_hash.slice(0, 32)}…\`\n`
+						: "") +
+					(data.seller_address
+						? `Seller: \`${data.seller_address.slice(0, 20)}…\`\n`
+						: "") +
+					`\n🔗 ${link}\n\n` +
+					(data.status === "settled"
+						? `Use /receipt ${id} for receipt.`
+						: data.status === "active"
+							? `Counterparty can claim via ${link}`
+							: ""),
+				{ parse_mode: "Markdown" },
+			);
+		} catch (err) {
+			await ctx.reply("❌ Could not fetch swap: " + err.message);
+		}
+		return;
+	}
+
+	// ── Fallback: show help ──
+	await ctx.reply(
+		"🔄 *Atomic Swap Commands*\n\n" +
+			"`/swap create <amount> [counterparty]` — Create a swap (generates secret + hash)\n" +
+			"`/swap claim <id> <preimage>` — Claim a swap by escrow ID and preimage\n" +
+			"`/swap status <id>` — Check swap status\n\n" +
+			"_Use /create for the full escrow wizard._",
+		{ parse_mode: "Markdown" },
+	);
 });
 
 // ── Fee calculator ──────────────────────────────────────────────────
@@ -1306,7 +1466,9 @@ bot.command("help", async (ctx) => {
 			"/counter <id> <amount> — Counter an offer\n" +
 			"/counters <id> — List counters on an offer\n" +
 			"/fee <amount> — Calculate escrow fee\n" +
-			"/swap <id> <hex> — Atomic swap settle via preimage\n" +
+			"/swap create <amount> [addr] — Create atomic swap\n" +
+			"/swap claim <id> <hex> — Claim swap by preimage\n" +
+			"/swap status <id> — Check swap status\n" +
 			"/reputation <address> — Check reputation\n" +
 			"/vaults — List your vaults\n\n" +
 			"*Messaging:*\n" +
@@ -1745,7 +1907,7 @@ async function handleCreateConfirm(ctx, data) {
 		const compileResult = await api.compileEscrow({
 			buyerKey: address,
 			sellerKey: seller,
-			tradeHash: "0000000000000000000000000000000000000000000000000000000000000000",
+			tradeHash: data.tradeHash || "0000000000000000000000000000000000000000000000000000000000000000",
 			timeout: (now + timeoutSeconds).toString(),
 			treasuryKey: "0000000000000000000000000000000000000000000000000000000000000000",
 		});
@@ -1965,6 +2127,7 @@ bot.command("submit_tx", async (ctx) => {
 			seller_address: data.seller || undefined,
 			amount_sompi: data.sompiAmount,
 			dispute_mode: data.disputeMode,
+			...(data.tradeHash ? { trade_hash: data.tradeHash } : {}),
 		});
 
 		endConv(ctx.from.id);

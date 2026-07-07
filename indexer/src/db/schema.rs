@@ -117,6 +117,10 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_chat_reveal_columns(pool).await?;
     ensure_api_key_tier(pool).await?;
 
+    sqlx::query(include_str!("migrations/031_create_payment_sessions.sql"))
+        .execute(pool)
+        .await?;
+
     ensure_price_alerts_table(pool).await?;
     ensure_price_history_table(pool).await?;
 

@@ -1004,6 +1004,25 @@ pub struct DrawSubscriptionRequest {
     pub recipient_address: Address,
 }
 
+// ── Payment Session Types ─────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentSession {
+    pub id: String,
+    pub app_id: String,
+    pub escrow_id: Option<String>,
+    pub amount_sompi: i64,
+    pub asset_type: String,
+    pub seller_address: Address,
+    pub memo: Option<String>,
+    pub status: String,
+    pub buyer_address: Option<Address>,
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub webhook_url: Option<String>,
+    pub redirect_url: Option<String>,
+}
+
 // ── Shared Helpers ────────────────────────────────────────────────
 
 use axum::http::StatusCode;

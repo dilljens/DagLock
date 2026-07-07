@@ -13,6 +13,7 @@ export type Route =
 	| "/reputation"
 	| "/jury"
 	| "/security"
+	| "/merchant"
 	| "/stats"
 	| "/docs"
 	| "/help"
@@ -36,6 +37,7 @@ const VALID_ROUTES: readonly Route[] = [
 	"/reputation",
 	"/jury",
 	"/security",
+	"/merchant",
 	"/stats",
 	"/swap",
 	"/docs",

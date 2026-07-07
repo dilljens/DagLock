@@ -14,6 +14,7 @@ pub mod jury;
 pub mod mediator;
 pub mod messages;
 pub mod milestones;
+pub mod pay;
 pub mod multi_escrows;
 pub mod network;
 pub mod notifications;
@@ -197,6 +198,10 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/escrows/:id/deposit/release", post(deposits::release))
         .route("/v1/escrows/:id/deposit/forfeit", post(deposits::forfeit))
         .route("/v1/deposits/sweep", post(deposits::sweep))
+        // Payment sessions (Escrow-as-a-Service)
+        .route("/v1/pay", post(pay::create_session))
+        .route("/v1/pay/:session_id", get(pay::get_session))
+        .route("/v1/pay/:session_id/fund", post(pay::fund_session))
         // Counter-offers
         .route("/v1/offers/:id/counter", post(counteroffers::create))
         .route("/v1/offers/:id/counters", get(counteroffers::list))

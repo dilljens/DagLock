@@ -4,15 +4,28 @@ import { useWallet } from "../context/WalletContext";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 import { AtomicSwapWizard } from "../components/AtomicSwapWizard";
-import { Panel } from "../ui";
+import { FormField, Panel } from "../ui";
 
 type Tab = "wizard" | "claim" | "how-to";
+
+function SwapCountdown({ expiresAt }: { expiresAt: number }) {
+	const [now, setNow] = useState(Date.now());
+	useEffect(() => {
+		const id = setInterval(() => setNow(Date.now()), 1000);
+		return () => clearInterval(id);
+	}, []);
+	const diff = Math.max(0, expiresAt - now);
+	const d = Math.floor(diff / 86400000);
+	const h = Math.floor((diff % 86400000) / 3600000);
+	const m = Math.floor((diff % 3600000) / 60000);
+	const s = Math.floor((diff % 60000) / 1000);
+	return <span>{d}d {h}h {m}m {s}s</span>;
+}
 
 export function SwapPage() {
 	const [tab, setTab] = useState<Tab>("wizard");
 	const { state: wallet } = useWallet();
 
-	// Check if we're arriving from a deep link /swap/:id
 	useEffect(() => {
 		const path = window.location.pathname;
 		const match = path.match(/^\/swap\/(.+)/);
@@ -67,8 +80,8 @@ export function SwapPage() {
 /* ─── Claim Swap (standalone, for deep links) ─── */
 function ClaimSwap() {
 	const { state: wallet, connect } = useWallet();
+	const address = wallet.address;
 
-	// Extract escrow ID from URL path
 	const pathEscrowId = (() => {
 		const match = window.location.pathname.match(/^\/swap\/(.+)/);
 		return match ? match[1] : "";
@@ -130,6 +143,25 @@ function ClaimSwap() {
 		);
 	}
 
+	const escrowLink = escrowId
+		? `${window.location.origin}/swap/${escrowId}`
+		: "";
+
+	const isBuyer = !!(address && escrow?.buyer_address === address);
+	const isSeller = !!(address && escrow?.seller_address === address);
+	const canClaim =
+		!isBuyer && (isSeller || !escrow?.seller_address);
+	const isNeither =
+		!!escrow && !!escrow.buyer_address && !!escrow.seller_address && !isBuyer && !isSeller;
+
+	async function copyLink() {
+		try {
+			await navigator.clipboard.writeText(escrowLink);
+		} catch {
+			// fallback
+		}
+	}
+
 	return (
 		<div>
 			{!escrow && !error && (
@@ -154,7 +186,79 @@ function ClaimSwap() {
 
 			{error && <p className="muted error-text">{error}</p>}
 
-			{escrow && (
+			{/* ── Creator waiting view ── */}
+			{escrow && isBuyer && (
+				<div>
+					<h3 style={{ margin: "0 0 4px" }}>Waiting for Counterparty</h3>
+					<p className="muted" style={{ margin: "0 0 16px" }}>
+						Share the link below with your counterparty so they can claim the swap.
+					</p>
+
+					<div className="panel" style={{ marginBottom: "16px" }}>
+						<div
+							style={{
+								display: "flex",
+								alignItems: "center",
+								gap: "12px",
+								marginBottom: "12px",
+							}}
+						>
+							<div
+								className="loading-spinner"
+								style={{
+									width: 20,
+									height: 20,
+									border: "2px solid #333",
+									borderTop: "2px solid #53d769",
+									borderRadius: "50%",
+									animation: "spin 1s linear infinite",
+								}}
+							/>
+							<span>Waiting for counterparty to claim…</span>
+						</div>
+
+						{escrow.auto_settle_timeout && (
+							<p style={{ fontSize: "13px", color: "#888" }}>
+								Timeout: <SwapCountdown expiresAt={escrow.auto_settle_timeout * 1000} />
+							</p>
+						)}
+						{escrow.created_at && escrow.auto_settle_timeout && (
+							<p style={{ fontSize: "13px", color: "#888" }}>
+								Expires: {new Date(escrow.auto_settle_timeout * 1000).toLocaleString()}
+							</p>
+						)}
+					</div>
+
+					<FormField label="Deep Link">
+						<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+							<input
+								value={escrowLink}
+								readOnly
+								style={{ flex: 1, fontSize: "12px" }}
+							/>
+							<button className="button" onClick={copyLink}>
+								Copy
+							</button>
+						</div>
+					</FormField>
+
+					{escrowLink && (
+						<div style={{ marginTop: "16px", textAlign: "center" }}>
+							<img
+								src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(escrowLink)}`}
+								alt="QR Code for swap link"
+								style={{ borderRadius: "8px", border: "1px solid #333" }}
+							/>
+							<p style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}>
+								Scan to claim
+							</p>
+						</div>
+					)}
+				</div>
+			)}
+
+			{/* ── Counterparty claim form ── */}
+			{escrow && canClaim && !isBuyer && (
 				<form className="form form-stacked" onSubmit={handleClaim}>
 					<Panel title="Escrow Details">
 						<div className="stack">
@@ -178,11 +282,23 @@ function ClaimSwap() {
 									</code>
 								</div>
 							)}
+							{escrow.auto_settle_timeout && (
+								<div className="row">
+									<span>Timeout</span>
+									<SwapCountdown expiresAt={escrow.auto_settle_timeout * 1000} />
+								</div>
+							)}
 						</div>
 					</Panel>
 
 					<div style={{ marginTop: "16px" }}>
-						<label style={{ display: "block", marginBottom: "4px", fontSize: "13px" }}>
+						<label
+							style={{
+								display: "block",
+								marginBottom: "4px",
+								fontSize: "13px",
+							}}
+						>
 							Preimage (secret)
 						</label>
 						<input
@@ -203,6 +319,15 @@ function ClaimSwap() {
 						{loading === "claiming" ? "Claiming…" : "Claim Swap"}
 					</button>
 				</form>
+			)}
+
+			{/* ── Not a party ── */}
+			{escrow && isNeither && (
+				<EmptyState
+					icon="🚫"
+					title="You are not a party to this swap"
+					description={`This swap (${escrow.id.slice(0, 16)}…) is between ${(escrow.buyer_address || "").slice(0, 16)}… and ${(escrow.seller_address || "").slice(0, 16)}…. Connect the correct wallet to interact.`}
+				/>
 			)}
 		</div>
 	);

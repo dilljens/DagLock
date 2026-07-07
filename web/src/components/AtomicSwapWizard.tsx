@@ -30,6 +30,36 @@ const STEP_LABELS: Record<SwapStep, string> = {
 	done: "Complete",
 };
 
+function SwapCountdown({ expiresAt }: { expiresAt: number }) {
+	const [now, setNow] = useState(Date.now());
+	useEffect(() => {
+		const id = setInterval(() => setNow(Date.now()), 1000);
+		return () => clearInterval(id);
+	}, []);
+	const diff = Math.max(0, expiresAt - now);
+	const d = Math.floor(diff / 86400000);
+	const h = Math.floor((diff % 86400000) / 3600000);
+	const m = Math.floor((diff % 3600000) / 60000);
+	const s = Math.floor((diff % 60000) / 1000);
+	return <span>{d}d {h}h {m}m {s}s</span>;
+}
+
+function ReceiptJson({ escrow, secret, preimage }: { escrow: Escrow; secret: string; preimage: string }) {
+	const receipt = {
+		swap_id: escrow.id,
+		amount_sompi: escrow.amount_sompi,
+		counterparty: escrow.seller_address || escrow.buyer_address,
+		trade_hash: escrow.trade_hash || "",
+		preimage,
+		secret,
+		created_at: escrow.created_at,
+		settled_at: escrow.settled_at,
+		status: escrow.status,
+		timestamp: new Date().toISOString(),
+	};
+	return receipt;
+}
+
 export function AtomicSwapWizard() {
 	const address = useAddress();
 	const { state: wallet } = useWallet();
@@ -48,6 +78,7 @@ export function AtomicSwapWizard() {
 	});
 	const [loading, setLoading] = useState("");
 	const [error, setError] = useState("");
+	const [secretSaved, setSecretSaved] = useState(false);
 
 	function updateField<K extends keyof SwapState>(key: K, value: SwapState[K]) {
 		setS((prev) => ({ ...prev, [key]: value }));
@@ -147,6 +178,19 @@ export function AtomicSwapWizard() {
 		}, 10_000);
 		return () => clearInterval(interval);
 	}, [step, s.escrowId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// ── Beforeunload protection when secret is live ──
+	useEffect(() => {
+		if (step === "create" || step === "waiting") {
+			const handler = (e: BeforeUnloadEvent) => {
+				e.preventDefault();
+				e.returnValue =
+					"You have not completed the swap. Make sure you saved your secret before leaving.";
+			};
+			window.addEventListener("beforeunload", handler);
+			return () => window.removeEventListener("beforeunload", handler);
+		}
+	}, [step]);
 
 	// ── Step 5: Claim ──
 	async function handleClaim(e: React.FormEvent) {
@@ -298,13 +342,38 @@ export function AtomicSwapWizard() {
 							</p>
 						</div>
 
+						<label
+							style={{
+								display: "flex",
+								alignItems: "flex-start",
+								gap: "8px",
+								marginBottom: "16px",
+								cursor: "pointer",
+								fontSize: "13px",
+								color: "#ccc",
+							}}
+						>
+							<input
+								type="checkbox"
+								checked={secretSaved}
+								onChange={(e) => setSecretSaved(e.target.checked)}
+								style={{ marginTop: "2px" }}
+							/>
+							<span>
+								I understand that I must save the secret before continuing. Losing it means
+								losing access to my funds until the timeout expires.
+							</span>
+						</label>
+
 						{error && <p className="muted error-text">{error}</p>}
 						<button
 							className="button primary"
 							onClick={handleGenerateSecret}
-							disabled={loading === "generating"}
+							disabled={loading === "generating" || !secretSaved}
 						>
-							{loading === "generating" ? "Generating…" : "Generate Secret & Continue"}
+							{loading === "generating"
+								? "Generating…"
+								: "Generate Secret & Continue"}
 						</button>
 					</div>
 				)}
@@ -336,10 +405,36 @@ export function AtomicSwapWizard() {
 								>
 									{s.secret}
 								</code>
-								<button className="button" onClick={() => copyToClipboard(s.secret)}>
+								<button
+									className="button"
+									disabled={!secretSaved}
+									onClick={() => copyToClipboard(s.secret)}
+								>
 									Copy
 								</button>
 							</div>
+							<label
+								style={{
+									display: "flex",
+									alignItems: "flex-start",
+									gap: "8px",
+									marginTop: "12px",
+									cursor: "pointer",
+									fontSize: "12px",
+									color: "#ff8888",
+								}}
+							>
+								<input
+									type="checkbox"
+									checked={secretSaved}
+									onChange={(e) => setSecretSaved(e.target.checked)}
+									style={{ marginTop: "1px" }}
+								/>
+								<span>
+									I have saved my secret. I understand that losing it means losing access to my
+									funds until timeout.
+								</span>
+							</label>
 						</div>
 
 						<div
@@ -366,6 +461,23 @@ export function AtomicSwapWizard() {
 								{s.tradeHash}
 							</code>
 						</div>
+
+						{/* Timeout countdown */}
+						{s.escrow?.created_at && (
+							<div
+								style={{
+									padding: "8px 12px",
+									background: "#1a1a2a",
+									borderRadius: "6px",
+									marginBottom: "12px",
+									fontSize: "13px",
+									color: "#888",
+								}}
+							>
+								⏱ Timeout in{" "}
+								<SwapCountdown expiresAt={(s.escrow.created_at + s.timeout) * 1000} />
+							</div>
+						)}
 
 						<h3 style={{ margin: "16px 0 4px" }}>Create Escrow</h3>
 						<p className="muted" style={{ margin: "0 0 12px" }}>
@@ -420,9 +532,11 @@ export function AtomicSwapWizard() {
 							{s.escrow?.created_at && (
 								<p style={{ fontSize: "13px", color: "#888" }}>
 									Timeout:{" "}
+									<SwapCountdown expiresAt={(s.escrow.created_at + s.timeout) * 1000} /> (
 									{new Date(
 										(s.escrow.created_at + s.timeout) * 1000,
 									).toLocaleString()}
+									)
 								</p>
 							)}
 						</div>
@@ -522,19 +636,112 @@ export function AtomicSwapWizard() {
 						)}
 
 						{s.escrow?.id && (
-							<button
-								className="button primary"
-								onClick={async () => {
-									try {
-										const receipt = await api.receipt(s.escrow!.id);
-										notify("success", "Receipt fetched!");
-									} catch {
-										notify("error", "Could not fetch receipt");
-									}
+							<div
+								style={{
+									display: "flex",
+									gap: "8px",
+									justifyContent: "center",
+									marginBottom: "16px",
 								}}
 							>
-								View Receipt
-							</button>
+								<button
+									className="button primary"
+									onClick={async () => {
+										try {
+											const receipt = await api.receipt(s.escrow!.id);
+											notify("success", "Receipt fetched!");
+										} catch {
+											notify("error", "Could not fetch receipt");
+										}
+									}}
+								>
+									View Receipt
+								</button>
+								<button
+									className="button"
+									onClick={async () => {
+										const receipt = ReceiptJson({
+											escrow: s.escrow!,
+											secret: s.secret,
+											preimage: s.preimage,
+										});
+										try {
+											await navigator.clipboard.writeText(
+												JSON.stringify(receipt, null, 2),
+											);
+											notify("success", "Receipt JSON copied!");
+										} catch {
+											notify("error", "Could not copy receipt");
+										}
+									}}
+								>
+									Copy Receipt as JSON
+								</button>
+							</div>
+						)}
+
+						{s.escrow?.id && (
+							<div
+								className="panel"
+								style={{
+									textAlign: "left",
+									marginBottom: "20px",
+									fontSize: "12px",
+								}}
+							>
+								<div className="stack">
+									<div className="row">
+										<span>Swap ID</span>
+										<code>{s.escrow.id}</code>
+									</div>
+									<div className="row">
+										<span>Amount</span>
+										<strong>{money(s.escrow.amount_sompi)}</strong>
+									</div>
+									<div className="row">
+										<span>Counterparty</span>
+										<code>
+											{(s.escrow.seller_address || s.escrow.buyer_address).slice(
+												0,
+												20,
+											)}
+											…
+										</code>
+									</div>
+									{s.escrow.trade_hash && (
+										<div className="row">
+											<span>Trade Hash</span>
+											<code style={{ fontSize: "10px", wordBreak: "break-all" }}>
+												{s.escrow.trade_hash}
+											</code>
+										</div>
+									)}
+									{s.secret && (
+										<div className="row">
+											<span>Secret</span>
+											<code style={{ fontSize: "10px", wordBreak: "break-all" }}>
+												{s.secret}
+											</code>
+										</div>
+									)}
+									<div className="row">
+										<span>Created</span>
+										<span>{new Date(s.escrow.created_at * 1000).toLocaleString()}</span>
+									</div>
+									{s.escrow.settled_at && (
+										<div className="row">
+											<span>Settled</span>
+											<span>
+												{new Date(s.escrow.settled_at * 1000).toLocaleString()}
+											</span>
+										</div>
+									)}
+									<div className="row">
+										<span>Status</span>
+										<strong>{s.escrow.status}</strong>
+									</div>
+								</div>
+							</div>
 						)}
 
 						<button
@@ -553,6 +760,7 @@ export function AtomicSwapWizard() {
 								});
 								setStep("init");
 								setError("");
+								setSecretSaved(false);
 							}}
 							style={{ marginLeft: "8px" }}
 						>

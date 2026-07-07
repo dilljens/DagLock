@@ -26,6 +26,7 @@ const ReputationPage = lazy(() =>
 const JuryPage = lazy(() => import("./pages/JuryPage").then((m) => ({ default: m.JuryPage })));
 const SwapPage = lazy(() => import("./pages/SwapPage").then((m) => ({ default: m.SwapPage })));
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
+const MerchantPage = lazy(() => import("./pages/MerchantPage").then((m) => ({ default: m.MerchantPage })));
 const HelpPage = lazy(() => import("./pages/HelpPage").then((m) => ({ default: m.HelpPage })));
 const SecurityPage = lazy(() =>
 	import("./pages/SecurityPage").then((m) => ({ default: m.SecurityPage })),
@@ -125,6 +126,8 @@ function AppInner() {
 							return <SwapPage />;
 						case "/docs":
 							return <DocsPage />;
+						case "/merchant":
+							return <MerchantPage />;
 						case "/help":
 							return <HelpPage />;
 						case "/security":

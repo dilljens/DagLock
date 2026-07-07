@@ -188,6 +188,10 @@ export class ApiClient {
 		return this.request(`/receipts/${encodeURIComponent(id)}`);
 	}
 
+	generateSwap() {
+		return this.request("/swap/generate");
+	}
+
 	// ── Vaults ────────────────────────────────────────────────────────
 
 	listVaults(owner) {
