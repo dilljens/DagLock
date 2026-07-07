@@ -63,5 +63,8 @@ Use codebase-memory-mcp tools for structural code queries:
 | 2026-07-03 | **Email notifications**: SMTP integration, opt-in per event, `/settings` UI. |
 | 2026-07-03 | **Covenant upgrades**: `daglock_advanced.sil` (extendTimeout + swap_partial), `daglock_subscription.sil` (recurring payments). Design docs ready for audit. |
 
+| 2026-07-06 | **Testnet fixes**: Corrected all references from testnet-10/12 → testnet-11 (testnet-12 never deployed). Default network updated. Plan for local node setup created at `docs/local-testnet-node.md`. |
+| 2026-07-06 | **New features**: Analytics dashboard, trading bot API tiers, price oracle alerts, interactive security demo, deal type presets, DAA-block vault timing, E2E on-chain chat with hash anchoring + dispute reveal. |
+
 > Knowledge graph last synced: 6/26/2026
 > Run `/knowledge:sync` to refresh from codebase

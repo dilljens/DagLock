@@ -328,6 +328,10 @@ Before June 30 launch, ALL must pass:
 
 ✅ All tests pass (241 Rust, 40 Web, 22 Bot = 303 total)
 
+## Local Testnet Node Plan
+
+See `docs/local-testnet-node.md` for the plan to run a local `kaspad` testnet-11 node with `--utxoindex`. This replaces `--no-wrpc` (MockVerifier) with real wRPC verification. Requires 32 GB RAM (upgrade scheduled ~July 13).
+
 ## VPS
 
 Single OVH VPS running all projects. See `../VPS.md` for connection info, services, and commands.

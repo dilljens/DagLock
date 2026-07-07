@@ -248,8 +248,9 @@ Turns escrow from a destination product into an infrastructure product. Volume s
 
 ## Self-Hosted Kaspa Node for wRPC
 
-**Status:** Not started
+**Status:** Planned — see `docs/local-testnet-node.md` for setup steps
 **Difficulty:** Medium (2-3 days setup + monthly hosting)
+**Dependency:** RAM upgrade to 32 GB (scheduled ~July 13)
 
 Currently the indexer runs in offline mode (MockVerifier) because the public wRPC resolvers (kaspa.red/green/blue) were taken offline during the Toccata v2 migration. A self-hosted node would:
 
