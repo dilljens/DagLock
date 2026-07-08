@@ -1,42 +1,32 @@
 #!/bin/bash
 # Deploy DagLock web UI to Cloudflare Pages
-# Usage: ./scripts/deploy-web.sh
+# 
+# Two methods:
+#   1. GitHub Actions (recommended) — push to main triggers auto-deploy via
+#      .github/workflows/deploy-web.yml. Requires CLOUDFLARE_API_TOKEN set
+#      as a GitHub repository secret.
+#
+#   2. Manual (this script) — uses npx wrangler to deploy from local machine.
+#      Requires .env.cloudflare with CLOUDFLARE_API_TOKEN.
+#
+# Usage:
+#   ./scripts/deploy-web.sh          # deploy from local (uses npx wrangler)
+#   git push origin main             # deploy via GitHub Actions
+#
 set -euo pipefail
 
 source .env.cloudflare
 
-# Get account ID
-ACCOUNT_ID=$(curl -sf "https://api.cloudflare.com/client/v4/zones?name=daglock.com" \
-	-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" |
-	python3 -c "import sys,json; print(json.load(sys.stdin)['result'][0]['account']['id'])")
+cd web
 
-# Trigger deployment
-DEPLOY_ID=$(curl -sf -X POST \
-	"https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/daglock/deployments" \
-	-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-	-H "Content-Type: application/json" \
-	-d '{"branch":"main"}' |
-	python3 -c "import sys,json; print(json.load(sys.stdin)['result']['id'])")
+echo "=== Building web UI ==="
+npm run build
 
-echo "Deployment triggered: $DEPLOY_ID"
+echo ""
+echo "=== Deploying to Cloudflare Pages ==="
+npx --yes wrangler@latest pages deploy dist/ --project-name=daglock --branch main
 
-# Wait for completion
-echo "Waiting for deployment..."
-for i in {1..60}; do
-	STATUS=$(curl -sf "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/daglock/deployments/$DEPLOY_ID" \
-		-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" |
-		python3 -c "import sys,json; print(json.load(sys.stdin)['result']['latest_stage']['status'])" 2>/dev/null)
-
-	if [ "$STATUS" = "success" ]; then
-		echo "✅ Deployment successful!"
-		echo "https://daglock.com"
-		exit 0
-	elif [ "$STATUS" = "failure" ]; then
-		echo "❌ Deployment failed"
-		exit 1
-	fi
-
-	sleep 5
-done
-
-echo "⏱️ Deployment timed out"
+echo ""
+echo "✅ Deploy triggered. Check GitHub Actions for status:"
+echo "   https://github.com/dilljens/DagLock/actions"
+echo "   https://daglock.com"
