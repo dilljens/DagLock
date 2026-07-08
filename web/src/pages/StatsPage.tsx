@@ -46,58 +46,97 @@ function LineChart({
 	const max = Math.max(...values, 1);
 	const labelEvery = Math.max(1, Math.floor(n / 7));
 
-	// SVG dimensions
-	const svgW = 100;
-	const svgH = 100;
+	// SVG dimensions — use a wide viewBox matching chart ratio so circles stay circular
+	const svgW = 200;
+	const svgH = 50;
 	const padL = 2;
 	const padR = 2;
+	const padT = 2;
+	const padB = 2;
 	const plotW = svgW - padL - padR;
-	const plotH = svgH - 4;
+	const plotH = svgH - padT - padB;
 
-	// Build line path
-	const pathD = values
-		.map((v, i) => {
-			const x = padL + (i / Math.max(n - 1, 1)) * plotW;
-			const y = svgH - 2 - (v / max) * plotH;
-			return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-		})
-		.join(" ");
+	// Build line path with embedded circle markers drawn as small circles via arc paths
+	// Using path-based circles (not <circle> elements) because preserveAspectRatio="none"
+	// would stretch <circle> into ovals. Arc paths stretch too, but we draw each marker
+	// as a small rect-like path that stays recognizable.
+	let pathD = "";
+	let markersD = "";
+	values.forEach((v, i) => {
+		const x = padL + (i / Math.max(n - 1, 1)) * plotW;
+		const y = padT + (1 - v / max) * plotH;
+		const xS = x.toFixed(1);
+		const yS = y.toFixed(1);
+		pathD += `${i === 0 ? "M" : "L"}${xS},${yS}`;
+		if (v > 0) {
+			// Small circle marker using two arcs to form a full circle
+			const r = 1.5;
+			const xL = (x - r).toFixed(1);
+			const xR = (x + r).toFixed(1);
+			markersD += `M${xL},${yS} A${r},${r} 0 1,0 ${xR},${yS} A${r},${r} 0 1,0 ${xL},${yS}`;
+		}
+	});
+
+	// Y-axis labels: show min, mid, and max values
+	const yLabels = [
+		{ value: 0, label: "0" },
+		{ value: Math.round(max / 2), label: Math.round(max / 2).toLocaleString() },
+		{ value: max, label: max.toLocaleString() },
+	];
 
 	return (
-		<div style={{ position: "relative", width: "100%" }}>
-			<div style={{ position: "relative", width: "100%", height: `${height}px` }}>
-				<svg
-					viewBox={`0 0 ${svgW} ${svgH}`}
-					style={{ width: "100%", height: "100%" }}
-					preserveAspectRatio="none"
-				>
-					{/* Area fill under line */}
-					<path
-						d={`${pathD} L${padL + plotW},${svgH - 2} L${padL},${svgH - 2} Z`}
-						fill={color}
-						fillOpacity="0.12"
-					/>
-					{/* Line */}
-					<path
-						d={pathD}
-						fill="none"
-						stroke={color}
-						strokeWidth="2"
-						vectorEffect="non-scaling-stroke"
-					/>
-					{/* Dots at non-zero data points */}
-					{values.map((v, i) =>
-						v > 0 ? (
-							<circle
-								key={i}
-								cx={padL + (i / Math.max(n - 1, 1)) * plotW}
-								cy={svgH - 2 - (v / max) * plotH}
-								r="1.5"
+		<div style={{ display: "flex", width: "100%" }}>
+			{/* Y-axis labels */}
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					justifyContent: "space-between",
+					padding: "0 6px 0 0",
+					fontSize: "9px",
+					color: "#888",
+					textAlign: "right",
+					minWidth: "32px",
+					height: `${height}px`,
+					paddingTop: "2px",
+					paddingBottom: "2px",
+					boxSizing: "border-box",
+				}}
+			>
+				<span>{yLabels[2].label}</span>
+				<span>{yLabels[1].label}</span>
+				<span>{yLabels[0].label}</span>
+			</div>
+			<div style={{ position: "relative", width: "100%" }}>
+				<div style={{ position: "relative", width: "100%", height: `${height}px` }}>
+					<svg
+						viewBox={`0 0 ${svgW} ${svgH}`}
+						style={{ width: "100%", height: "100%" }}
+					>
+						{/* Area fill under line */}
+						<path
+							d={`${pathD} L${padL + plotW},${svgH - padB} L${padL},${svgH - padB} Z`}
+							fill={color}
+							fillOpacity="0.12"
+						/>
+						{/* Line */}
+						<path
+							d={pathD}
+							fill="none"
+							stroke={color}
+							strokeWidth="2"
+							vectorEffect="non-scaling-stroke"
+						/>
+						{/* Circle markers rendered as paths (not <circle>) so they stretch as arcs not ovals */}
+						{markersD && (
+							<path
+								d={markersD}
 								fill={color}
+								stroke="none"
 							/>
-						) : null,
-					)}
-				</svg>
+						)}
+					</svg>
+				</div>
 			</div>
 			{/* Date labels */}
 			<div
