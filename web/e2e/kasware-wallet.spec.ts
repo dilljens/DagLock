@@ -61,7 +61,7 @@ test.describe("KasWare Mock Wallet", () => {
 
 		await expect(page.locator('input[placeholder="100"]')).toBeVisible({ timeout: 5000 });
 		await expect(page.getByText("Dispute resolution")).toBeVisible({ timeout: 5000 });
-		await expect(page.getByText("Create escrow")).toBeVisible({ timeout: 5000 });
+		await expect(page.locator('button.primary').filter({ hasText: "Create escrow" })).toBeVisible({ timeout: 5000 });
 	});
 
 	test("dispute resolution dropdown has standard, mediator, jury options", async ({ page }) => {
