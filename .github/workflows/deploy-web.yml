@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
@@ -39,5 +39,6 @@ jobs:
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx --yes wrangler@4.108.0 pages deploy dist/ --project-name=daglock --branch main
+        # wrangler@3 supports Node.js 20 (v4+ requires Node 22)
+        run: npx --yes wrangler@3.90.0 pages deploy dist/ --project-name=daglock --branch main
         timeout-minutes: 5
