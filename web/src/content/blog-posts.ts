@@ -50,7 +50,7 @@ export const BLOG_POSTS: BlogPost[] = [
 
 <h2>Security</h2>
 
-<p>The KRC-20 covenant was audited alongside the rest of DagLock's codebase. The ICC validation ensures that the covenant can only spend KCC-20 branches it actually owns. A misconfigured covenant with zero ICC parameters is rejected at compile time.</p>
+<p>The KRC-20 covenant underwent internal security review alongside the rest of DagLock's codebase. The ICC validation ensures that the covenant can only spend KCC-20 branches it actually owns. A misconfigured covenant with zero ICC parameters is rejected at compile time.</p>
 
 <h2>Getting Started</h2>
 
@@ -64,7 +64,7 @@ export const BLOG_POSTS: BlogPost[] = [
 <p>The compile API now supports KRC-20 covenants at <code>POST /v1/compile</code> with <code>template: "daglock_krc20"</code>. All constructor parameters are accepted, including optional KCC-20 ICC metadata for production use.</p>
 
 <p style="margin-top: 24px; font-size: 13px; color: #888;">
-  DagLock is open source and audited. No admin keys. No backdoors. The covenant enforces the rules — not us.
+  DagLock is open source and has undergone internal security review. No admin keys. No backdoors. The covenant enforces the rules — not us.
 </p>`,
 	},
 	{
@@ -184,7 +184,7 @@ export const BLOG_POSTS: BlogPost[] = [
 <h2>Security</h2>
 
 <ul>
-  <li><strong>All covenants audited</strong> — 12 SilverScript contracts with dust protection, destination validation, and ICC ownership checks</li>
+  <li><strong>All covenants reviewed</strong> — 12 SilverScript contracts with dust protection, destination validation, and ICC ownership checks</li>
   <li><strong>No admin keys</strong> — The covenant defines every possible outcome. There is no "send funds to admin" path</li>
   <li><strong>Open source</strong> — Everything on GitHub</li>
   <li><strong>Recovery sheets</strong> — Downloadable key backup for chat keys</li>

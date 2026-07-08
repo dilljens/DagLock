@@ -17,7 +17,7 @@
 | Indexer DB | PostgreSQL or SQLite via SQLx |
 | Fee model | 0.5% (1/200) protocol fee to DagLock treasury |
 | Target users | KRC-20 token communities, OTC traders, whale-to-whale KAS swaps |
-| Dev status | **Pre-mainnet** — Audit completed June 6, 2026. 7 critical/high security findings + 7 usability issues. Fix plan in progress (target: June 30). |
+| Dev status | **Pre-mainnet** — Internal security review completed June 6, 2026. 7 critical/high security findings fixed, 7 usability issues resolved. |
 
 ---
 

@@ -58,11 +58,11 @@ export function DocsPage() {
 							},
 							{
 								"@type": "Question",
-								name: "Is DagLock audited?",
-								acceptedAnswer: {
-									"@type": "Answer",
-									text: "Yes. DagLock completed a comprehensive security audit on June 6, 2026 covering all covenant contracts, the indexer, CLI, web UI, and Telegram bot. All 7 critical security findings have been fixed.",
-								},
+							name: "Has DagLock been security reviewed?",
+							acceptedAnswer: {
+								"@type": "Answer",
+								text: "Yes. DagLock completed an internal security review on June 6, 2026 covering all covenant contracts, the indexer, CLI, web UI, and Telegram bot. All 7 critical and high-severity findings have been fixed. The covenant itself enforces the rules — no admin keys or backdoors exist regardless of audit status.",
+							},
 							},
 							{
 								"@type": "Question",

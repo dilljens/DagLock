@@ -269,7 +269,7 @@ export function TestnetPage() {
 						lineHeight: 1.6,
 					}}
 				>
-					<strong>🔒 Security Note:</strong> DagLock is post-audit but pre-mainnet. The covenants
+					<strong>🔒 Security Note:</strong> DagLock has completed an internal security review but is pre-mainnet. The covenants
 					have been reviewed internally. Key properties: no admin keys, covenant-enforced rules,
 					open source at{" "}
 					<a
