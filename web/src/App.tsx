@@ -20,6 +20,9 @@ const EscrowsPage = lazy(() =>
 const VaultsPage = lazy(() =>
 	import("./pages/VaultsPage").then((m) => ({ default: m.VaultsPage })),
 );
+const SubscriptionsPage = lazy(() =>
+	import("./pages/SubscriptionsPage").then((m) => ({ default: m.SubscriptionsPage })),
+);
 const ReputationPage = lazy(() =>
 	import("./pages/ReputationPage").then((m) => ({ default: m.ReputationPage })),
 );
@@ -138,6 +141,8 @@ function AppInner() {
 								return <EscrowsPage />;
 							case "/vaults":
 								return <VaultsPage />;
+							case "/subscriptions":
+								return <SubscriptionsPage />;
 							case "/reputation":
 								return <ReputationPage />;
 							case "/jury":

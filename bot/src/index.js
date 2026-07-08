@@ -145,6 +145,24 @@ bot.api.setMyCommands([
 	{ command: "create_multi", description: "Create a multi-party escrow" },
 	{ command: "multi_escrows", description: "List your multi-party escrows" },
 	{ command: "sign", description: "Sign a multi-party escrow release" },
+	{ command: "krc20_list", description: "List your KRC-20 tokens" },
+	{ command: "krc20", description: "Show KRC-20 token detail" },
+	{ command: "krc20_create", description: "Start KRC-20 token creation wizard" },
+	{ command: "sub_create", description: "Create a subscription escrow" },
+	{ command: "subscriptions", description: "List your subscriptions" },
+	{ command: "sub_draw", description: "Draw current installment" },
+	{ command: "sub_cancel", description: "Cancel a subscription" },
+	{ command: "deposit", description: "Create a security deposit" },
+	{ command: "deposit_status", description: "Check deposit status" },
+	{ command: "deposit_release", description: "Release deposits (mutual)" },
+	{ command: "milestone_approve", description: "Approve current milestone" },
+	{ command: "milestone_dispute", description: "Dispute milestone escrow" },
+	{ command: "milestone_refund", description: "Refund remaining funds" },
+	{ command: "milestone_complete", description: "Mutual complete milestone" },
+	{ command: "vault_create", description: "Create a time-locked vault" },
+	{ command: "vault_withdraw", description: "Withdraw from vault after timeout" },
+	{ command: "stats", description: "Show platform stats" },
+	{ command: "anchors", description: "Check anchor status for escrow messages" },
 	{ command: "help", description: "Show help" },
 ]);
 
@@ -201,7 +219,25 @@ bot.command("start", async (ctx) => {
 			"/block <address> — Block a user\n" +
 			"/feedback <id> <rating> — Leave trade feedback\n" +
 			"/msg <id> <text> — Send message on escrow\n" +
-			"/messages <id> — Read message thread",
+			"/messages <id> — Read message thread\n" +
+			"/krc20_list — List KRC-20 tokens\n" +
+			"/krc20 <ticker> — Token detail\n" +
+			"/krc20_create — Deploy a KRC-20 token\n" +
+			"/subscriptions — List subscriptions\n" +
+			"/sub_create <total> <inst> <interval> — Create subscription\n" +
+			"/sub_draw <id> — Draw installment\n" +
+			"/sub_cancel <id> — Cancel subscription\n" +
+			"/deposit <id> <amount> — Create deposit\n" +
+			"/deposit_status <id> — Check deposit\n" +
+			"/deposit_release <id> — Release deposit\n" +
+			"/milestone_approve <id> — Approve milestone\n" +
+			"/milestone_dispute <id> — Dispute milestone\n" +
+			"/milestone_refund <id> — Refund milestone\n" +
+			"/milestone_complete <id> — Complete milestone\n" +
+			"/vault_create <amt> <sec> — Create time-locked vault\n" +
+			"/vault_withdraw <id> — Withdraw from vault\n" +
+			"/stats — Platform statistics\n" +
+			"/anchors <id> — Check message anchoring",
 		{ parse_mode: "Markdown" },
 	);
 });
@@ -239,10 +275,28 @@ bot.command("create", async (ctx) => {
 			{ parse_mode: "Markdown" },
 		);
 	}
+
+	const args = (ctx.match || "").trim().split(/\s+/).filter(Boolean);
+	const presets = { goods: 7, otc: 1, service: 14 };
+	let preset = null;
+	for (const a of args) {
+		const lower = a.toLowerCase();
+		if (presets[lower]) {
+			preset = lower;
+		}
+	}
+
 	startConv(ctx.from.id);
 	updateConv(ctx.from.id, "address", address);
+	if (preset) {
+		updateConv(ctx.from.id, "timeoutDays", presets[preset]);
+		updateConv(ctx.from.id, "presetTimeout", true);
+		updateConv(ctx.from.id, "dealType", preset);
+	}
 	await ctx.reply(
-		"🔄 *Create Escrow - Step 1/5*\n\nHow much KAS do you want to escrow?\n\nExample: `100` or `5000.5`\n\n_Type /cancel to cancel at any step._",
+		"🔄 *Create Escrow - Step 1/5*\n\nHow much KAS do you want to escrow?\n\n" +
+			(preset ? `Deal type: *${preset.toUpperCase()}* (auto ${presets[preset]}d timeout)\n\n` : "") +
+			"Example: `100` or `5000.5`\n\n_Type /cancel to cancel at any step._",
 		{ parse_mode: "Markdown" },
 	);
 });
@@ -1442,6 +1496,636 @@ bot.command("release_milestone", async (ctx) => {
 	}
 });
 
+// ── KRC-20 Commands ────────────────────────────────────────────────
+
+bot.command("krc20_list", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply("⚠️ Please set your address first: /setaddress <kaspa-address>");
+	}
+
+	try {
+		const data = await api.listTokens();
+		const tokens = data.tokens || [];
+
+		if (tokens.length === 0) {
+			return await ctx.reply("📭 No KRC-20 tokens found on the network.");
+		}
+
+		let msg = "🪙 *KRC-20 Tokens*\n\n";
+		for (const t of tokens.slice(0, 10)) {
+			const supply = (t.total_supply || 0).toLocaleString();
+			msg += `• *${t.ticker}* — ${t.name}\n`;
+			msg += `  Supply: ${supply} · Decimals: ${t.decimals ?? 8}\n`;
+			if (t.volume_sompi) {
+				const vol = (t.volume_sompi / 1e8).toFixed(2);
+				msg += `  Volume: ${vol} KAS\n`;
+			}
+			msg += "\n";
+		}
+		if (tokens.length > 10) msg += `_...and ${tokens.length - 10} more_\n`;
+		msg += "💡 Use /krc20 <ticker> for details";
+
+		await ctx.reply(msg, { parse_mode: "Markdown" });
+	} catch (err) {
+		await ctx.reply("❌ Could not fetch tokens: " + err.message);
+	}
+});
+
+bot.command("krc20", async (ctx) => {
+	const ticker = ctx.match?.trim().toUpperCase();
+	if (!ticker) {
+		return await ctx.reply(
+			"*KRC-20 Token Detail*\n\n" +
+				"Usage: `/krc20 <ticker>`\n\n" +
+				"Example: `/krc20 NACHO`\n\n" +
+				"Use /krc20_list to see all tokens.",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	try {
+		const data = await api.getToken(ticker);
+		const supply = (data.total_supply || 0).toLocaleString();
+		const decimals = data.decimals ?? 8;
+
+		let msg = `🪙 *${ticker} — ${data.name || "KRC-20 Token"}*\n\n`;
+		msg += `Supply: ${supply}\n`;
+		msg += `Decimals: ${decimals}\n`;
+		if (data.volume_sompi) {
+			msg += `Volume: ${(data.volume_sompi / 1e8).toFixed(2)} KAS\n`;
+		}
+		if (data.escrow_count !== undefined) {
+			msg += `Escrows: ${data.escrow_count}\n`;
+		}
+		if (data.mint_mode) {
+			msg += `Mint mode: \`${data.mint_mode}\`\n`;
+		}
+		msg += "\n💡 Use /krc20_create to deploy a new token";
+
+		await ctx.reply(msg, { parse_mode: "Markdown" });
+	} catch (err) {
+		await ctx.reply("❌ Token not found: " + err.message);
+	}
+});
+
+bot.command("krc20_create", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply(
+			"Please set your address first:\n/setaddress <kaspa-address>",
+			{ parse_mode: "Markdown" },
+		);
+	}
+	startConv(ctx.from.id);
+	updateConv(ctx.from.id, "address", address);
+	updateConv(ctx.from.id, "wizard", "krc20");
+	await ctx.reply(
+		"🪙 *Create KRC-20 Token - Step 1/5*\n\nEnter the token *name*:\n\nExample: `Nacho Coin`\n\n_Type /cancel to cancel at any step._",
+		{ parse_mode: "Markdown" },
+	);
+});
+
+// ── Subscription Commands ──────────────────────────────────────────
+
+bot.command("sub_create", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply(
+			"Please set your address first:\n/setaddress <kaspa-address>",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	const parts = (ctx.match || "").trim().split(/\s+/);
+	const amountStr = parts[0];
+	const installmentStr = parts[1];
+	const intervalStr = parts[2];
+	const counterparty = parts[3];
+
+	if (!amountStr || !installmentStr || !intervalStr) {
+		return await ctx.reply(
+			"*Create Subscription*\n\n" +
+				"Usage: `/sub_create <total-amount> <installment> <interval-hours> [counterparty-address]`\n\n" +
+				"Example:\n" +
+				"`/sub_create 1000 100 720 kaspa:q...`\n\n" +
+				"_720 hours = ~30 days between installments_",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	const totalAmount = parseFloat(amountStr);
+	const installment = parseFloat(installmentStr);
+	const intervalHours = parseFloat(intervalStr);
+
+	if (isNaN(totalAmount) || totalAmount <= 0) {
+		return await ctx.reply("Invalid total amount.", { parse_mode: "Markdown" });
+	}
+	if (isNaN(installment) || installment <= 0 || installment > totalAmount) {
+		return await ctx.reply("Invalid installment amount.", { parse_mode: "Markdown" });
+	}
+	if (isNaN(intervalHours) || intervalHours <= 0) {
+		return await ctx.reply("Invalid interval (must be > 0 hours).", { parse_mode: "Markdown" });
+	}
+
+	const maxPeriods = Math.floor(totalAmount / installment);
+	const recipient = counterparty && counterparty.startsWith("kaspa:") ? counterparty : address;
+
+	try {
+		const auth = api.makeAuth(address, "create:subscription");
+		const result = await api.createSubscription({
+			lock_tx_id: `manual_${Date.now()}`,
+			payer_address: address,
+			recipient_address: recipient,
+			total_amount: Math.round(totalAmount * 100_000_000),
+			installment_amount: Math.round(installment * 100_000_000),
+			interval_seconds: Math.round(intervalHours * 3600),
+			start_time: Math.floor(Date.now() / 1000),
+			max_periods: maxPeriods,
+		}, auth);
+
+		await ctx.reply(
+			`✅ *Subscription Created!*\n\n` +
+				`ID: \`${result.id}\`\n` +
+				`Total: ${totalAmount} KAS\n` +
+				`Installment: ${installment} KAS\n` +
+				`Interval: ${intervalHours}h\n` +
+				`Periods: ${maxPeriods}\n` +
+				`Status: \`${result.status}\`\n\n` +
+				`Use /sub_draw ${result.id} to draw the first installment.`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Failed: " + err.message);
+	}
+});
+
+bot.command("subscriptions", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply("⚠️ Please set your address first: /setaddress <kaspa-address>");
+	}
+
+	try {
+		const data = await api.listSubscriptions(address);
+		const subs = data.subscriptions || [];
+
+		if (subs.length === 0) {
+			return await ctx.reply("📭 No subscriptions found for your address.");
+		}
+
+		let msg = "📋 *Your Subscriptions*\n\n";
+		for (const s of subs.slice(0, 5)) {
+			const total = (s.total_amount / 1e8).toFixed(2);
+			const installment = (s.installment_amount / 1e8).toFixed(2);
+			const period = s.current_period ?? 0;
+			const maxP = s.max_periods ?? 0;
+			msg += `• *${total} KAS* — ${installment} KAS/period\n`;
+			msg += `  Period: ${period}/${maxP} · Status: \`${s.status}\`\n`;
+			msg += `  ID: \`${s.id}\`\n\n`;
+		}
+		if (subs.length > 5) msg += `_...and ${subs.length - 5} more_\n`;
+
+		await ctx.reply(msg, { parse_mode: "Markdown" });
+	} catch (err) {
+		await ctx.reply("❌ Could not fetch subscriptions: " + err.message);
+	}
+});
+
+bot.command("sub_draw", async (ctx) => {
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /sub_draw <subscription-id>");
+
+	try {
+		const result = await api.drawSubscription(id);
+		await ctx.reply(
+			`✅ *Installment Drawn*\n\n` +
+				`Subscription: \`${result.subscription_id}\`\n` +
+				`Period: ${result.current_period}/${result.max_periods}\n` +
+				`Status: \`${result.status}\``,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not draw: " + err.message);
+	}
+});
+
+bot.command("sub_cancel", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply("⚠️ Please set your address first: /setaddress <kaspa-address>");
+	}
+
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /sub_cancel <subscription-id>");
+
+	try {
+		const auth = api.makeAuth(address, `cancel:subscription:${id}`);
+		const result = await api.cancelSubscription(id, auth);
+		await ctx.reply(
+			`🛑 *Subscription Cancelled*\n\n` +
+				`ID: \`${result.subscription_id}\`\n` +
+				`Status: \`${result.status}\``,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not cancel: " + err.message);
+	}
+});
+
+// ── Deposit Commands ───────────────────────────────────────────────
+
+bot.command("deposit", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply(
+			"Please set your address first:\n/setaddress <kaspa-address>",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	const [escrowId, amountStr] = (ctx.match || "").trim().split(/\s+/);
+	const amount = parseFloat(amountStr);
+	if (!escrowId || isNaN(amount) || amount <= 0) {
+		return await ctx.reply(
+			"*Create Security Deposit*\n\n" +
+				"Usage: `/deposit <escrow-id> <amount-kas>`\n\n" +
+				"Example:\n" +
+				"`/deposit esc_abc123 50`",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	try {
+		const data = await api.getDeposit(escrowId);
+		if (data && data.id) {
+			return await ctx.reply(
+				`⚠️ A deposit already exists for escrow \`${escrowId}\`. Use /deposit_status ${escrowId} to check.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+	} catch {
+		// No existing deposit — proceed
+	}
+
+	try {
+		const sompi = Math.round(amount * 100_000_000);
+		const escrow = await api.getEscrow(escrowId);
+		const counterparty =
+			escrow.buyer_address === address
+				? escrow.seller_address || address
+				: escrow.buyer_address;
+
+		const result = await api.createDeposit(escrowId, {
+			party1_address: address,
+			party2_address: counterparty || address,
+			deposit_amount: sompi,
+			deposit_tx_id: `manual_${Date.now()}`,
+		});
+
+		await ctx.reply(
+			`✅ *Security Deposit Created*\n\n` +
+				`Escrow: \`${escrowId}\`\n` +
+				`Amount: ${amount} KAS\n` +
+				`Deposit ID: \`${result.id}\`\n` +
+				`Status: \`${result.status}\`\n\n` +
+				`Use /deposit_release ${escrowId} to release when both parties agree.`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Failed: " + err.message);
+	}
+});
+
+bot.command("deposit_status", async (ctx) => {
+	const escrowId = ctx.match?.trim();
+	if (!escrowId) return await ctx.reply("Usage: /deposit_status <escrow-id>");
+
+	try {
+		const data = await api.getDeposit(escrowId);
+		if (!data || !data.id) {
+			return await ctx.reply(
+				`📭 No deposit found for escrow \`${escrowId}\`.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+		const amount = (data.deposit_amount / 1e8).toFixed(2);
+		await ctx.reply(
+			`🏦 *Deposit Status*\n\n` +
+				`Escrow: \`${escrowId}\`\n` +
+				`Deposit ID: \`${data.id}\`\n` +
+				`Amount: ${amount} KAS\n` +
+				`Status: \`${data.status}\`\n` +
+				`Party 1: \`${(data.party1_address || "").slice(0, 16)}...\`\n` +
+				`Party 2: \`${(data.party2_address || "").slice(0, 16)}...\`` +
+				(data.released_at
+					? `\nReleased: ${new Date(data.released_at * 1000).toISOString().slice(0, 19).replace("T", " ")} UTC`
+					: ""),
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not fetch deposit: " + err.message);
+	}
+});
+
+bot.command("deposit_release", async (ctx) => {
+	const escrowId = ctx.match?.trim();
+	if (!escrowId) return await ctx.reply("Usage: /deposit_release <escrow-id>");
+
+	try {
+		const deposit = await api.getDeposit(escrowId);
+		if (!deposit || !deposit.id) {
+			return await ctx.reply(
+				`📭 No deposit found for escrow \`${escrowId}\`.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		// Mutual release requires both party signatures — redirect to web
+		await ctx.reply(
+			`🔓 *Release Deposit — Mutual Agreement*\n\n` +
+				`Escrow: \`${escrowId}\`\n` +
+				`Deposit: \`${deposit.id}\`\n` +
+				`Amount: ${(deposit.deposit_amount / 1e8).toFixed(2)} KAS\n\n` +
+				`Mutual release requires both parties to sign. Please use the web dashboard:\n\n` +
+				`🔗 https://daglock.com/escrows/${encodeURIComponent(escrowId)}`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Error: " + err.message);
+	}
+});
+
+// ── Milestone Actions (missing ones) ───────────────────────────────
+
+bot.command("milestone_approve", async (ctx) => {
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /milestone_approve <milestone-escrow-id>");
+
+	try {
+		const result = await api.approveMilestone(id);
+		const progress =
+			result.milestone_statuses?.filter((s) => s === "released" || s === "approved").length || 0;
+		const total = result.milestone_amounts?.length || 0;
+		await ctx.reply(
+			`✅ *Milestone Approved*\n\n` +
+				`ID: \`${id}\`\n` +
+				`Progress: ${progress}/${total}\n` +
+				`Status: \`${result.status}\`\n\n` +
+				(total > progress ? `Next milestone ready for release.` : "All milestones completed!"),
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not approve milestone: " + err.message);
+	}
+});
+
+bot.command("milestone_dispute", async (ctx) => {
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /milestone_dispute <milestone-escrow-id>");
+
+	try {
+		const result = await api.disputeMilestone(id);
+		await ctx.reply(
+			`⚠️ *Milestone Escrow Disputed*\n\n` +
+				`ID: \`${result.escrow_id}\`\n` +
+				`Status: \`${result.status}\`\n\n` +
+				`${result.message || "All future releases halted."}\n\n` +
+				`Use /mediate ${id} to start AI mediation, or /milestone_refund ${id} to refund remaining funds.`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not dispute: " + err.message);
+	}
+});
+
+bot.command("milestone_refund", async (ctx) => {
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /milestone_refund <milestone-escrow-id>");
+
+	try {
+		const result = await api.refundMilestone(id);
+		await ctx.reply(
+			`↩️ *Milestone Refunded*\n\n` +
+				`ID: \`${result.escrow_id}\`\n` +
+				`Status: \`${result.status}\`\n\n` +
+				`${result.message || "Remaining funds refunded to buyer."}`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not refund: " + err.message);
+	}
+});
+
+bot.command("milestone_complete", async (ctx) => {
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /milestone_complete <milestone-escrow-id>");
+
+	try {
+		const result = await api.completeMilestone(id);
+		await ctx.reply(
+			`🎉 *Milestone Escrow Complete!*\n\n` +
+				`ID: \`${result.escrow_id}\`\n` +
+				`Status: \`${result.status}\`\n\n` +
+				`${result.message || "All funds released."}`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not complete: " + err.message);
+	}
+});
+
+// ── Vault Commands ─────────────────────────────────────────────────
+
+bot.command("vault_create", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply(
+			"Please set your address first:\n/setaddress <kaspa-address>",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	const [amountStr, durationStr] = (ctx.match || "").trim().split(/\s+/);
+	const amount = parseFloat(amountStr);
+	const duration = parseInt(durationStr, 10);
+
+	if (isNaN(amount) || amount <= 0 || isNaN(duration) || duration <= 0) {
+		return await ctx.reply(
+			"*Create Time-Locked Vault*\n\n" +
+				"Usage: `/vault_create <amount-kas> <duration-seconds>`\n\n" +
+				"Examples:\n" +
+				"`/vault_create 5000 86400` — 5000 KAS locked for 1 day\n" +
+				"`/vault_create 10000 2592000` — 10000 KAS locked for 30 days",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	try {
+		const auth = api.makeAuth(address, "create:vault");
+		const result = await api.createVault({
+			owner_address: address,
+			vault_type: "Time",
+			amount_sompi: Math.round(amount * 100_000_000),
+			timeout: Math.floor(Date.now() / 1000) + duration,
+			lock_tx_id: `manual_${Date.now()}`,
+		}, auth);
+
+		const unlockDate = new Date((Date.now() + duration * 1000)).toISOString().slice(0, 19).replace("T", " ");
+		await ctx.reply(
+			`🏦 *Time-Locked Vault Created!*\n\n` +
+				`ID: \`${result.id}\`\n` +
+				`Amount: ${amount} KAS\n` +
+				`Unlocks: ${unlockDate} UTC\n` +
+				`Status: \`${result.status}\`\n\n` +
+				`Use /vault_withdraw ${result.id} after the lock period to withdraw.`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Failed: " + err.message);
+	}
+});
+
+bot.command("vault_withdraw", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply(
+			"⚠️ Please set your address first: /setaddress <kaspa-address>",
+		);
+	}
+
+	const id = ctx.match?.trim();
+	if (!id) return await ctx.reply("Usage: /vault_withdraw <vault-id>");
+
+	try {
+		const vault = await api.getVault(id);
+		if (!vault || !vault.id) {
+			return await ctx.reply("❌ Vault not found.", { parse_mode: "Markdown" });
+		}
+
+		const now = Math.floor(Date.now() / 1000);
+		if (vault.timeout > now) {
+			const remaining = Math.ceil((vault.timeout - now) / 3600);
+			return await ctx.reply(
+				`⏳ *Vault Still Locked*\n\n` +
+					`Vault: \`${id}\`\n` +
+					`Unlocks in ~${remaining} hours\n` +
+					`Please wait until the lock period expires.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (vault.status !== "locked" && vault.status !== "unlocked") {
+			return await ctx.reply(
+				`❌ Vault is \`${vault.status}\`. Only locked vaults can be withdrawn.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		// Withdrawal requires message signing — redirect to web
+		await ctx.reply(
+			`🔓 *Withdraw from Vault*\n\n` +
+				`Vault: \`${id}\`\n` +
+				`Amount: ${(vault.amount_sompi / 1e8).toFixed(2)} KAS\n\n` +
+				`The vault is unlocked and ready for withdrawal.\n\n` +
+				`To withdraw, sign a message with your wallet on the web dashboard:\n\n` +
+				`🔗 https://daglock.com/vaults/${encodeURIComponent(id)}`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Error: " + err.message);
+	}
+});
+
+// ── Stats Command ──────────────────────────────────────────────────
+
+bot.command("stats", async (ctx) => {
+	try {
+		const data = await api.getStatsSummary();
+		const totalVol = (data.total_volume_sompi / 1e8).toFixed(2);
+		const totalFees = (data.total_fees_sompi / 1e8).toFixed(4);
+		const uptime = data.uptime_seconds
+			? `${Math.floor(data.uptime_seconds / 86400)}d ${Math.floor((data.uptime_seconds % 86400) / 3600)}h`
+			: "N/A";
+
+		await ctx.reply(
+			`📊 *DagLock Platform Stats*\n\n` +
+				`Total Escrows: ${data.total_escrows ?? 0}\n` +
+				`Active Escrows: ${data.active_escrows ?? 0}\n` +
+				`Total Volume: ${totalVol} KAS\n` +
+				`Total Fees: ${totalFees} KAS\n` +
+				`Total Users: ${data.total_users ?? 0}\n` +
+				`Open Offers: ${data.open_offers ?? 0}\n` +
+				`Uptime: ${uptime}`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not fetch stats: " + err.message);
+	}
+});
+
+// ── On-chain Anchors Command ───────────────────────────────────────
+
+bot.command("anchors", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply(
+			"Please set your address first:\n/setaddress <kaspa-address>",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	const escrowId = ctx.match?.trim();
+	if (!escrowId) {
+		return await ctx.reply(
+			"*Anchor Status*\n\n" +
+				"Usage: `/anchors <escrow-id>`\n\n" +
+				"Check the on-chain anchoring status for an escrow's encrypted messages.\n\n" +
+				"Example:\n" +
+				"`/anchors esc_abc123`",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	try {
+		const auth = api.makeAuth(address, `anchor:${escrowId}`);
+		const data = await api.getAnchorSummary(escrowId, auth);
+		const batches = data.batches || [];
+
+		if (batches.length === 0) {
+			return await ctx.reply(
+				`🔗 *Anchor Status — \`${escrowId}\`*\n\nNo messages have been anchored on-chain yet.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		let msg = `🔗 *Anchor Status — \`${escrowId}\`*\n\n`;
+		msg += `Batch count: ${data.batch_count}\n\n`;
+		for (const b of batches.slice(0, 5)) {
+			const date = b.created_at
+				? new Date(b.created_at * 1000).toISOString().slice(0, 19).replace("T", " ")
+				: "N/A";
+			msg += `• Batch: \`${(b.batch_hash || b.id || "").slice(0, 20)}...\`\n`;
+			msg += `  TX: \`${(b.anchor_tx_id || "").slice(0, 20)}...\`\n`;
+			msg += `  DAA: ${b.anchor_daa_score ?? "N/A"} · ${date}\n\n`;
+		}
+		if (batches.length > 5) msg += `_...${batches.length - 5} more batches_\n`;
+
+		await ctx.reply(msg, { parse_mode: "Markdown" });
+	} catch (err) {
+		try {
+			const errBody = JSON.parse(err.message);
+			if (errBody?.error?.code === "forbidden") {
+				return await ctx.reply(
+					"❌ Only escrow parties can view anchor status.",
+					{ parse_mode: "Markdown" },
+				);
+			}
+		} catch {}
+		await ctx.reply("❌ Could not fetch anchors: " + err.message);
+	}
+});
+
 // ── Help command ────────────────────────────────────────────────────
 
 bot.command("help", async (ctx) => {
@@ -1450,7 +2134,7 @@ bot.command("help", async (ctx) => {
 			"*Setup:*\n" +
 			"/setaddress — Set your Kaspa address\n\n" +
 			"*Escrow:*\n" +
-			"/create — Create escrow (native, no web needed)\n" +
+			"/create [goods|otc|service] — Create escrow (presets auto-fill timeout)\n" +
 			"/settle <id> — Settle an active escrow\n" +
 			"/refund <id> — Refund an escrow\n" +
 			"/claim <id> — Claim an escrow from a trade link\n" +
@@ -1470,7 +2154,33 @@ bot.command("help", async (ctx) => {
 			"/swap claim <id> <hex> — Claim swap by preimage\n" +
 			"/swap status <id> — Check swap status\n" +
 			"/reputation <address> — Check reputation\n" +
-			"/vaults — List your vaults\n\n" +
+			"/vaults — List your vaults\n" +
+			"/vault_create <amt> <sec> — Create time-locked vault\n" +
+			"/vault_withdraw <id> — Withdraw from vault\n\n" +
+			"*Milestones:*\n" +
+			"/create_milestone <seller> <total> <count> — Create milestone escrow\n" +
+			"/milestones — List milestone escrows\n" +
+			"/release_milestone <id> — Release current milestone\n" +
+			"/milestone_approve <id> — Approve current milestone\n" +
+			"/milestone_dispute <id> — Dispute milestone escrow\n" +
+			"/milestone_refund <id> — Refund remaining funds\n" +
+			"/milestone_complete <id> — Mutual complete\n\n" +
+			"*Deposits:*\n" +
+			"/deposit <id> <amount> — Create security deposit\n" +
+			"/deposit_status <id> — Check deposit status\n" +
+			"/deposit_release <id> — Release deposits (mutual)\n\n" +
+			"*Subscriptions:*\n" +
+			"/sub_create <total> <inst> <interval> — Create subscription escrow\n" +
+			"/subscriptions — List subscriptions\n" +
+			"/sub_draw <id> — Draw current installment\n" +
+			"/sub_cancel <id> — Cancel a subscription\n\n" +
+			"*KRC-20 Tokens:*\n" +
+			"/krc20_list — List KRC-20 tokens\n" +
+			"/krc20 <ticker> — Token detail\n" +
+			"/krc20_create — Deploy a new KRC-20 token\n\n" +
+			"*Platform:*\n" +
+			"/stats — Platform statistics\n" +
+			"/anchors <id> — Check message anchoring status\n\n" +
 			"*Messaging:*\n" +
 			"/msg <id> <text> — Send a message on an escrow\n" +
 			"/messages <id> — Read message thread\n\n" +
@@ -1549,6 +2259,118 @@ bot.on("message:text", async (ctx, next) => {
 					`[Create Invoice](${redirectUrl})`,
 				{ parse_mode: "Markdown", disable_web_page_preview: true },
 			);
+			return;
+		}
+
+		// ── KRC-20 token creation wizard ──────────────────────────
+		if (step === "krc20_name") {
+			if (text.length < 2 || text.length > 50) {
+				return await ctx.reply("Name must be 2-50 characters.", { parse_mode: "Markdown" });
+			}
+			updateConv(ctx.from.id, "tokenName", text);
+			advanceConv(ctx.from.id, "krc20_ticker");
+			return await ctx.reply(
+				"🪙 *Create KRC-20 Token - Step 2/5*\n\nEnter the token *ticker* (symbol, 2-10 uppercase letters):\n\n" +
+					"Example: `NACHO`",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "krc20_ticker") {
+			const ticker = text.toUpperCase();
+			if (ticker.length < 2 || ticker.length > 10 || !/^[A-Z0-9]+$/.test(ticker)) {
+				return await ctx.reply(
+					"Ticker must be 2-10 uppercase letters/numbers (e.g. `NACHO`).",
+					{ parse_mode: "Markdown" },
+				);
+			}
+			updateConv(ctx.from.id, "tokenTicker", ticker);
+			advanceConv(ctx.from.id, "krc20_supply");
+			return await ctx.reply(
+				"🪙 *Create KRC-20 Token - Step 3/5*\n\nEnter the total *supply*:\n\n" +
+					"Example: `1000000000`\n\n_Use whole units (e.g. 1B = 1000000000)_",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "krc20_supply") {
+			const supply = parseInt(text.replace(/[,_]/g, ""), 10);
+			if (isNaN(supply) || supply <= 0 || supply > 1_000_000_000_000) {
+				return await ctx.reply(
+					"Enter a valid supply (1 - 1,000,000,000,000).",
+					{ parse_mode: "Markdown" },
+				);
+			}
+			updateConv(ctx.from.id, "tokenSupply", supply);
+			advanceConv(ctx.from.id, "krc20_decimals");
+			return await ctx.reply(
+				"🪙 *Create KRC-20 Token - Step 4/5*\n\nEnter *decimals* (default: 8):\n\n" +
+					"Example: `8`\n\n_Type \`default\` to use 8 decimals._",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "krc20_decimals") {
+			let decimals = 8;
+			if (text.toLowerCase() !== "default") {
+				decimals = parseInt(text, 10);
+				if (isNaN(decimals) || decimals < 0 || decimals > 18) {
+					return await ctx.reply(
+						"Decimals must be 0-18, or type `default`.",
+						{ parse_mode: "Markdown" },
+					);
+				}
+			}
+			updateConv(ctx.from.id, "tokenDecimals", decimals);
+			advanceConv(ctx.from.id, "krc20_mint");
+			return await ctx.reply(
+				"🪙 *Create KRC-20 Token - Step 5/5*\n\nEnter *mint mode* (default: burn):\n\n" +
+					"Options: `burn`, `mint`, `fixed`\n" +
+					"- burn: tokens are burned when sent to the covenant\n" +
+					"- mint: new tokens can be minted by owner\n" +
+					"- fixed: no minting or burning\n\n" +
+					"_Type \`default\` for burn mode._",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (step === "krc20_mint") {
+			const mode = text.toLowerCase();
+			if (mode !== "default" && !["burn", "mint", "fixed"].includes(mode)) {
+				return await ctx.reply(
+					"Enter `burn`, `mint`, `fixed`, or `default`.",
+					{ parse_mode: "Markdown" },
+				);
+			}
+			const mintMode = mode === "default" ? "burn" : mode;
+			const data = conv.data;
+			endConv(ctx.from.id);
+
+			try {
+				const auth = api.makeAuth(data.address, "create:token");
+				const result = await api.createToken({
+					name: data.tokenName,
+					ticker: data.tokenTicker,
+					total_supply: data.tokenSupply,
+					decimals: data.tokenDecimals,
+					mint_mode: mintMode,
+					owner_address: data.address,
+				}, auth);
+
+				await ctx.reply(
+					`✅ *KRC-20 Token Deployed!*\n\n` +
+						`Name: ${result.name || data.tokenName}\n` +
+						`Ticker: *${data.tokenTicker}*\n` +
+						`Supply: ${data.tokenSupply.toLocaleString()}\n` +
+						`Decimals: ${data.tokenDecimals}\n` +
+						`Mint mode: \`${mintMode}\`\n` +
+						(result.id ? `ID: \`${result.id}\`\n` : "") +
+						`\nUse /krc20 ${data.tokenTicker} to check status.`,
+					{ parse_mode: "Markdown" },
+				);
+			} catch (err) {
+				await ctx.reply("❌ Deployment failed: " + err.message);
+			}
 			return;
 		}
 
@@ -1679,6 +2501,18 @@ bot.on("message:text", async (ctx, next) => {
 			}
 			if (text !== "skip") updateConv(ctx.from.id, "seller", text);
 			advanceConv(ctx.from.id, "timeout");
+			if (conv.data.presetTimeout) {
+				advanceConv(ctx.from.id, "dispute");
+				const kbd = new InlineKeyboard()
+					.text("Standard", "dispute_standard")
+					.text("Mediator", "dispute_mediator")
+					.row()
+					.text("Jury", "dispute_jury");
+				return await ctx.reply(
+					"🔄 *Create Escrow - Step 4/5*\n\nDispute mode:\n\n• Standard — timeout refund\n• Mediator — specific mediator resolves\n• Jury — community vote",
+					{ parse_mode: "Markdown", reply_markup: kbd },
+				);
+			}
 			const keyboard = new InlineKeyboard()
 				.text("1 hour", "timeout_1h")
 				.text("24 hours", "timeout_24h")
@@ -1763,6 +2597,19 @@ bot.on("callback_query:data", async (ctx) => {
 	if (data === "counterparty_skip") {
 		if (!conv) return ctx.answerCallbackQuery("Session expired. Use /create again.");
 		advanceConv(userId, "timeout");
+		if (conv.data.presetTimeout) {
+			advanceConv(userId, "dispute");
+			const kbd = new InlineKeyboard()
+				.text("Standard", "dispute_standard")
+				.text("Mediator", "dispute_mediator")
+				.row()
+				.text("Jury", "dispute_jury");
+			await ctx.editMessageText(
+				"🔄 *Create Escrow - Step 4/5*\n\nDispute mode:\n\n• Standard — timeout refund\n• Mediator — specific mediator resolves\n• Jury — community vote",
+				{ parse_mode: "Markdown", reply_markup: kbd },
+			);
+			return ctx.answerCallbackQuery();
+		}
 		const keyboard = new InlineKeyboard()
 			.text("1 hour", "timeout_1h")
 			.text("24 hours", "timeout_24h")
@@ -2092,7 +2939,8 @@ async function handleBroadcastComplete(ctx, escrowId) {
 				`Amount: ${amount} KAS\n` +
 				`Status: \`${data.status}\`\n` +
 				`\nShare this escrow ID with your counterparty:\n` +
-				`\`${data.id}\``,
+				`\`${data.id}\`` +
+				`\n\n📥 Download your chat recovery sheet from the web dashboard for key backup.`,
 			{ parse_mode: "Markdown", reply_markup: keyboard },
 		);
 	} catch (err) {

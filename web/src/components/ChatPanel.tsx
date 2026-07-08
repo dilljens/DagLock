@@ -36,6 +36,7 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
 	const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
 	const [verifying, setVerifying] = useState(false);
 	const [verifyResult, setVerifyResult] = useState<string | null>(null);
+	const [anchorInfo, setAnchorInfo] = useState<string | null>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -111,6 +112,32 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
 			if (pollRef.current) clearInterval(pollRef.current);
 		};
 	}, [fetchMessages]);
+
+	// Poll anchor summary
+	useEffect(() => {
+		if (!address || !wallet.connected) return;
+		let cancelled = false;
+		async function fetchAnchors() {
+			try {
+				const msg = `anchor_summary:${escrow.id}`;
+				const sig = await sign(msg);
+				const auth: AuthHeaders = { address: address!, signature: sig, message: msg };
+				const data = await api.getMessageAnchors(escrow.id, auth);
+				if (!cancelled && data.batch_count > 0) {
+					const totalMsgs = data.batches.reduce((s, b) => s + b.message_count, 0);
+					setAnchorInfo(`📦 ${totalMsgs} messages anchored in ${data.batch_count} batches`);
+				}
+			} catch {
+				// not available
+			}
+		}
+		fetchAnchors();
+		const id = setInterval(fetchAnchors, 60_000);
+		return () => {
+			cancelled = true;
+			clearInterval(id);
+		};
+	}, [escrow.id, address, wallet.connected, sign]);
 
 	useEffect(() => {
 		if (!sharedSecret) return;
@@ -339,19 +366,32 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
 				</div>
 			) : (
 				<>
-					{verifyResult && (
-						<div
-							style={{
-								fontSize: "11px",
-								padding: "4px 12px",
-								background: verifyResult.startsWith("✅") ? "#1a3a2a" : "#3a2a1a",
-								color: verifyResult.startsWith("✅") ? "#4caf50" : "#ff9800",
-								borderBottom: "1px solid #333",
-							}}
-						>
-							{verifyResult}
-						</div>
-					)}
+			{verifyResult && (
+				<div
+					style={{
+						fontSize: "11px",
+						padding: "4px 12px",
+						background: verifyResult.startsWith("✅") ? "#1a3a2a" : "#3a2a1a",
+						color: verifyResult.startsWith("✅") ? "#4caf50" : "#ff9800",
+						borderBottom: "1px solid #333",
+					}}
+				>
+					{verifyResult}
+				</div>
+			)}
+			{anchorInfo && (
+				<div
+					style={{
+						fontSize: "11px",
+						padding: "4px 12px",
+						background: "#1a2a3a",
+						color: "#88bbff",
+						borderBottom: "1px solid #333",
+					}}
+				>
+					{anchorInfo}
+				</div>
+			)}
 					<div
 						style={{
 							maxHeight: "300px",
@@ -414,6 +454,25 @@ export function ChatPanel({ escrow, onMutated }: ChatPanelProps) {
 											}}
 										>
 											🔗 {m.anchor_daa_score ? `DAA ${m.anchor_daa_score}` : "anchored"}
+										</div>
+									)}
+									{m.anchor_tx_id && (
+										<div
+											style={{
+												fontSize: "9px",
+												marginTop: "1px",
+												textAlign: "right",
+											}}
+										>
+											<a
+												href={`https://kas.fyi/transaction/${m.anchor_tx_id}`}
+												target="_blank"
+												rel="noopener noreferrer"
+												style={{ color: "#4fc3f7", textDecoration: "none" }}
+												title="View anchor transaction"
+											>
+												🔗 TX
+											</a>
 										</div>
 									)}
 								</div>

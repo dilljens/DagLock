@@ -44,9 +44,10 @@ impl AiMediator {
             "max_tokens": 1024,
         });
 
+        // Uses DeepSeek V4 Flash (OpenAI-compatible API)
         let response = self
             .http_client
-            .post("https://api.openai.com/v1/chat/completions")
+            .post("https://api.deepseek.com/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&body)

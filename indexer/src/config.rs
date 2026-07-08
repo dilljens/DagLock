@@ -209,7 +209,7 @@ mod tests {
             auto_escalate_disputes: false,
             auto_sweep_deposits: false,
             ai_mediator_api_key: None,
-            ai_mediator_model: "gpt-4o".to_string(),
+            ai_mediator_model: "deepseek-chat".to_string(),
             mock_chat_sig: false,
             anchor_interval_seconds: 300,
             anchor_wallet_key: None,

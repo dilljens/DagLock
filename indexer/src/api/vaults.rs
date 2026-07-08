@@ -364,7 +364,318 @@ pub async fn transfer(
     })))
 }
 
+/// POST /v1/vaults/:id/sweep
+///
+/// Sweep vault after timeout. Anyone can trigger.
+/// No auth required — the covenant enforces timeout.
+pub async fn sweep_vault(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let vault = queries::get_vault(&state.db, &id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})),
+            )
+        })?;
+
+    if vault.status != VaultStatus::Locked {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(json!({"error": "invalid_status", "message": "Vault is not locked"})),
+        ));
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    if now < vault.timeout {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "timeout_not_reached", "message": "Cannot sweep before timeout"})),
+        ));
+    }
+
+    queries::update_vault_status(&state.db, &id, "expired")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?;
+
+    Ok(Json(json!({
+        "status": "expired",
+        "vault_id": id,
+        "message": "Vault swept after timeout."
+    })))
+}
+
+/// POST /v1/vaults/:id/relock
+///
+/// Relock vault — owner extends the timer.
+pub async fn relock_vault(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
+    JsonBody(body): JsonBody<RelockVaultRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let vault = queries::get_vault(&state.db, &id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})),
+            )
+        })?;
+
+    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error": "unauthorized", "message": "X-Daglock-* headers required"})),
+        )
+    })?;
+
+    let expected_message = format!("relock:{}", id);
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|_| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+            )
+        })?
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+        ));
+    }
+
+    if auth.address != vault.owner_address {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Only the vault owner can relock"})),
+        ));
+    }
+
+    if vault.status != VaultStatus::Locked {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(json!({"error": "invalid_status", "message": "Vault is not locked"})),
+        ));
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    if body.new_timeout <= now {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "invalid_timeout", "message": "New timeout must be in the future"})),
+        ));
+    }
+
+    sqlx::query("UPDATE vaults SET timeout = ?1 WHERE id = ?2")
+        .bind(body.new_timeout)
+        .bind(&id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?;
+
+    Ok(Json(json!({
+        "status": "relocked",
+        "vault_id": id,
+        "timeout": body.new_timeout,
+        "message": "Vault timer extended."
+    })))
+}
+
+/// POST /v1/vaults/:id/early-exit
+///
+/// Early exit — owner cancels the vault before timeout.
+pub async fn early_exit(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let vault = queries::get_vault(&state.db, &id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})),
+            )
+        })?;
+
+    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error": "unauthorized", "message": "X-Daglock-* headers required"})),
+        )
+    })?;
+
+    let expected_message = format!("early_exit:{}", id);
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|_| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+            )
+        })?
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+        ));
+    }
+
+    if auth.address != vault.owner_address {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Only the vault owner can early-exit"})),
+        ));
+    }
+
+    if vault.status != VaultStatus::Locked {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(json!({"error": "invalid_status", "message": "Vault is not locked"})),
+        ));
+    }
+
+    queries::update_vault_status(&state.db, &id, "expired")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?;
+
+    Ok(Json(json!({
+        "status": "expired",
+        "vault_id": id,
+        "message": "Vault expired early by owner."
+    })))
+}
+
+/// POST /v1/vaults/:id/heir-withdraw
+///
+/// Heir withdraw — beneficiary withdraws after timeout.
+pub async fn heir_withdraw(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let vault = queries::get_vault(&state.db, &id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "not_found", "message": format!("Vault '{id}' not found")})),
+            )
+        })?;
+
+    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error": "unauthorized", "message": "X-Daglock-* headers required"})),
+        )
+    })?;
+
+    let expected_message = format!("heir_withdraw:{}", id);
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|_| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+            )
+        })?
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Invalid signature"})),
+        ));
+    }
+
+    if vault.beneficiary_address.as_deref() != Some(&auth.address) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "forbidden", "message": "Only the beneficiary/heir can withdraw"})),
+        ));
+    }
+
+    if vault.status != VaultStatus::Locked {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(json!({"error": "invalid_status", "message": "Vault is not locked"})),
+        ));
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    if now < vault.timeout {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "timeout_not_reached", "message": "Cannot withdraw before timeout"})),
+        ));
+    }
+
+    queries::update_vault_status(&state.db, &id, "transferred")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "database_error", "message": format!("{e}")})),
+            )
+        })?;
+
+    Ok(Json(json!({
+        "status": "transferred",
+        "vault_id": id,
+        "message": "Vault transferred to beneficiary."
+    })))
+}
+
 #[derive(serde::Deserialize)]
 pub struct ListParams {
     pub owner: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct RelockVaultRequest {
+    pub new_timeout: i64,
 }

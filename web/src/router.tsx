@@ -10,6 +10,7 @@ export type Route =
 	| "/escrows"
 	| "/swap"
 	| "/vaults"
+	| "/subscriptions"
 	| "/reputation"
 	| "/jury"
 	| "/security"
@@ -35,6 +36,7 @@ const VALID_ROUTES: readonly Route[] = [
 	"/offers",
 	"/escrows",
 	"/vaults",
+	"/subscriptions",
 	"/reputation",
 	"/jury",
 	"/security",

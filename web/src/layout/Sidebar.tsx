@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
 	{ route: "/escrows", label: "Escrows" },
 	{ route: "/swap", label: "Swap" },
 	{ route: "/vaults", label: "Vaults" },
+	{ route: "/subscriptions", label: "Subscriptions" },
 	{ route: "/reputation", label: "Reputation" },
 	{ route: "/jury", label: "Jury" },
 	{ route: "/blog", label: "Blog" },

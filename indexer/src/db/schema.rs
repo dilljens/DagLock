@@ -123,6 +123,7 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
 
     ensure_price_alerts_table(pool).await?;
     ensure_price_history_table(pool).await?;
+    ensure_deal_type_column(pool).await?;
 
     Ok(())
 }
@@ -862,5 +863,21 @@ pub async fn ensure_api_key_tier(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error>
             .await?;
     }
 
+    Ok(())
+}
+
+pub async fn ensure_deal_type_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(offers)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("deal_type") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN deal_type TEXT DEFAULT 'custom'")
+            .execute(pool)
+            .await?;
+    }
     Ok(())
 }

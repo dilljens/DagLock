@@ -102,7 +102,7 @@ pub async fn mediate(
         )
     })?;
 
-    let model = state.ai_mediator_model.clone().unwrap_or_else(|| "gpt-4o".to_string());
+    let model = state.ai_mediator_model.clone().unwrap_or_else(|| "deepseek-chat".to_string());
     let mediator = AiMediator::new(api_key, model);
 
     // Fetch chat messages for context and decrypt them

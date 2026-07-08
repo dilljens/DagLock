@@ -444,7 +444,105 @@ export class ApiClient {
 		return this.request("/stats");
 	}
 
+	getStatsSummary() {
+		return this.request("/stats/summary");
+	}
+
 	getHealth() {
 		return this.request("/health");
+	}
+
+	// ── KRC-20 Tokens ────────────────────────────────────────────────
+
+	listTokens() {
+		return this.request("/tokens");
+	}
+
+	getToken(ticker) {
+		return this.request(`/tokens/${encodeURIComponent(ticker)}`);
+	}
+
+	createToken(data, auth) {
+		return this.request("/tokens/deploy", {
+			method: "POST",
+			body: JSON.stringify(data),
+		}, auth);
+	}
+
+	// ── Subscriptions ────────────────────────────────────────────────
+
+	createSubscription(data, auth) {
+		return this.request("/subscriptions", {
+			method: "POST",
+			body: JSON.stringify(data),
+		}, auth);
+	}
+
+	listSubscriptions(address) {
+		return this.request(`/subscriptions?address=${encodeURIComponent(address)}`);
+	}
+
+	drawSubscription(id) {
+		return this.request(`/subscriptions/${encodeURIComponent(id)}/draw`, {
+			method: "POST",
+		});
+	}
+
+	cancelSubscription(id, auth) {
+		return this.request(`/subscriptions/${encodeURIComponent(id)}/cancel`, {
+			method: "POST",
+		}, auth);
+	}
+
+	// ── Security Deposits ────────────────────────────────────────────
+
+	createDeposit(escrowId, data) {
+		return this.request(`/escrows/${encodeURIComponent(escrowId)}/deposit`, {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	}
+
+	getDeposit(escrowId) {
+		return this.request(`/escrows/${encodeURIComponent(escrowId)}/deposit`);
+	}
+
+	releaseDeposit(escrowId, data) {
+		return this.request(`/escrows/${encodeURIComponent(escrowId)}/deposit/release`, {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	}
+
+	// ── Milestone Actions ────────────────────────────────────────────
+
+	approveMilestone(id) {
+		return this.request(`/milestones/${encodeURIComponent(id)}/approve`, {
+			method: "POST",
+		});
+	}
+
+	disputeMilestone(id) {
+		return this.request(`/milestones/${encodeURIComponent(id)}/dispute`, {
+			method: "POST",
+		});
+	}
+
+	refundMilestone(id) {
+		return this.request(`/milestones/${encodeURIComponent(id)}/refund`, {
+			method: "POST",
+		});
+	}
+
+	completeMilestone(id) {
+		return this.request(`/milestones/${encodeURIComponent(id)}/complete`, {
+			method: "POST",
+		});
+	}
+
+	// ── On-chain Anchors ─────────────────────────────────────────────
+
+	getAnchorSummary(escrowId, auth) {
+		return this.request(`/escrows/${encodeURIComponent(escrowId)}/messages/anchors`, undefined, auth);
 	}
 }

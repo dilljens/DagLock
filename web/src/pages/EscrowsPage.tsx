@@ -20,6 +20,7 @@ import { CreateInvoiceForm } from "../components/invoice-form";
 import { ExplorerTxLink, ExplorerAddressLink } from "../components/ExplorerLink";
 import { FeeCalculator } from "../components/FeeCalculator";
 import { ChatPanel } from "../components/ChatPanel";
+import { MediationPanel } from "../components/MediationPanel";
 import { generateChatKeypair, type ChatKeypair } from "../crypto/chat-crypto";
 import { encodeBase64 } from "tweetnacl-util";
 import { saveKeypair } from "../crypto/chat-store";
@@ -604,7 +605,12 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 					</button>
 				</>
 			)}
-			{escrow.status === "disputed" && <p className="muted"> Under dispute</p>}
+			{escrow.status === "disputed" && (
+				<>
+					<p className="muted"> Under dispute</p>
+					<MediationPanel escrowId={escrow.id} disputeMode={escrow.dispute_mode} />
+				</>
+			)}
 
 			{/* Forfeit deposit button (jury members only, when deposit is locked) */}
 			{deposit && deposit.status === "locked" && escrow.status === "disputed" && (

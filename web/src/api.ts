@@ -520,6 +520,33 @@ export type CreateVaultRequest = {
 	lock_tx_output_index?: number;
 };
 
+// ── Subscription Types ───────────────────────────────────────────
+
+export type Subscription = {
+	id: string;
+	payer_address: string;
+	recipient_address: string;
+	total_amount: number;
+	installment_amount: number;
+	interval_seconds: number;
+	current_period: number;
+	max_periods: number;
+	status: string;
+	created_at: number;
+	cancelled_at?: number | null;
+	completed_at?: number | null;
+};
+
+export type CreateSubscriptionRequest = {
+	payer_address: string;
+	recipient_address: string;
+	total_amount: number;
+	installment_amount: number;
+	interval_seconds: number;
+	max_periods: number;
+	start_time: number;
+};
+
 async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
 	const response = await fetchWithTimeout(API_BASE + path, {
 		headers: {
@@ -1022,5 +1049,23 @@ export const api = {
 		postEmpty<{ status: string }>(
 			`/v1/jury/cases/${encodeURIComponent(caseId)}/evidence/clear`,
 			auth,
+		),
+
+	// Subscriptions
+	subscriptions: (address?: string) =>
+		loadJson<{ subscriptions: Subscription[]; total: number }>(
+			`/v1/subscriptions${address ? `?address=${encodeURIComponent(address)}` : ""}`,
+		),
+	createSubscription: (req: CreateSubscriptionRequest, auth: AuthHeaders) =>
+		postJson<Subscription>("/v1/subscriptions", req, auth),
+	getSubscription: (id: string) =>
+		loadJson<Subscription>(`/v1/subscriptions/${encodeURIComponent(id)}`),
+	cancelSubscription: (id: string) =>
+		postEmpty<{ status: string; subscription_id: string }>(
+			`/v1/subscriptions/${encodeURIComponent(id)}/cancel`,
+		),
+	drawSubscription: (id: string) =>
+		postEmpty<{ status: string; subscription_id: string; current_period: number; max_periods: number }>(
+			`/v1/subscriptions/${encodeURIComponent(id)}/draw`,
 		),
 };
