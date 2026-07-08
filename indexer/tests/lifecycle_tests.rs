@@ -290,6 +290,7 @@ async fn test_offer_create_accept() {
         current_price: None,
         price_currency: "USD".to_string(),
         price_updated_at: None,
+        creator_type: "user".to_string(),
     };
 
     queries::insert_offer(&pool, &offer).await.unwrap();

@@ -9,7 +9,7 @@ function LineChart({
 	getValue,
 	getLabel,
 	color,
-	height = 110,
+	height = 120,
 	minDays = 7,
 }: {
 	data: DailyStat[];

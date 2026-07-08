@@ -235,6 +235,7 @@ async fn test_offer_create_validates_creator() {
             current_price: None,
             price_currency: "USD".to_string(),
             price_updated_at: None,
+            creator_type: "user".to_string(),
         },
     )
     .await
@@ -276,6 +277,7 @@ async fn test_offer_cancel_only_owner() {
             current_price: None,
             price_currency: "USD".to_string(),
             price_updated_at: None,
+            creator_type: "user".to_string(),
         },
     )
     .await
