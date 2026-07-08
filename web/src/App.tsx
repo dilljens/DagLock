@@ -30,6 +30,8 @@ const MerchantPage = lazy(() =>
 	import("./pages/MerchantPage").then((m) => ({ default: m.MerchantPage })),
 );
 const HelpPage = lazy(() => import("./pages/HelpPage").then((m) => ({ default: m.HelpPage })));
+const BlogPage = lazy(() => import("./pages/BlogPage").then((m) => ({ default: m.BlogPage })));
+const BlogPost = lazy(() => import("./pages/BlogPost").then((m) => ({ default: m.BlogPost })));
 const SecurityPage = lazy(() =>
 	import("./pages/SecurityPage").then((m) => ({ default: m.SecurityPage })),
 );
@@ -121,6 +123,12 @@ function AppInner() {
 						) {
 							return <TokenDetailPage ticker={window.location.pathname.replace("/tokens/", "")} />;
 						}
+						if (
+							window.location.pathname.startsWith("/blog/") &&
+							window.location.pathname !== "/blog"
+						) {
+							return <BlogPost slug={window.location.pathname.replace("/blog/", "")} />;
+						}
 						switch (route) {
 							case "/":
 								return <Dashboard stats={stats} />;
@@ -138,6 +146,8 @@ function AppInner() {
 								return <SwapPage />;
 							case "/docs":
 								return <DocsPage />;
+							case "/blog":
+								return <BlogPage />;
 							case "/merchant":
 								return <MerchantPage />;
 							case "/help":
