@@ -1,48 +1,53 @@
-const { chromium } = require("playwright");
+// DagLock Screenshot Tool
+// Usage: cd web && node ../scripts/screenshots.cjs
+// Requires: Playwright browsers installed (npx playwright install chromium)
+// Requires: Vite dev server running on port 5173
+
+const { chromium } = require("@playwright/test");
 const fs = require("fs");
 
+const SITE = "http://localhost:5173";
+const OUT = "/home/dillon/_code/DagLock/screenshots";
+const PAGES = [
+	{ path: "/", name: "dashboard.png", wait: 3000 },
+	{ path: "/offers", name: "offers.png", wait: 2000 },
+	{ path: "/swap", name: "swap.png", wait: 2000 },
+	{ path: "/stats", name: "stats.png", wait: 2000 },
+	{ path: "/security", name: "security.png", wait: 2000 },
+	{ path: "/blog", name: "blog.png", wait: 2000 },
+	{ path: "/escrows", name: "escrows.png", wait: 2000 },
+	{ path: "/vaults", name: "vaults.png", wait: 2000 },
+	{ path: "/tokens", name: "tokens.png", wait: 2000 },
+	{ path: "/merchant", name: "merchant.png", wait: 2000 },
+	{ path: "/subscriptions", name: "subscriptions.png", wait: 2000 },
+];
+
 (async () => {
-	const browser = await chromium.launch();
-	const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+	const browser = await chromium.launch({ headless: true });
+	const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 
-	fs.mkdirSync("/home/dillon/_code/DagLock/screenshots", { recursive: true });
+	// Dismiss onboarding
+	await context.addInitScript(() => localStorage.setItem("daglock_onboarded", "true"));
 
-	// Screenshot 1: Swap page
-	await page.goto("http://localhost:5173/swap");
-	await page.waitForLoadState("networkidle");
-	await page.screenshot({ path: "/home/dillon/_code/DagLock/screenshots/swap-not-connected.png", fullPage: true });
-	console.log("1/6 swap page");
+	const page = await context.newPage();
+	fs.mkdirSync(OUT, { recursive: true });
 
-	// Screenshot 2: Dashboard
-	await page.goto("http://localhost:5173/");
-	await page.waitForLoadState("networkidle");
-	await page.screenshot({ path: "/home/dillon/_code/DagLock/screenshots/dashboard.png", fullPage: true });
-	console.log("2/6 dashboard");
-
-	// Screenshot 3: Offers
-	await page.goto("http://localhost:5173/offers");
-	await page.waitForLoadState("networkidle");
-	await page.screenshot({ path: "/home/dillon/_code/DagLock/screenshots/offers.png", fullPage: true });
-	console.log("3/6 offers");
-
-	// Screenshot 4: Security
-	await page.goto("http://localhost:5173/security");
-	await page.waitForLoadState("networkidle");
-	await page.screenshot({ path: "/home/dillon/_code/DagLock/screenshots/security.png", fullPage: true });
-	console.log("4/6 security");
-
-	// Screenshot 5: Stats
-	await page.goto("http://localhost:5173/stats");
-	await page.waitForLoadState("networkidle");
-	await page.screenshot({ path: "/home/dillon/_code/DagLock/screenshots/stats.png", fullPage: true });
-	console.log("5/6 stats");
-
-	// Screenshot 6: Blog
-	await page.goto("http://localhost:5173/blog");
-	await page.waitForLoadState("networkidle");
-	await page.screenshot({ path: "/home/dillon/_code/DagLock/screenshots/blog.png", fullPage: true });
-	console.log("6/6 blog");
+	let i = 0;
+	for (const { path, name, wait } of PAGES) {
+		i++;
+		try {
+			await page.goto(SITE + path, { waitUntil: "networkidle", timeout: 15000 });
+			await page.waitForTimeout(wait);
+			await page.screenshot({ path: OUT + "/" + name, fullPage: true });
+			console.log(`✓ [${i}/${PAGES.length}] ${name} (${path})`);
+		} catch (e) {
+			console.log(`✗ [${i}/${PAGES.length}] ${name} FAILED: ${e.message}`);
+		}
+	}
 
 	await browser.close();
-	console.log("All screenshots done");
-})();
+	console.log("Done");
+})().catch((e) => {
+	console.error(e);
+	process.exit(1);
+});
