@@ -70,7 +70,7 @@ function ReceiptJson({
 
 export function AtomicSwapWizard() {
 	const address = useAddress();
-	const { state: wallet } = useWallet();
+	const { state: wallet, connect } = useWallet();
 	const { notify } = useToast();
 	const [step, setStep] = useState<SwapStep>("init");
 	const [s, setS] = useState<SwapState>({
@@ -232,7 +232,23 @@ export function AtomicSwapWizard() {
 	if (!wallet.connected) {
 		return (
 			<Panel title="Atomic Swap Wizard">
-				<p className="muted">Connect your wallet to start an atomic swap.</p>
+				<p className="muted" style={{ marginBottom: "12px" }}>
+					Connect your wallet to start an atomic swap.
+				</p>
+				{wallet.detected ? (
+					<button className="button primary" onClick={connect} disabled={wallet.loading}>
+						{wallet.loading ? "Connecting…" : "Connect Wallet"}
+					</button>
+				) : (
+					<a
+						href="https://kasware.xyz"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="button primary"
+					>
+						Install KasWare
+					</a>
+				)}
 			</Panel>
 		);
 	}
