@@ -96,7 +96,7 @@ function LineChart({
 					fontSize: "9px",
 					color: "#888",
 					textAlign: "right",
-					minWidth: "32px",
+					minWidth: "36px",
 					height: `${height}px`,
 					paddingTop: "2px",
 					paddingBottom: "2px",
