@@ -93,11 +93,26 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             .allow_methods(Any)
             .allow_headers(Any)
     } else {
-        let origin = cors_origin
-            .parse::<axum::http::HeaderValue>()
-            .expect("Invalid CORS origin");
+        // Support multiple origins (comma-separated) and wildcard subdomain matching
+        let allowed_origins: Vec<String> = cors_origin
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         CorsLayer::new()
-            .allow_origin(AllowOrigin::predicate(move |o, _| o == origin))
+            .allow_origin(AllowOrigin::predicate(move |origin: &axum::http::HeaderValue, _| {
+                let origin_str = origin.to_str().unwrap_or("");
+                allowed_origins.iter().any(|allowed| {
+                    if allowed == origin_str {
+                        return true;
+                    }
+                    // Wildcard subdomain: *.example.com matches anything.example.com
+                    if let Some(suffix) = allowed.strip_prefix("*.") {
+                        return origin_str.ends_with(suffix) || origin_str == &suffix[2..];
+                    }
+                    false
+                })
+            }))
             .allow_methods(Any)
             .allow_headers(Any)
     };
