@@ -10,14 +10,46 @@ function BarChart({
 	getLabel,
 	color,
 	height = 120,
+	minDays = 7,
 }: {
 	data: DailyStat[];
 	getValue: (d: DailyStat) => number;
 	getLabel: (d: DailyStat) => string;
 	color: string;
 	height?: number;
+	minDays?: number;
 }) {
-	const max = Math.max(...data.map(getValue), 1);
+	// Pad data to at least minDays by prepending zero-value days
+	const padded = [...data];
+	if (padded.length > 0) {
+		padded.sort((a, b) => a.date.localeCompare(b.date));
+		const earliest = new Date(padded[0].date + "T00:00:00");
+		while (padded.length < minDays) {
+			earliest.setDate(earliest.getDate() - 1);
+			const dateStr = earliest.toISOString().split("T")[0];
+			padded.unshift({
+				date: dateStr,
+				escrows_created: 0,
+				escrows_settled: 0,
+				volume_sompi: 0,
+				fees_sompi: 0,
+				active_escrows: 0,
+				open_offers: 0,
+				total_users: 0,
+				kas_usd_price: null,
+			});
+		}
+	}
+
+	const values = padded.map(getValue);
+	const max = Math.max(...values, 1);
+	// Prefer showing bars that are at least 3px tall for visibility.
+	// Scale: the tallest bar is 100%, smaller bars are proportional,
+	// but we use a minimum bar height of 4px so single-day data doesn't dominate.
+	const barMinPx = 4;
+	const scaleMax = max <= 1 ? max : max;
+	const labelEvery = Math.max(1, Math.floor(padded.length / 7));
+
 	return (
 		<div
 			style={{
@@ -28,24 +60,26 @@ function BarChart({
 				padding: "0 4px",
 			}}
 		>
-			{data.map((d, i) => {
+			{padded.map((d, i) => {
 				const v = getValue(d);
-				const pct = (v / max) * 100;
+				const pct = max > 0 ? (v / scaleMax) * 100 : 0;
+				const barHeight = v > 0 ? Math.max(pct, (barMinPx / height) * 100) : 0;
 				return (
 					<div
 						key={d.date}
 						title={`${d.date}: ${v.toLocaleString()}`}
 						style={{
 							flex: "1",
-							height: `${Math.max(pct, 1)}%`,
+							height: `${barHeight}%`,
 							background: color,
 							borderRadius: "3px 3px 0 0",
 							minWidth: "6px",
 							position: "relative",
 							transition: "height 0.3s ease",
+							opacity: v > 0 ? 1 : 0.3,
 						}}
 					>
-						{i % 5 === 0 && (
+						{i % labelEvery === 0 && (
 							<span
 								style={{
 									position: "absolute",

@@ -1120,16 +1120,38 @@ pub async fn fetch_kas_usd_price() -> Option<f64> {
     // Fetch from API
     use std::time::Duration;
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(10))
+        .user_agent("DagLock/0.1 (https://daglock.com; daglock@daglock.com)")
         .build()
-        .ok()?;
-    let resp = client
+        .unwrap_or_else(|_| reqwest::Client::new());
+    let resp = match client
         .get("https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd")
         .send()
         .await
-        .ok()?;
-    let price_json: serde_json::Value = resp.json().await.ok()?;
-    let price = price_json["kaspa"]["usd"].as_f64()?;
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!("Price oracle: HTTP request failed: {e}");
+            return None;
+        }
+    };
+    let price_json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        Err(e) => {
+            tracing::warn!("Price oracle: JSON parse failed: {e}");
+            return None;
+        }
+    };
+    let price = match price_json["kaspa"]["usd"].as_f64() {
+        Some(p) => p,
+        None => {
+            tracing::warn!(
+                "Price oracle: unexpected response format: {}",
+                price_json
+            );
+            return None;
+        }
+    };
 
     if price > 0.0 {
         // Update cache
