@@ -39,6 +39,7 @@ jobs:
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        # wrangler@3 supports Node.js 20 (v4+ requires Node 22)
-        run: npx --yes wrangler@3.90.0 pages deploy dist/ --project-name=daglock --branch main
+        # Use wrangler@4 with Node 22. Avoid v3 because it calls /memberships
+        # which our tightly-scoped API token doesn't have access to.
+        run: npx --yes wrangler@4.108.0 pages deploy dist/ --project-name=daglock --branch main
         timeout-minutes: 5
