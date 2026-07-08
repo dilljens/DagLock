@@ -14,7 +14,7 @@ function renderPage() {
 describe("SecurityPage", () => {
 	it("renders the page title", () => {
 		renderPage();
-		expect(screen.getByText((c) => c.includes("Try to Break the Escrow"))).toBeInTheDocument();
+		expect(screen.getByText((c) => c.includes("Covenant Security Analysis"))).toBeInTheDocument();
 	});
 
 	it("renders all 6 attack scenarios", () => {

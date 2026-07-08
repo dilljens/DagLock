@@ -144,15 +144,15 @@ export function SecurityPage() {
 	return (
 		<>
 			<Helmet>
-				<title>Security — Try to Break DagLock — DagLock</title>
+				<title>Security Deep-Dive — DagLock Covenant Analysis</title>
 				<meta
 					name="description"
-					content="Interactive security demo: try to break DagLock's covenant escrow. See why each attack fails against Kaspa L1 SilverScript covenants."
+					content="Technical deep-dive into DagLock's SilverScript covenant security. How spending rules, destination checks, and fixed fees prevent every attack class."
 				/>
 			</Helmet>
 			<div className="security-page">
 				<div className="page-header">
-					<h1>🔒 Try to Break the Escrow</h1>
+					<h1>🔒 Covenant Security Analysis</h1>
 					<p>
 						DagLock's covenant is the only escrow on Kaspa that lets you verify its security
 						yourself. Click "Execute attack" on any scenario below to see why it fails.

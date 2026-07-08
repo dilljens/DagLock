@@ -266,8 +266,8 @@ export function Dashboard({ stats }: DashboardProps) {
 						</div>
 						<div className="action-card" onClick={() => navigate("/security")}>
 							<span className="action-card-icon">🔒</span>
-							<span className="action-card-label">Try to Break It</span>
-							<span className="action-card-desc">See why the covenant stops every attack</span>
+							<span className="action-card-label">Security Deep-Dive</span>
+							<span className="action-card-desc">How covenant rules prevent every attack class</span>
 						</div>
 					</div>
 
