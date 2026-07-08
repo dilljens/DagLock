@@ -9,7 +9,7 @@ function LineChart({
 	getValue,
 	getLabel,
 	color,
-	height = 120,
+	height = 110,
 	minDays = 7,
 }: {
 	data: DailyStat[];
@@ -237,7 +237,7 @@ export function StatsPage() {
 				<>
 					{/* Escrows created / settled */}
 					<section style={{ marginTop: "32px" }}>
-						<h2>Escrows per Day (Last 30d)</h2>
+						<h2>Escrows per Day (Last 30 days)</h2>
 						<div style={{ display: "flex", gap: "24px", marginTop: "12px" }}>
 							<div style={{ flex: 1 }}>
 								<div className="stat-card-label">Created</div>
