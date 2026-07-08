@@ -27,6 +27,17 @@ echo "=== Deploying to Cloudflare Pages ==="
 npx --yes wrangler@latest pages deploy dist/ --project-name=daglock --branch main
 
 echo ""
+echo "=== Warming CDN cache (pre-fetching new chunks) ==="
+# Get the new chunk names from the built output
+for f in dist/assets/*.js; do
+  name=$(basename "$f")
+  echo "  Warming: /assets/$name"
+  curl -s -o /dev/null "https://daglock.com/assets/$name" &
+done
+wait
+echo "  ✅ Cache warmed"
+
+echo ""
 echo "✅ Deploy triggered. Check GitHub Actions for status:"
 echo "   https://github.com/dilljens/DagLock/actions"
 echo "   https://daglock.com"
