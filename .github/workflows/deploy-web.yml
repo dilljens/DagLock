@@ -39,7 +39,9 @@ jobs:
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        # Use wrangler@4 with Node 22. Avoid v3 because it calls /memberships
-        # which our tightly-scoped API token doesn't have access to.
+          CLOUDFLARE_ACCOUNT_ID: d9b6c3059be77c9f44b5ec7365fa50b8
+        # wrangler tries to auto-detect account ID on startup, but our API
+        # token is too tightly scoped for that. Providing it explicitly skips
+        # the /accounts and /memberships API calls that would fail.
         run: npx --yes wrangler@4.108.0 pages deploy dist/ --project-name=daglock --branch main
         timeout-minutes: 5
