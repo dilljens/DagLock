@@ -121,6 +121,7 @@ def create_offer(creator, side, base, quote, amount_kas):
         "base_asset": base,
         "quote_asset": quote,
         "amount_sompi": int(amount_kas * 100_000_000),
+        "creator_type": "bot",  # Self-identify as automated trading bot
     }
     nonce = secrets.token_hex(8)
     ts = int(time.time())

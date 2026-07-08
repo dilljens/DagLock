@@ -203,6 +203,13 @@ pub struct Offer {
     pub current_price: Option<f64>,
     pub price_currency: String,
     pub price_updated_at: Option<i64>,
+    /// "user" or "bot". Auto-tagged from account_flags on creation.
+    #[serde(default = "default_creator_type")]
+    pub creator_type: String,
+}
+
+fn default_creator_type() -> String {
+    "user".to_string()
 }
 
 /// Create offer request.
@@ -219,6 +226,10 @@ pub struct CreateOfferRequest {
     pub price_offset: Option<f64>,
     pub min_price: Option<f64>,
     pub max_price: Option<f64>,
+    /// "user" or "bot". Server auto-fills from account_flags if caller has a flag set.
+    /// Bot scripts should explicitly set this to "bot" for honesty.
+    #[serde(default)]
+    pub creator_type: Option<String>,
 }
 
 /// Accept offer request.
@@ -1129,6 +1140,23 @@ pub async fn fetch_kas_usd_price() -> Option<f64> {
     } else {
         None
     }
+}
+
+/// Account flags — per-address metadata (is_bot, label, etc.).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AccountFlags {
+    pub address: Address,
+    pub is_bot: bool,
+    pub label: Option<String>,
+    pub updated_at: i64,
+}
+
+/// Request to set account flags.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SetAccountFlagsRequest {
+    pub address: Address,
+    pub is_bot: bool,
+    pub label: Option<String>,
 }
 
 pub fn unauthorized(message: &str) -> (StatusCode, Json<Value>) {

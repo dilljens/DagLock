@@ -8,6 +8,7 @@ pub mod deposits;
 pub mod escrows;
 pub mod evidence;
 pub mod feedback;
+pub mod flags;
 pub mod identity;
 pub mod invoices;
 pub mod jury;
@@ -156,6 +157,8 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/offers", get(offers::list).post(offers::create))
         .route("/v1/offers/:id/accept", post(offers::accept))
         .route("/v1/offers/:id/cancel", post(offers::cancel))
+        .route("/v1/flags/:address", get(flags::get))
+        .route("/v1/flags", post(flags::set))
         .route("/v1/reputation/:address", get(reputation::get))
         .route("/v1/receipts/:id", get(receipts::get))
         .route("/v1/vouches", post(vouches::create).get(vouches::list))

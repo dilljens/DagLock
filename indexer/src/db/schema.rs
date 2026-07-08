@@ -124,6 +124,8 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_price_alerts_table(pool).await?;
     ensure_price_history_table(pool).await?;
     ensure_deal_type_column(pool).await?;
+    ensure_offers_creator_type_column(pool).await?;
+    ensure_account_flags_table(pool).await?;
 
     Ok(())
 }
@@ -879,5 +881,35 @@ pub async fn ensure_deal_type_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Er
             .execute(pool)
             .await?;
     }
+    Ok(())
+}
+
+pub async fn ensure_offers_creator_type_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(offers)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("creator_type") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN creator_type TEXT NOT NULL DEFAULT 'user'")
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn ensure_account_flags_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS account_flags (
+            address TEXT PRIMARY KEY,
+            is_bot INTEGER NOT NULL DEFAULT 0,
+            label TEXT,
+            updated_at INTEGER NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }

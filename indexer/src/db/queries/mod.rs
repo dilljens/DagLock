@@ -17,6 +17,7 @@ pub mod messages;
 pub mod milestones;
 pub mod multi_escrows;
 pub mod notifications;
+pub mod flags;
 pub mod offers;
 pub mod pay;
 pub mod reports;

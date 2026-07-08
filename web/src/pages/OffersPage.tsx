@@ -306,6 +306,20 @@ function OfferCard({
 							{typeBadge.label}
 						</span>
 					)}
+					{offer.creator_type === "bot" && (
+						<span
+							className="pill"
+							style={{
+								background: "#9c27b022",
+								color: "#ce93d8",
+								border: "1px solid #9c27b044",
+								fontSize: "11px",
+							}}
+							title="This offer was created by an automated trading bot"
+						>
+							🤖 Bot
+						</span>
+					)}
 					<span className={badge(offer.status)}>{offer.status}</span>
 				</div>
 			</div>

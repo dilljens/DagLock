@@ -102,6 +102,18 @@ pub async fn create(
         Some(chrono::Utc::now().timestamp() + 259_200) // 72 hours
     });
 
+    // Determine creator_type: explicit > account_flags > default "user"
+    let creator_type = match body.creator_type {
+        Some(ref t) if t == "bot" || t == "user" => t.clone(),
+        _ => {
+            // Check account_flags for this address
+            match queries::flags::is_bot_address(&state.db, creator_address).await {
+                Ok(true) => "bot".to_string(),
+                _ => "user".to_string(),
+            }
+        }
+    };
+
     let offer = Offer {
         id: format!(
             "off_{}",
@@ -127,6 +139,7 @@ pub async fn create(
         } else {
             None
         },
+        creator_type,
     };
 
     queries::insert_offer(&state.db, &offer)

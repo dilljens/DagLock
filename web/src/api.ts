@@ -103,7 +103,9 @@ export type Offer = {
 	current_price?: number | null;
 	price_currency: string;
 	price_updated_at?: number | null;
+	creator_type?: string;
 };
+
 
 export type CreateOfferRequest = {
 	creator_address: string;
