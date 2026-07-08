@@ -4,7 +4,7 @@ import { api, type DailyStat, type LiveSummary } from "../api";
 import { moneyCompact } from "../helpers";
 import { PriceChart } from "../components/PriceChart";
 
-function BarChart({
+function LineChart({
 	data,
 	getValue,
 	getLabel,
@@ -41,62 +41,84 @@ function BarChart({
 		}
 	}
 
+	const n = padded.length;
 	const values = padded.map(getValue);
 	const max = Math.max(...values, 1);
-	// Prefer showing bars that are at least 3px tall for visibility.
-	// Scale: the tallest bar is 100%, smaller bars are proportional,
-	// but we use a minimum bar height of 4px so single-day data doesn't dominate.
-	const barMinPx = 4;
-	const scaleMax = max <= 1 ? max : max;
-	const labelEvery = Math.max(1, Math.floor(padded.length / 7));
+	const labelEvery = Math.max(1, Math.floor(n / 7));
+
+	// SVG dimensions
+	const svgW = 100;
+	const svgH = 100;
+	const padL = 2;
+	const padR = 2;
+	const plotW = svgW - padL - padR;
+	const plotH = svgH - 4;
+
+	// Build line path
+	const pathD = values
+		.map((v, i) => {
+			const x = padL + (i / Math.max(n - 1, 1)) * plotW;
+			const y = svgH - 2 - (v / max) * plotH;
+			return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+		})
+		.join(" ");
 
 	return (
-		<div
-			style={{
-				display: "flex",
-				alignItems: "flex-end",
-				gap: "3px",
-				height: `${height}px`,
-				padding: "0 4px",
-			}}
-		>
-			{padded.map((d, i) => {
-				const v = getValue(d);
-				const pct = max > 0 ? (v / scaleMax) * 100 : 0;
-				const barHeight = v > 0 ? Math.max(pct, (barMinPx / height) * 100) : 0;
-				return (
-					<div
-						key={d.date}
-						title={`${d.date}: ${v.toLocaleString()}`}
-						style={{
-							flex: "1",
-							height: `${barHeight}%`,
-							background: color,
-							borderRadius: "3px 3px 0 0",
-							minWidth: "6px",
-							position: "relative",
-							transition: "height 0.3s ease",
-							opacity: v > 0 ? 1 : 0.3,
-						}}
-					>
-						{i % labelEvery === 0 && (
-							<span
-								style={{
-									position: "absolute",
-									bottom: "-18px",
-									left: "50%",
-									transform: "translateX(-50%)",
-									fontSize: "9px",
-									color: "#888",
-									whiteSpace: "nowrap",
-								}}
-							>
-								{getLabel(d)}
-							</span>
-						)}
-					</div>
-				);
-			})}
+		<div style={{ position: "relative", width: "100%" }}>
+			<div style={{ position: "relative", width: "100%", height: `${height}px` }}>
+				<svg
+					viewBox={`0 0 ${svgW} ${svgH}`}
+					style={{ width: "100%", height: "100%" }}
+					preserveAspectRatio="none"
+				>
+					{/* Area fill under line */}
+					<path
+						d={`${pathD} L${padL + plotW},${svgH - 2} L${padL},${svgH - 2} Z`}
+						fill={color}
+						fillOpacity="0.12"
+					/>
+					{/* Line */}
+					<path
+						d={pathD}
+						fill="none"
+						stroke={color}
+						strokeWidth="2"
+						vectorEffect="non-scaling-stroke"
+					/>
+					{/* Dots at non-zero data points */}
+					{values.map((v, i) =>
+						v > 0 ? (
+							<circle
+								key={i}
+								cx={padL + (i / Math.max(n - 1, 1)) * plotW}
+								cy={svgH - 2 - (v / max) * plotH}
+								r="1.5"
+								fill={color}
+							/>
+						) : null,
+					)}
+				</svg>
+			</div>
+			{/* Date labels */}
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "space-between",
+					padding: "0 4px",
+					marginTop: "2px",
+				}}
+			>
+				{padded
+					.filter((_, i) => i % labelEvery === 0)
+					.map((d) => (
+						<span
+							key={d.date}
+							style={{ fontSize: "9px", color: "#888", whiteSpace: "nowrap" }}
+						>
+							{getLabel(d)}
+						</span>
+					))}
+			</div>
 		</div>
 	);
 }
@@ -219,7 +241,7 @@ export function StatsPage() {
 						<div style={{ display: "flex", gap: "24px", marginTop: "12px" }}>
 							<div style={{ flex: 1 }}>
 								<div className="stat-card-label">Created</div>
-								<BarChart
+								<LineChart
 									data={stats}
 									getValue={(d) => d.escrows_created}
 									getLabel={(d) => formatDate(d.date)}
@@ -228,7 +250,7 @@ export function StatsPage() {
 							</div>
 							<div style={{ flex: 1 }}>
 								<div className="stat-card-label">Settled</div>
-								<BarChart
+								<LineChart
 									data={stats}
 									getValue={(d) => d.escrows_settled}
 									getLabel={(d) => formatDate(d.date)}
@@ -247,7 +269,7 @@ export function StatsPage() {
 							</p>
 						)}
 						<div style={{ marginTop: "12px" }}>
-							<BarChart
+							<LineChart
 								data={stats}
 								getValue={(d) => Math.round(d.volume_sompi / 100_000_000)}
 								getLabel={(d) => formatDate(d.date)}
@@ -263,7 +285,7 @@ export function StatsPage() {
 						<div style={{ display: "flex", gap: "24px", marginTop: "12px" }}>
 							<div style={{ flex: 1 }}>
 								<div className="stat-card-label">Active Escrows</div>
-								<BarChart
+								<LineChart
 									data={stats}
 									getValue={(d) => d.active_escrows}
 									getLabel={(d) => formatDate(d.date)}
@@ -272,7 +294,7 @@ export function StatsPage() {
 							</div>
 							<div style={{ flex: 1 }}>
 								<div className="stat-card-label">Open Offers</div>
-								<BarChart
+								<LineChart
 									data={stats}
 									getValue={(d) => d.open_offers}
 									getLabel={(d) => formatDate(d.date)}
@@ -286,7 +308,7 @@ export function StatsPage() {
 					<section style={{ marginTop: "48px" }}>
 						<h2>Total Users</h2>
 						<div style={{ marginTop: "12px" }}>
-							<BarChart
+							<LineChart
 								data={stats}
 								getValue={(d) => d.total_users}
 								getLabel={(d) => formatDate(d.date)}

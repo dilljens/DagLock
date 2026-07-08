@@ -39,8 +39,9 @@ export function PriceChart({ days = 30 }: { days?: number }) {
 	}
 
 	const points = data.points;
-	const max = Math.max(...points.map((p) => p.price_usd), 0.0001);
-	const min = Math.min(...points.map((p) => p.price_usd), 0);
+	const values = points.map((p) => p.price_usd);
+	const max = values.length > 0 ? Math.max(...values) : 0.0001;
+	const min = values.length > 0 ? Math.min(...values) : 0;
 	const range = max - min || 1;
 
 	const width = 100;
