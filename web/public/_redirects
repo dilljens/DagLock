@@ -1,2 +1,7 @@
-# DagLock SPA fallback — all routes serve index.html
-/*    /index.html   200
+# SPA fallback — serve index.html for all routes
+/*  /index.html  200
+
+# But NOT for missing /assets/* — return bare 404 so the HTML fallback
+# doesn't get cached as a JS/CSS file. This prevents CDN cache poisoning
+# when new chunk names are requested before they exist.
+/assets/*  /.noop  404
