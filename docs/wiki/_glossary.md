@@ -1,134 +1,36 @@
 # Glossary
 
+- **AI Mediator**
+  - Non-binding dispute mediator using DeepSeek V4 Flash. Reads encrypted chat evidence, proposes fair split/payout/refund. Never touches money. | Context: `indexer/src/services/ai_mediator.rs`
 - **Arbiter covenant**
-  - DagLock variant with optional mediator/jury dispute paths | Context: `contracts/src/daglock_arbiter.sil`
+  - DagLock variant with optional mediator/jury dispute paths (7 entrypoints) | Context: `contracts/src/daglock_arbiter.sil`
+- **Auto-settle**
+  - Post-timeout entrypoint that releases funds to seller without buyer signature. Protects sellers from buyer ghosting. | Context: `daglock.sil::auto_settle()`
 - **Beta reputation**
-  - Academic standard (Josang 2002): (successes+1)/(total+2) | Context: `indexer/src/db/queries/reputation.rs`
+  - Academic standard (Josang 2002): (successes+1)/(total+2) — layered with recency weighting, volume bonus, age bonus | Context: `indexer/src/db/queries/reputation.rs`
 - **Covenant**
-  - A compiled Kaspa script that enforces spending conditions on UTXOs | Context: `contracts/src/daglock.sil`
+  - A compiled Kaspa script (SilverScript) that enforces spending conditions on UTXOs | Context: `contracts/src/*.sil`
 - **DAA score**
-  - Difficulty-Adjusted Average score (Kaspa block height) | Context: Expiration logic
+  - Difficulty-Adjusted Average score — Kaspa's block count metric. Used for vault lock duration via `this.age` (OP_CSV). | Context: Vault contracts
 - **DagLock**
   - Trustless escrow & atomic swap protocol on Kaspa L1 via SilverScript covenants | Context: Project name, everywhere
-- **DagLockReputation**
-  - On-chain trade reputation covenant. Stores trade outcomes via recordTrade entrypoint with Schnorr sig verification. Fee: 1000 sompi flat.
-- **Dep: @biomejs/biome**
-  - web depends on @biomejs/biome: Lint + format
-- **Dep: @testing-library/react**
-  - web depends on @testing-library/react: Component testing
-- **Dep: @testing-library/user-event**
-  - web depends on @testing-library/user-event: Realistic user interactions
-- **Dep: `anyhow`**
-  - cli depends on `anyhow`: Error handling
-- **Dep: `blake2b_simd`**
-  - contracts depends on `blake2b_simd`: Template hash computation
-- **Dep: `clap` (derive)**
-  - cli depends on `clap` (derive): CLI argument parsing
-- **Dep: `daglock-contracts`**
-  - wasm-sdk depends on `daglock-contracts`: Covenant compilation
-- **Dep: `daglock-wasm-sdk`**
-  - web depends on `daglock-wasm-sdk`: Transaction assembly (future)
-- **Dep: `js-sys`**
-  - wasm-sdk depends on `js-sys`: JS object access
-- **Dep: `reqwest`**
-  - cli depends on `reqwest`: HTTP client for REST API
-- **Dep: `silverscript-lang` (master → v2.0.1)**
-  - contracts depends on `silverscript-lang` (master): Covenant compilation. Rusty-kaspa SDK dependency updated from tn12 to v2.0.1 tag (June 18, 2026).
-- **Dep: `tokio`**
-  - cli depends on `tokio`: Async runtime
-- **Dep: `tracing`**
-  - cli depends on `tracing`: Logging
-- **Dep: `wasm-bindgen`**
-  - wasm-sdk depends on `wasm-bindgen`: Rust↔JS interop
-- **Dep: `web-sys`**
-  - wasm-sdk depends on `web-sys`: Browser APIs
-- **Dep: grammY**
-  - bot depends on grammY: Telegram Bot API
-- **Dep: indexer REST API**
-  - bot depends on indexer REST API: Backend
-- **Dep: KasWare**
-  - web depends on KasWare: Wallet signing (browser extension)
-- **Dep: Node.js**
-  - bot depends on Node.js: Runtime
-- **Dep: React 18**
-  - web depends on React 18: UI framework
-- **Dep: Vite 7**
-  - web depends on Vite 7: Build tool + dev server
-- **Dep: Vitest 3**
-  - web depends on Vitest 3: Test runner
-- **Dispute mode**
-  - How an escrow handles disputes: standard/mediator/jury | Context: `indexer/src/types.rs`, create escrow form
-- **Escrow messaging**
-  - Encrypted chat thread tied to an escrow (AES-256-GCM) | Context: `indexer/src/api/messages.rs`
-- **Evidence**
-  - Signed proof submitted during a dispute | Context: `indexer/src/api/evidence.rs`
-- **ICC**
-  - Inter-Covenant Communication | Context: KRC-20 escrow design
-- **Jury**
-  - Community dispute resolution via randomly selected jurors | Context: `indexer/src/api/jury.rs`
-- **Kaspium**
-  - Kaspa mobile wallet | Context: Mobile signing integration
-- **KasWare**
-  - Kaspa web extension wallet | Context: Browser signing integration
-- **KCC-20**
-  - Kaspa Covenant Contract standard for KRC-20 token ownership | Context: `daglock_krc20.sil` ICC pattern
-- **KRC-20**
-  - Kaspa token standard (like ERC-20 but UTXO-based) | Context: `daglock_krc20.sil`, token escrows
-- **Mediator**
-  - Optional third-party dispute resolver (single person) | Context: `contracts/src/daglock_arbiter.sil`
-- **MockVerifier**
-  - Dev-mode verifier that always succeeds (no wRPC needed) | Context: `indexer/src/verification.rs`
-- **On-chain reputation**
-  - Reputation data stored as transaction parameters (not UTXO state) in the DagLockReputation covenant. Visible to anyone scanning the chain.
-- **Recency weighting**
-  - Last 90 days weighted 2x in reputation formula | Context: `calculate_reputation_score()`
-- **RECORD_TRADE**
-  - Entrypoint constant in contracts/src/lib.rs entrypoints module. Value: 'recordTrade'.
-- **Reputation covenant fee**
-  - Flat 1000 sompi to treasury (vs 0.5% for escrow covenants). Remaining balance stays in covenant for future recordTrade calls.
-- **SilverScript**
-  - Language for writing covenants compiled to Kaspa script bytecode | Context: `contracts/src/*.sil`
-- **sompi**
-  - Smallest unit of KAS (10^-8) | Context: Amounts in API types
-- **Template hash**
-  - BLAKE2b-160 hash of covenant prefix+suffix. Re-derived on SDK bump (tn12 → v2.0.1). | Context: `contracts/src/lib.rs`
-- **Toccata**
-  - Kaspa mainnet hard fork activating June 30, 2026 ~16:15 UTC at DAA 474,165,565. Introduces native L1 covenants (KIP-17/KIP-20) and wRPC v2. DagLock migrated SDK from tn12 → v2.0.1 on June 18. | Context: `docs/ROADMAP.md`, `Cargo.toml`
-- **Treasury**
-  - DagLock fee address -- receives 0.5% on settlement | Context: `treasuryKey` in covenant
-- **UTXO**
-  - Unspent Transaction Output | Context: Every escrow = one UTXO
-- **Vouching**
-  - Web of Trust: vouch for an address's reliability | Context: `indexer/src/api/vouches.rs`
-- **Wash trading**
-  - trading_concentration metric: fraction of volume with a single counterparty | Context: Reputation response, `queries/reputation.rs`
-- **Wash trading signal**
-  - trading_concentration: fraction of volume with single counterparty | Context: Reputation response
-- **wRPC**
-  - Kaspa's WebSocket RPC protocol | Context: `indexer/src/listener.rs`, `indexer/src/verification.rs`
-- **WrpcVerifier**
-  - On-chain UTXO verification via wRPC (used at settlement time) | Context: `indexer/src/verification.rs`
-- **Borsh**
-  - Binary encoding format used by Kaspa wRPC for inter-process communication. DagLock uses Borsh for direct wRPC connections. | Context: `indexer/src/listener.rs`
-- **Counter-offer**
-  - Negotiation mechanism where a user proposes modified terms on an existing offer. DB-backed with accept/decline lifecycle. | Context: `indexer/src/api/counteroffers.rs`
-- **CSV Export**
-  - Download all escrows as a CSV file for tax reporting. Endpoint: `GET /v1/escrows/export`. | Context: `indexer/src/api/escrows.rs`
-- **DagLockAdvanced**
-  - Extended covenant with `extendTimeout` and `swap_partial` entrypoints. Template hash: `98afa7aa...` | Context: `contracts/src/daglock_advanced.sil`
-- **DagLockSubscription**
-  - Recurring payment covenant. Payers lock funds, recipients claim installments. Template hash: `3e7e1870...` | Context: `contracts/src/daglock_subscription.sil`
-- **Email Notifications**
-  - SMTP-based email alerts for escrow lifecycle events. Opt-in per user, rate-limited. | Context: `indexer/src/services/email.rs`
-- **Escrow Memo**
-  - Free-text note attached to an escrow (invoice number, order ID, description). | Context: `indexer/src/db/schema.rs`
+- **E2E Chat**
+  - End-to-end encrypted messaging using per-escrow Ed25519 keypairs, X25519 ECDH, NaCl secretbox. Client-side encrypt/decrypt. | Context: `web/src/crypto/chat-crypto.ts`
+- **Emergency refund**
+  - No-signature entrypoint that returns funds to buyer after timeout + 30 days. Prevents permanently stuck funds. | Context: `daglock.sil::emergency_refund()`
+- **Escrow**
+  - A locked UTXO governed by a SilverScript covenant. Funds release only when conditions met (signatures, timeouts, or hash preimage). | Context: `contracts/src/daglock.sil`
 - **ICC (Inter-Covenant Communication)**
-  - SilverScript pattern for cross-covenant state introspection. Uses `OpCovInputIdx`, `readInputStateWithTemplate`, and `validateOutputStateWithTemplate` builtins. | Context: `contracts/src/daglock_krc20.sil`
+  - Pattern where one covenant validates another's state in the same transaction via template matching. Used for KRC-20 token ownership. | Context: `contracts/src/daglock_krc20.sil`
+- **MIN_OUT**
+  - Dust protection constant (1000 sompi) enforced on all covenant outputs | Context: All `*.sil` files
 - **MockVerifier**
-  - Offline UTXO verification mode. Always returns success — no actual on-chain check. Used with `--no-wrpc` flag. | Context: `indexer/src/verification.rs`
-- **Invoice**
-  - Escrow-based invoice: freelancer creates shareable link → client pays via escrow → auto-settles. No covenant changes — invoice is DB metadata linked to an escrow. | Context: `indexer/src/api/invoices.rs`, `web/src/pages/PayInvoicePage.tsx`
-- **Manual mode**
-  - Wallet-less testnet mode: enter `kaspa:` address manually, use mock signatures. For users whose wallet doesn't support testnet-11. | Context: `web/src/layout/Sidebar.tsx`
-- **PNN (Public Node Network)**
-  - Kaspa's decentralized pool of community-operated resolver nodes (`kaspa.stream`, `kaspa.red`, `kaspa.green`, `kaspa.blue`). Currently down during wRPC v2 migration. | Context: `indexer/src/listener.rs`
+  - UTXO verification stub that always succeeds. Used when no wRPC node is available. | Context: `indexer/src/verification.rs`
+- **On-chain anchoring**
+  - Batch Merkle root of message hashes committed as Kaspa transaction payload. Tamper-proof evidence for dispute resolution. | Context: `indexer/src/services/anchor.rs`
+- **Recovery sheet**
+  - Downloadable `.txt` file with chat private key for offline backup and recovery | Context: `web/src/crypto/recovery-sheet.ts`
+- **SilverScript**
+  - High-level covenant language for Kaspa blockDAG. Compiles to Kaspa script bytecode with state layout. | Context: `contracts/src/*.sil`
+- **Template hash**
+  - 20-byte blake2b hash of compiled covenant script prefix + suffix. Identifies covenant type regardless of constructor params. | Context: `contracts/src/lib.rs`

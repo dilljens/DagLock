@@ -1,15 +1,15 @@
 {
-  "lastRender": "2026-06-23T08:00:00.000Z",
-  "lastCheck": "2026-06-23",
-  "entityCount": 145,
+  "lastRender": "2026-07-07T00:00:00.000Z",
+  "lastCheck": "2026-07-07",
+  "entityCount": 250,
   "domains": [
-    "bot",
-    "cli",
     "contracts",
     "indexer",
-    "simulation",
+    "web",
+    "bot",
+    "cli",
     "wasm-sdk",
-    "web"
+    "simulation"
   ],
   "crossReferences": {
     "total": 7,

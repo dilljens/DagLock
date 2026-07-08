@@ -1,25 +1,35 @@
 # contracts
 
-SilverScript covenants for trustless escrow and atomic swaps on Kaspa L1. Six covenant files (KAS, KRC-20, Arbiter, Vault, VaultSoftlock, VaultMultisig) compiled via `silverscript-lang`. The `lib.rs` crate provides a Rust API for compilation and template hash extraction.
+12 SilverScript covenants compiled via `silverscript-lang`. Rusty-kaspa SDK v2.0.1 (Toccata). The `lib.rs` crate provides Rust API for compilation and template hash extraction.
 
-## Rules & Conventions
+## Covenant Inventory
 
-- ****S2**: KRC-20 fee validation only boolean — feePaid loop checks if *any* output pays treasury, not the correct 0.5%**
-  - Status: ✅ Fixed | Domain: contracts
-- ****S3**: KRC-20 KCC-20 output ownership validation (ICC pattern)**
-  - Status: ✅ Fixed June 23, 2026 | Domain: contracts
-  - Added `validateKcc20Input()` helper function in `daglock_krc20.sil`
-  - Uses `readInputStateWithTemplate()` + `OpCovInputIdx()` + `OpInputCovenantId()` to verify KCC-20 input ownership
-  - Gated by `kcc20TemplatePrefixLen != 0` (zero = dev/test mode, non-zero = production)
-  - Template hash changed: `8a43a8...` → `ae0946e4a9bd4a7585e6bf9135de38083cb11c85`
-- ****Phase 0**: Shared crate with FEE_DENOMINATOR**
-  - Status: ✅ Done | Domain: contracts
-- ****Q2/Q3**: Magic number `200` hardcoded in 3 covenant files — no single source of truth**
-  - Status: Consistency risk; `FEE_DENOMINATOR` constant now in `shared/src/constants.rs` | Domain: contracts
-- ****Q4**: `trade_hash` handling: KAS/Arbiter use `byte[32]`, KRC-20 uses `byte[32]` — consistent but API validation missing**
-  - Status: `daglock_shared::validate_trade_hash()` now validates 64-hex-char input on escrow creation | Domain: contracts
-- **Phase 1: On-chain Reputation Covenant**
-  - Completed June 18, 2026. d6f4eb9: daglock_reputation.sil + tests. 0f1c62c: template hash in indexer config + backfill script.
+| Covenant | File | Entrypoints | Purpose |
+|----------|------|-------------|---------|
+| KAS Escrow | `daglock.sil` | 6 | Release, split, swap, refund, emergency_refund, auto_settle. Core escrow with mutual settlement, atomic swaps, timeout refund, and no-sig emergency paths. MIN_OUT=1000 dust protection. |
+| KRC-20 Escrow | `daglock_krc20.sil` | 4 | Release, swap, refund, auto_settle. ICC pattern for KCC-20 token ownership validation. |
+| Arbiter | `daglock_arbiter.sil` | 7 | Release, swap, refundAfterTimeout, disputeSellerWins, disputeBuyerWins, arbitrateSplit, emergencyRefund. Mediated dispute resolution with proportional split. |
+| Advanced | `daglock_advanced.sil` | 8 | Release, swap, swap_partial, extendTimeout, refund, auto_settle, split, emergency_refund. Time extension and partial atomic swaps. |
+| Vault | `daglock_vault.sil` | 5 | Withdraw, sweep, relock (check-in), early_exit (cancel), heir_withdraw (inheritance). Dual-key model with DAA-block maturity. |
+| Vault Multisig | `daglock_vault_multisig.sil` | 2 | Withdraw (2 key threshold), sweep. 2-of-3 multisig vault. |
+| Vault Softlock | `daglock_vault_softlock.sil` | 2 | Withdraw password, withdraw timeout. Password-recoverable vault. |
+| Milestone | `daglock_milestone.sil` | 5 | Release_milestone, approve_milestone, dispute, refund_remaining, complete. Up to 5 stages. |
+| Subscription | `daglock_subscription.sil` | 3 | Claim (re-lock with currentPeriod+1), cancel, release. Timing-enforced installment draws. |
+| Multi-Party | `daglock_multi.sil` | 3 | Release (all-party sig), swap (hash→party2), refund (buyer timeout). Up to 4 parties with basis-point shares. |
+| Deposit | `daglock_deposit.sil` | 3 | Forfeit (jury sig + losingParty), release (both sigs), sweep (timeout). Security bonds. |
+| Reputation | `daglock_reputation.sil` | 1 | Record trade. On-chain trade outcome recording. |
+
+## Security Properties (Common Across All Covenants)
+
+- **MIN_OUT = 1000**: All outputs must carry at least 1000 sompi (dust protection)
+- **Destination validation**: No-signature paths hardcode output scripts to intended recipient (prevents third-party theft)
+- **Fixed fee**: 0.5% (value/200) for escrows, 0.1% (value/1000) for vaults — hardcoded in covenant
+- **No admin keys**: No "emergency withdraw" path that bypasses rules
+- **Timeout safety**: Even if all parties disappear, emergency timeout returns funds
+
+## Entrypoint Constants
+
+All entrypoint name constants defined in `lib.rs::entrypoints` module for use by indexer and tests.
 
 ---
-*Confidence: 0.95 · Last updated: 6/17/2026*
+*Confidence: 0.95 · Last updated: 7/7/2026*

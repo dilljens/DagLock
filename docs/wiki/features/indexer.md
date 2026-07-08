@@ -1,95 +1,77 @@
 # indexer
 
-Rust backend serving the DagLock REST API. Handles escrow lifecycle (create, settle, refund, dispute), offer board, reputation, vaults, jury, encrypted messaging, app registration, webhook dispatch, and WebSocket real-time updates. Uses SQLite or PostgreSQL via SQLx.
+Rust backend serving the DagLock REST API. 60+ endpoints across escrows, offers, vaults, jury, AI mediation, E2E chat, tokens, subscriptions, milestones, multi-party escrow, deposits, invoices, price oracle, analytics, webhooks, and WebSocket real-time updates. SQLite/PostgreSQL via SQLx. MockVerifier (no wRPC node available).
 
-## Infrastructure
+## REST API Endpoints
 
-| Component | Location | Details |
-|-----------|----------|---------|
-| Indexer | OVH VPS-2 (8GB RAM) | `testnet-11`, `--no-wrpc` (MockVerifier) |
-| Bot | Same VPS | `@DagLock_bot` on Telegram |
-| Web UI | Cloudflare Pages | `daglock.com` → `api.daglock.com` |
-| kaspad | ❌ Not on VPS | Brief test failed, used `--no-wrpc` instead |
-| Gitpod / Laptop | — | kaspad failed to sync behind NAT |
+### Core (6)
+`GET /v1/health`, `/v1/network`, `/v1/network/price`, `/v1/network/explorer`, `/v1/fees/estimate`, `/v1/stats`
 
-## REST API Endpoints (35+)
+### Escrows (15)
+`GET/POST /v1/escrows`, `GET /v1/escrows/:id`, `GET /v1/escrows/:id/lock-status`, `POST /v1/escrows/:id/settle`, `POST /v1/escrows/:id/refund`, `POST /v1/escrows/:id/dispute`, `POST /v1/escrows/:id/cancel`, `POST /v1/escrows/:id/swap`, `POST /v1/escrows/:id/auto-settle`, `GET/POST /v1/escrows/:id/evidence`, `GET /v1/escrows/export`, `GET/POST /v1/escrows/:id/feedback`
 
-### Core
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/v1/health` | Health check |
-| GET | `/v1/network` | Network info |
-| GET | `/v1/network/price` | KAS/USD price |
-| GET | `/v1/network/explorer` | Explorer base URL |
-| GET | `/v1/fees/estimate` | Fee estimate |
-| GET | `/v1/stats` | Escrow statistics |
+### Offers + Negotiation (7)
+`GET/POST /v1/offers`, `POST /v1/offers/:id/accept`, `POST /v1/offers/:id/cancel`, `POST /v1/offers/:id/counter`, `GET /v1/offers/:id/counters`, `POST /v1/counteroffers/:id/accept`, `POST /v1/counteroffers/:id/decline`
 
-### Escrows
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET/POST | `/v1/escrows` | List/create escrows |
-| GET | `/v1/escrows/:id` | Get escrow by ID |
-| GET | `/v1/escrows/:id/lock-status` | Lock status |
-| POST | `/v1/escrows/:id/settle` | Settle |
-| POST | `/v1/escrows/:id/refund` | Refund |
-| POST | `/v1/escrows/:id/dispute` | Dispute |
-| POST | `/v1/escrows/:id/cancel` | Cancel |
-| POST | `/v1/escrows/:id/swap` | Atomic swap |
-| GET | `/v1/escrows/:id/evidence` | List evidence |
-| POST | `/v1/escrows/:id/evidence` | Submit evidence |
-| GET | `/v1/escrows/export` | **CSV export** (new) |
-| GET/POST | `/v1/escrows/:id/feedback` | **Trade feedback** (new) |
+### Vaults (9)
+`GET/POST /v1/vaults`, `GET /v1/vaults/:id`, `POST /v1/vaults/:id/withdraw`, `POST /v1/vaults/:id/transfer`, `POST /v1/vaults/:id/sweep`, `POST /v1/vaults/:id/relock`, `POST /v1/vaults/:id/early-exit`, `POST /v1/vaults/:id/heir-withdraw`
 
-### Offers + Negotiation
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET/POST | `/v1/offers` | List/create offers |
-| POST | `/v1/offers/:id/accept` | Accept offer |
-| POST | `/v1/offers/:id/cancel` | Cancel offer |
-| POST | `/v1/offers/:id/counter` | **Counter-offer** (new) |
-| GET | `/v1/offers/:id/counters` | **List counters** (new) |
-| POST | `/v1/counteroffers/:id/accept` | **Accept counter** (new) |
-| POST | `/v1/counteroffers/:id/decline` | **Decline counter** (new) |
+### Subscriptions (5)
+`GET/POST /v1/subscriptions`, `GET /v1/subscriptions/:id`, `POST /v1/subscriptions/:id/cancel`, `POST /v1/subscriptions/:id/draw`
 
-### Notifications
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET/POST | `/v1/notifications` | **Email subscription** (new) |
-| POST | `/v1/notifications/verify` | **Verify email** (new) |
-| POST | `/v1/notifications/preferences` | **Update prefs** (new) |
+### Milestones (8)
+`GET/POST /v1/milestones`, `GET /v1/milestones/:id`, `POST /v1/milestones/:id/release`, `POST /v1/milestones/:id/approve`, `POST /v1/milestones/:id/dispute`, `POST /v1/milestones/:id/refund`, `POST /v1/milestones/:id/complete`
 
-### Tokens
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/v1/tokens` | List tokens |
-| GET | `/v1/tokens/:ticker` | Token detail |
-| GET | `/v1/tokens/:ticker/chart` | Price chart |
-| POST | `/v1/tokens/deploy` | **Register token** (new) |
-| PATCH | `/v1/tokens/:ticker` | **Update token status** (new) |
+### Multi-Party Escrow (6)
+`GET/POST /v1/multi-escrows`, `GET /v1/multi-escrows/:id`, `POST /v1/multi-escrows/:id/sign`, `POST /v1/multi-escrows/:id/refund`, `POST /v1/multi-escrows/:id/swap`
 
-### Blocklist
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET/POST | `/v1/blocks` | List/block users |
-| POST | `/v1/blocks/:id` | Unblock |
+### Jury (9)
+`POST /v1/jury/register`, `POST /v1/jury/unregister`, `GET /v1/jury/cases`, `GET /v1/jury/cases/active/:address`, `GET /v1/jury/cases/:id`, `POST /v1/jury/cases/:id/vote`, `GET /v1/jury/candidates`, `GET /v1/jury/cases/:id/evidence`, `POST /v1/jury/cases/:id/evidence/clear`
 
-### Vaults, Jury, Messaging, Identity, Apps, Webhooks — unchanged.
+### AI Mediation (3)
+`POST /v1/escrows/:id/mediate`, `GET /v1/escrows/:id/mediate`, `POST /v1/escrows/:id/mediate/:party/accept`
 
-## New Schema Migrations
-- 019: blocked_users
-- 020: user_reports
-- 021: trade_feedback
-- 022: counteroffers
-- 025: token_registry
-- 026: email_subscriptions
+### Messaging + Reveal (4)
+`GET/POST /v1/escrows/:id/messages`, `POST /v1/escrows/:id/messages/reveal`, `GET /v1/escrows/:id/messages/anchors`
 
-## Email Service
+### Tokens (7)
+`GET /v1/tokens`, `GET /v1/tokens/registered`, `POST /v1/tokens/deploy`, `GET /v1/tokens/:ticker`, `PATCH /v1/tokens/:ticker`, `GET /v1/tokens/:ticker/chart`
 
-SMTP-based email notifications for escrow events. Configured via env vars:
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `NOTIFICATION_FROM`
+### Invoices (3)
+`GET/POST /v1/invoices`, `GET /v1/invoices/:id`
 
-Currently uses a debug SMTP server on 127.0.0.1:1025 that logs to `/var/log/daglock-emails.log`.
+### Payments (3)
+`POST /v1/pay`, `GET /v1/pay/:session_id`, `POST /v1/pay/:session_id/fund`
+
+### Deposits (5)
+`POST /v1/escrows/:id/deposit`, `GET /v1/escrows/:id/deposit`, `POST /v1/escrows/:id/deposit/release`, `POST /v1/escrows/:id/deposit/forfeit`, `POST /v1/deposits/sweep`
+
+### Analytics (2)
+`GET /v1/stats/daily`, `GET /v1/stats/summary`
+
+### Price (3)
+`GET /v1/network/price/history`, `GET/POST /v1/price-alerts`, `DELETE /v1/price-alerts/:id`
+
+### Other — Reports, Blocks, Identity, Notifications, Apps, Webhooks, Compile, Receipts, Vouches, Reputation.
+
+## Key Services
+| Service | Module | Purpose |
+|---------|--------|---------|
+| EscrowService | `services/escrow_service.rs` | Escrow lifecycle with auth + verification |
+| EscrowVerifier | `verification.rs` | UTXO verification (WrpcVerifier/MockVerifier) |
+| AiMediator | `services/ai_mediator.rs` | DeepSeek V4 Flash API integration |
+| AnchorService | `services/anchor.rs` | On-chain message hash anchoring |
+| EmailService | `services/email.rs` | SMTP notifications |
+| PriceOracle | `services/price_oracle.rs` | CoinGecko KAS/USD polling |
+| PriceAlerts | `services/price_alerts.rs` | Threshold-based price alerts |
+| WebhookService | `services/webhooks.rs` | Event dispatch with retry |
+
+## Background Tasks (spawned from `main.rs`)
+
+11 background tasks: anchor flush, wRPC listener, offer reconciliation, mediation escalation, dispute escalation, evidence wipe, auto-settle, daily stats, price oracle, price alerts, deposit sweep.
+
+## Config Flags
+`--no-wrpc`, `--wrpc-url`, `--mock-auth`, `--mock-chat-sig`, `--network`, `--treasury-pubkey`, `--admin-token`, `--ai-mediator-api-key`, `--ai-mediator-model`, `--anchor-wallet-key`, `--auto-sweep-vaults`, `--auto-settle-escrows`, `--auto-escalate-disputes`, `--auto-sweep-deposits`, `--price-alerts-enabled`, `--stats-interval-seconds`, `--evidence-auto-wipe-hours`
 
 ---
-
-*Confidence: 0.95 · Last updated: 7/3/2026*
+*Confidence: 0.95 · Last updated: 7/7/2026*

@@ -1,64 +1,48 @@
 # web
 
-React + Vite dashboard for browser-based users. Provides escrow creation, claiming, offer board, and reputation views. Communicates with the indexer REST API. Uses Vitest + React Testing Library for component tests, Biome for lint.
-
-## Rules & Conventions
-
-- ****U2**: Web CreateEscrowForm generates fake `lock_tx_id`**
-  - Status: ❌ Open | Domain: web
-- ****U7**: No web onboarding for first-time users**
-  - Status: ✅ Fixed | Domain: web
-- ****Q7**: Web API no request timeout**
-  - Status: ✅ Fixed | Domain: web
-- ****Q1**: `.expect()` on UUID in code**
-  - Status: ✅ Fixed | Domain: web
-- ****Q2/Q3**: Magic number `200` in fee calc**
-  - Status: ✅ Fixed | Domain: web
-
-## Features
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Escrow CRUD (create, settle, refund, dispute) | ✅ | Core flow |
-| Offer board (browse, create, accept, counter) | ✅ | In-app negotiation with counter-offers |
-| Vaults (time-locked, beneficiary, multisig) | ✅ | Create, list, lookup |
-| Jury system (cases, voting, registration) | ✅ | Community dispute resolution |
-| Reputation lookup + vouching | ✅ | On-chain scores |
-| Receipt lookup | ✅ | Settlement receipts |
-| **Invoice creation** | ✅ **New** | Escrow-based invoice form |
-| **Invoice payment page** | ✅ **New** | `daglock.com/pay/:id` |
-| Manual wallet mode (testnet) | ✅ | Enter address + mock sign |
-| Swap wizard (atomic) | ✅ **New** | Step-by-step 6-step guided UI at `/swap` |
-| **Fee calculator** | ✅ **New** | Widget on dashboard + create form |
-| **Block explorer links** | ✅ **New** | TX and address links on every page |
-| **Onboarding wizard** | ✅ **New** | 3-slide first-visit modal |
-| **Help center / FAQ** | ✅ **New** | `/help` page with accordion FAQ |
-| **Testnet quickstart** | ✅ **New** | `/testnet` page with test wallets |
-| **Settings / notifications** | ✅ **New** | `/settings` — email subscription + preferences |
-| **KRC-20 token dashboard** | ✅ **New** | `/tokens` — price charts, trades, directory |
-| **KRC-20 token creation** | ✅ **New** | `/tokens/create` — register new tokens |
-| **Escrow memo field** | ✅ **New** | Notes on every escrow |
-| **CSV export** | ✅ **New** | Download button on My Escrows |
-| **Counter-offers** | ✅ **New** | Inline counter form on offer cards |
+React + Vite dashboard. 17+ pages. Communicates with indexer REST API. Vitest + RTL tests, Biome lint.
 
 ## Pages
 
 | Route | Page | Description |
 |-------|------|-------------|
-| `/` | Dashboard | Stats, quick actions, fee calculator |
-| `/offers` | OffersPage | Browse, create, counter offers |
-| `/escrows` | EscrowsPage | My escrows, create, lookup, CSV export |
-| `/swap` | SwapPage | 6-step atomic swap wizard |
-| `/vaults` | VaultsPage | Time-locked vaults |
+| `/` | Dashboard | Hero, 12 feature cards, 7 action cards, fee calculator |
+| `/offers` | OffersPage | Browse, create, counter offers with deal type presets |
+| `/escrows` | EscrowsPage | Escrows, milestones, multi-party, deposits, invoices, create, lookup, CSV |
+| `/swap` | SwapPage | 6-step atomic swap wizard + deep link `/swap/:id` + QR code |
+| `/vaults` | VaultsPage | Time-locked vaults with check-in, inheritance, early-exit |
+| `/subscriptions` | SubscriptionsPage | Create, list, draw recurring subscriptions |
+| `/tokens` | TokensPage | KRC-20 token directory, charts, create |
 | `/reputation` | ReputationPage | On-chain scores + vouching |
-| `/jury` | JuryPage | Dispute resolution system |
-| `/docs` | DocsPage | Developer documentation |
+| `/jury` | JuryPage | Community jury + AI mediation + evidence reveal |
+| `/stats` | StatsPage | Analytics dashboard with daily volume charts |
+| `/security` | SecurityPage | Covenant Security Analysis — 6 interactive attack scenarios |
+| `/merchant` | MerchantPage | Escrow widget embed, API key management, webhook config |
+| `/blog` | BlogPage, BlogPost | 4 blog posts (KRC-20, AI mediation, feature set, SilverScript) |
+| `/docs` | DocsPage | Developer documentation, FAQ, OpenAPI spec |
 | `/help` | HelpPage | FAQ + quick start guide |
 | `/testnet` | TestnetPage | Testnet quickstart with test wallets |
-| `/tokens` | TokensPage | KRC-20 token directory + charts |
-| `/tokens/create` | CreateTokenPage | Register new tokens |
-| `/settings` | SettingsPage | Email notification preferences |
+| `/settings` | SettingsPage | Email notifications, price alerts, chat key management |
+
+## Key Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| ChatPanel | `components/ChatPanel.tsx` | E2E encrypted messaging with key exchange + anchoring |
+| MediationPanel | `components/MediationPanel.tsx` | AI + jury dispute resolution UI |
+| daglock-pay | `components/daglock-pay.ts` | Vanilla JS web component for embedded payments |
+| AtomicSwapWizard | `components/AtomicSwapWizard.tsx` | 6-step guided swap flow with secret safety |
+| PriceChart | `components/PriceChart.tsx` | SVG line chart for KAS/USD history |
+| PriceAlerts | `components/PriceAlerts.tsx` | Alert create/list/delete UI |
+| FeeCalculator | `components/FeeCalculator.tsx` | Escrow fee estimator |
+
+## Crypto Modules
+
+| Module | File | Purpose |
+|--------|------|---------|
+| chat-crypto | `crypto/chat-crypto.ts` | Ed25519 keys, X25519 ECDH, NaCl secretbox encrypt/decrypt |
+| chat-store | `crypto/chat-store.ts` | localStorage persistence of per-escrow keypairs |
+| recovery-sheet | `crypto/recovery-sheet.ts` | .txt download + restore for chat private keys |
 
 ---
-
-*Confidence: 0.95 · Last updated: 7/3/2026*
+*Confidence: 0.95 · Last updated: 7/7/2026*
