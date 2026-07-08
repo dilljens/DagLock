@@ -3,7 +3,7 @@
 ## Baseline (June 29, 2026)
 - **Quality signal:** 0.6449 (up from 0.6448)
 - **Tests passing:** 77/77 (15 Rust + 40 Web + 22 Bot)
-- **Deployed:** Indexer + Bot on Hetzner VPS, Web on Cloudflare Pages
+- **Deployed:** Indexer + Bot on OVHcloud VPS, Web on Cloudflare Pages
 
 ## Session 2026-06-29 — Execution Complete
 - **Status:** All high-priority items complete. Ready for pre-mainnet deploy.

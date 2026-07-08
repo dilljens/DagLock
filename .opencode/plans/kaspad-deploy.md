@@ -21,12 +21,12 @@
 ## Track A: Deploy & Sync kaspad `[ ]`
 
 ### Phase A1: Transfer binary & create service `[ ]` ⏱ 15 min
-- [ ] SCP binary to VPS: `scp /tmp/rusty-kaspa/target/release/kaspad root@40.160.241.74:/opt/kaspad/kaspad`
+- [ ] SCP binary to VPS: `scp /tmp/rusty-kaspa/target/release/kaspad ubuntu@40.160.241.74:/opt/kaspad/kaspad`
 - [ ] Create `kaspad` system user
 - [ ] Create `/etc/systemd/system/kaspad.service`
 - [ ] Start and enable kaspad
 - [ ] Verify listening on port 17210
-- ✅ Checkpoint: `ssh root@40.160.241.74 "ss -tlnp | grep 17210"` shows kaspad listening
+- ✅ Checkpoint: `ssh ubuntu@40.160.241.74 "ss -tlnp | grep 17210"` shows kaspad listening
 - ⚙ Fallback: Check `journalctl -u kaspad -n 50` for startup errors
 
 ### Phase A2: Monitor sync progress `[ ]` ⏱ 2 hours (background)

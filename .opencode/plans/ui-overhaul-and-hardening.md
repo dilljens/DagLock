@@ -130,7 +130,7 @@ My Escrows | Create | Lookup | Receipt | Invoice
 ### Phase B1: Self-Hosted Kaspa Node `[ ]`
 **Goal:** Replace MockVerifier with real wRPC UTXO verification. Gated by 32GB RAM VPS upgrade (~July 13).
 
-- [ ] Upgrade to Hetzner CPX42 (€21/mo, 4 vCPU, 8GB RAM, 160GB SSD) — or wait for RAM upgrade
+- [ ] OVHcloud VPS-2 (4 vCore, 8 GB, 75 GB NVMe) — or wait for RAM upgrade
 - [ ] Install `kaspad` v2.0.1 with `--utxoindex`
 - [ ] Wire indexer: `--wrpc-url ws://localhost:17210` + remove `--no-wrpc`
 - [ ] Test `verify_utxo_exists()` against real node

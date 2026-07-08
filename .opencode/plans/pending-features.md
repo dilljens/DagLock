@@ -41,8 +41,8 @@
 **Timebox:** 2-3 days
 
 ### Phase A1: Provision node VPS `[ ]` [1 day]
-- [ ] Provision CPX42 Hetzner VPS (€21/mo, 4 vCPU, 8GB RAM, 160GB SSD)
-  - Or try CX22 first (€9/mo, 2 vCPU, 4GB, 80GB) — might be tight
+- [ ] Provision dedicated VPS for kaspad (32 GB RAM recommended for mainnet)
+  - See `docs/local-testnet-node.md` for current setup notes
 - [ ] Install `kaspad` from rusty-kaspa v2.0.1 release
 - [ ] Run with `--utxoindex` (required for UTXO verification)
 - [ ] Expose wRPC Borsh port (17210 for testnet-12, 17210 for mainnet)

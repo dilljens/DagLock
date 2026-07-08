@@ -8,5 +8,5 @@
     "healthcheckPath": "/v1/health",
     "restartPolicyType": "ON_FAILURE"
   },
-  "note": "Indexer deployed on VPS (46.224.171.239) via systemd. Railway config kept for CI build verification only."
+  "note": "Indexer deployed on VPS (40.160.241.74) via systemd. Railway config kept for CI build verification only."
 }

@@ -1,8 +1,8 @@
 # Testnet Launch Plan
 
-**Status:** ✅ Completed (June 17, 2026)
+**Status:** ✅ Completed (June 17, 2026) — migrated to OVHcloud July 8, 2026
 
-**Note:** All phases completed. Indexer, kaspad, bot, and trade bot all running on a single Hetzner CX23 VPS ($5/mo). Web UI at daglock.com, API at api.daglock.com.
+**Note:** All phases completed. Indexer, kaspad, bot, and trade bot all running on a single OVHcloud VPS-2 (4 vCore, 8 GB RAM, 75 GB NVMe). Web UI at daglock.com, API at api.daglock.com. (Originally deployed on Hetzner CX23, migrated to OVHcloud US on July 8, 2026.)
 
 ---
 
@@ -14,7 +14,7 @@ Phase 0: Prep ──→ Phase 1: VPS ──→ Phase 2: Connect ──→ Phase 
 ```
 
 **Total effort:** ~4-8 hours over a couple days
-**Monthly cost:** $5 (Hetzner CX22 VPS)
+**Monthly cost:** ~$15 (OVHcloud VPS-2, originally Hetzner CX22 ~$5/mo)
 **Blockers cleared:** All 7 critical audit items fixed, 27/30 tasks done
 
 ---
@@ -89,22 +89,16 @@ Open Telegram, find `@DagLock_bot`, send `/start`. Should get a welcome message.
 
 The indexer needs a testnet-11 node to talk to. Public resolver nodes are down (wRPC v2 migration), so we run our own on a cheap VPS.
 
-### 1.1 — Sign up for Hetzner (if needed)
+### 1.1 — Provision a VPS
 
-1. Go to [hetzner.com/cloud](https://hetzner.com/cloud)
-2. Create account (email + payment)
-3. Cost: ~$5/mo for CX22
+> **Note:** The original deployment used Hetzner CX22 ($5/mo). Current setup is OVHcloud VPS-2 (4 vCore, 8 GB, 75 GB NVMe, $15/mo). The steps below work for any provider — just adjust the plan name and expected cost.
 
-### 1.2 — Create the server
-
-1. Hetzner Cloud Console → **New Project** → name it `daglock`
-2. **Add Server:**
-   - Image: **Ubuntu 24.04**
-   - Type: **CX22** (2 vCPU, 4GB RAM, 40GB SSD) — $5/mo
-   - Location: closest to you
-   - SSH Key: add your public key (`cat ~/.ssh/id_ed25519.pub`)
-3. Click **Create & Buy**
-4. Copy the IP address (e.g., `123.45.67.89`)
+1. Choose a provider (Hetzner, OVHcloud, Linode, etc.)
+2. Create an account and add payment
+3. Create a server with Ubuntu 24.04+
+4. Recommended specs: 2+ vCPU, 4+ GB RAM, 40+ GB SSD
+5. Add your SSH public key
+6. Note the server's IP address
 
 ### 1.3 — SSH in and install deps
 
@@ -437,7 +431,7 @@ If something breaks:
 - [ ] 0.6 — Bot responds at @DagLock_bot
 
 ### Phase 1: VPS
-- [ ] 1.1 — Hetzner account created
+- [ ] 1.1 — VPS account created (Hetzner, OVHcloud, etc.)
 - [ ] 1.2 — CX22 server provisioned
 - [ ] 1.3 — Dependencies installed
 - [ ] 1.4 — Rust installed

@@ -93,20 +93,21 @@
 
 ## Deployment
 
-### Current Setup (June 17, 2026)
+### Current Setup (July 8, 2026)
 
 | Component | Platform | Status | URL |
 |-----------|----------|--------|-----|
-| Indexer | Hetzner VPS | ✅ Running (MockVerifier) | `api.daglock.com` |
-| Bot | Hetzner VPS | ✅ Running | `@DagLock_bot` on Telegram |
+| Indexer | OVHcloud VPS | ✅ Running (MockVerifier) | `api.daglock.com` |
+| Bot | OVHcloud VPS | ✅ Running | `@DagLock_bot` on Telegram |
 | Web UI | Cloudflare Pages | ✅ Running | `daglock.com` |
-| Kaspa Node | — | ❌ No node (VPS too small) | Uses `--no-wrpc` offline mode |
-| Trade Bot | Hetzner VPS | ✅ Systemd timer (10 min) | — |
+| Kaspa Node | — | ❌ No node | Uses `--no-wrpc` offline mode |
+| Trade Bot | OVHcloud VPS | ✅ Systemd timer (10 min) | — |
 
 **Architecture:**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Hetzner VPS CX23 ($5/mo) — 46.224.171.239                 │
+│  OVHcloud VPS-2 (4 vCore, 8 GB, 75 GB NVMe)              │
+│  40.160.241.74                                             │
 │                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
 │  │   kaspad     │  │ daglock-     │  │ daglock-bot       │  │
@@ -114,7 +115,7 @@
 │  │ wRPC :16610  │  │ :8443        │  │                    │  │
 │  └──────────────┘  └──────┬───────┘  └──────────────────┘  │
 │         ❌ No node        │ nginx                          │
-│   (VPS too small)         │ :443 (Cloudflare SSL)          │
+│                           │ :443 (Cloudflare SSL)          │
 │                           └──────┬───────────────          │
 │                                  │ api.daglock.com         │
 │  ┌──────────────────────┐        │                         │
@@ -130,13 +131,6 @@
                      │    api.daglock.com          │
                      └───────────────────────────┘
 ```
-
-### Why Not a Local Node?
-
-- Public resolver nodes (kaspa.stream/red/green/blue) are down (wRPC v2 migration)
-- 6GB laptop RAM is tight for kaspad + indexer
-- 2GB Pi 4 insufficient for kaspad
-- VPS is the most reliable option ($5/mo)
 
 ### Template Hashes (Testnet-12)
 
@@ -335,3 +329,4 @@ See `docs/local-testnet-node.md` for the plan to run a local `kaspad` testnet-11
 ## VPS
 
 Single OVH VPS running all projects. See `../VPS.md` for connection info, services, and commands.
+Note: SSH user is `ubuntu`, not `root`. Password: `raspi9000`.

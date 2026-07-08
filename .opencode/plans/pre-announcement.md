@@ -10,7 +10,7 @@
 Already SCP'd to VPS. One command:
 
 ```bash
-ssh root@46.224.171.239
+ssh ubuntu@40.160.241.74
 systemctl stop daglock-indexer
 cp /root/daglock-indexer /usr/local/bin/daglock-indexer
 systemctl start daglock-indexer

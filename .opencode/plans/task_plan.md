@@ -9,7 +9,7 @@
 ## Requirements
 - [ ] R1: All audit security items addressed (S1-S7)
 - [ ] R2: All tests pass green (Rust, Web, Bot)
-- [ ] R3: Mainnet indexer binary deployed on Hetzner VPS
+- [ ] R3: Mainnet indexer binary deployed on OVHcloud VPS
 - [ ] R4: Indexer connected to a mainnet Kaspa wRPC endpoint
 - [ ] R5: All 3 product surfaces work end-to-end (Web, CLI, Bot)
 - [ ] R6: Announcement materials ready (demo video, Telegram post, tweet)

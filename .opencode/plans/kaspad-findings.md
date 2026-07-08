@@ -13,7 +13,7 @@
 | OS | Ubuntu 26.04 LTS |
 | glibc | 2.43 |
 
-**Key observation:** The AGENTS.md incorrectly referenced a "Hetzner CX23 with 2GB RAM" as the VPS. The actual VPS is OVH with 8GB RAM — plenty for kaspad testnet-12.
+**Key observation:** The AGENTS.md incorrectly referenced a "OVHcloud VPS with 2GB RAM" as the VPS. The actual VPS is OVH with 8GB RAM — plenty for kaspad testnet-12.
 
 ### Current daglock-indexer service
 - Runs as `daglock` user
@@ -69,7 +69,7 @@ Note: `--utxoindex` without `--max-tracked-addresses > 0` is a no-op for address
 ## Existing Pre-Announcement Plan
 
 File: `.opencode/plans/pre-announcement.md`
-- Written for old Hetzner VPS (`46.224.171.239`)
+- Written for old OVHcloud VPS (`40.160.241.74`)
 - References MockVerifier in demo video script
 - Dated June 2026, pre-Toccata
 - Will need updating after kaspad deployment

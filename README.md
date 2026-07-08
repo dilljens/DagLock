@@ -72,7 +72,7 @@ daglock.com (Cloudflare Pages)
       → MockVerifier (wRPC resolvers offline during Toccata v2 migration)
       → Telegram bot + trade bot on same VPS
 
-All on one Hetzner CX23 ($5/mo)
+All on one OVHcloud VPS-2
 
 Mainnet (June 30): upgraded to CPX42+ with local kaspad for wRPC verification.
 ```

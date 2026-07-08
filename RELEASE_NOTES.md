@@ -3,7 +3,7 @@
 ## v0.1.0 — 2026-06-17 — Testnet Launch
 
 **Architecture:**
-- Indexer, kaspad, Telegram bot, and trade bot on single Hetzner CX23 VPS
+- Indexer, kaspad, Telegram bot, and trade bot on single OVHcloud VPS
 - Web UI served via Cloudflare Pages at daglock.com
 - API at api.daglock.com (Cloudflare-proxied)
 - All services migrated off Railway
