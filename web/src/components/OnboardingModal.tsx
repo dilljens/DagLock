@@ -24,7 +24,7 @@ const slides = [
 	{
 		title: "Get Started",
 		subtitle: "Connect your wallet",
-		body: "Connect KasWare browser extension to get started. No KasWare? Use manual mode with any Kaspa wallet. All your trades, vaults, and reputation are on-chain and verifiable.",
+		body: "Connect KasWare browser extension to get started. No KasWare? Use manual mode with any Kaspa wallet, or visit the Testnet page to try DagLock without a wallet at all. All your trades, vaults, and reputation are on-chain and verifiable.",
 		icon: "🚀",
 	},
 ];

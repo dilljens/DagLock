@@ -29,15 +29,13 @@ import { useQuery } from "@tanstack/react-query";
 
 type Tab =
 	| "my-escrows"
-	| "my-swaps"
 	| "create"
 	| "lookup"
 	| "receipt"
-	| "invoice"
-	| "milestones"
-	| "create-milestone"
-	| "multi"
-	| "create-multi";
+	| "invoice";
+
+/* Escrow sub-type for filtering/display */
+type EscrowSubtype = "standard" | "swap" | "milestone" | "multi" | "all";
 
 const DEAL_PRESETS = {
 	goods: {
@@ -102,8 +100,18 @@ function DealTypeBadge({ escrow }: { escrow: Escrow }) {
 
 export function EscrowsPage() {
 	const [tab, setTab] = useState<Tab>("my-escrows");
+	const [subtypeFilter, setSubtypeFilter] = useState<EscrowSubtype>("all");
 	const address = useAddress();
 	const { state: wallet } = useWallet();
+
+	// Read ?type= query param to pre-select create mode (standard|milestone|multi|swap)
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+		const type = params.get("type");
+		if (type === "milestone" || type === "multi") {
+			setTab("create");
+		}
+	}, []);
 
 	return (
 		<>
@@ -123,18 +131,10 @@ export function EscrowsPage() {
 				<div className="tab-bar">
 					<button
 						className={`tab-btn ${tab === "my-escrows" ? "tab-btn--active" : ""}`}
-						onClick={() => setTab("my-escrows")}
+						onClick={() => { setTab("my-escrows"); setSubtypeFilter("all"); }}
 					>
 						My Escrows
 					</button>
-					{wallet.connected && (
-						<button
-							className={`tab-btn ${tab === "my-swaps" ? "tab-btn--active" : ""}`}
-							onClick={() => setTab("my-swaps")}
-						>
-							My Swaps
-						</button>
-					)}
 					<button
 						className={`tab-btn ${tab === "create" ? "tab-btn--active" : ""}`}
 						onClick={() => setTab("create")}
@@ -161,56 +161,18 @@ export function EscrowsPage() {
 							Invoice
 						</button>
 					)}
-					{wallet.connected && (
-						<button
-							className={`tab-btn ${tab === "milestones" ? "tab-btn--active" : ""}`}
-							onClick={() => setTab("milestones")}
-						>
-							Milestones
-						</button>
-					)}
-					{wallet.connected && (
-						<button
-							className={`tab-btn ${tab === "create-milestone" ? "tab-btn--active" : ""}`}
-							onClick={() => setTab("create-milestone")}
-						>
-							+ Milestone
-						</button>
-					)}
-					{wallet.connected && (
-						<button
-							className={`tab-btn ${tab === "multi" ? "tab-btn--active" : ""}`}
-							onClick={() => setTab("multi")}
-						>
-							Multi
-						</button>
-					)}
-					{wallet.connected && (
-						<button
-							className={`tab-btn ${tab === "create-multi" ? "tab-btn--active" : ""}`}
-							onClick={() => setTab("create-multi")}
-						>
-							+ Multi
-						</button>
-					)}
 				</div>
 				{tab === "my-escrows" &&
-					(wallet.connected ? <MyEscrows address={address!} /> : <ConnectPrompt />)}
-				{tab === "my-swaps" &&
-					(wallet.connected ? <MySwaps address={address!} /> : <ConnectPrompt />)}
+					(wallet.connected ? (
+						<AllEscrows address={address!} subtypeFilter={subtypeFilter} onSetFilter={setSubtypeFilter} />
+					) : (
+						<ConnectPrompt />
+					))}
 				{tab === "create" &&
-					(wallet.connected ? <CreateEscrow address={address!} /> : <ConnectPrompt />)}
+					(wallet.connected ? <CreateFlow address={address!} /> : <ConnectPrompt />)}
 				{tab === "lookup" && <EscrowLookup />}
 				{tab === "receipt" && <ReceiptLookup />}
 				{tab === "invoice" && <CreateInvoiceForm />}
-				{tab === "milestones" &&
-					(wallet.connected ? <MyMilestones address={address!} /> : <ConnectPrompt />)}
-				{tab === "create-milestone" &&
-					(wallet.connected ? <CreateMilestoneForm address={address!} /> : <ConnectPrompt />)}
-				{tab === "multi" &&
-					(wallet.connected ? <MyMultiEscrows address={address!} /> : <ConnectPrompt />)}
-				{tab === "create-multi" &&
-					(wallet.connected ? <CreateMultiForm address={address!} /> : <ConnectPrompt />)}
 			</div>
 		</>
 	);
@@ -246,64 +208,165 @@ function formatUsd(sompi: number, priceUsd: number | null): string {
 }
 
 /* ─── My Escrows ─── */
-function MyEscrows({ address }: { address: string }) {
+/* ─── Unified All Escrows — standard, swap, milestone, multi-party ─── */
+function AllEscrows({
+	address,
+	subtypeFilter,
+	onSetFilter,
+}: {
+	address: string;
+	subtypeFilter: EscrowSubtype;
+	onSetFilter: (f: EscrowSubtype) => void;
+}) {
 	const { navigate } = useRouter();
 	const [escrows, setEscrows] = useState<LoadState<Escrow[]>>({ loading: true });
+	const [milestones, setMilestones] = useState<LoadState<MilestoneEscrow[]>>({ loading: true });
+	const [multiEscrows, setMultiEscrows] = useState<LoadState<MultiEscrow[]>>({ loading: true });
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [dealTypeFilter, setDealTypeFilter] = useState("all");
 	const loaded = useRef(false);
 	const usdPrice = useKasUsdPrice();
 
-	const fetchEscrows = useCallback(() => {
+	/* ── determine sub-type of a regular escrow ── */
+	function escrowSubtype(e: Escrow): "standard" | "swap" {
+		return e.trade_hash && e.trade_hash.length > 0 ? "swap" : "standard";
+	}
+
+	/* ── fetch everything ── */
+	const fetchAll = useCallback(() => {
 		setEscrows({ loading: true });
-		api
-			.escrows(address)
-			.then((d) => setEscrows({ data: d.escrows, loading: false }))
-			.catch((e) => setEscrows({ error: e.message, loading: false }));
+		setMilestones({ loading: true });
+		setMultiEscrows({ loading: true });
+		Promise.all([
+			api.escrows(address).then((d) => setEscrows({ data: d.escrows, loading: false })),
+			api
+				.milestones(address)
+				.then((d) => setMilestones({ data: d.milestones, loading: false }))
+				.catch(() => setMilestones({ data: [], loading: false })),
+			api
+				.multiEscrows(address)
+				.then((d) => setMultiEscrows({ data: d.multi_escrows, loading: false }))
+				.catch(() => setMultiEscrows({ data: [], loading: false })),
+		]).catch((e) => {
+			setEscrows((s) => (s.loading ? { error: e.message, loading: false } : s));
+		});
 	}, [address]);
 
 	useEffect(() => {
 		if (loaded.current) return;
 		loaded.current = true;
-		fetchEscrows();
-	}, [fetchEscrows]);
+		fetchAll();
+	}, [fetchAll]);
 
-	if (escrows.loading) {
+	/* ── subtype filter chips ── */
+	const subtypeChips: { key: EscrowSubtype; label: string }[] = [
+		{ key: "all", label: "All" },
+		{ key: "standard", label: "Standard" },
+		{ key: "swap", label: "Atomic Swaps" },
+		{ key: "milestone", label: "Milestones" },
+		{ key: "multi", label: "Multi-Party" },
+	];
+
+	const escrowCount = (escrows.data || []).length;
+	const milestoneCount = (milestones.data || []).length;
+	const multiCount = (multiEscrows.data || []).length;
+	const totalCount = escrowCount + milestoneCount + multiCount;
+	const isLoading = escrows.loading || milestones.loading || multiEscrows.loading;
+
+	if (isLoading) {
 		return <SkeletonTable rows={5} />;
 	}
-	if (escrows.error) return <p className="muted error-text">{escrows.error}</p>;
-	if (!escrows.data?.length)
+
+	if (totalCount === 0) {
 		return (
-			<EmptyState
-				icon="🤝"
-				title="No escrows found"
-				description="Create your first escrow to start trading trustlessly."
-				action={{ label: "Create Escrow", onClick: () => navigate("/escrows") }}
-			/>
+			<div>
+				<EmptyState
+					icon="🤝"
+					title="Nothing here yet"
+					description="Create your first escrow, milestone, or multi-party agreement."
+					action={{ label: "Create Escrow", onClick: () => navigate("/escrows") }}
+				/>
+				<div
+					style={{
+						display: "flex",
+						justifyContent: "center",
+						gap: "12px",
+						marginTop: "12px",
+					}}
+				>
+					<button className="button" onClick={() => navigate("/swap")}>
+						🔄 Atomic Swap
+					</button>
+					<button className="button" onClick={() => navigate("/vaults")}>
+						🏗️ Milestone
+					</button>
+				</div>
+			</div>
 		);
+	}
+
+	/* ── render a type badge for the subtype ── */
+	function SubtypeBadge({ type }: { type: EscrowSubtype }) {
+		if (type === "all" || type === "standard") return null;
+		const chip = subtypeChips.find((c) => c.key === type);
+		if (!chip) return null;
+		const colors: Record<string, { bg: string; fg: string }> = {
+			swap: { bg: "#2196f322", fg: "#2196f3" },
+			milestone: { bg: "#ff980022", fg: "#ff9800" },
+			multi: { bg: "#9c27b022", fg: "#9c27b0" },
+		};
+		const c = colors[type] || { bg: "#88888822", fg: "#888" };
+		return (
+			<span
+				className="pill"
+				style={{
+					background: c.bg,
+					color: c.fg,
+					border: `1px solid ${c.fg}44`,
+					fontSize: "11px",
+				}}
+			>
+				{chip.label}
+			</span>
+		);
+	}
 
 	return (
 		<div>
+			{/* Filter row */}
 			<div
 				style={{
 					display: "flex",
 					justifyContent: "space-between",
 					alignItems: "center",
 					marginBottom: "8px",
+					flexWrap: "wrap",
+					gap: "8px",
 				}}
 			>
-				<div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-					<span style={{ fontSize: "12px", color: "#888" }}>Filter:</span>
-					{["all", "goods", "otc", "service", "custom"].map((f) => (
-						<button
-							key={f}
-							className={`button ${dealTypeFilter === f ? "primary" : ""}`}
-							onClick={() => setDealTypeFilter(f)}
-							style={{ fontSize: "11px", padding: "2px 8px" }}
-						>
-							{f === "all" ? "All" : DEAL_PRESETS[f as keyof typeof DEAL_PRESETS]?.label || f}
-						</button>
-					))}
+				<div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+					<span style={{ fontSize: "12px", color: "#888" }}>Type:</span>
+					{subtypeChips.map((chip) => {
+						let count = 0;
+						if (chip.key === "all") count = totalCount;
+						else if (chip.key === "standard")
+							count = escrows.data?.filter((e) => escrowSubtype(e) === "standard").length || 0;
+						else if (chip.key === "swap")
+							count = escrows.data?.filter((e) => escrowSubtype(e) === "swap").length || 0;
+						else if (chip.key === "milestone") count = milestoneCount;
+						else if (chip.key === "multi") count = multiCount;
+
+						return (
+							<button
+								key={chip.key}
+								className={`button ${subtypeFilter === chip.key ? "primary" : ""}`}
+								onClick={() => onSetFilter(chip.key)}
+								style={{ fontSize: "11px", padding: "2px 8px" }}
+							>
+								{chip.label} ({count})
+							</button>
+						);
+					})}
 				</div>
 				<a
 					href={`${import.meta.env.VITE_API_URL || ""}/v1/escrows/export?address=${encodeURIComponent(address)}`}
@@ -311,51 +374,120 @@ function MyEscrows({ address }: { address: string }) {
 					className="button"
 					style={{ fontSize: "12px", padding: "4px 12px", textDecoration: "none" }}
 				>
-					⬇ Export CSV
+					⬇ Export
 				</a>
 			</div>
-			{escrows.data
-				.filter((e) => {
-					if (dealTypeFilter === "all") return true;
-					const dt = dealTypeFromTimeout(e);
-					if (dealTypeFilter === "custom") return dt?.key === "custom" || dt === null;
-					return dt?.key === dealTypeFilter;
-				})
-				.map((e) => (
+
+			{/* Escrow cards */}
+			{(subtypeFilter === "all" || subtypeFilter === "standard" || subtypeFilter === "swap") &&
+				(escrows.data || [])
+					.filter((e) => {
+						if (subtypeFilter === "all") return true;
+						return escrowSubtype(e) === subtypeFilter;
+					})
+					.filter((e) => {
+						if (dealTypeFilter === "all") return true;
+						const dt = dealTypeFromTimeout(e);
+						if (dealTypeFilter === "custom") return dt?.key === "custom" || dt === null;
+						return dt?.key === dealTypeFilter;
+					})
+					.map((e) => {
+						const subType = escrowSubtype(e);
+						return (
+							<article
+								key={e.id}
+								className="offer"
+								style={{ cursor: "pointer", marginBottom: "8px" }}
+								onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}
+							>
+								<div className="offer-top">
+									<strong>{money(e.amount_sompi)}</strong>
+									{usdPrice && (
+										<span style={{ fontSize: "12px", color: "#888" }}>
+											({formatUsd(e.amount_sompi, usdPrice)})
+										</span>
+									)}
+									<SubtypeBadge type={subType} />
+									<DealTypeBadge escrow={e} />
+									<span className={badge(e.status)}>{e.status}</span>
+								</div>
+								<p>
+									{e.asset_type} · {e.buyer_address.slice(0, 16)}…
+									{e.seller_address ? ` → ${e.seller_address.slice(0, 16)}…` : ""}
+								</p>
+								<code>{e.id}</code>
+								{e.trade_hash && (
+									<code style={{ fontSize: "10px", wordBreak: "break-all", display: "block" }}>
+										Hash: {e.trade_hash.slice(0, 32)}…
+									</code>
+								)}
+								{e.price_at_creation && (
+									<div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
+										~${e.price_at_creation.toFixed(2)} USD at creation
+									</div>
+								)}
+								<div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+									<ExplorerTxLink txid={e.lock_tx_id} label="View TX" />
+									<ExplorerAddressLink address={e.buyer_address} label="Buyer" />
+								</div>
+								{selectedId === e.id && (
+									<>
+										<EscrowActions escrow={e} onMutated={fetchAll} />
+										{address && <ChatPanel escrow={e} onMutated={fetchAll} />}
+									</>
+								)}
+							</article>
+						);
+					})}
+
+			{/* Milestone cards */}
+			{(subtypeFilter === "all" || subtypeFilter === "milestone") &&
+				(milestones.data || []).map((ms) => (
 					<article
-						key={e.id}
+						key={ms.id}
 						className="offer"
 						style={{ cursor: "pointer", marginBottom: "8px" }}
-						onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}
+						onClick={() => setSelectedId(selectedId === ms.id ? null : ms.id)}
 					>
 						<div className="offer-top">
-							<strong>{money(e.amount_sompi)}</strong>
-							{usdPrice && (
-								<span style={{ fontSize: "12px", color: "#888" }}>
-									({formatUsd(e.amount_sompi, usdPrice)})
-								</span>
-							)}
-							<DealTypeBadge escrow={e} />
-							<span className={badge(e.status)}>{e.status}</span>
+							<strong>{money(ms.total_amount)}</strong>
+							<SubtypeBadge type="milestone" />
+							<span className={badge(ms.status)}>{ms.status}</span>
 						</div>
 						<p>
-							{e.asset_type} · {e.buyer_address.slice(0, 16)}…
+							{ms.buyer_address.slice(0, 16)}… → {ms.seller_address.slice(0, 16)}…
 						</p>
-						<code>{e.id}</code>
-						{e.price_at_creation && (
-							<div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
-								~${e.price_at_creation.toFixed(2)} USD at creation
-							</div>
+						<MilestoneProgressBar
+							milestoneStatuses={ms.milestone_statuses}
+							currentMilestone={ms.current_milestone}
+						/>
+						<code>{ms.id}</code>
+						{selectedId === ms.id && (
+							<MilestoneActions escrow={ms} onMutated={fetchAll} />
 						)}
-						<div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
-							<ExplorerTxLink txid={e.lock_tx_id} label="View TX" />
-							<ExplorerAddressLink address={e.buyer_address} label="Buyer" />
+					</article>
+				))}
+
+			{/* Multi-party cards */}
+			{(subtypeFilter === "all" || subtypeFilter === "multi") &&
+				(multiEscrows.data || []).map((m) => (
+					<article
+						key={m.id}
+						className="offer"
+						style={{ cursor: "pointer", marginBottom: "8px" }}
+						onClick={() => setSelectedId(selectedId === m.id ? null : m.id)}
+					>
+						<div className="offer-top">
+							<strong>{money(m.total_amount)}</strong>
+							<SubtypeBadge type="multi" />
+							<span className={badge(m.status)}>{m.status}</span>
 						</div>
-						{selectedId === e.id && (
-							<>
-								<EscrowActions escrow={e} onMutated={fetchEscrows} />
-								{address && <ChatPanel escrow={e} onMutated={fetchEscrows} />}
-							</>
+						<p>
+							{m.parties.length} parties · {m.signatures.length}/{m.parties.length} signed
+						</p>
+						<code>{m.id}</code>
+						{selectedId === m.id && (
+							<MultiEscrowActions escrow={m} onMutated={fetchAll} />
 						)}
 					</article>
 				))}
@@ -642,6 +774,39 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 					{loading === "forfeit" ? "Forfeiting…" : "Forfeit Deposit"}
 				</button>
 			)}
+		</div>
+	);
+}
+
+/* ─── Unified Create Flow — Standard, Milestone, Multi-party ─── */
+type CreateMode = "standard" | "milestone" | "multi";
+
+function CreateFlow({ address }: { address: string }) {
+	const [mode, setMode] = useState<CreateMode>("standard");
+
+	return (
+		<div>
+			<div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+				{[
+					{ key: "standard" as const, label: "Standard Escrow", desc: "Simple release/refund" },
+					{ key: "milestone" as const, label: "Milestone", desc: "Phased payments (up to 5)" },
+					{ key: "multi" as const, label: "Multi-Party", desc: "Split among up to 4 parties" },
+				].map((m) => (
+					<button
+						key={m.key}
+						type="button"
+						className={`button ${mode === m.key ? "primary" : ""}`}
+						onClick={() => setMode(m.key)}
+						style={{ flex: 1, textAlign: "center", fontSize: "12px", padding: "10px 8px" }}
+					>
+						<div>{m.label}</div>
+						<div style={{ fontSize: "10px", fontWeight: 400, opacity: 0.7 }}>{m.desc}</div>
+					</button>
+				))}
+			</div>
+			{mode === "standard" && <CreateEscrow address={address} />}
+			{mode === "milestone" && <CreateMilestoneForm address={address} />}
+			{mode === "multi" && <CreateMultiForm address={address} />}
 		</div>
 	);
 }

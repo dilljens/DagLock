@@ -1,6 +1,8 @@
 //! Shared validation utilities for DagLock.
 
 use crate::constants::*;
+use std::fmt;
+use std::str::FromStr;
 use thiserror::Error;
 
 /// Errors that can occur during validation.
@@ -36,6 +38,54 @@ pub enum ValidationError {
 
 /// Result type for validation operations.
 pub type ValidationResult<T> = Result<T, ValidationError>;
+
+/// A validated trade hash (SHA-256, 32 bytes).
+///
+/// Used for atomic swaps. A trade hash of all zeros means "no swap" (standard escrow).
+/// Use `TradeHash::from_str()` or `TradeHash::new()` to construct.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TradeHash(pub [u8; TRADE_HASH_LENGTH]);
+
+impl TradeHash {
+    /// Create a zeroed trade hash (non-atomic escrow).
+    pub fn zero() -> Self {
+        Self([0u8; TRADE_HASH_LENGTH])
+    }
+
+    /// Create from raw bytes. Returns error if length is wrong.
+    pub fn from_bytes(bytes: &[u8]) -> ValidationResult<Self> {
+        if bytes.len() != TRADE_HASH_LENGTH {
+            return Err(ValidationError::InvalidLength {
+                expected: TRADE_HASH_LENGTH,
+                expected_hex: TRADE_HASH_LENGTH * 2,
+                got: bytes.len(),
+            });
+        }
+        let mut arr = [0u8; TRADE_HASH_LENGTH];
+        arr.copy_from_slice(bytes);
+        Ok(Self(arr))
+    }
+
+    /// Returns `true` if this is a zeroed hash (non-atomic escrow).
+    pub fn is_zero(&self) -> bool {
+        self.0.iter().all(|&b| b == 0)
+    }
+}
+
+impl FromStr for TradeHash {
+    type Err = ValidationError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = validate_trade_hash(s)?;
+        Ok(Self(bytes))
+    }
+}
+
+impl fmt::Display for TradeHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
 
 /// Validates a trade hash (SHA-256, 32 bytes = 64 hex chars).
 ///

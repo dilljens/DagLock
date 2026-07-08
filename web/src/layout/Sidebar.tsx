@@ -1,32 +1,91 @@
 import { useState } from "react";
 import { useRouter, type Route } from "../router";
 import { useWallet } from "../context/WalletContext";
-import { mockSignature } from "../kasware";
+
+/* ─── Navigation Group Structure ─── */
 
 interface NavItem {
 	route: Route;
 	label: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
-	{ route: "/", label: "Dashboard" },
-	{ route: "/offers", label: "Offers" },
-	{ route: "/escrows", label: "Escrows" },
-	{ route: "/swap", label: "Swap" },
-	{ route: "/vaults", label: "Vaults" },
-	{ route: "/subscriptions", label: "Subscriptions" },
-	{ route: "/reputation", label: "Reputation" },
-	{ route: "/jury", label: "Jury" },
-	{ route: "/blog", label: "Blog" },
-	{ route: "/security", label: "Security Deep-Dive" },
-	{ route: "/merchant", label: "Merchant" },
-	{ route: "/stats", label: "Stats" },
-	{ route: "/docs", label: "Docs" },
-	{ route: "/tokens", label: "Tokens" },
-	{ route: "/tokens/create", label: "Create Token" },
-	{ route: "/testnet", label: "Testnet" },
-	{ route: "/settings", label: "Settings" },
-	{ route: "/help", label: "Help" },
+interface NavGroup {
+	label: string;
+	icon: string;
+	items: NavItem[];
+	defaultOpen?: boolean;
+}
+
+const NAV_GROUPS: NavGroup[] = [
+	{
+		label: "Overview",
+		icon: "📊",
+		defaultOpen: true,
+		items: [
+			{ route: "/", label: "Dashboard" },
+			{ route: "/stats", label: "Stats" },
+		],
+	},
+	{
+		label: "Trade",
+		icon: "🔄",
+		defaultOpen: true,
+		items: [
+			{ route: "/offers", label: "Offers" },
+			{ route: "/escrows", label: "Escrows" },
+			{ route: "/swap", label: "Swap" },
+		],
+	},
+	{
+		label: "Finance",
+		icon: "🔒",
+		items: [
+			{ route: "/vaults", label: "Vaults" },
+			{ route: "/subscriptions", label: "Subscriptions" },
+		],
+	},
+	{
+		label: "Community",
+		icon: "👥",
+		items: [
+			{ route: "/reputation", label: "Reputation" },
+			{ route: "/jury", label: "Jury" },
+			{ route: "/settings", label: "Settings" },
+		],
+	},
+	{
+		label: "Resources",
+		icon: "📚",
+		items: [
+			{ route: "/blog", label: "Blog" },
+			{ route: "/security", label: "Security Deep-Dive" },
+			{ route: "/docs", label: "Docs" },
+			{ route: "/help", label: "Help" },
+			{ route: "/testnet", label: "Testnet Guide" },
+		],
+	},
+	{
+		label: "Advanced",
+		icon: "⚙️",
+		items: [
+			{ route: "/merchant", label: "Merchant" },
+			{ route: "/tokens", label: "Tokens" },
+			{ route: "/tokens/create", label: "Create Token" },
+		],
+	},
+];
+
+/* ─── Quick Actions ─── */
+
+interface QuickAction {
+	label: string;
+	route: Route;
+	icon: string;
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+	{ label: "Create Escrow", route: "/escrows", icon: "＋" },
+	{ label: "New Offer", route: "/offers", icon: "📋" },
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -34,7 +93,24 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 	const { state, connect, setManualAddress } = useWallet();
 	const [showManualInput, setShowManualInput] = useState(false);
 	const [manualAddr, setManualAddr] = useState("");
+	const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+		// Start with groups collapsed by default except those marked defaultOpen
+		const start = new Set<string>();
+		for (const g of NAV_GROUPS) {
+			if (!g.defaultOpen) start.add(g.label);
+		}
+		return start;
+	});
 	const [networkWarning, setNetworkWarning] = useState<string | null>(null);
+
+	function toggleGroup(label: string) {
+		setCollapsed((prev) => {
+			const next = new Set(prev);
+			if (next.has(label)) next.delete(label);
+			else next.add(label);
+			return next;
+		});
+	}
 
 	function handleNav(r: Route) {
 		navigate(r);
@@ -45,12 +121,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 		setNetworkWarning(null);
 		try {
 			await connect();
-			// Check for network mismatch — KasWare only supports testnet-11
 			if (state.network && state.network !== "testnet-11" && state.network !== "mainnet") {
 				setNetworkWarning(state.network);
 			}
 		} catch {
-			// connect() sets error in context, nothing extra needed
+			// connect() sets error in context
 		}
 	}
 
@@ -85,18 +160,59 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 					</div>
 				</div>
 
-				<nav className="sidebar-nav">
-					{NAV_ITEMS.map((item) => (
+				{/* Quick actions */}
+				<div className="sidebar-actions">
+					{QUICK_ACTIONS.map((a) => (
 						<button
+							key={a.label}
 							type="button"
-							key={item.route}
-							className={`sidebar-link ${route === item.route ? "sidebar-link--active" : ""}`}
-							onClick={() => handleNav(item.route)}
+							className={`sidebar-link ${route === a.route ? "sidebar-link--active" : ""}`}
+							onClick={() => handleNav(a.route)}
+							style={{ fontSize: "12px", padding: "8px 12px" }}
 						>
-							<span className="sidebar-link-icon">{item.label.charAt(0)}</span>
-							<span>{item.label}</span>
+							<span className="sidebar-link-icon" style={{ fontSize: "14px" }}>
+								{a.icon}
+							</span>
+							<span>{a.label}</span>
 						</button>
 					))}
+				</div>
+
+				<nav className="sidebar-nav">
+					{NAV_GROUPS.map((group) => {
+						const isOpen = !collapsed.has(group.label);
+						const isGroupActive = group.items.some((it) => route === it.route);
+
+						return (
+							<div key={group.label} className="sidebar-group">
+								<button
+									type="button"
+									className={`sidebar-group-header ${isGroupActive ? "sidebar-group-header--active" : ""}`}
+									onClick={() => toggleGroup(group.label)}
+								>
+									<span className="sidebar-group-icon">{group.icon}</span>
+									<span className="sidebar-group-label">{group.label}</span>
+									<span className={`sidebar-group-chevron ${isOpen ? "sidebar-group-chevron--open" : ""}`}>
+										▸
+									</span>
+								</button>
+								{isOpen && (
+									<div className="sidebar-group-items">
+										{group.items.map((item) => (
+											<button
+												type="button"
+												key={item.route}
+												className={`sidebar-link ${route === item.route ? "sidebar-link--active" : ""}`}
+												onClick={() => handleNav(item.route)}
+											>
+												<span>{item.label}</span>
+											</button>
+										))}
+									</div>
+								)}
+							</div>
+						);
+					})}
 				</nav>
 
 				<div className="sidebar-footer">

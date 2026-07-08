@@ -53,26 +53,35 @@ export function Dashboard({ stats }: DashboardProps) {
 							✨ Milestone payments · Subscriptions · Multi-party escrow · AI mediation · E2E chat ·
 							Atomic swaps · Analytics
 						</p>
-						{wallet.detected ? (
+						<div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+							{wallet.detected ? (
+								<button
+									className="button primary"
+									onClick={connect}
+									disabled={wallet.loading}
+									style={{ fontSize: "16px", padding: "14px 28px" }}
+								>
+									{wallet.loading ? "Connecting…" : "Connect Wallet"}
+								</button>
+							) : (
+								<a
+									href="https://kasware.xyz"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="button primary"
+									style={{ fontSize: "16px", padding: "14px 28px" }}
+								>
+									Install KasWare
+								</a>
+							)}
 							<button
-								className="button primary"
-								onClick={connect}
-								disabled={wallet.loading}
+								className="button"
+								onClick={() => navigate("/testnet")}
 								style={{ fontSize: "16px", padding: "14px 28px" }}
 							>
-								{wallet.loading ? "Connecting…" : "Connect Wallet"}
+								Try Testnet (no wallet)
 							</button>
-						) : (
-							<a
-								href="https://kasware.xyz"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="button primary"
-								style={{ fontSize: "16px", padding: "14px 28px" }}
-							>
-								Install KasWare
-							</a>
-						)}
+						</div>
 					</div>
 
 					{/* What is DagLock — feature cards */}
@@ -371,11 +380,16 @@ export function Dashboard({ stats }: DashboardProps) {
 							</article>
 						))}
 						{settledCount > 0 && !escrows.loading && (
-							<EmptyState
-								icon="📊"
-								title={`${settledCount} settled escrows`}
-								description="Tap to close the dashboard empty state."
-							/>
+							<p className="muted" style={{ fontSize: "13px", marginTop: "12px" }}>
+								✓ {settledCount} settled escrow{settledCount !== 1 ? "s" : ""} — view in{" "}
+								<button
+									className="button"
+									style={{ fontSize: "12px", padding: "2px 8px" }}
+									onClick={() => navigate("/escrows")}
+								>
+									My Escrows
+								</button>
+							</p>
 						)}
 					</div>
 					<div className="dashboard-column-side">
