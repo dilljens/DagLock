@@ -151,6 +151,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/stats", get(escrows::stats))
         .route("/v1/stats/daily", get(stats::daily))
         .route("/v1/stats/summary", get(stats::summary))
+        .route("/v1/stats/compute", post(stats::compute))
         .route("/v1/identity", post(identity::create_identity))
         .route("/v1/offers", get(offers::list).post(offers::create))
         .route("/v1/offers/:id/accept", post(offers::accept))

@@ -28,6 +28,21 @@ pub async fn daily(
     }
 }
 
+/// POST /v1/stats/compute — trigger one-shot daily stats computation.
+/// Useful for backfilling or forcing a refresh without restarting the indexer.
+pub async fn compute(State(state): State<AppState>) -> Json<Value> {
+    match queries::compute_and_store_daily_stats(&state.db).await {
+        Ok(_) => {
+            tracing::info!("Daily stats computed on demand");
+            Json(json!({ "status": "ok", "message": "Daily stats computed successfully" }))
+        }
+        Err(e) => {
+            tracing::error!("Failed to compute daily stats on demand: {e}");
+            Json(json!({ "status": "error", "message": format!("{e}") }))
+        }
+    }
+}
+
 /// GET /v1/stats/summary
 pub async fn summary(State(state): State<AppState>) -> Json<Value> {
     let uptime = state.started_at.elapsed().as_secs() as i64;
