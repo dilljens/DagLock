@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useForm } from "react-hook-form";
-import { api, type Subscription, type CreateSubscriptionRequest, type AuthHeaders } from "../api";
+import { api, type Subscription, type CreateSubscriptionRequest, type AuthHeaders, type CompileResponse } from "../api";
 import { useAddress, useWallet } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField, SkeletonTable } from "../ui";
@@ -303,180 +302,171 @@ function SubscriptionActions({
 function CreateSubscription({ address }: { address: string }) {
 	const { sign, state } = useWallet();
 	const { notify } = useToast();
-	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
+	const [step, setStep] = useState<"form" | "compile" | "done">("form");
 	const [result, setResult] = useState<Subscription | null>(null);
+	const [compileResult, setCompileResult] = useState<CompileResponse | null>(null);
+	const [txId, setTxId] = useState("");
 	const [intervalSecs, setIntervalSecs] = useState(604800);
 	const [totalAmount, setTotalAmount] = useState("");
 	const [installmentAmount, setInstallmentAmount] = useState("");
 	const [maxPeriods, setMaxPeriods] = useState("12");
 	const [recipientAddress, setRecipientAddress] = useState("");
+	const [loading, setLoading] = useState(false);
 
-	async function handleSubmit(e: React.FormEvent) {
+	async function handleCompile(e: React.FormEvent) {
 		e.preventDefault();
 		const totalNum = Number.parseFloat(totalAmount);
 		const installmentNum = Number.parseFloat(installmentAmount);
 		const maxPeriodsNum = Number.parseInt(maxPeriods, 10);
-		if (!totalNum || totalNum <= 0) return;
-		if (!installmentNum || installmentNum <= 0) return;
+		if (!totalNum || totalNum <= 0 || !installmentNum || installmentNum <= 0) return;
 		if (!maxPeriodsNum || maxPeriodsNum < 1) return;
 		if (!recipientAddress.startsWith("kaspa:")) return;
-
 		if (installmentNum > totalNum) {
 			notify("error", "Installment cannot exceed total amount");
 			return;
 		}
-
-		setStatus("loading");
+		setLoading(true);
 		try {
-			const sompiTotal = Math.round(totalNum * 100_000_000);
-			const sompiInstallment = Math.round(installmentNum * 100_000_000);
+			let payerKey: string;
+			if (window.kasware?.getPublicKey) {
+				payerKey = await window.kasware.getPublicKey();
+			} else {
+				payerKey = "a000000000000000000000000000000000000000000000000000000000000001";
+			}
+			const recipientKey = "b000000000000000000000000000000000000000000000000000000000000002";
+			const compiled = await api.compile("daglock_subscription", {
+				payer_key: payerKey,
+				recipient_key: recipientKey,
+				total_amount: String(Math.round(totalNum * 100_000_000)),
+				installment_amount: String(Math.round(installmentNum * 100_000_000)),
+				interval_seconds: String(intervalSecs),
+				start_time: String(Math.floor(Date.now() / 1000)),
+				treasury_key: "0000000000000000000000000000000000000000000000000000000000000000",
+			});
+			setCompileResult(compiled);
+			setStep("compile");
+			notify("success", "Covenant compiled!");
+		} catch (err) {
+			notify("error", "Compilation failed", (err as Error).message);
+		} finally {
+			setLoading(false);
+		}
+	}
 
+	async function handleCreate() {
+		if (!compileResult) return;
+		const sompiTotal = Math.round(Number.parseFloat(totalAmount) * 100_000_000);
+		const sompiInstallment = Math.round(Number.parseFloat(installmentAmount) * 100_000_000);
+		const maxPeriodsNum = Number.parseInt(maxPeriods, 10);
+		setLoading(true);
+		try {
 			const auth: AuthHeaders = {
 				address,
 				signature: await sign(`subscribe:${recipientAddress}:${sompiInstallment}`),
 				message: `subscribe:${recipientAddress}:${sompiInstallment}`,
 			};
-
-			const sub = await api.createSubscription(
-				{
-					payer_address: address,
-					recipient_address: recipientAddress,
-					total_amount: sompiTotal,
-					installment_amount: sompiInstallment,
-					interval_seconds: intervalSecs,
-					max_periods: maxPeriodsNum,
-					start_time: Math.floor(Date.now() / 1000),
-				},
-				auth,
-			);
+			const sub = await api.createSubscription({
+				payer_address: address,
+				recipient_address: recipientAddress,
+				total_amount: sompiTotal,
+				installment_amount: sompiInstallment,
+				interval_seconds: intervalSecs,
+				max_periods: maxPeriodsNum,
+				start_time: Math.floor(Date.now() / 1000),
+				lock_tx_id: txId || undefined,
+			}, auth);
 			setResult(sub);
-			setStatus("done");
+			setStep("done");
 			notify("success", "Subscription created!");
-		} catch (e) {
-			notify("error", "Failed to create subscription", (e as Error).message);
-			setStatus("idle");
+		} catch (err) {
+			notify("error", "Failed to create subscription", (err as Error).message);
+		} finally {
+			setLoading(false);
 		}
 	}
 
-	if (status === "done" && result) {
+	if (step === "done" && result) {
 		return (
-			<EmptyState
-				icon="✅"
-				title="Subscription created!"
-				description={`ID: ${result.id} · ${money(result.installment_amount)} / ${formatInterval(result.interval_seconds)} · ${result.max_periods} periods`}
-			/>
+			<EmptyState icon="✅" title="Subscription created!"
+				description={`ID: ${result.id} · ${money(result.installment_amount)} / ${formatInterval(result.interval_seconds)} · ${result.max_periods} periods`} />
+		);
+	}
+
+	if (step === "compile" && compileResult) {
+		return (
+			<div>
+				<div className="panel" style={{ marginBottom: "16px" }}>
+					<h3 style={{ margin: "0 0 8px" }}>Covenant Compiled</h3>
+					<p className="muted" style={{ fontSize: "13px", margin: "0 0 12px" }}>
+						The subscription covenant has been compiled. In testnet mode, enter any
+						64-char hex string as the transaction ID.
+					</p>
+					<div className="stack">
+						<div className="row">
+							<span>Template hash</span>
+							<code style={{ fontSize: "11px" }}>{compileResult.template_hash}</code>
+						</div>
+					</div>
+					<FormField label="Transaction ID">
+						<input value={txId} onChange={(e) => setTxId(e.target.value)}
+							placeholder="deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" />
+					</FormField>
+				</div>
+				<div style={{ display: "flex", gap: "8px" }}>
+					<button className="button" onClick={() => setStep("form")} disabled={loading}>Back</button>
+					<button className="button primary" onClick={handleCreate} disabled={loading || !txId}>
+						{loading ? "Creating..." : "Create Subscription"}
+					</button>
+				</div>
+			</div>
 		);
 	}
 
 	return (
-		<form className="form form-stacked" onSubmit={handleSubmit}>
-			<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
-				You (payer): <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
-			</div>
-
-			<FormField label="Recipient address">
-				<input
-					value={recipientAddress}
-					onChange={(e) => setRecipientAddress(e.target.value)}
-					placeholder="kaspa:..."
-					required
-				/>
-			</FormField>
-
-			<div style={{ display: "flex", gap: "12px" }}>
-				<div style={{ flex: 1 }}>
-					<FormField label="Total amount (KAS)">
-						<input
-							type="number"
-							step="any"
-							value={totalAmount}
-							onChange={(e) => setTotalAmount(e.target.value)}
-							placeholder="1000"
-							required
-						/>
-					</FormField>
+		<div>
+			<form className="form form-stacked" onSubmit={handleCompile}>
+				<div style={{ fontSize: "13px", color: "#88b888", padding: "8px 0" }}>
+					You (payer): <code style={{ display: "inline", fontSize: "12px" }}>{address.slice(0, 24)}…</code>
 				</div>
-				<div style={{ flex: 1 }}>
-					<FormField label="Installment (KAS)">
-						<input
-							type="number"
-							step="any"
-							value={installmentAmount}
-							onChange={(e) => setInstallmentAmount(e.target.value)}
-							placeholder="100"
-							required
-						/>
-					</FormField>
-				</div>
-			</div>
-
-			<FormField label="Interval">
-				<select
-					value={intervalSecs}
-					onChange={(e) => setIntervalSecs(Number(e.target.value))}
-				>
-					{INTERVAL_PRESETS.map((p) => (
-						<option key={p.seconds} value={p.seconds}>
-							{p.label}
-						</option>
-					))}
-				</select>
-			</FormField>
-
-			<FormField label="Max periods">
-				<input
-					type="number"
-					min={1}
-					max={365}
-					value={maxPeriods}
-					onChange={(e) => setMaxPeriods(e.target.value)}
-					placeholder="12"
-					required
-				/>
-				<span style={{ fontSize: "11px", color: "#888", marginTop: "4px", display: "block" }}>
-					Number of installments (e.g. 12 for monthly over 1 year)
-				</span>
-			</FormField>
-
-			{totalAmount && installmentAmount && maxPeriods && (
-				<div
-					style={{
-						padding: "12px",
-						background: "#1a2a1a",
-						borderRadius: "8px",
-						fontSize: "13px",
-						color: "#aaa",
-						marginTop: "8px",
-					}}
-				>
-					<div>
-						<strong style={{ color: "#4caf50" }}>Summary</strong>
+				<FormField label="Recipient address">
+					<input value={recipientAddress} onChange={(e) => setRecipientAddress(e.target.value)}
+						placeholder="kaspa:..." required />
+				</FormField>
+				<div style={{ display: "flex", gap: "12px" }}>
+					<div style={{ flex: 1 }}>
+						<FormField label="Total amount (KAS)">
+							<input type="number" step="any" value={totalAmount}
+								onChange={(e) => setTotalAmount(e.target.value)} placeholder="1000" required />
+						</FormField>
 					</div>
-					<div style={{ marginTop: "4px" }}>
-						{Number(installmentAmount) * Number(maxPeriods)} KAS total drawn ·{" "}
-						{formatInterval(intervalSecs)} intervals
+					<div style={{ flex: 1 }}>
+						<FormField label="Installment (KAS)">
+							<input type="number" step="any" value={installmentAmount}
+								onChange={(e) => setInstallmentAmount(e.target.value)} placeholder="100" required />
+						</FormField>
 					</div>
-					{Number(installmentAmount) * Number(maxPeriods) > Number(totalAmount) && (
-						<div style={{ color: "#ff9800", marginTop: "4px" }}>
-							⚠️ Total drawn exceeds total locked — adjust amounts
-						</div>
-					)}
 				</div>
-			)}
-
-			<button
-				className="button primary"
-				type="submit"
-				disabled={status === "loading"}
-				style={{ marginTop: "12px" }}
-			>
-				{status === "loading" ? "Creating…" : "Create Subscription"}
-			</button>
-		</form>
+				<FormField label="Interval">
+					<select value={intervalSecs} onChange={(e) => setIntervalSecs(Number(e.target.value))}>
+						{INTERVAL_PRESETS.map((p) => (
+							<option key={p.seconds} value={p.seconds}>{p.label}</option>
+						))}
+					</select>
+				</FormField>
+				<FormField label="Max periods">
+					<input type="number" min={1} value={maxPeriods}
+						onChange={(e) => setMaxPeriods(e.target.value)} placeholder="12" required />
+				</FormField>
+				<button className="button primary" type="submit" disabled={loading}>
+					{loading ? "Compiling..." : "Compile Covenant"}
+				</button>
+			</form>
+			<p className="muted" style={{ fontSize: "12px", marginTop: "12px" }}>
+				The subscription covenant will be compiled with your parameters, then you'll fund it.
+			</p>
+		</div>
 	);
-}
-
-function SubscriptionLookup() {
+}function SubscriptionLookup() {
 	const [id, setId] = useState("");
 	const [sub, setSub] = useState<LoadState<Subscription>>({ loading: false });
 

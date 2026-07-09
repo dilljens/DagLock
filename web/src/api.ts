@@ -564,6 +564,7 @@ export type CreateSubscriptionRequest = {
 	interval_seconds: number;
 	max_periods: number;
 	start_time: number;
+	lock_tx_id?: string;
 };
 
 async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
