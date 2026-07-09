@@ -33,11 +33,12 @@ pub async fn compile(
         "daglock_vault_softlock" => compile_vault_softlock_template(&state, &body.params),
         "daglock_vault_multisig" => compile_vault_multisig_template(&state, &body.params),
         "daglock_krc20" => compile_krc20_template(&state, &body.params),
+        "daglock_subscription" => compile_subscription_template(&state, &body.params),
         other => Err((
             StatusCode::BAD_REQUEST,
             Json(json!(ApiError::new(
                 "unknown_template",
-                format!("Unknown template '{other}'. Options: daglock, daglock_arbiter, daglock_vault, daglock_vault_softlock, daglock_vault_multisig, daglock_krc20")
+                format!("Unknown template '{other}'. Options: daglock, daglock_arbiter, daglock_vault, daglock_vault_softlock, daglock_vault_multisig, daglock_krc20, daglock_subscription")
             ))),
         )),
     }
@@ -421,6 +422,45 @@ fn compile_krc20_template(
         kcc20_prefix_len, kcc20_suffix_len,
         &kcc20_expected_hash, &kcc20_prefix, &kcc20_suffix,
         &kcc20_covenant_id,
+    );
+    Ok(compile_result(&compiled))
+}
+
+fn compile_subscription_template(
+    state: &AppState,
+    params: &std::collections::HashMap<String, String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let payer_key = hex_param(params, "payer_key")?;
+    let recipient_key = hex_param(params, "recipient_key")?;
+    let total_amount = int_param(params, "total_amount")?;
+    let installment_amount = int_param(params, "installment_amount")?;
+    let interval_seconds = int_param(params, "interval_seconds")?;
+    let start_time = int_param(params, "start_time")?;
+    let current_period = int_param(params, "current_period").unwrap_or(0);
+    let treasury = optional_or_enforced_treasury(params, state)?;
+
+    if payer_key.len() != 32 || recipient_key.len() != 32 || treasury.len() != 32 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_param",
+                "payer_key, recipient_key, and treasury_key must be 32 bytes (64 hex chars)"
+            ))),
+        ));
+    }
+    if total_amount <= 0 || installment_amount <= 0 || installment_amount > total_amount {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_param",
+                "total_amount and installment_amount must be positive, installment <= total"
+            ))),
+        ));
+    }
+
+    let compiled = daglock_contracts::compile_daglock_subscription(
+        &payer_key, &recipient_key, total_amount, installment_amount,
+        interval_seconds, start_time, current_period, &treasury,
     );
     Ok(compile_result(&compiled))
 }
