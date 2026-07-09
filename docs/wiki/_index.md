@@ -30,11 +30,15 @@
 | `docs/local-testnet-node.md` | Local node setup plan (after RAM upgrade) |
 | `.opencode/plans/cross-chain-btc-eth-detailed.md` | Cross-chain swap architecture (deferred) |
 | `.opencode/plans/marketing-plan.md` | Community + YouTuber outreach plan |
+| `docs/wiki/plans/roadmap.md` | Project roadmap and upcoming milestones |
+| `docs/wiki/plans/mainnet-launch.md` | Mainnet launch plan with phases, risks, and checklist |
+| `docs/deferred-items-plan.md` | Deferred audit items and their status |
 
 ## Audit Log
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | **Deferred items completed**: Bot SQLite persistent storage, 18 new covenant tests (subscription, milestone, advanced), 17 new bot tests (command handlers, SQLite CRUD). Total: 376 tests (293 Rust + 44 Web + 39 Bot). |
 | 2026-07-07 | **Full feature completion**: Subscription web UI, KRC-20 bot commands, vault API endpoints, MediationPanel wiring, deal type backend, on-chain anchoring UI, DeepSeek AI switch |
 | 2026-07-07 | **Feature completeness audit**: 20 features checked across 4 layers. 12 partial/missing features completed. |
 | 2026-07-07 | **CI Green + E2E**: 40 Playwright tests, 300+ Rust, 44 web, 22 bot. All passing. |
@@ -57,4 +61,4 @@
 | 2026-06-23 | **S3 ICC fix**: KCC-20 input ownership validated |
 | 2026-06-18 | **SDK migration**: rusty-kaspa tn12 → v2.0.1 |
 
-> Knowledge graph last synced: 7/7/2026
+> Knowledge graph last synced: 7/8/2026

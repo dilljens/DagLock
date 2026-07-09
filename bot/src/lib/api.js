@@ -114,29 +114,29 @@ export class ApiClient {
 		});
 	}
 
-	settleEscrow(id) {
+	settleEscrow(id, auth) {
 		return this.request(`/escrows/${encodeURIComponent(id)}/settle`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
-	refundEscrow(id) {
+	refundEscrow(id, auth) {
 		return this.request(`/escrows/${encodeURIComponent(id)}/refund`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
-	disputeEscrow(id, reason) {
+	disputeEscrow(id, reason, auth) {
 		return this.request(`/escrows/${encodeURIComponent(id)}/dispute`, {
 			method: "POST",
 			body: JSON.stringify({ reason }),
-		});
+		}, auth);
 	}
 
-	cancelEscrow(id) {
+	cancelEscrow(id, auth) {
 		return this.request(`/escrows/${encodeURIComponent(id)}/cancel`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
 	swapEscrow(id, preimage) {
@@ -163,17 +163,17 @@ export class ApiClient {
 		});
 	}
 
-	acceptOffer(id, counterpartyAddress) {
+	acceptOffer(id, counterpartyAddress, auth) {
 		return this.request(`/offers/${encodeURIComponent(id)}/accept`, {
 			method: "POST",
 			body: JSON.stringify({ counterparty_address: counterpartyAddress }),
-		});
+		}, auth);
 	}
 
-	cancelOffer(id) {
+	cancelOffer(id, auth) {
 		return this.request(`/offers/${encodeURIComponent(id)}/cancel`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
 	// ── Reputation ────────────────────────────────────────────────────

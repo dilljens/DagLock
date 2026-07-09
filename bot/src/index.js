@@ -33,6 +33,11 @@ initDb();
 // In-memory conversation wizard state (ephemeral — not persisted)
 const convState = new Map();
 
+// Pending signature requests — stored so /submit_sig can reconstruct the
+// exact message the user signed in their wallet. Key: `${userId}:${escrowId}`
+// Value: { message, action, createdAt }
+const pendingSigs = new Map();
+
 function startConv(userId) {
 	convState.set(userId, { step: "amount", data: {} });
 }
@@ -2771,7 +2776,15 @@ async function handleSettleConfirm(ctx, escrowId) {
 
 		// Get the escrow to build the signature message
 		const escrow = await api.getEscrow(escrowId);
-		const message = `settle:${escrowId}:${Math.floor(Date.now() / 1000)}:${Math.random().toString(36).slice(2, 10)}`;
+		const nonce = Math.random().toString(36).slice(2, 10);
+		const message = `settle:${escrowId}:${Math.floor(Date.now() / 1000)}:${nonce}`;
+
+		// Store pending sig for /submit_sig to pick up
+		pendingSigs.set(`${ctx.from.id}:${escrowId}`, {
+			message,
+			action: "settle",
+			createdAt: Date.now(),
+		});
 
 		await ctx.editMessageText(
 			"📤 *Settlement Instructions*\n\n" +
@@ -2824,7 +2837,15 @@ async function handleRefundConfirm(ctx, escrowId) {
 		}
 
 		const escrow = await api.getEscrow(escrowId);
-		const message = `refund:${escrowId}:${Math.floor(Date.now() / 1000)}:${Math.random().toString(36).slice(2, 10)}`;
+		const nonce = Math.random().toString(36).slice(2, 10);
+		const message = `refund:${escrowId}:${Math.floor(Date.now() / 1000)}:${nonce}`;
+
+		// Store pending sig for /submit_sig to pick up
+		pendingSigs.set(`${ctx.from.id}:${escrowId}`, {
+			message,
+			action: "refund",
+			createdAt: Date.now(),
+		});
 
 		await ctx.editMessageText(
 			"↩️ *Refund Instructions*\n\n" +
@@ -2934,36 +2955,56 @@ bot.command("submit_sig", async (ctx) => {
 			return await ctx.reply("Set your address first: /setaddress <kaspa:...>");
 		}
 
-		// We need to determine which action (settle or refund) based on context
-		// For now, try settle first since it's the more common action
+		// Look up the pending signature to reconstruct the exact message
+		const pendingKey = `${ctx.from.id}:${escrowId}`;
+		const pending = pendingSigs.get(pendingKey);
+
+		if (!pending) {
+			return await ctx.reply(
+				"❌ No pending signature found for this escrow.\n\n" +
+					"First use /settle or /refund to generate a signature message, " +
+					"sign it in your wallet, then paste the signature here.",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		// Expire after 15 minutes
+		if (Date.now() - pending.createdAt > 15 * 60 * 1000) {
+			pendingSigs.delete(pendingKey);
+			return await ctx.reply(
+				"❌ Signature request expired (15 min timeout). Please use /settle or /refund again to get a fresh message.",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
 		await ctx.reply("⏳ Processing... This may take a moment.", { parse_mode: "Markdown" });
 
-		// Try to settle with the signature
-		const result = await api.settleEscrow(escrowId, {
-			address,
-			signature,
-			message: `settle:${escrowId}`,
-		});
+		let result;
+		if (pending.action === "settle") {
+			result = await api.settleEscrow(escrowId, {
+				address,
+				signature,
+				message: pending.message,
+			});
+		} else if (pending.action === "refund") {
+			result = await api.refundEscrow(escrowId, {
+				address,
+				signature,
+				message: pending.message,
+			});
+		}
+
+		pendingSigs.delete(pendingKey);
 
 		await ctx.reply(
-			`✅ *Escrow Settled!*\n\n` +
+			`✅ *Escrow ${pending.action === "settle" ? "Settled" : "Refunded"}!*\n\n` +
 				`ID: \`${result.escrow_id}\`\n` +
 				`Status: \`${result.status}\`\n\n` +
 				`Use /receipt ${escrowId} to view the receipt.`,
 			{ parse_mode: "Markdown" },
 		);
 	} catch (err) {
-		// The signature didn't work for settle. The user may have signed a
-		// different message (e.g. refund instead of settle). Tell them which
-		// commands to use instead of guessing with the wrong signature.
-		const msg =
-			err.message && err.message.includes("unauthorized")
-				? "❌ Signature not valid for settle. If you signed for a refund instead, use:\n`/refund " +
-					escrowId +
-					"`\nthen submit the refund signature with:\n`/submit_sig " +
-					escrowId +
-					" <sig>`"
-				: "❌ Error: " + (err.message || "Unknown error");
+		const msg = "❌ Error: " + (err.message || "Unknown error");
 		await ctx.reply(msg, { parse_mode: "Markdown" });
 	}
 });

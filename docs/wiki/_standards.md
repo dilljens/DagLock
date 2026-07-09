@@ -38,7 +38,7 @@ Check: Validate with `validate_kaspa_address()`
 - `Test: shared`
   - Run: `cargo test -p daglock-shared` | Notes: 20 tests (constants + validation)
 - `Test: contracts`
-  - Run: `cargo test -p daglock-contracts` | Notes: 5 test files — TxScriptEngine execution tests
+  - Run: `cargo test -p daglock-contracts` | Notes: 8 test files — 104 TxScriptEngine execution tests
 - `Test: indexer`
   - Run: `cargo test -p daglock-indexer` | Notes: 3 test files — unit + lifecycle + edge cases
 - `Test: cli`
@@ -46,9 +46,9 @@ Check: Validate with `validate_kaspa_address()`
 - `Test: wasm-sdk`
   - Run: `cargo test -p daglock-wasm-sdk` | Notes: Native (not wasm) compilation tests
 - `Test: web`
-  - Run: `cd web && npm test` | Notes: 36 tests across 9 files (Vitest + RTL)
+  - Run: `cd web && npm test` | Notes: 44 tests across 8 files (Vitest + RTL)
 - `Test: bot`
-  - Run: `cd bot && npm test` | Notes: API client + command handlers
+  - Run: `cd bot && npm test` | Notes: 39 tests — API client, SQLite CRUD, command handlers, crypto
 - `Test: simulation`
   - Run: `python3 scripts/simulation.py --trades 30 --bots 3` | Notes: Mass trade generation + reputation testing
 - `reputation-submitter.py`
@@ -84,7 +84,8 @@ Check: Validate with `validate_kaspa_address()`
 - ****Q2/Q3**: Magic number `200` in fee calc**
   - Status: ✅ Fixed | Domain: web
 - ****S6**: Bot stores addresses in plaintext /tmp**
-  - Status: ✅ Fixed | Domain: bot
+  - Status: ✅ Fixed July 8 | Domain: bot
+  - Migration to SQLite via `better-sqlite3`. Auto-migration from legacy JSON. Encryption-at-rest preserved.
 - ****U4**: Bot `/create` redirects to web**
   - Status: ✅ Fixed | Domain: bot
 - ****Q8**: Bot API no retry/backoff**

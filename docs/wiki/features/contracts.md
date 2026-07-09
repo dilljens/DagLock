@@ -30,6 +30,21 @@
 ## Entrypoint Constants
 
 All entrypoint name constants defined in `lib.rs::entrypoints` module for use by indexer and tests.
+Added July 8: `CLAIM`, `CANCEL` (subscription), `SWAP_PARTIAL`, `EXTEND_TIMEOUT` (advanced).
+
+## Test Files (July 8, 2026)
+
+| Test file | Tests | Covers |
+|-----------|-------|--------|
+| `daglock_execution_tests.rs` | 21 | DagLock base + Advanced + Deposit + Multi |
+| `daglock_arbiter_tests.rs` | 11 | Arbiter all entrypoints |
+| `daglock_vault_tests.rs` | 17 | Vault + VaultMultisig + VaultSoftlock |
+| `daglock_krc20_execution_tests.rs` | 9 | KRC-20 release/swap/refund |
+| `daglock_krc20_tests.rs` | 6 | KRC-20 compilation + ABI + fee math |
+| `daglock_milestone_tests.rs` | 7 | Milestone all 5 entrypoints |
+| `daglock_subscription_tests.rs` | 6 | Subscription claim/cancel/release |
+| `daglock_reputation_tests.rs` | 4 | Reputation record + template hash |
+| **Total** | **104** | |
 
 ---
-*Confidence: 0.95 · Last updated: 7/7/2026*
+*Confidence: 0.95 · Last updated: 7/8/2026*

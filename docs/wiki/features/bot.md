@@ -2,6 +2,23 @@
 
 Telegram bot (`@DagLock_bot`). 50+ commands using grammY framework. Communicates with indexer REST API.
 
+## Storage
+
+- **July 8, 2026:** Migrated from `/tmp/daglock-users.json` to SQLite via `better-sqlite3`.
+- **Module:** `bot/src/db.js` — wraps `better-sqlite3` with ESM `createRequire`.
+- **Tables:** `users` (telegram_id, address, updated_at).
+- **Migration:** Auto-migrates legacy `/tmp/daglock-users.json` on first run (backup as `.bak`).
+- **Encryption:** Addresses still encrypted at rest via `BOT_ENCRYPTION_KEY` (caller's responsibility).
+- **Env:** `BOT_DB_PATH` (default: `bot/bot.db`).
+
+## Tests
+
+- `tests/unit/commands.test.js` — command handler logic (10 tests)
+- `tests/unit/db.test.js` — SQLite CRUD + migration (7 tests)
+- `src/lib/api.test.js` — API client with mocked fetch (12 tests)
+- `src/crypto.test.js` — encryption/decryption round-trips (10 tests)
+- Run: `cd bot && npm test` (39 tests)
+
 ## All Commands
 
 | Command | Category | Purpose |
