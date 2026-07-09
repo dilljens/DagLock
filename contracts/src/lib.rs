@@ -458,6 +458,12 @@ pub mod entrypoints {
     pub const APPROVE_MILESTONE: &str = "approve_milestone";
     pub const COMPLETE: &str = "complete";
     pub const REFUND_REMAINING: &str = "refund_remaining";
+    // Subscription entrypoints
+    pub const CLAIM: &str = "claim";
+    pub const CANCEL: &str = "cancel";
+    // Advanced entrypoints
+    pub const SWAP_PARTIAL: &str = "swap_partial";
+    pub const EXTEND_TIMEOUT: &str = "extendTimeout";
     // Multi-party entrypoints
     // release, swap, refund shared with base
     // Deposit entrypoints
@@ -477,6 +483,8 @@ mod tests {
         assert!(src.contains("entrypoint function swap"));
         assert!(src.contains("entrypoint function refund"));
         assert!(src.contains("entrypoint function auto_settle"));
+        assert!(src.contains("entrypoint function emergency_refund"));
+        assert!(!src.is_empty());
     }
 
     #[test]

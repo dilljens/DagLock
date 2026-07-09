@@ -1,10 +1,27 @@
 # Deferred Items — Implementation Plan
 
 > Deferred during July 8 audit sprint. These items need external access, infrastructure changes, or are larger efforts.
+>
+> **Status:** Implementation started July 8, 2026. Items with no external dependencies are being actively worked.
 
 ---
 
-## 1. Rotate Cloudflare API Token & Encryption Key (C1/C3)
+## Status Overview
+
+| Priority | Item | Status | Who |
+|----------|------|--------|-----|
+| **P1** | Rotate secrets (C1/C3) | ❌ Blocked — needs Cloudflare dashboard | User |
+| **P2** | Bot persistent storage (H3) | ✅ Done — SQLite migration completed | Agent |
+| **P3** | Subscription covenant tests (C5) | ✅ Done | Agent |
+| **P4** | Chat sig verification (H4) | ❌ Blocked — needs wRPC node | User |
+| **P5** | Milestone/Advanced covenant tests (C5) | ✅ Done | Agent |
+| **P6** | Bot test suite (C6) | ✅ Done — index.js command handler tests | Agent |
+
+---
+
+## 1. Rotate Cloudflare API Token & Encryption Key (P1)
+
+**Tracking codes:** C1/C3 (project-internal tracking, unrelated to security audit C1/C3)
 
 **Problem:** Two secrets are stored in plaintext on disk:
 - `.env.cloudflare` — `CLOUDFLARE_API_TOKEN` (live CF API token)
@@ -13,6 +30,8 @@
 Both are gitignored but live unencrypted on the filesystem. If the VPS is compromised, these secrets leak.
 
 **Effort:** 30 minutes
+
+**Dependency:** You need Cloudflare dashboard access.
 
 **Steps:**
 
@@ -45,97 +64,31 @@ Both are gitignored but live unencrypted on the filesystem. If the VPS is compro
 
 ---
 
-## 2. Bot Persistent Storage Migration (H3)
+## 2. Bot Persistent Storage Migration (P2) ✅ Done
 
-**Problem:** User data (`/tmp/daglock-users.json`) is stored at `/tmp/` which is wiped on system restart. Every VPS reboot forces all bot users to re-register their addresses.
+**Tracking code:** H3 (project-internal tracking, unrelated to audit H3)
+
+**Problem:** User data (`/tmp/daglock-users.json`) was stored at `/tmp/` which is wiped on system restart. Every VPS reboot forced all bot users to re-register their addresses.
+
+**Solution:** Migrated to SQLite via `better-sqlite3`.
+
+**What was done:**
+1. Added `better-sqlite3` dependency to `bot/package.json`
+2. Created `bot/src/db.js` — SQLite wrapper with two tables:
+   - `users` (telegram_id, address, created_at)
+   - `conversations` (telegram_id, conv_data, updated_at)
+3. Replaced `loadUsers()`/`saveUsers()` in `bot/src/index.js` with SQLite queries
+4. Added migration from existing `/tmp/daglock-users.json` on startup
+5. Encryption-at-rest preserved (addresses still encrypted via `BOT_ENCRYPTION_KEY`)
+6. Systemd service updated with `BOT_DB_PATH=/opt/daglock-bot/bot.db`
 
 **Effort:** 2-3 hours
 
-**Options:**
-
-### Option A: SQLite (Recommended)
-Move from JSON file to SQLite database alongside the indexer's DB.
-
-**Steps:**
-1. Add `better-sqlite3` or `sql.js` dependency to `bot/package.json`:
-   ```bash
-   cd bot && npm install better-sqlite3
-   ```
-2. Create a `bot/src/db.js` module:
-   ```javascript
-   const Database = require('better-sqlite3');
-   const path = require('path');
-   
-   const DB_PATH = process.env.BOT_DB_PATH || '/opt/daglock-bot/bot.db';
-   const db = new Database(DB_PATH);
-   
-   db.exec(`
-     CREATE TABLE IF NOT EXISTS users (
-       telegram_id INTEGER PRIMARY KEY,
-       address TEXT NOT NULL,
-       created_at INTEGER NOT NULL
-     );
-     CREATE TABLE IF NOT EXISTS conversations (
-       telegram_id INTEGER PRIMARY KEY,
-       conv_data TEXT,
-       updated_at INTEGER NOT NULL
-     );
-   `);
-   
-   module.exports = db;
-   ```
-3. Replace `loadUsers()`/`saveUsers()` with db queries:
-   ```javascript
-   const db = require('./db');
-   
-   function getUserAddress(telegramId) {
-     const row = db.prepare('SELECT address FROM users WHERE telegram_id = ?').get(telegramId);
-     return row ? row.address : null;
-   }
-   
-   function setUserAddress(telegramId, address) {
-     db.prepare('INSERT OR REPLACE INTO users (telegram_id, address, created_at) VALUES (?, ?, ?)')
-       .run(telegramId, address, Math.floor(Date.now() / 1000));
-   }
-   ```
-4. Migrate existing data:
-   ```javascript
-   function migrateFromJson() {
-     const fs = require('fs');
-     const jsonPath = '/tmp/daglock-users.json';
-     if (!fs.existsSync(jsonPath)) return;
-     const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-     const insert = db.prepare('INSERT OR REPLACE INTO users (telegram_id, address, created_at) VALUES (?, ?, ?)');
-     for (const [id, addr] of Object.entries(data.users || {})) {
-       insert.run(parseInt(id), addr, Math.floor(Date.now() / 1000));
-     }
-     const convInsert = db.prepare('INSERT OR REPLACE INTO conversations (telegram_id, conv_data, updated_at) VALUES (?, ?, ?)');
-     for (const [id, conv] of Object.entries(data.conversations || {})) {
-       convInsert.run(parseInt(id), JSON.stringify(conv), Math.floor(Date.now() / 1000));
-     }
-     // Backup and remove old file
-     fs.renameSync(jsonPath, jsonPath + '.bak');
-   }
-   ```
-
-### Option B: Move JSON to Persistent Path
-Simpler but less robust. Change the file path:
-```javascript
-const DB_PATH = process.env.BOT_DATA_DIR || '/opt/daglock-bot/data';
-```
-Then ensure the directory exists and is not in `/tmp/`.
-
-**Files to modify:**
-| File | Change |
-|------|--------|
-| `bot/src/index.js` | Replace `loadUsers`/`saveUsers` functions |
-| `bot/src/db.js` | **New** — SQLite wrapper |
-| `bot/package.json` | Add `better-sqlite3` dependency |
-| `bot/Dockerfile` or systemd service | Set `BOT_DB_PATH` env var |
-
 ---
 
-## 3. Chat Signature Verification (H4)
+## 3. Chat Signature Verification (P4)
+
+**Tracking code:** H4
 
 **Problem:** `--mock-chat-sig` is enabled in production. Anyone can forge chat messages on any escrow. The code has a `WARN` log:
 ```rust
@@ -144,13 +97,13 @@ tracing::warn!("chat_sig verification not yet implemented — accepting with --m
 
 **Effort:** 1-2 days
 
-**Dependency:** Real wRPC node (needs Kaspa node for signature verification)
+**Dependency:** Real wRPC node (needs Kaspa node for signature verification) — blocked until local testnet node is set up.
 
 **Steps:**
 
 1. **Implement chat signature verification in `messages.rs`:**
    The `send_message` handler currently accepts `body.sender_pubkey` as an optional string and doesn't verify it against the escrow's registered chat pubkeys.
-   
+
    ```rust
    // In indexer/src/api/messages.rs, before inserting the message:
    if !state.mock_chat_sig {
@@ -159,20 +112,20 @@ tracing::warn!("chat_sig verification not yet implemented — accepting with --m
            .await
            .map_err(|_e| internal_error())?
            .ok_or_else(|| not_found("escrow", &escrow_id))?;
-       
+
        // Check the signature matches either buyer or seller
        // Message format: "daglock:chat:{escrow_id}:{sender_pubkey}:{nonce}"
        let expected_msg = format!("daglock:chat:{}:{}:{}", escrow_id, sender_pubkey, nonce);
-       
+
        if !state.sig_verifier.verify_signature(&auth.address, &body.signature, &expected_msg)
            .map_err(|e| bad_request("sig_error", &e.to_string()))? {
            return Err(forbidden("invalid_signature", "Chat signature does not match sender"));
        }
-       
+
        // Verify the pubkey is registered for this escrow
        let is_authorized = escrow.chat_pubkey_buyer.as_deref() == Some(&sender_pubkey)
            || escrow.chat_pubkey_seller.as_deref() == Some(&sender_pubkey);
-       
+
        if !is_authorized {
            return Err(forbidden("unauthorized_pubkey", "Sender pubkey not registered for this escrow"));
        }
@@ -195,29 +148,37 @@ tracing::warn!("chat_sig verification not yet implemented — accepting with --m
 
 ---
 
-## 4. Covenant Test Coverage (C5)
+## 4. Covenant Test Coverage (P3/P5) ✅ Done
 
-**Problem:** 7 of 13 covenant `.sil` files have zero execution tests:
-- `daglock_advanced.sil`
-- `daglock_deposit.sil`
-- `daglock_milestone.sil`
-- `daglock_multi.sil`
-- `daglock_subscription.sil`
-- `daglock_vault_multisig.sil`
-- `daglock_vault_softlock.sil`
+**Tracking code:** C5
 
-**Effort:** 3-5 days total (spread across covenants)
+**Initial problem statement (outdated):** 7 of 13 covenant `.sil` files have zero execution tests.
 
-**Priority order (by user-facing impact):**
-1. `daglock_subscription.sil` — High (used by subscription flow)
-2. `daglock_multi.sil` — High (multi-party escrows)
-3. `daglock_milestone.sil` — Medium (milestone escrows)
-4. `daglock_vault_multisig.sil` — Medium (multisig vaults)
-5. `daglock_vault_softlock.sil` — Medium (softlock vaults)
-6. `daglock_deposit.sil` — Low (security deposit, UI not fully wired)
-7. `daglock_advanced.sil` — Low (advanced escrow features)
+**Correction (July 8):** Only **3** of 13 covenants were untested. The following already had execution tests:
 
-**Test pattern** (follow existing `daglock_execution_tests.rs`):
+| Covenant | Test file |
+|----------|-----------|
+| `daglock.sil` | `daglock_execution_tests.rs` (742 lines) |
+| `daglock_krc20.sil` | `daglock_krc20_execution_tests.rs` (418 lines) + `daglock_krc20_tests.rs` (185 lines) |
+| `daglock_arbiter.sil` | `daglock_arbiter_tests.rs` (981 lines) |
+| `daglock_reputation.sil` | `daglock_reputation_tests.rs` (193 lines) |
+| `daglock_vault.sil` | `daglock_vault_tests.rs` (895 lines) |
+| `daglock_vault_multisig.sil` | `daglock_vault_tests.rs` (lines 748+) |
+| `daglock_vault_softlock.sil` | `daglock_vault_tests.rs` (lines 284+) |
+| `daglock_deposit.sil` | `daglock_execution_tests.rs` (line 667) |
+| `daglock_multi.sil` | `daglock_execution_tests.rs` (line 720) |
+
+**Untested (all now completed):**
+1. `daglock_subscription.sil` — P3, High priority
+2. `daglock_milestone.sil` — P5, Medium priority
+3. `daglock_advanced.sil` — P5, Low priority
+
+**Tests added:**
+- `contracts/tests/daglock_subscription_tests.rs` — New file: subscription claim timing, fee calculation, re-lock behavior
+- `contracts/tests/daglock_milestone_tests.rs` — New file: milestone release, partial release, full release
+- Extended `daglock_execution_tests.rs` — Added `daglock_advanced.sil` release/swap/refund path tests
+
+**Test pattern** (follows existing conventions):
 ```rust
 #[test]
 fn subscription_claim_succeeds_after_interval() {
@@ -229,7 +190,7 @@ fn subscription_claim_succeeds_after_interval() {
     // Fund the covenant
     session.create_output(100_000_000, &covenant, None);
     // Claim first installment
-    let result = session.execute_entrypoint("claim", 
+    let result = session.execute_entrypoint("claim",
         vec![recipient_sig.clone(), covenant_change_script]);
     assert!(result.success);
     // Verify outputs: recipient gets installment - fee, treasury gets fee
@@ -239,49 +200,59 @@ fn subscription_claim_succeeds_after_interval() {
 
 ---
 
-## 5. Bot Test Suite (C6)
+## 5. Bot Test Suite (P6) ✅ Done
 
-**Problem:** 3,073 lines of bot code with zero tests. The bot handles user funds, escrow operations, and wallet address management.
+**Tracking code:** C6
 
-**Effort:** 2-3 days
+**Initial problem statement (outdated):** 3,073 lines of bot code with zero tests.
 
-**Approach:** Unit tests for command handlers + integration test for API client.
+**Correction (July 8):** Bot already had tests for library modules:
+- `bot/src/lib/api.test.js` (206 lines) — API client with mocked fetch responses
+- `bot/src/crypto.test.js` (105 lines) — Encryption/decryption round-trips
+
+**Gap filled:** `bot/src/index.js` (3,058 lines) — the main command handler file — had zero tests.
+
+**Tests added:**
+- `bot/tests/unit/commands.test.js` — Tests for key command handlers:
+  - `/setaddress` with valid/invalid addresses
+  - `/create` wizard flow (conversation state machine)
+  - `/settle` with mock API response
+  - `/cancel` with invalid escrow ID
+  - `/status` with active/completed escrow
+  - Helper functions (`getUserAddress`, `setUserAddress`, conversation state)
+- `bot/tests/unit/db.test.js` — SQLite-backed address storage CRUD
+
+**Key test scenarios covered:**
+| Test | What it covers |
+|------|---------------|
+| `/setaddress` with valid address | Address storage via SQLite |
+| `/setaddress` with invalid address | Validation rejection |
+| `/create` wizard flow | Conversation state machine with grammY sessions |
+| `/settle` with mock API response | Escrow lifecycle dispatch |
+| `/cancel` with invalid ID | Error handling |
+| `getUserAddress` / `setUserAddress` | SQLite CRUD |
+| Conversation start/advance/end | State machine helpers |
+| DB migration from JSON | Legacy data migration |
 
 **Test structure:**
 ```
 bot/
 ├── tests/
 │   ├── unit/
-│   │   ├── commands.test.js    — Test individual command handlers
-│   │   └── api.test.js         — Test API client with mocked responses
+│   │   ├── commands.test.js    — Command handler tests
+│   │   └── db.test.js          — SQLite CRUD + migration tests
 │   └── integration/
-│       └── lifecycle.test.js   — Full bot flow (requires test API)
+│       └── lifecycle.test.js   — (future: requires test API)
 ├── src/
 │   ├── index.js
+│   ├── db.js                   — SQLite module
 │   └── lib/
-│       └── api.js
+│       ├── api.js
+│       └── api.test.js         — Pre-existing
 ```
-
-**Key test scenarios:**
-| Test | What it covers |
-|------|---------------|
-| `/setaddress` with valid address | Address storage |
-| `/setaddress` with invalid address | Validation |
-| `/create` wizard flow | Conversation state machine |
-| `/settle` with mock API response | Escrow lifecycle |
-| `/cancel` with invalid ID | Error handling |
-| API retry/backoff | Network resilience |
-| API client error parsing | Error messages |
 
 ---
 
-## Priority Summary
+## Future (After wRPC Node is Available)
 
-| Priority | Item | Effort | Dependency |
-|----------|------|--------|-----------|
-| **P1** | Rotate secrets (C1/C3) | 30 min | Cloudflare dashboard access |
-| **P2** | Bot persistent storage (H3) | 2-3 hrs | None |
-| **P3** | Subscription covenant tests (C5) | 1 day | None |
-| **P4** | Chat sig verification (H4) | 1-2 days | wRPC node |
-| **P5** | Multi/Milestone covenant tests (C5) | 2-3 days | None |
-| **P6** | Bot test suite (C6) | 2-3 days | None |
+Once the local testnet node is set up (see `docs/local-testnet-node.md`), the `--mock-chat-sig` flag can be removed and real signature verification enabled. This unlocks P4.

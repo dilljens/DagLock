@@ -7,8 +7,7 @@
 import { Bot, InlineKeyboard } from "grammy";
 import { ApiClient } from "./lib/api.js";
 import { encrypt, decrypt, getEncryptionKey } from "./crypto.js";
-import { readFile, writeFile } from "fs/promises";
-import { existsSync } from "fs";
+import { initDb, getUserAddress, setUserAddress, deleteUser } from "./db.js";
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -28,55 +27,10 @@ if (!KEY_BYTES) {
 	);
 }
 
-// ── User address storage (encrypted at rest) ────────────────────────
-const USERS_FILE = "/tmp/daglock-users.json";
-let users = {};
+// ── User address storage (SQLite, persistent) ───────────────────────
+initDb();
 
-async function loadUsers() {
-	try {
-		if (existsSync(USERS_FILE)) {
-			const data = await readFile(USERS_FILE, "utf-8");
-			// Try parsing — if it fails, data might be corrupted from encryption migration
-			const raw = JSON.parse(data);
-			// Decrypt each entry if needed
-			for (const [id, entry] of Object.entries(raw)) {
-				if (entry.encryptedAddress) {
-					users[id] = {
-						address: decrypt(entry.encryptedAddress, KEY_BYTES),
-						updatedAt: entry.updatedAt,
-					};
-				} else if (entry.address) {
-					// Legacy plaintext entry — keep as-is until next save
-					users[id] = entry;
-				}
-			}
-		}
-	} catch (e) {
-		users = {};
-	}
-}
-
-async function saveUsers() {
-	try {
-		// Encrypt each entry before saving
-		const encrypted = {};
-		for (const [id, entry] of Object.entries(users)) {
-			encrypted[id] = {
-				encryptedAddress: encrypt(entry.address, KEY_BYTES),
-				updatedAt: entry.updatedAt,
-			};
-		}
-		await writeFile(USERS_FILE, JSON.stringify(encrypted, null, 2));
-	} catch (e) {
-		console.error("Failed to save users:", e.message);
-	}
-}
-
-function getUserAddress(userId) {
-	return users[userId]?.address;
-}
-
-// In-memory conversation wizard state
+// In-memory conversation wizard state (ephemeral — not persisted)
 const convState = new Map();
 
 function startConv(userId) {
@@ -97,13 +51,6 @@ function advanceConv(userId, step) {
 function endConv(userId) {
 	convState.delete(userId);
 }
-
-function setUserAddress(userId, address) {
-	users[userId] = { address, updatedAt: Date.now() };
-	saveUsers();
-}
-
-await loadUsers();
 
 // ── Commands ─────────────────────────────────────────────────────────
 
