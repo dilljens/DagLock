@@ -16,6 +16,8 @@ export function CreateOfferForm({ onDone }: { onDone: () => void }) {
 	const [priceOffset, setPriceOffset] = useState("0");
 	const [minPrice, setMinPrice] = useState("");
 	const [maxPrice, setMaxPrice] = useState("");
+	const [memo, setMemo] = useState("");
+	const [dealType, setDealType] = useState("otc");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 	const [error, setError] = useState("");
 	const [registeredTokens, setRegisteredTokens] = useState<TokenRegistryEntry[]>([]);
@@ -65,6 +67,8 @@ export function CreateOfferForm({ onDone }: { onDone: () => void }) {
 				if (maxPrice) body.max_price = Number.parseFloat(maxPrice);
 			}
 			if (counterparty.startsWith("kaspa:")) body.counterparty_address = counterparty;
+			if (memo.trim()) body.memo = memo.trim();
+			body.deal_type = dealType;
 			await api.createOffer(body);
 			setStatus("done");
 			onDone();
@@ -176,6 +180,22 @@ export function CreateOfferForm({ onDone }: { onDone: () => void }) {
 					<option value="168">7 days</option>
 					<option value="720">30 days</option>
 				</select>
+			</FormField>
+			<FormField label="Deal type">
+				<select value={dealType} onChange={(e) => setDealType(e.target.value)}>
+					<option value="otc">OTC trade</option>
+					<option value="goods">Physical goods</option>
+					<option value="service">Service</option>
+					<option value="custom">Custom</option>
+				</select>
+			</FormField>
+			<FormField label="Memo / description (optional)">
+				<input
+					value={memo}
+					onChange={(e) => setMemo(e.target.value)}
+					placeholder="e.g. 100K NACHO tokens, unlocked"
+					maxLength={500}
+				/>
 			</FormField>
 			<FormField label="Counterparty (optional)">
 				<input

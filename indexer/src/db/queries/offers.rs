@@ -10,8 +10,8 @@ pub async fn insert_offer(pool: &Pool<Sqlite>, offer: &Offer) -> Result<(), sqlx
         "INSERT INTO offers (id, creator_address, side, base_asset, quote_asset,
          amount_sompi, counterparty_address, status, expires_at, created_at,
          price_type, price_offset, min_price, max_price, current_price, price_currency,
-         price_updated_at, creator_type)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+         price_updated_at, creator_type, memo, deal_type)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
     )
     .bind(&offer.id)
     .bind(&offer.creator_address)
@@ -31,6 +31,8 @@ pub async fn insert_offer(pool: &Pool<Sqlite>, offer: &Offer) -> Result<(), sqlx
     .bind(&offer.price_currency)
     .bind(offer.price_updated_at)
     .bind(&offer.creator_type)
+    .bind(&offer.memo)
+    .bind(&offer.deal_type)
     .execute(pool)
     .await?;
     Ok(())
@@ -323,6 +325,10 @@ fn row_to_offer(row: sqlx::sqlite::SqliteRow) -> Offer {
         creator_type: row
             .try_get("creator_type")
             .unwrap_or_else(|_| "user".to_string()),
+        memo: row.try_get("memo").ok().flatten(),
+        deal_type: row
+            .try_get("deal_type")
+            .unwrap_or_else(|_| "custom".to_string()),
     }
 }
 

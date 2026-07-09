@@ -291,6 +291,8 @@ async fn test_offer_create_accept() {
         price_currency: "USD".to_string(),
         price_updated_at: None,
         creator_type: "user".to_string(),
+        memo: None,
+        deal_type: "custom".to_string(),
     };
 
     queries::insert_offer(&pool, &offer).await.unwrap();

@@ -111,6 +111,8 @@ export type Offer = {
 	price_currency: string;
 	price_updated_at?: number | null;
 	creator_type?: string;
+	memo?: string | null;
+	deal_type?: string;
 };
 
 
@@ -126,6 +128,8 @@ export type CreateOfferRequest = {
 	price_offset?: number;
 	min_price?: number;
 	max_price?: number;
+	memo?: string;
+	deal_type?: string;
 };
 
 export type Escrow = {

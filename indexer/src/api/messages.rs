@@ -22,6 +22,9 @@ pub async fn send(
     if body.content_enc.is_empty() {
         return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_content", "content_enc must be non-empty hex")))));
     }
+    if body.content_enc.len() > 8192 {
+        return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new("content_too_large", "Encrypted message must be 8192 hex chars or less (4KB plaintext)")))));
+    }
     if hex::decode(&body.content_enc).is_err() {
         return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_content", "content_enc must be valid hex")))));
     }

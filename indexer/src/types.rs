@@ -206,10 +206,20 @@ pub struct Offer {
     /// "user" or "bot". Auto-tagged from account_flags on creation.
     #[serde(default = "default_creator_type")]
     pub creator_type: String,
+    /// Optional human-readable description of what's being traded.
+    #[serde(default)]
+    pub memo: Option<String>,
+    /// Deal type: "goods", "otc", "service", "custom".
+    #[serde(default = "default_deal_type")]
+    pub deal_type: String,
 }
 
 fn default_creator_type() -> String {
     "user".to_string()
+}
+
+fn default_deal_type() -> String {
+    "custom".to_string()
 }
 
 /// Create offer request.
@@ -230,6 +240,12 @@ pub struct CreateOfferRequest {
     /// Bot scripts should explicitly set this to "bot" for honesty.
     #[serde(default)]
     pub creator_type: Option<String>,
+    /// Optional human-readable description of what's being traded.
+    #[serde(default)]
+    pub memo: Option<String>,
+    /// Deal type: "goods", "otc", "service", "custom".
+    #[serde(default = "default_deal_type")]
+    pub deal_type: String,
 }
 
 /// Accept offer request.

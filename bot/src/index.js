@@ -67,7 +67,8 @@ bot.api.setMyCommands([
 	{ command: "settle", description: "Settle an active escrow" },
 	{ command: "refund", description: "Refund an escrow" },
 	{ command: "submit_tx", description: "Submit TX ID after broadcasting" },
-	{ command: "submit_sig", description: "Submit signature for settle/refund" },
+	{ command: "accept", description: "Accept an offer by ID" },
+	{ command: "submit_sig", description: "Submit signature for settle/refund/accept" },
 	{ command: "list", description: "List your escrows" },
 	{ command: "offers", description: "Browse open offers" },
 	{ command: "counter", description: "Counter an offer with a different amount" },
@@ -355,14 +356,92 @@ bot.command("offers", async (ctx) => {
 			const amount = (o.amount_sompi / 1e8).toFixed(2);
 			msg += `• *${o.side.toUpperCase()}* ${amount} ${o.base_asset} for ${o.quote_asset}\n`;
 			msg += `  ID: \`${o.id}\`\n`;
-			msg += `  Creator: \`${(o.creator_address || "").slice(0, 16)}...\`\n\n`;
+			msg += `  Creator: \`${(o.creator_address || "").slice(0, 16)}...\`\n`;
+			if (o.memo) msg += `  📝 ${o.memo}\n`;
+			msg += `\n`;
 		}
 		if (offers.length > 5) msg += `_...and ${offers.length - 5} more_\n`;
-		msg += "💡 Use /counter <offer-id> <amount> [msg] to counter";
+		msg += "💡 Use /counter <offer-id> <amount> [msg] to counter\n";
+		msg += "💡 Use /accept <offer-id> to accept an offer";
 
 		await ctx.reply(msg, { parse_mode: "Markdown" });
 	} catch (err) {
 		await ctx.reply("❌ Could not fetch offers: " + err.message);
+	}
+});
+
+// ── Accept offer command ─────────────────────────────────────────────
+
+bot.command("accept", async (ctx) => {
+	const offerId = (ctx.match || "").trim();
+
+	if (!offerId) {
+		return await ctx.reply(
+			"*Accept an Offer*\n\n" +
+				"Usage: `/accept <offer-id>`\n\n" +
+				"First browse offers with /offers, then accept one by its ID.",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	try {
+		const address = getUserAddress(ctx.from.id);
+		if (!address) {
+			return await ctx.reply("Set your address first: /setaddress <kaspa:...>");
+		}
+
+		// Fetch the offer to verify it exists and is open
+		const offersData = await api.listOffers();
+		const offers = offersData.offers || [];
+		const offer = offers.find((o) => o.id === offerId);
+
+		if (!offer) {
+			return await ctx.reply(
+				`❌ Offer \`${offerId}\` not found or no longer available.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (offer.status !== "proposed") {
+			return await ctx.reply(
+				`❌ Offer \`${offerId}\` is \`${offer.status}\`. Only proposed offers can be accepted.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		if (offer.creator_address === address) {
+			return await ctx.reply(
+				"❌ You cannot accept your own offer.",
+				{ parse_mode: "Markdown" },
+			);
+		}
+
+		// Generate signature message
+		const nonce = Math.random().toString(36).slice(2, 10);
+		const message = `accept:offer:${offerId}:${Math.floor(Date.now() / 1000)}:${nonce}`;
+
+		// Store pending sig — use "offer:" prefix to differentiate from escrow sigs
+		const pendingKey = `${ctx.from.id}:offer:${offerId}`;
+		pendingSigs.set(pendingKey, {
+			message,
+			action: "accept",
+			createdAt: Date.now(),
+		});
+
+		const amount = (offer.amount_sompi / 1e8).toFixed(2);
+		await ctx.reply(
+			`📥 *Accept Offer*\n\n` +
+				`Offer: \`${offerId}\`\n` +
+				`${offer.side.toUpperCase()} ${amount} ${offer.base_asset} for ${offer.quote_asset}\n\n` +
+				"To accept, sign this message with your Kaspa wallet and paste the signature:\n\n" +
+				`Message: \`${message}\`\n\n` +
+				"_In Kaspium: Tools → Sign Message_\n" +
+				"_In KasWare: Use the signing feature in settings_\n\n" +
+				"After signing, reply with:\n`/submit_sig ${offerId} <your-signature>`",
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Error: " + (err.message || "Unknown error"));
 	}
 });
 
@@ -2942,11 +3021,11 @@ bot.command("submit_tx", async (ctx) => {
 
 bot.command("submit_sig", async (ctx) => {
 	const parts = (ctx.match || "").trim().split(/\s+/);
-	const escrowId = parts[0];
+	const itemId = parts[0]; // could be escrow ID or offer ID
 	const signature = parts[1];
 
-	if (!escrowId || !signature) {
-		return await ctx.reply("Usage: /submit_sig <escrow-id> <signature-hex>");
+	if (!itemId || !signature) {
+		return await ctx.reply("Usage: /submit_sig <id> <signature-hex>");
 	}
 
 	try {
@@ -2955,14 +3034,19 @@ bot.command("submit_sig", async (ctx) => {
 			return await ctx.reply("Set your address first: /setaddress <kaspa:...>");
 		}
 
-		// Look up the pending signature to reconstruct the exact message
-		const pendingKey = `${ctx.from.id}:${escrowId}`;
-		const pending = pendingSigs.get(pendingKey);
+		// Try escrow pending sig first, then offer pending sig
+		let pendingKey = `${ctx.from.id}:${itemId}`;
+		let pending = pendingSigs.get(pendingKey);
+
+		if (!pending) {
+			pendingKey = `${ctx.from.id}:offer:${itemId}`;
+			pending = pendingSigs.get(pendingKey);
+		}
 
 		if (!pending) {
 			return await ctx.reply(
-				"❌ No pending signature found for this escrow.\n\n" +
-					"First use /settle or /refund to generate a signature message, " +
+				"❌ No pending signature found.\n\n" +
+					"First use /settle, /refund, or /accept to generate a signature message, " +
 					"sign it in your wallet, then paste the signature here.",
 				{ parse_mode: "Markdown" },
 			);
@@ -2972,7 +3056,7 @@ bot.command("submit_sig", async (ctx) => {
 		if (Date.now() - pending.createdAt > 15 * 60 * 1000) {
 			pendingSigs.delete(pendingKey);
 			return await ctx.reply(
-				"❌ Signature request expired (15 min timeout). Please use /settle or /refund again to get a fresh message.",
+				"❌ Signature request expired (15 min timeout). Please use the original command again to get a fresh message.",
 				{ parse_mode: "Markdown" },
 			);
 		}
@@ -2981,28 +3065,38 @@ bot.command("submit_sig", async (ctx) => {
 
 		let result;
 		if (pending.action === "settle") {
-			result = await api.settleEscrow(escrowId, {
-				address,
-				signature,
-				message: pending.message,
+			result = await api.settleEscrow(itemId, {
+				address, signature, message: pending.message,
 			});
 		} else if (pending.action === "refund") {
-			result = await api.refundEscrow(escrowId, {
-				address,
-				signature,
-				message: pending.message,
+			result = await api.refundEscrow(itemId, {
+				address, signature, message: pending.message,
+			});
+		} else if (pending.action === "accept") {
+			result = await api.acceptOffer(itemId, address, {
+				address, signature, message: pending.message,
 			});
 		}
 
 		pendingSigs.delete(pendingKey);
 
-		await ctx.reply(
-			`✅ *Escrow ${pending.action === "settle" ? "Settled" : "Refunded"}!*\n\n` +
-				`ID: \`${result.escrow_id}\`\n` +
-				`Status: \`${result.status}\`\n\n` +
-				`Use /receipt ${escrowId} to view the receipt.`,
-			{ parse_mode: "Markdown" },
-		);
+		if (pending.action === "accept") {
+			await ctx.reply(
+				`✅ *Offer Accepted!*\n\n` +
+					`ID: \`${itemId}\`\n` +
+					`Status: \`${result.status || "accepted"}\`\n\n` +
+					`Now create an escrow to lock funds. Use /create to start.`,
+				{ parse_mode: "Markdown" },
+			);
+		} else {
+			await ctx.reply(
+				`✅ *Escrow ${pending.action === "settle" ? "Settled" : "Refunded"}!*\n\n` +
+					`ID: \`${result.escrow_id}\`\n` +
+					`Status: \`${result.status}\`\n\n` +
+					`Use /receipt ${itemId} to view the receipt.`,
+				{ parse_mode: "Markdown" },
+			);
+		}
 	} catch (err) {
 		const msg = "❌ Error: " + (err.message || "Unknown error");
 		await ctx.reply(msg, { parse_mode: "Markdown" });

@@ -115,6 +115,16 @@ pub async fn create(
         }
     };
 
+    // Validate memo length
+    if let Some(ref memo) = body.memo {
+        if memo.len() > 500 {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!(ApiError::new("invalid_memo", "Memo must be 500 characters or less"))),
+            ));
+        }
+    }
+
     let offer = Offer {
         id: format!(
             "off_{}",
@@ -141,6 +151,8 @@ pub async fn create(
             None
         },
         creator_type,
+        memo: body.memo,
+        deal_type: body.deal_type,
     };
 
     queries::insert_offer(&state.db, &offer)

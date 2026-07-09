@@ -124,6 +124,7 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_price_history_table(pool).await?;
     ensure_deal_type_column(pool).await?;
     ensure_offers_creator_type_column(pool).await?;
+    ensure_offers_memo_column(pool).await?;
     ensure_account_flags_table(pool).await?;
 
     Ok(())
@@ -877,6 +878,27 @@ pub async fn ensure_offers_creator_type_column(pool: &Pool<Sqlite>) -> Result<()
         .collect::<HashSet<_>>();
     if !existing.contains("creator_type") {
         sqlx::query("ALTER TABLE offers ADD COLUMN creator_type TEXT NOT NULL DEFAULT 'user'")
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn ensure_offers_memo_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    let rows = sqlx::query("PRAGMA table_info(offers)")
+        .fetch_all(pool)
+        .await?;
+    let existing = rows
+        .into_iter()
+        .filter_map(|row| row.try_get::<String, _>("name").ok())
+        .collect::<HashSet<_>>();
+    if !existing.contains("memo") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN memo TEXT")
+            .execute(pool)
+            .await?;
+    }
+    if !existing.contains("deal_type") {
+        sqlx::query("ALTER TABLE offers ADD COLUMN deal_type TEXT NOT NULL DEFAULT 'custom'")
             .execute(pool)
             .await?;
     }
