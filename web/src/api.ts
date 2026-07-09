@@ -62,6 +62,13 @@ export type DailyStat = {
 	total_users: number;
 };
 
+export type AccountFlags = {
+	address: string;
+	is_bot: boolean;
+	label?: string | null;
+	updated_at: number;
+};
+
 export type LiveSummary = {
 	total_escrows: number;
 	total_volume_sompi: number;
@@ -867,6 +874,12 @@ export const api = {
 	reputation: (address: string) =>
 		loadJson<Reputation>(`/v1/reputation/${encodeURIComponent(address)}`),
 	receipt: (id: string) => loadJson<Receipt>(`/v1/receipts/${encodeURIComponent(id)}`),
+
+	// Account flags
+	getFlags: (address: string) =>
+		loadJson<AccountFlags>(`/v1/flags/${encodeURIComponent(address)}`),
+	setFlags: (req: { address: string; is_bot: boolean; label?: string | null }) =>
+		postJson<{ status: string; address: string; is_bot: boolean }>("/v1/flags", req),
 
 	// Email notifications
 	getNotifications: (auth: AuthHeaders) => loadAuthJson<any>("/v1/notifications", auth),

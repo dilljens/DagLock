@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { api, type AuthHeaders } from "../api";
+import { api, type AccountFlags, type AuthHeaders } from "../api";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField } from "../ui";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 import { PriceAlertsSettings } from "../components/PriceAlerts";
+import { mockSignature } from "../kasware";
 
 export function SettingsPage() {
 	const { state: wallet, sign } = useWallet();
@@ -216,7 +217,102 @@ export function SettingsPage() {
 
 				{/* Price alerts */}
 				<PriceAlertsSettings address={address!} />
+
+				{/* Bot registration */}
 			</div>
 		</>
+	);
+}
+
+/* ─── Bot Registration ─── */
+function BotRegistrationSection({
+	address,
+	sign,
+	notify,
+}: {
+	address: string;
+	sign: (msg: string) => Promise<string>;
+	notify: (type: "success" | "error" | "info", title: string, message?: string) => void;
+}) {
+	const [flags, setFlags] = useState<AccountFlags | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [isBot, setIsBot] = useState(false);
+	const [label, setLabel] = useState("");
+
+	// Load current flags
+	useEffect(() => {
+		api
+			.getFlags(address)
+			.then((f) => {
+				setFlags(f);
+				setIsBot(f.is_bot);
+				setLabel(f.label || "");
+			})
+			.catch(() => {});
+	}, [address]);
+
+	async function handleSave() {
+		setLoading(true);
+		try {
+			const result = await api.setFlags({ address, is_bot: isBot, label: label || null });
+			setFlags({ address, is_bot: isBot, label: label || null, updated_at: Math.floor(Date.now() / 1000) });
+			notify("success", isBot ? "Registered as bot" : "Bot flag removed");
+		} catch (err) {
+			notify("error", "Failed to update bot registration", (err as Error).message);
+		} finally {
+			setLoading(false);
+		}
+	}
+
+	return (
+		<div className="panel" style={{ marginBottom: "16px" }}>
+			<h3 style={{ margin: "0 0 4px" }}>🤖 Bot Registration</h3>
+			<p className="muted" style={{ margin: "0 0 12px", fontSize: "13px" }}>
+				If this address runs an automated trading bot, register it here. Bot-made offers
+				will show a <strong>🤖 Bot</strong> badge on the offer board so other users know
+				they're trading with an automated system.
+			</p>
+
+			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+				<label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+					<input
+						type="checkbox"
+						checked={isBot}
+						onChange={(e) => setIsBot(e.target.checked)}
+					/>
+					<span style={{ fontSize: "14px" }}>
+						This address is a trading bot
+					</span>
+				</label>
+
+				<div>
+					<label style={{ fontSize: "12px", color: "#888", display: "block", marginBottom: "4px" }}>
+						Label (optional)
+					</label>
+					<input
+						value={label}
+						onChange={(e) => setLabel(e.target.value)}
+						placeholder="e.g. KAS Market Maker v2"
+						style={{ width: "100%", maxWidth: "400px" }}
+						maxLength={100}
+					/>
+				</div>
+
+				<button
+					className="button primary"
+					onClick={handleSave}
+					disabled={loading}
+					style={{ alignSelf: "flex-start" }}
+				>
+					{loading ? "Saving..." : "Save Bot Registration"}
+				</button>
+
+				{flags && (
+					<p className="muted" style={{ fontSize: "11px", margin: 0 }}>
+						Last updated: {new Date(flags.updated_at * 1000).toLocaleString()}
+					</p>
+				)}
+			</div>
+		</div>
 	);
 }
