@@ -34,7 +34,7 @@ pub enum ApiTier {
 impl ApiTier {
     fn max_requests(self) -> u32 {
         match self {
-            Self::Free => 10,
+            Self::Free => 60,
             Self::Pro => 100,
             Self::Whale => 1000,
         }
@@ -96,7 +96,8 @@ impl RateLimiter {
                 entry.count += 1;
                 Ok(())
             } else {
-                Err((
+                // Include CORS headers so the browser shows the actual error, not a CORS error
+                let mut resp = (
                     axum::http::StatusCode::TOO_MANY_REQUESTS,
                     Json(json!({
                         "error": "rate_limited",
@@ -106,7 +107,12 @@ impl RateLimiter {
                         ),
                     })),
                 )
-                    .into_response())
+                    .into_response();
+                resp.headers_mut().insert(
+                    axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                    axum::http::HeaderValue::from_static("*"),
+                );
+                Err(resp)
             }
         } else {
             inner.windows.insert(
