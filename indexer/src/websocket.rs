@@ -117,7 +117,7 @@ pub async fn handle_socket(
 /// Create a broadcast channel for WebSocket events.
 #[allow(dead_code)]
 pub fn create_event_channel() -> broadcast::Sender<WsEvent> {
-    let (tx, _) = broadcast::channel(100);
+    let (tx, _) = broadcast::channel(4096);
     tx
 }
 

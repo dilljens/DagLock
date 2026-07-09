@@ -125,6 +125,7 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_deal_type_column(pool).await?;
     ensure_offers_creator_type_column(pool).await?;
     ensure_offers_memo_column(pool).await?;
+    ensure_extra_indexes(pool).await?;
     ensure_account_flags_table(pool).await?;
 
     Ok(())
@@ -902,6 +903,41 @@ pub async fn ensure_offers_memo_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::
             .execute(pool)
             .await?;
     }
+    Ok(())
+}
+
+/// Add missing indexes for common query patterns.
+pub async fn ensure_extra_indexes(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    // Composite index for the default offers query: status + creation order
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_offers_status_created
+         ON offers(status, created_at DESC)"
+    ).execute(pool).await?;
+
+    // Index for asset-based filtering on offers
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_offers_base_asset
+         ON offers(base_asset)"
+    ).execute(pool).await?;
+
+    // Index for escrow listing by buyer
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_escrows_buyer_status_created
+         ON escrows(buyer_address, status, created_at DESC)"
+    ).execute(pool).await?;
+
+    // Index for escrow listing by seller
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_escrows_seller_status_created
+         ON escrows(seller_address, status, created_at DESC)"
+    ).execute(pool).await?;
+
+    // Index for asset type queries on escrows (tokens page)
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_escrows_asset_type
+         ON escrows(asset_type)"
+    ).execute(pool).await?;
+
     Ok(())
 }
 

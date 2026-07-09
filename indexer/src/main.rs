@@ -102,7 +102,7 @@ async fn main() {
         Arc::from(crate::auth::create_verifier(&args.network, args.mock_auth));
 
     // Create WebSocket event channel
-    let (ws_tx, _) = broadcast::channel(100);
+    let (ws_tx, _) = broadcast::channel(4096);
 
     let explorer_base_url = std::env::var("EXPLORER_BASE_URL")
         .unwrap_or_else(|_| "https://kas.fyi".to_string());

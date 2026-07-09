@@ -51,6 +51,8 @@ pub async fn list_offers(
     asset: Option<&str>,
     side: Option<&str>,
     status: Option<&str>,
+    limit: i64,
+    offset: i64,
 ) -> Result<(Vec<Offer>, i64), sqlx::Error> {
     let asset = asset.unwrap_or("all");
     let side = side.unwrap_or("all");
@@ -62,18 +64,17 @@ pub async fn list_offers(
     let has_side = side != "all";
     let has_status = status != "all";
 
-    // We'll use a simpler approach: build the full query with fixed bind positions
+    // Build the data query with limit/offset
     let sql = format!(
-        "SELECT * FROM offers WHERE 1=1{}{}{} ORDER BY created_at DESC",
+        "SELECT * FROM offers WHERE 1=1{}{}{} ORDER BY created_at DESC LIMIT ?{} OFFSET ?{}",
         if has_asset {
-            format!(" AND (base_asset = ?{bind_index} OR quote_asset = ?{bind_index})")
+            let s = format!(" AND (base_asset = ?{bind_index} OR quote_asset = ?{bind_index})");
+            bind_index += 1;
+            s
         } else {
             String::new()
         },
         {
-            if has_asset {
-                bind_index += 1;
-            }
             if has_side {
                 let s = format!(" AND side = ?{bind_index}");
                 bind_index += 1;
@@ -84,38 +85,38 @@ pub async fn list_offers(
         },
         {
             if has_status {
-                format!(" AND status = ?{bind_index}")
+                let s = format!(" AND status = ?{bind_index}");
+                bind_index += 1;
+                s
             } else {
                 String::new()
             }
         },
+        bind_index,
+        bind_index + 1,
     );
 
     let mut query = sqlx::query(&sql);
-    if has_asset {
-        query = query.bind(asset);
-    }
-    if has_side {
-        query = query.bind(side);
-    }
-    if has_status {
-        query = query.bind(status);
-    }
+    bind_index = 1;
+    if has_asset { query = query.bind(asset); bind_index += 1; }
+    if has_side { query = query.bind(side); bind_index += 1; }
+    if has_status { query = query.bind(status); bind_index += 1; }
+    query = query.bind(limit);
+    query = query.bind(offset);
     let rows = query.fetch_all(pool).await?;
 
-    // Count query (reset bind_index)
+    // Count query
     bind_index = 1;
     let count_sql = format!(
         "SELECT COUNT(*) FROM offers WHERE 1=1{}{}{}",
         if has_asset {
-            format!(" AND (base_asset = ?{bind_index} OR quote_asset = ?{bind_index})")
+            let s = format!(" AND (base_asset = ?{bind_index} OR quote_asset = ?{bind_index})");
+            bind_index += 1;
+            s
         } else {
             String::new()
         },
         {
-            if has_asset {
-                bind_index += 1;
-            }
             if has_side {
                 let s = format!(" AND side = ?{bind_index}");
                 bind_index += 1;
@@ -134,15 +135,10 @@ pub async fn list_offers(
     );
 
     let mut count_query = sqlx::query_as::<_, (i64,)>(&count_sql);
-    if has_asset {
-        count_query = count_query.bind(asset);
-    }
-    if has_side {
-        count_query = count_query.bind(side);
-    }
-    if has_status {
-        count_query = count_query.bind(status);
-    }
+    bind_index = 1;
+    if has_asset { count_query = count_query.bind(asset); }
+    if has_side { count_query = count_query.bind(side); }
+    if has_status { count_query = count_query.bind(status); }
     let (count,) = count_query.fetch_one(pool).await?;
 
     let offers: Vec<Offer> = rows.into_iter().map(row_to_offer).collect();
@@ -165,13 +161,23 @@ pub async fn update_offer_status(
 pub async fn list_offers_by_creator(
     pool: &Pool<Sqlite>,
     creator: &str,
+    limit: i64,
+    offset: i64,
 ) -> Result<(Vec<Offer>, i64), sqlx::Error> {
-    let rows =
-        sqlx::query("SELECT * FROM offers WHERE creator_address = ?1 ORDER BY created_at DESC")
-            .bind(creator)
-            .fetch_all(pool)
-            .await?;
-    let count = rows.len() as i64;
+    let rows = sqlx::query(
+        "SELECT * FROM offers WHERE creator_address = ?1 ORDER BY created_at DESC LIMIT ?2 OFFSET ?3",
+    )
+    .bind(creator)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM offers WHERE creator_address = ?1",
+    )
+    .bind(creator)
+    .fetch_one(pool)
+    .await?;
     let offers: Vec<Offer> = rows.into_iter().map(row_to_offer).collect();
     Ok((offers, count))
 }

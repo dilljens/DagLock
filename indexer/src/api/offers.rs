@@ -179,19 +179,26 @@ pub struct OfferQuery {
     pub asset: Option<String>,
     pub side: Option<String>,
     pub status: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
 }
 
 /// GET /v1/offers
 pub async fn list(State(state): State<AppState>, Query(params): Query<OfferQuery>) -> Json<Value> {
+    let limit = params.limit.unwrap_or(50).min(200);
+    let offset = params.offset.unwrap_or(0);
+
     if let Some(ref creator) = params.creator {
-        // Filter by creator
-        return match queries::list_offers_by_creator(&state.db, creator).await {
+        return match queries::list_offers_by_creator(&state.db, creator, limit, offset).await {
             Ok((offers, total)) => Json(json!({ "offers": offers, "total": total })),
             Err(_) => Json(json!({ "offers": [], "total": 0 })),
         };
     }
 
-    match queries::list_offers(&state.db, None, None, None).await {
+    let asset = params.asset.as_deref();
+    let side = params.side.as_deref();
+    let status = params.status.as_deref();
+    match queries::list_offers(&state.db, asset, side, status, limit, offset).await {
         Ok((offers, total)) => Json(json!({
             "offers": offers,
             "total": total,

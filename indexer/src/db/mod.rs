@@ -16,7 +16,10 @@ use std::str::FromStr;
 pub async fn init_pool(database_url: &str) -> Result<Pool<Sqlite>, sqlx::Error> {
     let opts = SqliteConnectOptions::from_str(database_url)?
         .create_if_missing(true)
-        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
+        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+        .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .pragma("cache_size", "-64000"); // 64 MB page cache
 
     let pool = SqlitePoolOptions::new()
         .max_connections(10)
