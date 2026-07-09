@@ -219,8 +219,11 @@ Based on market research findings:
 
 - [ ] ❌ Local kaspad node (needs 32GB RAM — not available)
 - [x] **RestVerifier built** — UTXO verification via Kaspa community REST API (`--kaspa-api-url https://api-tn11.kaspa.org` for testnet, `https://api.kaspa.org` for mainnet)
-- [ ] Manual: test with `--kaspa-api-url` on testnet-11
-- [ ] `--no-wrpc` fallback tested and documented (MockVerifier — degraded mode)
+- [x] **RestVerifier deployed** on VPS with `--kaspa-api-url https://api-tn11.kaspa.org`
+- [ ] End-to-end test blocked — testnet-11 community API down (503)
+- [x] `--no-wrpc` fallback documented (add `--no-wrpc` flag to systemd if needed)
+- [x] **nginx body limit** set (`client_max_body_size 1m;`)
+- [x] **Bot updated** on VPS with `/accept`, `/createoffer`, `/canceloffer` commands
 - [ ] All test gates pass (Rust + Web + Bot + Manual)
 - [ ] Mainnet template hashes computed and deployed
 - [ ] nginx body limit, rate limits, creation caps in place
