@@ -217,6 +217,16 @@ export type ApiKey = {
 	webhooks_enabled: boolean;
 };
 
+export type App = {
+	id: string;
+	name: string;
+	callback_url: string | null;
+	webhook_secret: string | null;
+	created_at: number;
+	owner_address: string;
+	is_active: boolean;
+};
+
 export type CreateInvoiceRequest = {
 	description: string;
 	amount_sompi: number;
@@ -987,6 +997,46 @@ export const api = {
 		).then((r) => {
 			if (!r.ok) throw new Error(r.statusText);
 			return r.json() as Promise<{ status: string; key_id: string; app_id: string; tier: string }>;
+		}),
+
+	registerApp: (req: { name: string; owner_address: string; callback_url?: string }) =>
+		postJson<{ app: App; api_key: string; warning: string }>("/v1/apps/register", req),
+
+	getApp: (appId: string, apiKey: string) =>
+		fetchWithTimeout(`${API_BASE}/v1/apps/${encodeURIComponent(appId)}`, {
+			headers: { "X-Daglock-Api-Key": apiKey },
+		}).then((r) => {
+			if (!r.ok) throw new Error(r.statusText);
+			return r.json() as Promise<App>;
+		}),
+
+	listApiKeys: (appId: string, apiKey: string) =>
+		fetchWithTimeout(`${API_BASE}/v1/apps/${encodeURIComponent(appId)}/keys`, {
+			headers: { "X-Daglock-Api-Key": apiKey },
+		}).then((r) => {
+			if (!r.ok) throw new Error(r.statusText);
+			return r.json() as Promise<{ keys: ApiKey[]; total: number }>;
+		}),
+
+	createApiKey: (appId: string, apiKey: string) =>
+		fetchWithTimeout(`${API_BASE}/v1/apps/${encodeURIComponent(appId)}/keys`, {
+			method: "POST",
+			headers: { "X-Daglock-Api-Key": apiKey },
+		}).then((r) => {
+			if (!r.ok) throw new Error(r.statusText);
+			return r.json() as Promise<{ api_key: string; app_id: string; warning: string }>;
+		}),
+
+	deleteApiKey: (appId: string, keyId: string, apiKey: string) =>
+		fetchWithTimeout(
+			`${API_BASE}/v1/apps/${encodeURIComponent(appId)}/keys/${encodeURIComponent(keyId)}`,
+			{
+				method: "DELETE",
+				headers: { "X-Daglock-Api-Key": apiKey },
+			},
+		).then((r) => {
+			if (!r.ok) throw new Error(r.statusText);
+			return r.json() as Promise<{ status: string }>;
 		}),
 
 	// Stats / analytics

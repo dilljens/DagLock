@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, type AccountFlags, type AuthHeaders } from "../api";
+import { api, type AccountFlags, type ApiKey, type App, type AuthHeaders } from "../api";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
 import { FormField } from "../ui";
@@ -218,10 +218,251 @@ export function SettingsPage() {
 				{/* Price alerts */}
 				<PriceAlertsSettings address={address!} />
 
+				{/* API Key Management */}
+				<ApiKeySection address={address!} sign={sign} notify={notify} />
+
 				{/* Bot registration */}
 				<BotRegistrationSection address={address!} sign={sign} notify={notify} />
 			</div>
 		</>
+	);
+}
+
+/* ─── API Key Management ─── */
+function ApiKeySection({
+	address,
+	notify,
+}: {
+	address: string;
+	sign: (msg: string) => Promise<string>;
+	notify: (type: "success" | "error" | "info", title: string, message?: string) => void;
+}) {
+	const [app, setApp] = useState<App | null>(null);
+	const [keys, setKeys] = useState<ApiKey[]>([]);
+	const [apiKey, setApiKey] = useState<string | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [showNewKey, setShowNewKey] = useState<string | null>(null);
+	const storedKey = localStorage.getItem("daglock_api_key");
+
+	// On mount: try to load app using stored API key
+	useEffect(() => {
+		if (!storedKey) return;
+		// The stored key is "app_id:api_key_plaintext"
+		const [appId] = storedKey.split(":");
+		if (!appId) return;
+		api
+			.getApp(appId, storedKey)
+			.then((a) => {
+				setApp(a);
+				setApiKey(storedKey);
+				// Load keys
+				api.listApiKeys(appId, storedKey).then((k) => setKeys(k.keys)).catch(() => {});
+			})
+			.catch(() => {
+				// Stored key is invalid — clear it
+				localStorage.removeItem("daglock_api_key");
+			});
+	}, []);
+
+	async function handleRegister() {
+		setLoading(true);
+		try {
+			const result = await api.registerApp({
+				name: `${address.slice(0, 10)}… App`,
+				owner_address: address,
+			});
+			const stored = `${result.app.id}:${result.api_key}`;
+			localStorage.setItem("daglock_api_key", stored);
+			setApp(result.app);
+			setApiKey(stored);
+			setShowNewKey(result.api_key);
+			setKeys([]);
+			notify("success", "App registered!");
+		} catch (err) {
+			notify("error", "Registration failed", (err as Error).message);
+		} finally {
+			setLoading(false);
+		}
+	}
+
+	async function handleCreateKey() {
+		if (!app || !apiKey) return;
+		setLoading(true);
+		try {
+			const result = await api.createApiKey(app.id, apiKey);
+			setShowNewKey(result.api_key);
+			// Reload keys
+			const k = await api.listApiKeys(app.id, apiKey);
+			setKeys(k.keys);
+			notify("success", "New API key created!");
+		} catch (err) {
+			notify("error", "Failed to create key", (err as Error).message);
+		} finally {
+			setLoading(false);
+		}
+	}
+
+	async function handleDeleteKey(keyId: string) {
+		if (!app || !apiKey) return;
+		setLoading(true);
+		try {
+			await api.deleteApiKey(app.id, keyId, apiKey);
+			setKeys((prev) => prev.filter((k) => k.key_id !== keyId));
+			notify("success", "API key revoked");
+		} catch (err) {
+			notify("error", "Failed to revoke key", (err as Error).message);
+		} finally {
+			setLoading(false);
+		}
+	}
+
+	function handleDisconnect() {
+		localStorage.removeItem("daglock_api_key");
+		setApp(null);
+		setKeys([]);
+		setApiKey(null);
+		setShowNewKey(null);
+	}
+
+	return (
+		<div className="panel" style={{ marginBottom: "16px" }}>
+			<h3 style={{ margin: "0 0 4px" }}>🔑 API Keys</h3>
+			<p className="muted" style={{ margin: "0 0 12px", fontSize: "13px" }}>
+				API keys let automated trading bots and scripts interact with DagLock programmatically.
+				Each key has a rate limit tier (Free: 10 req/min, Pro: 100, Whale: 1000).
+			</p>
+
+			{!app ? (
+				<button
+					className="button primary"
+					onClick={handleRegister}
+					disabled={loading}
+				>
+					{loading ? "Registering..." : "Register App & Get API Key"}
+				</button>
+			) : (
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div
+						style={{
+							display: "flex",
+							justifyContent: "space-between",
+							alignItems: "center",
+						}}
+					>
+						<span style={{ fontSize: "13px" }}>
+							App: <strong>{app.name}</strong>
+							<span className="muted" style={{ marginLeft: "8px", fontSize: "11px" }}>
+								(created {new Date(app.created_at * 1000).toLocaleDateString()})
+							</span>
+						</span>
+						<button
+							className="button"
+							onClick={handleDisconnect}
+							style={{ fontSize: "11px", padding: "2px 8px" }}
+						>
+							Disconnect
+						</button>
+					</div>
+
+					{/* New key alert */}
+					{showNewKey && (
+						<div
+							style={{
+								background: "#1a3a1a",
+								border: "1px solid var(--color-primary)",
+								borderRadius: "8px",
+								padding: "12px",
+							}}
+						>
+							<p style={{ margin: "0 0 4px", fontSize: "13px", color: "var(--color-primary)" }}>
+								⚠️ New API Key — save this now!
+							</p>
+							<p className="muted" style={{ margin: "0 0 4px", fontSize: "11px" }}>
+								This key will only be shown once. Store it securely.
+							</p>
+							<code
+								style={{
+									display: "block",
+									padding: "8px",
+									background: "#0a1a0a",
+									borderRadius: "4px",
+									fontSize: "12px",
+									wordBreak: "break-all",
+								}}
+							>
+								{showNewKey}
+							</code>
+							<button
+								className="button"
+								onClick={() => navigator.clipboard.writeText(showNewKey)}
+								style={{ fontSize: "11px", padding: "2px 8px", marginTop: "6px" }}
+							>
+								Copy to clipboard
+							</button>
+						</div>
+					)}
+
+					{/* Key list */}
+					{keys.length > 0 && (
+						<div>
+							<span style={{ fontSize: "12px", color: "#888" }}>Active API keys:</span>
+							{keys.map((k) => (
+								<div
+									key={k.key_id}
+									style={{
+										display: "flex",
+										justifyContent: "space-between",
+										alignItems: "center",
+										padding: "6px 0",
+										borderBottom: "1px solid var(--color-border)",
+										fontSize: "12px",
+									}}
+								>
+									<div>
+										<span
+											className="pill"
+											style={{
+												fontSize: "10px",
+												background: k.tier === "whale" ? "#9c27b022" : k.tier === "pro" ? "#2196f322" : "#88888822",
+												color: k.tier === "whale" ? "#ce93d8" : k.tier === "pro" ? "#64b5f6" : "#888",
+												marginRight: "6px",
+											}}
+										>
+											{k.tier}
+										</span>
+										<span style={{ color: "var(--color-text-secondary)" }}>
+											{k.key_id.slice(0, 8)}…
+										</span>
+										{k.last_used_at && (
+											<span className="muted" style={{ marginLeft: "6px", fontSize: "10px" }}>
+												last used {new Date(k.last_used_at * 1000).toLocaleDateString()}
+											</span>
+										)}
+									</div>
+									<button
+										className="button"
+										onClick={() => handleDeleteKey(k.key_id)}
+										disabled={loading}
+										style={{ fontSize: "10px", padding: "2px 6px", color: "#ff7b7b" }}
+									>
+										Revoke
+									</button>
+								</div>
+							))}
+						</div>
+					)}
+
+					<button
+						className="button"
+						onClick={handleCreateKey}
+						disabled={loading}
+						style={{ alignSelf: "flex-start" }}
+					>
+						{loading ? "Creating..." : "Generate New Key"}
+					</button>
+				</div>
+			)}
+		</div>
 	);
 }
 
