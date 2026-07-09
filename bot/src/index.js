@@ -3021,22 +3021,18 @@ bot.command("submit_sig", async (ctx) => {
 			{ parse_mode: "Markdown" },
 		);
 	} catch (err) {
-		// If settle failed, try refund
-		try {
-			const result = await api.refundEscrow(escrowId, {
-				address: getUserAddress(ctx.from.id),
-				signature,
-				message: `refund:${escrowId}`,
-			});
-			await ctx.reply(
-				`↩️ *Escrow Refunded!*\n\n` +
-					`ID: \`${result.escrow_id}\`\n` +
-					`Status: \`${result.status}\``,
-				{ parse_mode: "Markdown" },
-			);
-		} catch {
-			await ctx.reply("❌ Error: " + err.message);
-		}
+		// The signature didn't work for settle. The user may have signed a
+		// different message (e.g. refund instead of settle). Tell them which
+		// commands to use instead of guessing with the wrong signature.
+		const msg =
+			err.message && err.message.includes("unauthorized")
+				? "❌ Signature not valid for settle. If you signed for a refund instead, use:\n`/refund " +
+					escrowId +
+					"`\nthen submit the refund signature with:\n`/submit_sig " +
+					escrowId +
+					" <sig>`"
+				: "❌ Error: " + (err.message || "Unknown error");
+		await ctx.reply(msg, { parse_mode: "Markdown" });
 	}
 });
 

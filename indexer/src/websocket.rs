@@ -58,6 +58,27 @@ impl WsEvent {
             data: json!({ "escrow_id": escrow_id, "reason": reason }),
         }
     }
+
+    pub fn offer_created(offer_id: &str) -> Self {
+        Self {
+            event: "offer_created".to_string(),
+            data: json!({ "offer_id": offer_id }),
+        }
+    }
+
+    pub fn offer_accepted(offer_id: &str) -> Self {
+        Self {
+            event: "offer_accepted".to_string(),
+            data: json!({ "offer_id": offer_id }),
+        }
+    }
+
+    pub fn offer_cancelled(offer_id: &str) -> Self {
+        Self {
+            event: "offer_cancelled".to_string(),
+            data: json!({ "offer_id": offer_id }),
+        }
+    }
 }
 
 /// Handle a WebSocket connection.

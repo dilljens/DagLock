@@ -219,6 +219,7 @@ export function SettingsPage() {
 				<PriceAlertsSettings address={address!} />
 
 				{/* Bot registration */}
+				<BotRegistrationSection address={address!} sign={sign} notify={notify} />
 			</div>
 		</>
 	);

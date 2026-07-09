@@ -14,6 +14,7 @@ use crate::auth::AuthContext;
 use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
+use crate::websocket::WsEvent;
 
 /// POST /v1/offers
 pub async fn create(
@@ -155,6 +156,7 @@ pub async fn create(
         })?;
 
     webhooks::dispatch(state.db.clone(), WebhookEvent::OfferCreated(&offer.id));
+    let _ = state.ws_tx.send(WsEvent::offer_created(&offer.id));
     Ok((StatusCode::CREATED, Json(json!(offer))))
 }
 
@@ -254,6 +256,7 @@ pub async fn accept(
                 })?;
 
             webhooks::dispatch(state.db.clone(), WebhookEvent::OfferAccepted(&o.id));
+            let _ = state.ws_tx.send(WsEvent::offer_accepted(&o.id));
             Ok(Json(json!({ "status": "accepted", "offer_id": id })))
         }
         Some(_) => Err((
@@ -329,6 +332,7 @@ pub async fn cancel(
                     )
                 })?;
 
+            let _ = state.ws_tx.send(WsEvent::offer_cancelled(&id));
             Ok(Json(json!({ "status": "cancelled", "offer_id": id })))
         }
         Some(_) => Err((

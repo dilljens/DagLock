@@ -1091,21 +1091,7 @@ function CreateEscrow({ address, presetAsset }: { address: string; presetAsset?:
 					</select>
 				</FormField>
 			)}
-			<FormField label="Security deposit">
-				<label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-					<input
-						type="checkbox"
-						checked={false}
-						onChange={() =>
-							notify(
-								"info",
-								"Security deposit requires both parties to stake 1% bond. Coming soon.",
-							)
-						}
-					/>
-					Add security deposit (recommended)
-				</label>
-			</FormField>
+			{/* Security deposit — backend support not yet implemented */}
 			<FormField label="Trade hash (optional, for atomic swap)">
 				<div style={{ display: "flex", gap: "8px" }}>
 					<input
