@@ -2,7 +2,7 @@
 
 > Reference for the HTTP API exposed by the DagLock indexer service.
 
-Base URL: `https://api.daglock.com/v1` (production) / `http://localhost:8543/v1` (development)
+Base URL: `https://api.daglock.com/v1` (production) / `http://localhost:8443/v1` (development)
 
 ---
 
@@ -22,7 +22,7 @@ Lifecycle endpoints (settle, refund, dispute, cancel) require authentication hea
 
 **Example:**
 ```bash
-curl -X POST http://localhost:8543/v1/escrows/esc_abc123/settle \
+curl -X POST http://localhost:8443/v1/escrows/esc_abc123/settle \
   -H "X-Daglock-Address: kaspa:qz2q..." \
   -H "X-Daglock-Signature: 3a4b5c..." \
   -H "X-Daglock-Message: settle:esc_abc123"

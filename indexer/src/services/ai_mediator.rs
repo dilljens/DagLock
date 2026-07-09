@@ -116,7 +116,9 @@ impl AiMediator {
                 let ts = chrono::DateTime::from_timestamp(msg.timestamp, 0)
                     .map(|dt| dt.format("%Y-%m-%d %H:%M UTC").to_string())
                     .unwrap_or_default();
-                prompt.push_str(&format!("[{ts}] {}: {}\n", msg.role, msg.content));
+                prompt.push_str(&format!("[{ts}] {}: {}\n", msg.role, msg.content
+        #[allow(deprecated)]
+        msg.content));
             }
         }
 

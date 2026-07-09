@@ -83,6 +83,7 @@ pub async fn send(
             .next()
             .unwrap_or_default()
     );
+    #[allow(deprecated)]
     let msg = EscrowMessage {
         id: msg_id.clone(),
         escrow_id: escrow_id.clone(),

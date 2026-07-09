@@ -125,7 +125,7 @@ impl RateLimiter {
     /// `None` means no valid key was provided.
     pub fn resolve_tier(&self, key_hash: Option<&[u8]>) -> Option<ApiTier> {
         let key_hash = key_hash?;
-        let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
         // Check cache

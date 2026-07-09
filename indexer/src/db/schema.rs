@@ -100,7 +100,6 @@ pub async fn migrate(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     ensure_escrow_invoice_id_column(pool).await?;
     ensure_escrow_memo_column(pool).await?;
     ensure_price_columns(pool).await?;
-    ensure_price_type_column(pool).await?;
     ensure_dispute_mode_column(pool).await?;
     ensure_mediator_key_column(pool).await?;
     ensure_dispute_outcome_columns(pool).await?;
@@ -382,22 +381,6 @@ pub async fn ensure_escrow_market_order_fields(pool: &Pool<Sqlite>) -> Result<()
 }
 
 pub async fn ensure_escrow_price_type(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
-    let rows = sqlx::query("PRAGMA table_info(escrows)")
-        .fetch_all(pool)
-        .await?;
-    let existing = rows
-        .into_iter()
-        .filter_map(|row| row.try_get::<String, _>("name").ok())
-        .collect::<HashSet<_>>();
-    if !existing.contains("price_type") {
-        sqlx::query("ALTER TABLE escrows ADD COLUMN price_type TEXT")
-            .execute(pool)
-            .await?;
-    }
-    Ok(())
-}
-
-pub async fn ensure_price_type_column(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     let rows = sqlx::query("PRAGMA table_info(escrows)")
         .fetch_all(pool)
         .await?;

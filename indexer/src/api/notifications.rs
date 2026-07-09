@@ -11,7 +11,6 @@ use rand::Rng;
 use crate::api::AppState;
 use crate::auth::AuthContext;
 use crate::db::queries;
-use crate::services::email::EmailService;
 
 #[derive(Deserialize)]
 pub struct SubscribeRequest {

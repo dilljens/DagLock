@@ -15,6 +15,7 @@ use tracing::warn;
 
 /// Encrypt a plaintext message. Returns (ciphertext_hex, nonce_hex).
 /// Generates an ephemeral key if DAGLOCK_MESSAGE_KEY is not set (dev mode).
+#[allow(dead_code)]
 pub fn encrypt_message(plaintext: &str) -> Result<(String, String), String> {
     let key_bytes = load_key();
     let cipher = Aes256Gcm::new_from_slice(&key_bytes)

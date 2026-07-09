@@ -10,7 +10,6 @@ use crate::api::AppState;
 use crate::auth::AuthContext;
 use crate::db::queries;
 use crate::types::*;
-use sha2::{Digest, Sha256};
 
 /// GET /v1/vaults?owner=...
 pub async fn list(

@@ -14,6 +14,7 @@ use crate::db::queries;
 
 #[derive(Deserialize)]
 pub struct TokenListQuery {
+    #[allow(dead_code)]
     pub sort: Option<String>,
 }
 
@@ -305,7 +306,7 @@ pub async fn update(
 /// GET /v1/tokens/registered — list registered tokens from the registry
 pub async fn registered_list(
     State(state): State<AppState>,
-    Query(query): Query<TokenListQuery>,
+    Query(_query): Query<TokenListQuery>,
 ) -> Json<Value> {
     match queries::tokens::list_registered_tokens(&state.db, None).await {
         Ok(tokens) => Json(json!({

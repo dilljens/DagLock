@@ -574,21 +574,6 @@ bot.command("dispute", async (ctx) => {
 	}
 });
 
-bot.command("cancel", async (ctx) => {
-	const id = ctx.match?.trim();
-	if (!id) return await ctx.reply("Usage: /cancel <escrow-id>");
-
-	try {
-		const result = await api.cancelEscrow(id);
-		await ctx.reply(
-			`🛑 *Escrow Cancelled*\n\n` + `ID: \`${result.escrow_id}\``,
-			{ parse_mode: "Markdown" },
-		);
-	} catch (err) {
-		await ctx.reply("❌ Could not cancel: " + err.message);
-	}
-});
-
 bot.command("reputation", async (ctx) => {
 	const address = ctx.match?.trim();
 	if (!address) return await ctx.reply("Usage: /reputation <kaspa-address>");

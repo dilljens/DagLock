@@ -136,12 +136,12 @@
 
 | Covenant | Hash |
 |----------|------|
-| KAS | `30876e3ea42d0e23bb0980f3fd97ae8807e9c70f` |
-| KRC-20 | `ae0946e4a9bd4a7585e6bf9135de38083cb11c85` |
+| KAS | `3502219e8c85ff1f4eb3c1f20ff1049518302d2c` |
+| KRC-20 | `da57b7b66dd2f9a35dcb83a7fea3c05d1300c28e` |
 | Reputation | `65c54102c64a331414b602760cbd76efac3d69df` |
 | Vault (softlock) | `9777c9eb9e6271a32fac75d3533bc27d25b20d39` |
 | Vault (multisig) | `b0cddcd4dc716532fd86d1809a05f8ea7e74113d` |
-| Vault (standard) | `6ca87fa1f22b0acde59eb971789664de9c539782` |
+| Vault (standard) | `23734973784f8d47adf0c0a43744955817258d1d` |
 
 ---
 

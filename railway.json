@@ -4,7 +4,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network mainnet --allow-mainnet --daglock-kas-template 30876e3ea42d0e23bb0980f3fd97ae8807e9c70f --daglock-krc20-template ae0946e4a9bd4a7585e6bf9135de38083cb11c85 --daglock-reputation-template 65c54102c64a331414b602760cbd76efac3d69df --cors-origin https://daglock.com --no-wrpc",
+    "startCommand": "daglock-indexer --host 0.0.0.0 --port 8443 --database-url sqlite:/data/daglock.db --network mainnet --allow-mainnet --daglock-kas-template 3502219e8c85ff1f4eb3c1f20ff1049518302d2c --daglock-krc20-template da57b7b66dd2f9a35dcb83a7fea3c05d1300c28e --daglock-reputation-template 65c54102c64a331414b602760cbd76efac3d69df --cors-origin https://daglock.com --no-wrpc",
     "healthcheckPath": "/v1/health",
     "restartPolicyType": "ON_FAILURE"
   },

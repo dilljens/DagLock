@@ -130,7 +130,7 @@ impl EmailService {
     pub async fn send_verification(
         &self,
         email: &str,
-        address: &str,
+        _address: &str,
         code: &str,
     ) -> Result<(), String> {
         let subject = "Verify your email for DagLock notifications";
