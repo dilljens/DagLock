@@ -134,6 +134,7 @@ async fn main() {
     let anchor_bg = anchor_service.clone();
 
     let rate_limiter = Arc::new(crate::ratelimit::RateLimiter::new());
+    let rate_limiter_clone = rate_limiter.clone(); // for cleanup task
 
     let state = AppState {
         db: pool,
@@ -158,6 +159,7 @@ async fn main() {
         admin_token: args.admin_token.clone(),
     };
 
+    spawn_rate_limiter_cleanup(rate_limiter_clone);
     spawn_background_tasks(&args, &state, anchor_bg).await;
 
     let app = build_router(state, &args.cors_origin);
@@ -224,6 +226,17 @@ async fn spawn_wrpc_listener(args: &Args, state: &AppState) {
             Err(e) => warn!("Resolver connection failed for listener: {e} — running without block scanning"),
         }
     }
+}
+
+/// Periodically clean up stale rate limiter entries to prevent unbounded memory growth.
+fn spawn_rate_limiter_cleanup(limiter: Arc<crate::ratelimit::RateLimiter>) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
+        loop {
+            interval.tick().await;
+            limiter.cleanup();
+        }
+    });
 }
 
 fn spawn_offer_reconciler(db: sqlx::Pool<sqlx::Sqlite>) {

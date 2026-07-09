@@ -78,6 +78,21 @@ impl RateLimiter {
         }
     }
 
+    /// Remove expired windows and stale tier cache entries.
+    /// Call periodically (e.g. every 5 minutes) to prevent unbounded memory growth.
+    pub fn cleanup(&self) {
+        let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let now = Instant::now();
+
+        // Remove expired windows (entries older than 2 windows)
+        let cutoff = now - Duration::from_secs(WINDOW_SECS * 2);
+        inner.windows.retain(|_, w| w.reset_at > cutoff);
+
+        // Remove stale tier cache entries (older than 5 minutes)
+        let tier_cutoff = now - Duration::from_secs(300);
+        inner.tier_cache.retain(|_, (_tier, cached_at)| *cached_at > tier_cutoff);
+    }
+
     /// Check rate limit for an IP with an optional tier override.
     /// `tier` is `None` when no API key is present (falls back to Free).
     pub fn check(&self, ip: IpAddr, tier: Option<ApiTier>) -> Result<(), Response> {
@@ -215,10 +230,10 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn free_tier_allows_10() {
+    fn free_tier_allows_60() {
         let limiter = RateLimiter::new();
         let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
-        for _ in 0..10 {
+        for _ in 0..60 {
             assert!(limiter.check(ip, Some(ApiTier::Free)).is_ok());
         }
         assert!(limiter.check(ip, Some(ApiTier::Free)).is_err());
@@ -248,7 +263,7 @@ mod tests {
     fn no_tier_falls_back_to_free() {
         let limiter = RateLimiter::new();
         let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 4));
-        for _ in 0..10 {
+        for _ in 0..60 {
             assert!(limiter.check(ip, None).is_ok());
         }
         assert!(limiter.check(ip, None).is_err());
@@ -260,13 +275,13 @@ mod tests {
         let ip_a = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
         let ip_b = IpAddr::V4(Ipv4Addr::new(2, 2, 2, 2));
 
-        for _ in 0..10 {
+        for _ in 0..60 {
             assert!(limiter.check(ip_a, Some(ApiTier::Free)).is_ok());
         }
         assert!(limiter.check(ip_a, Some(ApiTier::Free)).is_err());
 
         // IP B starts fresh
-        for _ in 0..10 {
+        for _ in 0..60 {
             assert!(limiter.check(ip_b, Some(ApiTier::Free)).is_ok());
         }
     }
