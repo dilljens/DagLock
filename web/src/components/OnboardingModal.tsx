@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "../context/WalletContext";
+import { useRouter } from "../router";
 
 const STORAGE_KEY = "daglock_onboarded";
 
@@ -23,8 +24,8 @@ const slides = [
 	},
 	{
 		title: "Get Started",
-		subtitle: "Connect your wallet",
-		body: "Connect KasWare browser extension to get started. No KasWare? Use manual mode with any Kaspa wallet, or visit the Testnet page to try DagLock without a wallet at all. All your trades, vaults, and reputation are on-chain and verifiable.",
+		subtitle: "Connect or try testnet",
+		body: "Connect KasWare browser extension to get started. No KasWare? Use manual mode with any Kaspa wallet, or try the testnet guide to explore DagLock without connecting a wallet at all.",
 		icon: "🚀",
 	},
 ];
@@ -33,7 +34,9 @@ export function OnboardingModal() {
 	const [visible, setVisible] = useState(false);
 	const [slide, setSlide] = useState(0);
 	const { state, connect } = useWallet();
+	const { navigate } = useRouter();
 
+	// Show modal on first visit (before wallet is connected)
 	useEffect(() => {
 		const dismissed = localStorage.getItem(STORAGE_KEY);
 		if (!dismissed && !state.connected) {
@@ -41,10 +44,28 @@ export function OnboardingModal() {
 		}
 	}, [state.connected]);
 
-	function dismiss() {
+	// Keyboard navigation
+	useEffect(() => {
+		if (!visible) return;
+		function onKey(e: KeyboardEvent) {
+			if (e.key === "ArrowRight" || e.key === " ") {
+				e.preventDefault();
+				next();
+			} else if (e.key === "ArrowLeft") {
+				e.preventDefault();
+				if (slide > 0) setSlide((s) => s - 1);
+			} else if (e.key === "Escape") {
+				dismiss();
+			}
+		}
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [visible, slide]);
+
+	const dismiss = useCallback(() => {
 		localStorage.setItem(STORAGE_KEY, "1");
 		setVisible(false);
-	}
+	}, []);
 
 	function next() {
 		if (slide < slides.length - 1) {
@@ -54,17 +75,13 @@ export function OnboardingModal() {
 		}
 	}
 
-	function prev() {
-		if (slide > 0) setSlide(slide - 1);
-	}
-
 	if (!visible) return null;
 
 	const s = slides[slide];
 
 	return (
-		<div className="onboarding-overlay">
-			<div className="onboarding-modal">
+		<div className="onboarding-overlay" onClick={dismiss}>
+			<div className="onboarding-modal" onClick={(e) => e.stopPropagation()}>
 				<button type="button" className="onboarding-skip" onClick={dismiss} aria-label="Skip">
 					Skip tour
 				</button>
@@ -85,7 +102,7 @@ export function OnboardingModal() {
 
 				<div className="onboarding-actions">
 					{slide > 0 && (
-						<button type="button" className="button" onClick={prev}>
+						<button type="button" className="button" onClick={() => setSlide((s) => s - 1)}>
 							Back
 						</button>
 					)}
@@ -95,16 +112,30 @@ export function OnboardingModal() {
 							Next
 						</button>
 					) : (
-						<button
-							type="button"
-							className="button primary"
-							onClick={() => {
-								dismiss();
-								if (!state.connected) connect();
-							}}
-						>
-							Connect Wallet
-						</button>
+						<div style={{ display: "flex", gap: "8px", width: "100%" }}>
+							<button
+								type="button"
+								className="button"
+								onClick={() => {
+									dismiss();
+									navigate("/testnet");
+								}}
+								style={{ flex: 1 }}
+							>
+								Try Testnet
+							</button>
+							<button
+								type="button"
+								className="button primary"
+								onClick={() => {
+									dismiss();
+									if (!state.connected) connect();
+								}}
+								style={{ flex: 1 }}
+							>
+								Connect Wallet
+							</button>
+						</div>
 					)}
 				</div>
 			</div>

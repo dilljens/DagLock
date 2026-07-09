@@ -571,11 +571,24 @@ async function loadAuthJson<T>(path: string, auth: AuthHeaders): Promise<T> {
 	return response.json() as Promise<T>;
 }
 
+/** Extract a human-readable error from an API error response. */
+async function apiError(response: Response): Promise<string> {
+	if (response.status === 429) {
+		return "Too many requests. Please wait a moment and try again.";
+	}
+	try {
+		const json = await response.json();
+		return json.message || json.error || response.statusText;
+	} catch {
+		return response.statusText;
+	}
+}
+
 async function loadJson<T>(path: string): Promise<T> {
 	const response = await fetchWithTimeout(API_BASE + path);
 	if (!response.ok) {
-		const body = await response.text();
-		throw new Error(body);
+		const msg = await apiError(response);
+		throw new Error(msg);
 	}
 	return response.json() as Promise<T>;
 }
@@ -595,8 +608,24 @@ async function postJson<T>(path: string, body: unknown, auth?: AuthHeaders): Pro
 		body: JSON.stringify(body),
 	});
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text);
+		const msg = await apiError(response);
+		throw new Error(msg);
+	}
+	return response.json() as Promise<T>;
+}
+
+/** DELETE with auth headers. */
+async function deleteJson<T>(path: string, auth?: AuthHeaders): Promise<T> {
+	const headers: Record<string, string> = {};
+	if (auth) {
+		headers["X-Daglock-Address"] = auth.address;
+		headers["X-Daglock-Signature"] = auth.signature;
+		headers["X-Daglock-Message"] = auth.message;
+	}
+	const response = await fetchWithTimeout(API_BASE + path, { method: "DELETE", headers });
+	if (!response.ok) {
+		const msg = await apiError(response);
+		throw new Error(msg);
 	}
 	return response.json() as Promise<T>;
 }
