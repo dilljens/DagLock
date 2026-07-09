@@ -156,11 +156,11 @@ export class ApiClient {
 		return this.request(path);
 	}
 
-	createOffer(data) {
+	createOffer(data, auth) {
 		return this.request("/offers", {
 			method: "POST",
 			body: JSON.stringify(data),
-		});
+		}, auth);
 	}
 
 	acceptOffer(id, counterpartyAddress, auth) {

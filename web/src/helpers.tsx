@@ -42,16 +42,18 @@ export function time(value?: number | null): string {
 
 export function relativeTime(ts: number | null | undefined): string {
 	if (!ts) return "—";
-	const seconds = Math.floor(Date.now() / 1000 - ts);
-	if (seconds < 60) return "just now";
-	const minutes = Math.floor(seconds / 60);
-	if (minutes < 60) return `${minutes}m ago`;
+	const diff = Math.floor(Date.now() / 1000 - ts);
+	const abs = Math.abs(diff);
+	const future = diff < 0;
+	if (abs < 60) return future ? "in <1m" : "just now";
+	const minutes = Math.floor(abs / 60);
+	if (minutes < 60) return future ? `in ${minutes}m` : `${minutes}m ago`;
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `${hours}h ago`;
+	if (hours < 24) return future ? `in ${hours}h` : `${hours}h ago`;
 	const days = Math.floor(hours / 24);
-	if (days < 30) return `${days}d ago`;
+	if (days < 30) return future ? `in ${days}d` : `${days}d ago`;
 	const months = Math.floor(days / 30);
-	return `${months}mo ago`;
+	return future ? `in ${months}mo` : `${months}mo ago`;
 }
 
 export function errMsg(err: unknown): string {

@@ -173,14 +173,7 @@ function BrowseOffers() {
 			<div className="offers">
 				{filtered
 					.filter((o) => o.status === "proposed")
-					.filter((o) => {
-						if (dealTypeFilter === "all") return true;
-						if (dealTypeFilter === "otc")
-							return o.base_asset === "KAS" && o.quote_asset.startsWith("KRC20");
-						if (dealTypeFilter === "goods" || dealTypeFilter === "service")
-							return o.base_asset === "KAS" && o.quote_asset === "KAS";
-						return false;
-					})
+					.filter((o) => dealTypeFilter === "all" || o.deal_type === dealTypeFilter)
 					.map((o) => (
 						<OfferCard
 							key={o.id}
@@ -195,6 +188,16 @@ function BrowseOffers() {
 			</div>
 		</div>
 	);
+}
+
+/** Colors for deal_type badges. */
+function dealTypeColor(type: string): { bg: string; fg: string; border: string } {
+	switch (type) {
+		case "otc": return { bg: "#ba68c822", fg: "#ba68c8", border: "#ba68c844" };
+		case "goods": return { bg: "#53d76922", fg: "#53d769", border: "#53d76944" };
+		case "service": return { bg: "#42a5f522", fg: "#42a5f5", border: "#42a5f544" };
+		default: return { bg: "#88888822", fg: "#888888", border: "#88888844" };
+	}
 }
 
 /** Infer offer type from asset pair for display badge. */
@@ -338,6 +341,31 @@ function OfferCard({
 			)}
 			<small className="muted addr">by {offer.creator_address.slice(0, 24)}…</small>
 			<code>{offer.id}</code>
+			<div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+				{offer.deal_type && offer.deal_type !== "custom" && (
+					<span
+						className="pill"
+						style={{
+							background: dealTypeColor(offer.deal_type).bg,
+							color: dealTypeColor(offer.deal_type).fg,
+							border: `1px solid ${dealTypeColor(offer.deal_type).border}`,
+							fontSize: "11px",
+						}}
+					>
+						{offer.deal_type === "otc" ? "🤝 OTC" : offer.deal_type === "goods" ? "🛒 Goods" : offer.deal_type === "service" ? "🛠️ Service" : "⚙️ " + offer.deal_type}
+					</span>
+				)}
+				{offer.expires_at && (
+					<small className="muted" style={{ fontSize: "11px" }}>
+						⏳ {relativeTime(offer.expires_at)} left
+					</small>
+				)}
+			</div>
+			{offer.memo && (
+				<p style={{ fontSize: "13px", fontStyle: "italic", color: "var(--color-text-secondary)", margin: "4px 0" }}>
+					{offer.memo}
+				</p>
+			)}
 			<small className="muted">{relativeTime(offer.created_at)}</small>
 
 			{canAct && (

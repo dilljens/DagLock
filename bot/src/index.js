@@ -67,7 +67,9 @@ bot.api.setMyCommands([
 	{ command: "settle", description: "Settle an active escrow" },
 	{ command: "refund", description: "Refund an escrow" },
 	{ command: "submit_tx", description: "Submit TX ID after broadcasting" },
+	{ command: "createoffer", description: "Create an offer: /createoffer <side> <asset> <qty> [memo]" },
 	{ command: "accept", description: "Accept an offer by ID" },
+	{ command: "canceloffer", description: "Cancel your offer by ID" },
 	{ command: "submit_sig", description: "Submit signature for settle/refund/accept" },
 	{ command: "list", description: "List your escrows" },
 	{ command: "offers", description: "Browse open offers" },
@@ -367,6 +369,105 @@ bot.command("offers", async (ctx) => {
 		await ctx.reply(msg, { parse_mode: "Markdown" });
 	} catch (err) {
 		await ctx.reply("❌ Could not fetch offers: " + err.message);
+	}
+});
+
+// ── Create offer command ─────────────────────────────────────────────
+
+bot.command("createoffer", async (ctx) => {
+	const address = getUserAddress(ctx.from.id);
+	if (!address) {
+		return await ctx.reply("Set your address first: /setaddress <kaspa:...>");
+	}
+
+	const parts = (ctx.match || "").trim().split(/\s+/);
+	const side = parts[0]?.toLowerCase();
+	const baseAsset = parts[1]?.toUpperCase();
+	const amountStr = parts[2];
+	const memo = parts.slice(3).join(" ").trim();
+
+	if (!["buy", "sell"].includes(side) || !baseAsset || !amountStr || isNaN(parseFloat(amountStr))) {
+		return await ctx.reply(
+			"*Create an Offer*\n\n" +
+				"Usage: `/createoffer <side> <asset> <qty> [memo]`\n\n" +
+				"Examples:\n" +
+				"`/createoffer sell KAS 5000`\n" +
+				"`/createoffer buy KRC20:NACHO 100000`\n" +
+				"`/createoffer sell KAS 2500 Need KRC20:GHOST`\n\n" +
+				"_Side: buy or sell_\n" +
+				"_Asset: KAS, KRC20:NACHO, KRC20:GHOST, etc._\n" +
+				"_Qty: amount in whole tokens (not sompi)_",
+			{ parse_mode: "Markdown" },
+		);
+	}
+
+	try {
+		const amountNum = parseFloat(amountStr);
+		const amountSompi = BigInt(Math.round(amountNum * 1e8));
+
+		// Build auth — use makeAuth() on testnet (MockVerifier accepts any sig)
+		const msg = `create:offer:${address}`;
+		const auth = api.makeAuth(address, msg);
+
+		const body = {
+			creator_address: address,
+			side,
+			base_asset: baseAsset,
+			quote_asset: "KAS",
+			amount_sompi: Number(amountSompi),
+			price_type: "fixed",
+			memo: memo || undefined,
+		};
+
+		const result = await api.createOffer(body, {
+			address,
+			signature: auth["X-Daglock-Signature"],
+			message: msg,
+		});
+
+		endConv(ctx.from.id);
+		await ctx.reply(
+			`✅ *Offer Created!*\n\n` +
+				`ID: \`${result.id}\`\n` +
+				`${side.toUpperCase()} ${amountNum} ${baseAsset}\n\n` +
+				`View all offers: /offers\n` +
+				`Cancel: /canceloffer ${result.id}`,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Error creating offer: " + (err.message || "Unknown error"));
+	}
+});
+
+// ── Cancel offer command ─────────────────────────────────────────────
+
+bot.command("canceloffer", async (ctx) => {
+	const offerId = (ctx.match || "").trim();
+	if (!offerId) {
+		return await ctx.reply("Usage: /canceloffer <offer-id>", { parse_mode: "Markdown" });
+	}
+
+	try {
+		const address = getUserAddress(ctx.from.id);
+		if (!address) {
+			return await ctx.reply("Set your address first: /setaddress <kaspa:...>");
+		}
+
+		const msg = `cancel:offer:${offerId}`;
+		const auth = api.makeAuth(address, msg);
+
+		const result = await api.cancelOffer(offerId, {
+			address,
+			signature: auth["X-Daglock-Signature"],
+			message: msg,
+		});
+
+		await ctx.reply(
+			`🛑 *Offer Cancelled*\n\n` + `ID: \`${offerId}\``,
+			{ parse_mode: "Markdown" },
+		);
+	} catch (err) {
+		await ctx.reply("❌ Could not cancel: " + (err.message || "Unknown error"));
 	}
 });
 

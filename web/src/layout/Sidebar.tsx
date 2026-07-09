@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, type Route } from "../router";
 import { useWallet } from "../context/WalletContext";
+import { api } from "../api";
 
 /* ─── Navigation Group Structure ─── */
 
@@ -93,6 +94,20 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 	const { state, connect, setManualAddress } = useWallet();
 	const [showManualInput, setShowManualInput] = useState(false);
 	const [manualAddr, setManualAddr] = useState("");
+	const [offerCount, setOfferCount] = useState<number | null>(null);
+
+	useEffect(() => {
+		api.offers().then((d) => {
+			const count = (d.offers || []).filter((o: { status: string }) => o.status === "proposed").length;
+			setOfferCount(count);
+		}).catch(() => {});
+		const timer = setInterval(() => {
+			api.offers().then((d) => {
+				setOfferCount((d.offers || []).filter((o: { status: string }) => o.status === "proposed").length);
+			}).catch(() => {});
+		}, 60_000);
+		return () => clearInterval(timer);
+	}, []);
 	const [collapsed, setCollapsed] = useState<Set<string>>(() => {
 		// Start with groups collapsed by default except those marked defaultOpen
 		const start = new Set<string>();
@@ -206,6 +221,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 												onClick={() => handleNav(item.route)}
 											>
 												<span>{item.label}</span>
+												{item.route === "/offers" && offerCount !== null && offerCount > 0 && (
+													<span className="sidebar-badge">{offerCount}</span>
+												)}
 											</button>
 										))}
 									</div>
