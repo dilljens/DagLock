@@ -143,13 +143,19 @@ export function CreateTokenPage() {
 					>
 						Details
 					</button>
-					<button className={`tab-btn ${step === 2 ? "tab-btn--active" : ""}`} disabled>
+					<button
+						className={`tab-btn ${step === 2 ? "tab-btn--active" : ""}`}
+						onClick={() => { if (validate()) setStep(2); }}
+					>
 						Review
 					</button>
-					<button className={`tab-btn ${step === 3 ? "tab-btn--active" : ""}`} disabled>
+					<button
+						className={`tab-btn ${step === 3 ? "tab-btn--active" : ""}`}
+						onClick={() => { if (validate()) setStep(3); }}
+					>
 						Sign
 					</button>
-					<button className={`tab-btn ${step === 4 ? "tab-btn--active" : ""}`} disabled>
+					<button className={`tab-btn ${step === 4 ? "tab-btn--active" : ""}`}>
 						Done
 					</button>
 				</div>
@@ -284,11 +290,6 @@ export function CreateTokenPage() {
 							</div>
 						</div>
 
-						<p className="muted" style={{ fontSize: "13px" }}>
-							The KRC-20 covenant needs to be compiled and broadcast separately. After registering,
-							you'll get instructions for the on-chain deployment.
-						</p>
-
 						<div style={{ display: "flex", gap: "8px" }}>
 							<button className="button" onClick={() => setStep(1)}>
 								Back
@@ -327,22 +328,37 @@ export function CreateTokenPage() {
 						</p>
 
 						<div className="panel" style={{ textAlign: "left", marginBottom: "20px" }}>
-							<h4 style={{ margin: "0 0 8px" }}>Next Steps</h4>
+							<h4 style={{ margin: "0 0 8px" }}>What to do next</h4>
 							<ol style={{ lineHeight: 2, fontSize: "14px" }}>
-								<li>Compile the KRC-20 covenant using the compiler API</li>
-								<li>Broadcast the covenant transaction from your wallet</li>
 								<li>
-									Update the deployment status:{" "}
-									<code style={{ fontSize: "12px" }}>PATCH /v1/tokens/{ticker.toUpperCase()}</code>
+									<button
+										className="button"
+										onClick={() => navigate("/tokens" as any)}
+										style={{ fontSize: "12px", padding: "2px 10px" }}
+									>
+										Token Dashboard
+									</button>
+									— See {ticker.toUpperCase()} in the token list
 								</li>
 								<li>
 									<button
 										className="button"
 										onClick={() => navigate("/offers" as any)}
-										style={{ fontSize: "12px", padding: "2px 10px", marginTop: "4px" }}
+										style={{ fontSize: "12px", padding: "2px 10px" }}
 									>
-										Create a buy offer for {ticker.toUpperCase()}
+										Create Buy Offer
 									</button>
+									— List a buy offer for {ticker.toUpperCase()}
+								</li>
+								<li>
+									<button
+										className="button"
+										onClick={() => navigate("/escrows" as any)}
+										style={{ fontSize: "12px", padding: "2px 10px" }}
+									>
+										Create Escrow
+									</button>
+									— Lock KAS in a covenant to trade for {ticker.toUpperCase()}
 								</li>
 							</ol>
 						</div>

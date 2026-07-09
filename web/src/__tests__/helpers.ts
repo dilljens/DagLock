@@ -61,6 +61,9 @@ export function mockApi() {
 
 		// Vouch
 		vouch: vi.fn().mockResolvedValue({ status: "vouched" }),
+
+		// Tokens
+		registeredTokens: vi.fn().mockResolvedValue({ tokens: [], total: 0 }),
 	};
 }
 

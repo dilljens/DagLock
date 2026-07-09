@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { api, type CreateOfferRequest, type Offer } from "../api";
+import { useState, useEffect } from "react";
+import { api, type CreateOfferRequest, type Offer, type TokenRegistryEntry } from "../api";
 import { sompi } from "../helpers";
 import { FormField, ValidatedInput, kvad } from "../ui";
 
@@ -18,6 +18,20 @@ export function CreateOfferForm({ onDone }: { onDone: () => void }) {
 	const [maxPrice, setMaxPrice] = useState("");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 	const [error, setError] = useState("");
+	const [registeredTokens, setRegisteredTokens] = useState<TokenRegistryEntry[]>([]);
+
+	useEffect(() => {
+		api.registeredTokens().then((d) => setRegisteredTokens(d.tokens)).catch(() => {});
+	}, []);
+
+	const krc20Tickers = [
+		...new Set([
+			...registeredTokens.map((t) => `KRC20:${t.ticker}`),
+			"KRC20:NACHO",
+			"KRC20:KASPY",
+			"KRC20:GHOST",
+		]),
+	];
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -73,18 +87,18 @@ export function CreateOfferForm({ onDone }: { onDone: () => void }) {
 			<FormField label="Sell asset">
 				<select value={baseAsset} onChange={(e) => setBaseAsset(e.target.value)}>
 					<option value="KAS">KAS</option>
-					<option value="KRC20:NACHO">KRC20:NACHO</option>
-					<option value="KRC20:KASPY">KRC20:KASPY</option>
-					<option value="other">Other...</option>
+					{krc20Tickers.map((t) => (
+						<option key={t} value={t}>{t}</option>
+					))}
 				</select>
 			</FormField>
 			<FormField label="For asset">
 				<select value={quoteAsset} onChange={(e) => setQuoteAsset(e.target.value)}>
 					<option value="USDC">USDC</option>
 					<option value="KAS">KAS</option>
-					<option value="KRC20:NACHO">KRC20:NACHO</option>
-					<option value="KRC20:KASPY">KRC20:KASPY</option>
-					<option value="other">Other...</option>
+					{krc20Tickers.map((t) => (
+						<option key={t} value={t}>{t}</option>
+					))}
 				</select>
 			</FormField>
 			<FormField label={`Amount (${baseAsset})`}>

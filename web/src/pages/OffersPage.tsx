@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, type Offer } from "../api";
+import { api, type Offer, type TokenRegistryEntry } from "../api";
 import { money, sompi, relativeTime, badge } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
@@ -483,7 +483,23 @@ function CreateOffer({ address }: { address: string }) {
 	const [minPrice, setMinPrice] = useState("");
 	const [maxPrice, setMaxPrice] = useState("");
 	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
+	const [registeredTokens, setRegisteredTokens] = useState<TokenRegistryEntry[]>([]);
 	const { notify } = useToast();
+
+	// Fetch registered KRC-20 tokens for dynamic dropdown
+	useEffect(() => {
+		api.registeredTokens().then((d) => setRegisteredTokens(d.tokens)).catch(() => {});
+	}, []);
+
+	// Build KRC-20 ticker list: registered tokens + legacy hardcoded tokens
+	const krc20Tickers = [
+		...new Set([
+			...registeredTokens.map((t) => `KRC20:${t.ticker}`),
+			"KRC20:NACHO",
+			"KRC20:KASPY",
+			"KRC20:GHOST",
+		]),
+	];
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -536,16 +552,18 @@ function CreateOffer({ address }: { address: string }) {
 			<FormField label="Sell asset">
 				<select value={baseAsset} onChange={(e) => setBaseAsset(e.target.value)}>
 					<option value="KAS">KAS</option>
-					<option value="KRC20:NACHO">KRC20:NACHO</option>
-					<option value="KRC20:KASPY">KRC20:KASPY</option>
+					{krc20Tickers.map((t) => (
+						<option key={t} value={t}>{t}</option>
+					))}
 				</select>
 			</FormField>
 			<FormField label="For asset">
 				<select value={quoteAsset} onChange={(e) => setQuoteAsset(e.target.value)}>
 					<option value="USDC">USDC</option>
 					<option value="KAS">KAS</option>
-					<option value="KRC20:NACHO">KRC20:NACHO</option>
-					<option value="KRC20:KASPY">KRC20:KASPY</option>
+					{krc20Tickers.map((t) => (
+						<option key={t} value={t}>{t}</option>
+					))}
 				</select>
 			</FormField>
 			<FormField label={`Amount (${baseAsset})`}>
