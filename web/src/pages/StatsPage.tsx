@@ -56,25 +56,14 @@ function LineChart({
 	const plotW = svgW - padL - padR;
 	const plotH = svgH - padT - padB;
 
-	// Build line path with embedded circle markers drawn as small circles via arc paths
-	// Using path-based circles (not <circle> elements) because preserveAspectRatio="none"
-	// would stretch <circle> into ovals. Arc paths stretch too, but we draw each marker
-	// as a small rect-like path that stays recognizable.
+	// Build line path only — no circle markers (they stretched into ovals in the SVG)
 	let pathD = "";
-	let markersD = "";
 	values.forEach((v, i) => {
 		const x = padL + (i / Math.max(n - 1, 1)) * plotW;
 		const y = padT + (1 - v / max) * plotH;
 		const xS = x.toFixed(1);
 		const yS = y.toFixed(1);
 		pathD += `${i === 0 ? "M" : "L"}${xS},${yS}`;
-		if (v > 0) {
-			// Small circle marker using two arcs to form a full circle
-			const r = 1.5;
-			const xL = (x - r).toFixed(1);
-			const xR = (x + r).toFixed(1);
-			markersD += `M${xL},${yS} A${r},${r} 0 1,0 ${xR},${yS} A${r},${r} 0 1,0 ${xL},${yS}`;
-		}
 	});
 
 	// Y-axis labels: show min, mid, and max values
@@ -127,14 +116,7 @@ function LineChart({
 							strokeWidth="2"
 							vectorEffect="non-scaling-stroke"
 						/>
-						{/* Circle markers rendered as paths (not <circle>) so they stretch as arcs not ovals */}
-						{markersD && (
-							<path
-								d={markersD}
-								fill={color}
-								stroke="none"
-							/>
-						)}
+						{/* No circle markers — removed to avoid oval stretching in the SVG viewBox */}
 					</svg>
 				</div>
 			</div>

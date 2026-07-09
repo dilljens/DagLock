@@ -816,13 +816,14 @@ export const api = {
 		loadJson<{ offers: Offer[]; total: number }>(
 			`/v1/offers?status=proposed${creator ? `&creator=${encodeURIComponent(creator)}` : ""}`,
 		),
-	createOffer: (req: CreateOfferRequest) => postJson<Offer>("/v1/offers", req),
-	acceptOffer: (id: string, counterparty_address: string) =>
+	createOffer: (req: CreateOfferRequest, auth?: AuthHeaders) =>
+		postJson<Offer>("/v1/offers", req, auth),
+	acceptOffer: (id: string, counterparty_address: string, auth?: AuthHeaders) =>
 		postJson<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/accept`, {
 			counterparty_address,
-		}),
-	cancelOffer: (id: string) =>
-		postEmpty<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/cancel`),
+		}, auth),
+	cancelOffer: (id: string, auth?: AuthHeaders) =>
+		postEmpty<{ status: string; offer_id: string }>(`/v1/offers/${encodeURIComponent(id)}/cancel`, auth),
 
 	// Counter-offers
 	counterOffer: (offerId: string, req: { amount_sompi?: number; message?: string }) =>

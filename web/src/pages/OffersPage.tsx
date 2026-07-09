@@ -230,6 +230,7 @@ function OfferCard({
 	const [counterMsg, setCounterMsg] = useState("");
 	const [counterCount, setCounterCount] = useState<number | null>(null);
 	const { notify } = useToast();
+	const { sign } = useWallet();
 
 	useEffect(() => {
 		api
@@ -242,7 +243,10 @@ function OfferCard({
 		if (!counterparty.startsWith("kaspa:")) return;
 		setLoading(true);
 		try {
-			await api.acceptOffer(offer.id, counterparty);
+			const message = `accept:offer:${offer.id}`;
+			const signature = await sign(message);
+			const auth = { address: counterparty, signature, message };
+			await api.acceptOffer(offer.id, counterparty, auth);
 			notify("success", "Offer accepted");
 			onMutated();
 		} catch (e) {
@@ -253,9 +257,13 @@ function OfferCard({
 	}
 
 	async function handleCancel() {
+		if (!currentAddress) return;
 		setLoading(true);
 		try {
-			await api.cancelOffer(offer.id);
+			const message = `cancel:offer:${offer.id}`;
+			const signature = await sign(message);
+			const auth = { address: currentAddress, signature, message };
+			await api.cancelOffer(offer.id, auth);
 			notify("success", "Offer cancelled");
 			onMutated();
 		} catch (e) {
@@ -520,6 +528,7 @@ function CreateOffer({ address, presetAsset }: { address: string; presetAsset?: 
 	const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 	const [registeredTokens, setRegisteredTokens] = useState<TokenRegistryEntry[]>([]);
 	const { notify } = useToast();
+	const { sign } = useWallet();
 
 	// Fetch registered KRC-20 tokens for dynamic dropdown
 	useEffect(() => {
@@ -542,6 +551,9 @@ function CreateOffer({ address, presetAsset }: { address: string; presetAsset?: 
 		if (!amountNum || amountNum <= 0) return;
 		setStatus("loading");
 		try {
+			const message = `create:offer:${address}`;
+			const signature = await sign(message);
+			const auth = { address, signature, message };
 			await api.createOffer({
 				creator_address: address,
 				side,
@@ -557,7 +569,7 @@ function CreateOffer({ address, presetAsset }: { address: string; presetAsset?: 
 							...(maxPrice ? { max_price: Number.parseFloat(maxPrice) } : {}),
 						}
 					: {}),
-			});
+			}, auth);
 			notify("success", "Offer created!");
 			setStatus("done");
 		} catch (e) {
