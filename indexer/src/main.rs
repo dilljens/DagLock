@@ -68,10 +68,11 @@ async fn main() {
     info!("Database ready: {}", args.database_url);
 
     // Initialize on-chain verifier
-    // 1) If --wrpc-url is provided, connect to that specific node
-    // 2) If not, try auto-discovery via Kaspa Public Node Network (Resolver)
-    // 3) Use --no-wrpc to skip connection entirely (local dev)
-    // 4) Fall back to MockVerifier (always succeeds) when offline
+    // 1) Use --kaspa-api-url to verify via Kaspa community REST API (recommended)
+    // 2) If --wrpc-url is provided, connect to that specific node
+    // 3) If not, try auto-discovery via Kaspa Public Node Network (Resolver)
+    // 4) Use --no-wrpc to skip connection entirely (local dev)
+    // 5) Fall back to MockVerifier (always succeeds) when offline
     let verifier: Arc<dyn crate::verification::EscrowVerifier> = {
         if args.no_wrpc {
             warn!("--no-wrpc set — using mock verifier (offline mode)");
@@ -88,16 +89,10 @@ async fn main() {
                 }
             }
         } else {
-            match crate::listener::try_connect_resolver(&args.network).await {
-                Ok(client) => {
-                    info!("wRPC verifier connected via Resolver (auto-discovery)");
-                    Arc::new(crate::verification::WrpcVerifier::new(Some(client)))
-                }
-                Err(e) => {
-                    warn!("Resolver connection failed: {e} — using mock verifier");
-                    Arc::new(crate::verification::MockVerifier)
-                }
-            }
+            // Use REST API by default (no local node needed)
+            let api_url = &args.kaspa_api_url;
+            info!("Using Kaspa REST API verifier at {api_url}");
+            Arc::new(crate::verification::RestVerifier::new(api_url.clone()))
         }
     };
 

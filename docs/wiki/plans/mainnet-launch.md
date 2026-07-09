@@ -217,9 +217,10 @@ Based on market research findings:
 
 ### 🔴 Must Have (Launch Blocker)
 
-- [ ] Local kaspad node synced with `--utxoindex`
-- [ ] Indexer running with real wRPC verification
-- [ ] wRPC fallback tested and documented
+- [ ] ❌ Local kaspad node (needs 32GB RAM — not available)
+- [x] **RestVerifier built** — UTXO verification via Kaspa community REST API (`--kaspa-api-url https://api-tn11.kaspa.org` for testnet, `https://api.kaspa.org` for mainnet)
+- [ ] Manual: test with `--kaspa-api-url` on testnet-11
+- [ ] `--no-wrpc` fallback tested and documented (MockVerifier — degraded mode)
 - [ ] All test gates pass (Rust + Web + Bot + Manual)
 - [ ] Mainnet template hashes computed and deployed
 - [ ] nginx body limit, rate limits, creation caps in place

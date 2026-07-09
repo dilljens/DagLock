@@ -16,6 +16,12 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub no_wrpc: bool,
 
+    /// Use Kaspa community REST API for UTXO verification instead of wRPC.
+    /// Defaults to mainnet API. For testnet-11, use:
+    /// --kaspa-api-url https://api-tn11.kaspa.org
+    #[arg(long, default_value = "https://api.kaspa.org")]
+    pub kaspa_api_url: String,
+
     #[arg(long, default_value = "testnet-11")]
     pub network: String,
 
@@ -191,6 +197,7 @@ mod tests {
             port: 8543,
             wrpc_url: None,
             no_wrpc: true,
+            kaspa_api_url: "https://api.kaspa.org".into(),
             network: "testnet-11".into(),
             database_url: "sqlite::memory:".into(),
             daglock_kas_template: None,

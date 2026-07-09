@@ -1,7 +1,9 @@
 //! On-chain verification module for DagLock escrows.
 //!
-//! Provides async verification of UTXO existence via wRPC connection
-//! to a Kaspa node. Falls back to MockVerifier when offline (dev mode).
+//! Provides async verification of UTXO existence via:
+//! - wRPC connection to a Kaspa node (`WrpcVerifier`)
+//! - Kaspa community REST API (`RestVerifier`) — no local node needed
+//! - Mock verifier for testing (`MockVerifier`)
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -189,6 +191,140 @@ impl EscrowVerifier for WrpcVerifier {
                 Err(VerificationError::Other(
                     "No wRPC client connected. Cannot verify UTXO existence.".to_string(),
                 ))
+            }
+        }
+    }
+}
+
+// ── REST API-based Verifier ──────────────────────────────────────────
+
+/// Verifier that uses the Kaspa community REST API to check UTXO existence.
+///
+/// Queries `{api_url}/addresses/{address}/utxos` (the Kaspa public REST API)
+/// and checks if the escrow's lock transaction UTXO is still unspent.
+///
+/// This is the recommended verifier for setups without a local Kaspa node.
+/// The Kaspa community API is best-effort (no SLA) but works well for
+/// testnet and moderate mainnet usage.
+///
+/// # Examples
+/// ```
+/// // Mainnet (default):
+/// let verifier = RestVerifier::new("https://api.kaspa.org");
+///
+/// // Testnet-11:
+/// let verifier = RestVerifier::new("https://api-tn11.kaspa.org");
+/// ```
+pub struct RestVerifier {
+    api_url: String,
+    client: reqwest::Client,
+}
+
+impl RestVerifier {
+    pub fn new(api_url: impl Into<String>) -> Self {
+        Self {
+            api_url: api_url.into(),
+            client: reqwest::Client::new(),
+        }
+    }
+}
+
+#[async_trait]
+impl EscrowVerifier for RestVerifier {
+    async fn verify_utxo_exists(&self, escrow: &Escrow) -> VerificationResult<bool> {
+        info!(
+            "RestVerifier: checking UTXO for escrow {} (tx: {}, output: {})",
+            escrow.id, escrow.lock_tx_id, escrow.lock_tx_output_index
+        );
+
+        // Determine which address to query. Try buyer_address first, then seller.
+        let address = if !escrow.buyer_address.is_empty() {
+            &escrow.buyer_address
+        } else if let Some(ref seller) = escrow.seller_address {
+            seller
+        } else {
+            warn!("RestVerifier: no address available for escrow {}", escrow.id);
+            return Ok(false);
+        };
+
+        // Build the API URL
+        let url = format!("{}/addresses/{}/utxos", self.api_url, address);
+
+        match self.client.get(&url).send().await {
+            Ok(response) if response.status().is_success() => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => {
+                        // The response is an array of UTXOs
+                        // Each UTXO has: { "outpoint": { "transactionId": "...", "index": N }, ... }
+                        let utxos = match data.as_array() {
+                            Some(arr) => arr,
+                            None => {
+                                warn!("RestVerifier: unexpected response format for escrow {}", escrow.id);
+                                return Ok(false);
+                            }
+                        };
+
+                        let tx_id = &escrow.lock_tx_id;
+                        let output_index = escrow.lock_tx_output_index;
+
+                        for utxo in utxos {
+                            if let Some(outpoint) = utxo.get("outpoint") {
+                                let utxo_tx_id = outpoint
+                                    .get("transactionId")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
+                                let utxo_index = outpoint
+                                    .get("index")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(u64::MAX) as u32;
+
+                                // Compare case-insensitively (API returns lowercase hex)
+                                if utxo_tx_id.eq_ignore_ascii_case(tx_id) && utxo_index == output_index
+                                {
+                                    let amount = utxo
+                                        .get("utxoEntry")
+                                        .and_then(|e| e.get("amount"))
+                                        .and_then(|v| v.as_u64())
+                                        .unwrap_or(0);
+                                    info!(
+                                        "RestVerifier: UTXO found for escrow {} — amount: {}",
+                                        escrow.id, amount
+                                    );
+                                    return Ok(true);
+                                }
+                            }
+                        }
+
+                        warn!(
+                            "RestVerifier: UTXO NOT found for escrow {} — tx:{}:{} not in address UTXO set",
+                            escrow.id, tx_id, output_index
+                        );
+                        Ok(false)
+                    }
+                    Err(e) => {
+                        warn!("RestVerifier: failed to parse response for escrow {}: {}", escrow.id, e);
+                        Err(VerificationError::Other(format!(
+                            "REST API response parse failed: {e}"
+                        )))
+                    }
+                }
+            }
+            Ok(response) => {
+                warn!(
+                    "RestVerifier: API returned {} for escrow {}",
+                    response.status(),
+                    escrow.id
+                );
+                Err(VerificationError::Other(format!(
+                    "Kaspa API returned {}",
+                    response.status()
+                )))
+            }
+            Err(e) => {
+                warn!("RestVerifier: request failed for escrow {}: {}", escrow.id, e);
+                Err(VerificationError::Other(format!(
+                    "REST API request failed: {e}"
+                )))
             }
         }
     }
