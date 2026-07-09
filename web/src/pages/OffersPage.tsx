@@ -13,7 +13,14 @@ import { useQuery } from "@tanstack/react-query";
 type Tab = "browse" | "my-offers" | "create";
 
 export function OffersPage() {
-	const [tab, setTab] = useState<Tab>("browse");
+	const [tab, setTab] = useState<Tab>(() => {
+		const params = new URLSearchParams(window.location.search);
+		return params.has("create") ? "create" : "browse";
+	});
+	const [presetAsset, setPresetAsset] = useState<string | null>(() => {
+		const params = new URLSearchParams(window.location.search);
+		return params.get("asset");
+	});
 	const address = useAddress();
 	const { state: wallet } = useWallet();
 
@@ -81,7 +88,7 @@ export function OffersPage() {
 				{tab === "my-offers" &&
 					(wallet.connected ? <MyOffers address={address!} /> : <ConnectPrompt />)}
 				{tab === "create" &&
-					(wallet.connected ? <CreateOffer address={address!} /> : <ConnectPrompt />)}
+					(wallet.connected ? <CreateOffer address={address!} presetAsset={presetAsset} /> : <ConnectPrompt />)}
 			</div>
 		</>
 	);
@@ -472,10 +479,10 @@ function MyOffers({ address }: { address: string }) {
 }
 
 /* ─── Create Offer ─── */
-function CreateOffer({ address }: { address: string }) {
+function CreateOffer({ address, presetAsset }: { address: string; presetAsset?: string | null }) {
 	const [side, setSide] = useState("sell");
-	const [baseAsset, setBaseAsset] = useState("KAS");
-	const [quoteAsset, setQuoteAsset] = useState("USDC");
+	const [baseAsset, setBaseAsset] = useState(() => presetAsset || "KAS");
+	const [quoteAsset, setQuoteAsset] = useState(() => presetAsset && presetAsset.startsWith("KRC20:") ? "KAS" : "USDC");
 	const [amount, setAmount] = useState("");
 	const [expireHours, setExpireHours] = useState("72");
 	const [priceType, setPriceType] = useState("fixed");

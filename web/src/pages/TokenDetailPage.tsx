@@ -187,10 +187,16 @@ export function TokenDetailPage({ ticker }: { ticker: string }) {
 
 				{/* Quick actions */}
 				<div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
-					<button className="button primary" onClick={() => navigate("/escrows" as any)}>
+					<button
+						className="button primary"
+						onClick={() => navigate(`/escrows?type=create&asset=KRC20:${d.ticker}` as any)}
+					>
 						Buy {d.ticker}
 					</button>
-					<button className="button" onClick={() => navigate("/offers" as any)}>
+					<button
+						className="button"
+						onClick={() => navigate(`/offers?create&asset=KRC20:${d.ticker}` as any)}
+					>
 						Sell {d.ticker}
 					</button>
 				</div>

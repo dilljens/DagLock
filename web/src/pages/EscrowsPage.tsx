@@ -104,12 +104,17 @@ export function EscrowsPage() {
 	const address = useAddress();
 	const { state: wallet } = useWallet();
 
-	// Read ?type= query param to pre-select create mode (standard|milestone|multi|swap)
+	// Read ?type= and ?asset= query params
+	const [presetAsset, setPresetAsset] = useState<string | null>(null);
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
 		const type = params.get("type");
-		if (type === "milestone" || type === "multi") {
+		const asset = params.get("asset");
+		if (type === "milestone" || type === "multi" || type === "create") {
 			setTab("create");
+		}
+		if (asset) {
+			setPresetAsset(asset);
 		}
 	}, []);
 
@@ -169,7 +174,7 @@ export function EscrowsPage() {
 						<ConnectPrompt />
 					))}
 				{tab === "create" &&
-					(wallet.connected ? <CreateFlow address={address!} /> : <ConnectPrompt />)}
+					(wallet.connected ? <CreateFlow address={address!} presetAsset={presetAsset} /> : <ConnectPrompt />)}
 				{tab === "lookup" && <EscrowLookup />}
 				{tab === "receipt" && <ReceiptLookup />}
 				{tab === "invoice" && <CreateInvoiceForm />}
@@ -781,11 +786,26 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 /* ─── Unified Create Flow — Standard, Milestone, Multi-party ─── */
 type CreateMode = "standard" | "milestone" | "multi";
 
-function CreateFlow({ address }: { address: string }) {
+function CreateFlow({ address, presetAsset }: { address: string; presetAsset?: string | null }) {
 	const [mode, setMode] = useState<CreateMode>("standard");
 
 	return (
 		<div>
+			{presetAsset && presetAsset.startsWith("KRC20:") && (
+				<div
+					style={{
+						background: "var(--accent-dim)",
+						borderRadius: "8px",
+						padding: "8px 12px",
+						marginBottom: "12px",
+						fontSize: "13px",
+						color: "var(--accent)",
+					}}
+				>
+					Trading for <strong>{presetAsset}</strong> — you'll lock KAS and receive
+					the tokens when the escrow settles.
+				</div>
+			)}
 			<div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
 				{[
 					{ key: "standard" as const, label: "Standard Escrow", desc: "Simple release/refund" },
@@ -804,7 +824,7 @@ function CreateFlow({ address }: { address: string }) {
 					</button>
 				))}
 			</div>
-			{mode === "standard" && <CreateEscrow address={address} />}
+			{mode === "standard" && <CreateEscrow address={address} presetAsset={presetAsset} />}
 			{mode === "milestone" && <CreateMilestoneForm address={address} />}
 			{mode === "multi" && <CreateMultiForm address={address} />}
 		</div>
@@ -812,7 +832,7 @@ function CreateFlow({ address }: { address: string }) {
 }
 
 /* ─── Create Escrow (using wallet address) ─── */
-function CreateEscrow({ address }: { address: string }) {
+function CreateEscrow({ address, presetAsset }: { address: string; presetAsset?: string | null }) {
 	const [amount, setAmount] = useState("");
 	const [sellerAddress, setSellerAddress] = useState("");
 	const [disputeMode, setDisputeMode] = useState("standard");
@@ -907,6 +927,7 @@ function CreateEscrow({ address }: { address: string }) {
 				buyer_address: address,
 				...(sellerAddress.startsWith("kaspa:") ? { seller_address: sellerAddress } : {}),
 				amount_sompi: sompiAmount,
+				asset_type: presetAsset || "KAS",
 				dispute_mode: disputeMode,
 				...(tradeHash.trim() ? { trade_hash: tradeHash.trim() } : {}),
 				...(memo.trim() ? { memo: memo.trim() } : {}),
