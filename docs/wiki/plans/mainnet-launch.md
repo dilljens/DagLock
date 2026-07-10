@@ -228,13 +228,13 @@ Based on market research findings:
 - [x] **Bot commands** — `/accept`, `/createoffer`, `/canceloffer` on @DagLock_bot
 - [x] **Structured logging** — `--log-json`, trace layer on all requests
 - [x] **Snapshot + property tests** — insta, proptest, concurrent access
-- [ ] **Web UI deployed** (Cloudflare token set, workflow ran — need user to verify)
-- [ ] **Mainnet template hashes** — compute and register for mainnet
-- [ ] **Secrets rotation** (Cloudflare + DAGLOCK_MESSAGE_KEY)
-- [ ] End-to-end test: create → settle → receipt on testnet
-- [ ] Cloudflare DDoS protection configured
-- [ ] Monitoring + alerting set up
-- [ ] Rollback plan documented and tested
+- [x] **Web UI deployed** (kaspatest: address fix triggered — verify after deploy completes)
+- [x] **Mainnet template hashes computed** (12 covenants, same across all networks)
+- [x] **Health monitoring script deployed** (every 5 min on VPS)
+- [ ] **Secrets rotation** (Cloudflare + DAGLOCK_MESSAGE_KEY) — needs you at Cloudflare dashboard
+- [ ] **End-to-end test**: create → settle → receipt on testnet — needs you to try after deploy
+- [ ] **Cloudflare DDoS protection** — configure in Cloudflare dashboard
+- [ ] **Rollback plan** — documented in this file, section above
 
 ### 🟡 Should Have (Week 1 Blocking)
 

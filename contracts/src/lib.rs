@@ -699,6 +699,27 @@ mod tests {
         let (_, _, sub_hash) = template_parts_and_hash(&sub);
         let sub_hex: String = sub_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_subscription_template_hash={}", sub_hex);
+
+        let milestone = compile_daglock_milestone(
+            &zero, &zero, 100_000, vec![100_000, 0, 0, 0, 0],
+            vec![1_700_000_000, 0, 0, 0, 0], 0, &zero,
+        );
+        let (_, _, m_hash) = template_parts_and_hash(&milestone);
+        let m_hex: String = m_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_milestone_template_hash={}", m_hex);
+
+        let multi = compile_daglock_multi(
+            &zero, &zero, &zero, &zero, vec![2500, 2500, 2500, 2500],
+            &zero_hash, 1_700_000_000, &zero,
+        );
+        let (_, _, multi_hash) = template_parts_and_hash(&multi);
+        let multi_hex: String = multi_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_multi_template_hash={}", multi_hex);
+
+        let deposit = compile_daglock_deposit(&zero, &zero, &zero, 100_000, 1_700_000_000, &zero);
+        let (_, _, dep_hash) = template_parts_and_hash(&deposit);
+        let dep_hex: String = dep_hash.iter().map(|b| format!("{:02x}", b)).collect();
+        println!("daglock_deposit_template_hash={}", dep_hex);
     }
     #[test]
     fn arbiter_zero_key_and_nonzero_key_produce_different_scripts() {

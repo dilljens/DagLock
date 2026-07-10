@@ -132,16 +132,24 @@
                      └───────────────────────────┘
 ```
 
-### Template Hashes (Testnet-12)
+### Template Hashes (Deterministic — same across all networks)
 
 | Covenant | Hash |
 |----------|------|
 | KAS | `3502219e8c85ff1f4eb3c1f20ff1049518302d2c` |
 | KRC-20 | `da57b7b66dd2f9a35dcb83a7fea3c05d1300c28e` |
 | Reputation | `65c54102c64a331414b602760cbd76efac3d69df` |
+| Vault (standard) | `23734973784f8d47adf0c0a43744955817258d1d` |
 | Vault (softlock) | `9777c9eb9e6271a32fac75d3533bc27d25b20d39` |
 | Vault (multisig) | `b0cddcd4dc716532fd86d1809a05f8ea7e74113d` |
-| Vault (standard) | `23734973784f8d47adf0c0a43744955817258d1d` |
+| Arbiter | `69440eb964bbf7cb508c1f403549f00e88e67af8` |
+| Advanced | `35985a7853c2caef3db2484874a4658e097f2411` |
+| Subscription | `accde148ae0b399a6d7759f00004c45234fb0b1f` |
+| Milestone | `b4d8869885be21331f886409d92dc318e02db784` |
+| Multi | `58ac654b7d5b64aa4c05dfd728b95b35c3e4010f` |
+| Deposit | `8c338fdef7650b3b4b2e9d3143e1e94e7eed209c` |
+
+> Template hashes are deterministic — they depend only on the SilverScript source code and compiler version, not the network. The same hashes work for testnet-10, testnet-11, and mainnet.
 
 ---
 
