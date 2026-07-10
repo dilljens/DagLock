@@ -18,6 +18,8 @@ export interface WalletContextValue {
 	disconnect: () => void;
 	/** Set a manual address for testnet dev mode (no wallet needed). */
 	setManualAddress: (address: string) => void;
+	/** True if wallet is on mainnet but indexer expects testnet. */
+	isLikelyMainnet: boolean;
 }
 
 const WalletCtx = createContext<WalletContextValue | null>(null);
@@ -47,8 +49,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const connect = useCallback(async () => {
-		if (state.connected) return;
-		setState((s) => ({ ...s, loading: true, error: null }));
+		setState((s) => {
+			// Skip if already connected or currently connecting
+			if (s.connected || s.loading) return s;
+			return { ...s, loading: true, error: null };
+		});
 		try {
 			const { address, network, balance } = await connectWallet();
 			setState({
@@ -68,7 +73,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 				error: (err as Error).message,
 			}));
 		}
-	}, [state.connected]);
+	}, []);
+
+	// Detect network mismatch — warn if wallet network doesn't match expected
+	// The indexer currently runs on testnet-10. Mainnet addresses on testnet
+	// will fail signature verification.
+	const isLikelyMainnet = state.connected && state.network === "mainnet";
+	const isTestnetAddress = state.connected && state.address?.startsWith("kaspatest:");
+	const isMainnetAddress = state.connected && state.address?.startsWith("kaspa:") && !state.address?.startsWith("kaspatest:");
 
 	const setManualAddress = useCallback((address: string) => {
 		setState({
@@ -107,7 +119,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 	}, [state.manualMode]);
 
 	return (
-		<WalletCtx.Provider value={{ state, connect, sign, disconnect, setManualAddress }}>
+		<WalletCtx.Provider value={{ state, connect, sign, disconnect, setManualAddress, isLikelyMainnet }}>
 			{children}
 		</WalletCtx.Provider>
 	);

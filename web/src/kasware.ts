@@ -75,9 +75,23 @@ export async function connectWallet(): Promise<{
 		throw new Error("No accounts returned from wallet.");
 	}
 	const address = accounts[0];
-	const network = await window.kasware.getNetwork();
-	const balance = await window.kasware.getBalance();
-	const balanceKas = (balance.confirmed / 1e8).toFixed(4);
+
+	// Network and balance are optional — if they fail, use defaults and warn
+	let network = "unknown";
+	try {
+		network = await window.kasware.getNetwork();
+	} catch (e) {
+		console.warn("KasWare: could not get network:", e);
+	}
+
+	let balanceKas = "0";
+	try {
+		const balance = await window.kasware.getBalance();
+		balanceKas = (balance.confirmed / 1e8).toFixed(4);
+	} catch (e) {
+		console.warn("KasWare: could not get balance:", e);
+	}
+
 	return { address, network, balance: balanceKas };
 }
 
@@ -112,6 +126,15 @@ export function subscribeToWallet(
 				error: null,
 				manualMode: false,
 			});
+		} else {
+			// Account changed but not disconnected — update the address
+			const updater = (prev: WalletState) => ({
+				...prev,
+				detected: true,
+				address: accounts[0],
+				connected: true, // stay connected if we were connected
+			});
+			onStateChange(updater);
 		}
 	};
 	const onNetworkChanged = (network: string) => {
