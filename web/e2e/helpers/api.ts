@@ -114,7 +114,7 @@ export async function setupApiMocks(page: Page): Promise<void> {
 		}
 	});
 
-	await page.route("**/v1/escrows", async (route) => {
+	await page.route("**/v1/escrows*", async (route) => {
 		const url = route.request().url();
 		if (route.request().method() === "POST") {
 			await route.fulfill({

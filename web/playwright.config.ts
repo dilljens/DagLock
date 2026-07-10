@@ -21,7 +21,7 @@ export default defineConfig({
 		{
 			name: "manual-wallet",
 			testMatch: "**/*.spec.ts",
-			testIgnore: "**/kasware-wallet.spec.ts",
+			testIgnore: ["**/kasware-wallet.spec.ts", "**/wallet-errors.spec.ts", "**/offer-lifecycle.spec.ts", "**/escrow-actions.spec.ts"],
 			use: { ...devices["Desktop Chrome"] },
 		},
 		{
