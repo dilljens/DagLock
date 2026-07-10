@@ -1,0 +1,95 @@
+name: Bug Report (LLM-Optimized)
+description: Structured bug report with diagnostic data for AI analysis
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report
+
+        Fill in as much detail as possible. Structured fields help AI agents diagnose the issue faster.
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options:
+        - testnet-10
+        - testnet-11
+        - mainnet
+        - unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - indexer
+        - bot (Telegram)
+        - web UI
+        - covenant (smart contract)
+        - CLI
+        - wallet integration
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / Commit
+      description: Git commit hash or release version
+      placeholder: "e.g. a7307e4 or v0.1.0"
+
+  - type: input
+    id: trace_id
+    attributes:
+      label: Trace ID (if available)
+      description: Request trace ID from server logs
+      placeholder: "e.g. req_abc123"
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Exact steps to reproduce, including inputs (amounts, addresses, signatures)
+      placeholder: |
+        1. Create escrow with amount=100 KAS, buyer=X, seller=Y
+        2. Attempt settle with signature=0x...
+        3. Observe error
+      render: shell
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen
+      placeholder: "Escrow should settle, seller receives amount - fee"
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens, including full error message
+      placeholder: "Transaction rejected with: IncorrectFee"
+
+  - type: textarea
+    id: diagnostic
+    attributes:
+      label: Diagnostic Data
+      description: Server logs, error JSON, transaction hex, or UTXO state dump
+      placeholder: |
+        ```
+        {"error":"rate_limited","message":"Max 60 requests per 60 seconds"}
+        ```
+      render: json
+
+  - type: textarea
+    id: relevant_code
+    attributes:
+      label: Relevant Code
+      description: File paths and line numbers if known
+      placeholder: |
+        - contracts/src/daglock.sil:120-145
+        - indexer/src/api/escrows.rs:80-95

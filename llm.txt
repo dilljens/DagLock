@@ -1,0 +1,98 @@
+# DagLock
+
+Trustless escrow & atomic swaps on Kaspa L1 via SilverScript covenants.
+
+## Architecture
+
+```
+contracts/ (SilverScript) → indexer/ (Rust axum) → API → web/ (React), bot/ (Node.js)
+```
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `contracts/src/daglock.sil` | KAS escrow covenant (6 entrypoints: release, swap, refund, auto_settle, split, emergency_refund) |
+| `contracts/src/daglock_krc20.sil` | KRC-20 token escrow (4 entrypoints, ICC pattern for ownership validation) |
+| `contracts/src/daglock_arbiter.sil` | Mediated escrow with AI mediator + jury dispute paths |
+| `contracts/src/daglock_subscription.sil` | Recurring payment escrow with timing-enforced installment draws |
+| `contracts/src/daglock_milestone.sil` | Milestone-based partial escrow, up to 5 stages |
+| `contracts/src/daglock_vault.sil` | Time-locked vault with check-in, heir, and early-exit paths |
+| `contracts/src/lib.rs` | Compilation API + template hash extraction |
+| `indexer/src/main.rs` | Entry point, config, verifier wiring |
+| `indexer/src/api/mod.rs` | REST API router (60+ endpoints) |
+| `indexer/src/api/offers.rs` | Offer board CRUD (create/list/accept/cancel/counter) |
+| `indexer/src/api/escrows.rs` | Escrow lifecycle (create/settle/refund/dispute) |
+| `indexer/src/verification.rs` | UTXO verification: WrpcVerifier, RestVerifier, MockVerifier |
+| `indexer/src/auth.rs` | Schnorr signature verification (MockVerifier / SchnorrVerifier) |
+| `indexer/src/ratelimit.rs` | Tiered rate limiter (Free 60/min, Pro 100/min, Whale 1000/min) |
+| `indexer/src/types.rs` | Shared serde types for all API responses |
+| `indexer/src/db/schema.rs` | SQLx migrations + schema management |
+| `bot/src/index.js` | Telegram bot command handlers (grammY) |
+| `bot/src/lib/api.js` | Indexer REST API client for the bot |
+| `bot/src/db.js` | SQLite storage (better-sqlite3) |
+| `web/src/api.ts` | REST client + TypeScript types for web UI |
+| `web/src/pages/OffersPage.tsx` | Offer board with browse/create/cancel/accept UI |
+| `web/src/kasware.ts` | KasWare browser extension wallet integration |
+
+## Quick commands
+
+```bash
+cargo test --workspace     # 293 Rust tests (contracts, indexer, CLI, wasm-sdk)
+cd web && npm test         # 44 Web tests (Vitest + RTL)
+cd bot && npm test         # 39 Bot tests (node:test)
+cargo build --release -p daglock-indexer  # Release build for VPS deploy
+```
+
+## Key Rules
+
+1. Never `.unwrap()` outside `#[cfg(test)]` — panics crash the indexer in production
+2. Never hardcode addresses/keys in covenant source — all params via constructor
+3. Never skip fee validation in release/swap paths — treasury output must be checked
+4. Never change fee denominator (200) without updating ALL paths — hardcoded in compiled bytecode
+5. Never expose private keys in bot/CLI/WASM — only unsigned txs assembled
+6. Never use non-atomic updates for lifecycle transitions — use `settle_escrow_atomic()`
+7. Never skip address validation on create — validate with `validate_kaspa_address()`
+
+## Network
+
+| Environment | Network | API URL |
+|-------------|---------|---------|
+| Current | testnet-10 | `api.daglock.com` → VPS |
+| Target | mainnet | `api.daglock.com` → VPS |
+
+## Database
+
+- SQLite at `/opt/daglock-indexer/daglock.db` (VPS)
+- Schema migrations in `indexer/src/db/schema.rs` (idempotent `ensure_*` functions)
+- WAL mode, synchronous=NORMAL, 64MB cache, 5s busy timeout
+- Rate limiter cleans up stale entries every 5 minutes
+
+## VPS
+
+```bash
+ssh ubuntu@40.160.241.74  # pw: raspi9000
+sudo systemctl status daglock-indexer  # Runs on :8443
+sudo systemctl status daglock-bot      # Telegram @DagLock_bot
+sudo journalctl -u daglock-indexer -f  # Follow indexer logs
+```
+
+## Architecture Patterns
+
+- **One escrow, one UTXO** — isolated cells, no shared contract wallets
+- **Trustless by construction** — covenant enforces all rules, no admin keys
+- **Proposal before commitment** — negotiate terms, then lock funds
+- **UTXO model + covenants** — lock coins in UTXO, spend via covenant rules
+- **Three verifier modes**: WrpcVerifier (real node), RestVerifier (REST API), MockVerifier (offline)
+
+## Fee Model
+
+0.5% (value/200) protocol fee to DagLock treasury. Hardcoded in covenant bytecode (`FEE_DENOMINATOR = 200`).
+
+## Testing Patterns
+
+- Covenant tests use `TxScriptEngine` with real Schnorr signatures (no node needed)
+- Test files follow domain naming: `daglock_<domain>_tests.rs`
+- Response format: `assert!(result.is_ok(), "message: {:?}", result.err())`
+- Offer tests create real Offer structs via `insert_offer()` helper
+- Auth tests use `MockVerifier` or `SchnorrVerifier` directly

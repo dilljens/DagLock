@@ -330,3 +330,39 @@ See `docs/local-testnet-node.md` for the plan to run a local `kaspad` testnet-11
 
 Single OVH VPS running all projects. See `../VPS.md` for connection info, services, and commands.
 Note: SSH user is `ubuntu`, not `root`. Password: `raspi9000`.
+
+## Agent Workflows
+
+### After any code change
+1. Run `cargo test --workspace` if Rust changed
+2. Run `cd web && npm test` if web changed
+3. Run `cd bot && npm test` if bot changed
+4. Fix any test failures before proposing the change
+
+### When debugging a failure
+1. Read the full error output — not just the summary line
+2. Check VPS logs: `sudo journalctl -u daglock-indexer -n 50` for server errors
+3. Check bot logs: `sudo journalctl -u daglock-bot -n 50` for bot errors
+4. Trace the error path: what function emitted it → what called it → what were the inputs
+5. For covenant failures, check `cargo test -p daglock-contracts` with `-- --nocapture`
+
+### Before editing a covenant (.sil file)
+1. Read the full `.sil` file — understand ALL entrypoints and their `require()` conditions
+2. Check for dependencies: does another covenant reference this one? (e.g. ICC pattern)
+3. Run `cargo test -p daglock-contracts` to verify all existing tests still pass
+4. After editing, add tests for the new/modified behavior
+
+### When adding a new feature
+1. Start with types: extend `indexer/src/types.rs` or `web/src/api.ts`
+2. Add DB columns/tables in `indexer/src/db/schema.rs` (idempotent `ensure_*` pattern)
+3. Add API handler in `indexer/src/api/`
+4. Wire routes in `indexer/src/api/mod.rs`
+5. Add web UI components in `web/src/`
+6. Add bot commands in `bot/src/index.js`
+7. Add tests at each layer before moving to the next
+
+### Testing patterns to follow
+- **Rust tests**: `assert!(result.is_ok(), "context: {:?}", result.err())` — always include context
+- **Covenant tests**: Real Schnorr signatures via TxScriptEngine, no node needed
+- **Bot tests**: Mock API responses with `mock.fn()`, test logic not network
+- **Web tests**: Vitest + RTL, mock API with `mockApi()` helper
