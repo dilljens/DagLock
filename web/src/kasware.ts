@@ -93,7 +93,10 @@ export async function signMessage(
 }
 
 // Subscribe to wallet events
-export function subscribeToWallet(onStateChange: (state: WalletState) => void): () => void {
+// `onStateChange` receives either a full WalletState or an updater function.
+export function subscribeToWallet(
+    onStateChange: (stateOrFn: WalletState | ((prev: WalletState) => WalletState)) => void,
+): () => void {
 	const kasware = window.kasware;
 	if (!kasware) return () => {};
 
@@ -111,17 +114,15 @@ export function subscribeToWallet(onStateChange: (state: WalletState) => void): 
 			});
 		}
 	};
-	const onNetworkChanged = (network: string) =>
-		onStateChange({
+	const onNetworkChanged = (network: string) => {
+		// Use a function updater to preserve existing state (don't reset connected)
+		const updater = (prev: WalletState) => ({
+			...prev,
 			detected: true,
-			connected: false,
-			address: null,
-			network,
-			balance: null,
-			loading: false,
-			error: null,
-			manualMode: false,
+			network: network || prev.network,
 		});
+		onStateChange(updater);
+	};
 	const onDisconnect = () => {
 		onStateChange({
 			detected: true,

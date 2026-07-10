@@ -41,9 +41,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 		});
 	}, []);
 
-	// Subscribe to wallet events
+	// Subscribe to wallet events — accepts both full state and updater functions
 	useEffect(() => {
-		return subscribeToWallet((newState) => setState(newState));
+		return subscribeToWallet((newState) => setState(newState as any));
 	}, []);
 
 	const connect = useCallback(async () => {
