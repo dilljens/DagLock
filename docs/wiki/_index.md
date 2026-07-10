@@ -39,6 +39,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-10 | **Mainnet hardening sprint**: wRPC via PNN (no local node needed), rate limiter 10→60/min + cleanup, SQLite optimizations (synchronous=NORMAL, busy_timeout, 64MB cache, 6 indexes), offers pagination, structured logging + TraceLayer. 38 E2E tests (wallet errors, offer lifecycle, escrow actions). Tool audit plugin. Total: 302 Rust + 67 Web + 39 Bot + 16 E2E = 424 tests. |
 | 2026-07-08 | **Deferred items completed**: Bot SQLite persistent storage, 18 new covenant tests (subscription, milestone, advanced), 17 new bot tests (command handlers, SQLite CRUD). Total: 376 tests (293 Rust + 44 Web + 39 Bot). |
 | 2026-07-07 | **Full feature completion**: Subscription web UI, KRC-20 bot commands, vault API endpoints, MediationPanel wiring, deal type backend, on-chain anchoring UI, DeepSeek AI switch |
 | 2026-07-07 | **Feature completeness audit**: 20 features checked across 4 layers. 12 partial/missing features completed. |

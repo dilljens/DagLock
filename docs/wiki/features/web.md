@@ -44,5 +44,19 @@ React + Vite dashboard. 17+ pages. Communicates with indexer REST API. Vitest + 
 | chat-store | `crypto/chat-store.ts` | localStorage persistence of per-escrow keypairs |
 | recovery-sheet | `crypto/recovery-sheet.ts` | .txt download + restore for chat private keys |
 
+## Testing
+
+| Layer | Tool | Count | Run |
+|-------|------|-------|-----|
+| Unit tests | Vitest + RTL + user-event | 67 | `npm test` |
+| Wallet E2E | Playwright v1.61 (mock KasWare) | 6 | `npx playwright test e2e/wallet-errors.spec.ts --project=kasware-wallet` |
+| Offer E2E | Playwright (mock API + KasWare) | 7 | `npx playwright test e2e/offer-lifecycle.spec.ts --project=kasware-wallet` |
+| Escrow E2E | Playwright (mock API + KasWare) | 3 | `npx playwright test e2e/escrow-actions.spec.ts --project=kasware-wallet` |
+| All E2E | Playwright headless | 16 | `npm run test:e2e` |
+
+**Wallet mock**: `e2e/helpers/kasware.ts` — injects fake `window.kasware` via `page.addInitScript()`.
+**API mock**: `e2e/helpers/api.ts` — route-level mocks for all major endpoints via `page.route()`.
+**CI**: E2E runs on every push to main via GitHub Actions (installs Chromium, starts dev server, runs tests).
+
 ---
-*Confidence: 0.95 · Last updated: 7/7/2026*
+*Confidence: 0.95 · Last updated: 7/10/2026*

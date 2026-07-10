@@ -53,6 +53,14 @@ Check: Validate with `validate_kaspa_address()`
   - Run: `python3 scripts/simulation.py --trades 30 --bots 3` | Notes: Mass trade generation + reputation testing
 - `reputation-submitter.py`
   - Script to backfill settled escrows into the on-chain reputation covenant. Reads from indexer API, produces unsigned receipts.
+- `tool-audit` (opencode plugin)
+  - Plugin at `~/.config/oh-my-agent/opencode/plugins/tool-audit.ts`. Logs every tool call (bash, edit, webfetch, subagent tasks, etc.) to `~/.local/state/opencode/tool-audit.jsonl`.
+  - Query examples:
+    ```bash
+    jq 'select(.agent == "research")' ~/.local/state/opencode/tool-audit.jsonl
+    jq -r '.tool' ~/.local/state/opencode/tool-audit.jsonl | sort | uniq -c | sort -rn
+    jq 'select(.type == "file_change")' ~/.local/state/opencode/tool-audit.jsonl
+    ```
 
 # Decisions
 

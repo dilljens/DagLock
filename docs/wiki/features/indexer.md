@@ -73,5 +73,17 @@ Rust backend serving the DagLock REST API. 60+ endpoints across escrows, offers,
 ## Config Flags
 `--no-wrpc`, `--wrpc-url`, `--mock-auth`, `--mock-chat-sig`, `--network`, `--treasury-pubkey`, `--admin-token`, `--ai-mediator-api-key`, `--ai-mediator-model`, `--anchor-wallet-key`, `--auto-sweep-vaults`, `--auto-settle-escrows`, `--auto-escalate-disputes`, `--auto-sweep-deposits`, `--price-alerts-enabled`, `--stats-interval-seconds`, `--evidence-auto-wipe-hours`
 
+## Verification (July 2026)
+
+- **RestVerifier** (`indexer/src/verification.rs`): Queries Kaspa community REST API (`api.tn10.kaspa.org/addresses/{addr}/utxos`) for UTXO verification. Used when no local node available.
+- **WrpcVerifier**: Uses wRPC via PNN (Public Node Network) — `wss://vector-10.kaspa.green/kaspa/testnet-10/wrpc/borsh`. Replaces RestVerifier when node connection is available.
+- **MockVerifier**: Dev mode — always returns true (`--no-wrpc` flag).
+
+## Observability
+
+- **Structured logging**: `--log-json` flag outputs JSON-formatted logs. TraceLayer auto-instruments every HTTP request with method, URI, status, latency.
+- **Health monitoring**: `scripts/health-check.sh` deployed to VPS, runs every 5 min via cron. Checks API, price oracle, systemd services, nginx, disk, memory.
+- **Rate limiter**: 60 req/min free tier (via `?limit=`), periodic cleanup of stale IP entries every 5 min. CORS headers on 429 responses.
+
 ---
-*Confidence: 0.95 · Last updated: 7/7/2026*
+*Confidence: 0.95 · Last updated: 7/10/2026*
