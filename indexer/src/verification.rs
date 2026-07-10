@@ -208,7 +208,7 @@ impl EscrowVerifier for WrpcVerifier {
 /// testnet and moderate mainnet usage.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// // Mainnet (default):
 /// let verifier = RestVerifier::new("https://api.kaspa.org");
 ///

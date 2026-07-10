@@ -101,8 +101,8 @@ mod tests {
     fn encrypt_decrypt_long_message() {
         with_test_key(|| {
             let plaintext = "A".repeat(10_000);
-            let (ct, nonce) = encrypt_message(&plaintext).unwrap();
-            let decrypted = decrypt_message(&ct, &nonce).unwrap();
+            let (ct, nonce) = encrypt_message(&plaintext).expect("encrypt should work with test key");
+            let decrypted = decrypt_message(&ct, &nonce).expect("decrypt should work");
             assert_eq!(decrypted, plaintext);
         });
     }
