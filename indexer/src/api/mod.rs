@@ -44,6 +44,7 @@ use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 
 /// Shared application state.
@@ -261,6 +262,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             patch(apps::update_key_tier),
         )
         .layer(cors)
+        .layer(TraceLayer::new_for_http())
         .layer(axum::middleware::from_fn(request_id_middleware))
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max body
         .route_layer(axum::middleware::from_fn_with_state(

@@ -46,6 +46,10 @@ pub struct Args {
     #[arg(long, default_value = "info")]
     pub log_level: String,
 
+    /// Output logs as JSON (for production log aggregation).
+    #[arg(long, default_value_t = false)]
+    pub log_json: bool,
+
     /// Allowed CORS origin. Set to a specific domain in production, * for dev.
     #[arg(long, default_value = "https://daglock.com")]
     pub cors_origin: String,
@@ -206,6 +210,7 @@ mod tests {
             daglock_vault_multisig_template: None,
             daglock_reputation_template: None,
             log_level: "info".into(),
+            log_json: false,
             cors_origin: "*".into(),
             allow_mainnet: false,
             db_type: "sqlite".into(),

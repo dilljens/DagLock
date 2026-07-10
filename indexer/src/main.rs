@@ -39,9 +39,18 @@ async fn main() {
         }
     }
 
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new(&args.log_level))
-        .init();
+    if args.log_json {
+        tracing_subscriber::fmt()
+            .json()
+            .with_target(true)
+            .with_current_span(true)
+            .with_env_filter(EnvFilter::new(&args.log_level))
+            .init();
+    } else {
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::new(&args.log_level))
+            .init();
+    }
 
     info!("Starting DagLock Indexer v{}", env!("CARGO_PKG_VERSION"));
 
