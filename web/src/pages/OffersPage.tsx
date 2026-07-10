@@ -240,7 +240,10 @@ function OfferCard({
 	}, [offer.id]);
 
 	async function handleAccept() {
-		if (!counterparty.startsWith("kaspa:")) return;
+		if (!counterparty.startsWith("kaspa:") && !counterparty.startsWith("kaspatest:")) {
+			notify("error", "Invalid address", "Enter a valid Kaspa address (kaspa: or kaspatest:)");
+			return;
+		}
 		setLoading(true);
 		try {
 			const message = `accept:offer:${offer.id}`;
