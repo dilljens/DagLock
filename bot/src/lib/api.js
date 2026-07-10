@@ -409,7 +409,9 @@ export class ApiClient {
 	// ── offers API (with auth) ────────────────────────────────────────
 
 	makeAuth(address, message) {
-		// Mock auth for testnet — HMAC-SHA256 of the message
+		// # ponytail: Mock auth using HMAC-SHA256 instead of real Schnorr signatures.
+		// Only works with --mock-auth on testnet. On mainnet, users must sign with
+		// their KasWare wallet and paste the signature via /submit_sig.
 		const crypto = require("crypto");
 		const msgHash = crypto.createHash("sha256").update(message).digest();
 		const key = address.padEnd(64, "0").slice(0, 64);

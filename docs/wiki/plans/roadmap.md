@@ -16,10 +16,17 @@ Preparing for mainnet launch on Kaspa Toccata hard fork. Focus on security harde
 | Bot persistent storage (SQLite) | P1 | ✅ done | Replaced /tmp JSON with better-sqlite3 |
 | Covenant test coverage (sub, milestone, advanced) | P1 | ✅ done | 18 new execution tests |
 | Bot test suite | P2 | ✅ done | 17 new tests (CRUD + commands + migration) |
-| Chat signature verification | P1 | ❌ blocked | Needs wRPC node (RAM upgrade ~July 13) |
-| Local testnet node (kaspad) | P1 | 🔄 pending | Replaces MockVerifier; needs 32GB RAM |
-| Subscription covenant deployment | P1 | ✅ done | Compilation + template hash ready |
-| Mainnet deploy checklist | P1 | 🔄 pending | DNS, SSL, secrets, systemd timers |
+| Bot `/accept`, `/createoffer`, `/canceloffer` commands | P1 | ✅ done | Full Telegram offer lifecycle |
+| Offer memo/deal_type + web UI polish | P2 | ✅ done | Memo field, deal type dropdown, expiry display |
+| WebSocket + nginx fixes | P1 | ✅ done | WS upgrade headers, CORS on 429 |
+| Rate limiter: 10→60/min + cleanup | P1 | ✅ done | Scalability for many users |
+| SQLite optimizations + indexes | P1 | ✅ done | synchronous=NORMAL, busy_timeout, cache_size, 6 new indexes |
+| Offers API pagination | P1 | ✅ done | limit/offset, default 50 max 200 |
+| Structured logging + TraceLayer | P2 | ✅ done | --log-json flag, request instrumentation |
+| Snapshot + property-based tests | P2 | ✅ done | insta, proptest, concurrent access tests |
+| Chat signature verification | P1 | ❌ blocked | Needs wRPC via PNN (TN10 wRPC is live) |
+| Web UI deploy (Cloudflare token) | P1 | ❌ blocking offers | Token exists in GitHub secrets, deploy ran |
+| Secrets rotation | P1 | ❌ blocked | Needs Cloudflare dashboard access |
 
 ## Future Milestones
 

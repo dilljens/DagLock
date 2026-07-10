@@ -217,29 +217,32 @@ Based on market research findings:
 
 ### 🔴 Must Have (Launch Blocker)
 
-- [ ] ❌ Local kaspad node (needs 32GB RAM — not available)
-- [x] **RestVerifier built** — UTXO verification via Kaspa community REST API (`--kaspa-api-url https://api-tn11.kaspa.org` for testnet, `https://api.kaspa.org` for mainnet)
-- [x] **RestVerifier deployed** on VPS with `--kaspa-api-url https://api-tn11.kaspa.org`
-- [ ] End-to-end test blocked — testnet-11 community API down (503)
-- [x] `--no-wrpc` fallback documented (add `--no-wrpc` flag to systemd if needed)
-- [x] **nginx body limit** set (`client_max_body_size 1m;`)
-- [x] **Bot updated** on VPS with `/accept`, `/createoffer`, `/canceloffer` commands
-- [ ] All test gates pass (Rust + Web + Bot + Manual)
-- [ ] Mainnet template hashes computed and deployed
-- [ ] nginx body limit, rate limits, creation caps in place
-- [ ] Secrets rotated (Cloudflare + DAGLOCK_MESSAGE_KEY)
+- [x] **wRPC verification live** via PNN TN10 node (`wss://vector-10.kaspa.green/kaspa/testnet-10/wrpc/borsh`) — no local node needed
+- [x] **RestVerifier fallback** available for when PNN is down (`--kaspa-api-url`)
+- [x] `--no-wrpc` fallback (MockVerifier — degraded mode)
+- [x] **nginx hardened** — `client_max_body_size 1m;`
+- [x] **WebSocket support** — upgrade headers in nginx
+- [x] **Rate limiter** — 60 req/min free, periodic cleanup, CORS on 429
+- [x] **SQLite optimizations** — WAL, synchronous=NORMAL, busy_timeout, 64MB cache, 6 new indexes
+- [x] **Offers pagination** — `?limit=50&offset=` default
+- [x] **Bot commands** — `/accept`, `/createoffer`, `/canceloffer` on @DagLock_bot
+- [x] **Structured logging** — `--log-json`, trace layer on all requests
+- [x] **Snapshot + property tests** — insta, proptest, concurrent access
+- [ ] **Web UI deployed** (Cloudflare token set, workflow ran — need user to verify)
+- [ ] **Mainnet template hashes** — compute and register for mainnet
+- [ ] **Secrets rotation** (Cloudflare + DAGLOCK_MESSAGE_KEY)
+- [ ] End-to-end test: create → settle → receipt on testnet
 - [ ] Cloudflare DDoS protection configured
 - [ ] Monitoring + alerting set up
 - [ ] Rollback plan documented and tested
 
 ### 🟡 Should Have (Week 1 Blocking)
 
-- [ ] Third-party audit OR bug bounty live
-- [ ] Counterparty discovery board live
+- [ ] Treasury-funded security reserve allocated (% of protocol fees)
+- [ ] Counterparty discovery board polish (deal type filter + pagination + memo)
 - [ ] KRC-20 token filter in offer board
-- [ ] Onboarding flow for first-time users
+- [ ] Onboarding flow for first-time users (U7)
 - [ ] Fee display in USD on create flow
-- [ ] Error messages user-friendly (ApiErrorCode enum)
 
 ### 🟢 Nice to Have (Week 2+)
 

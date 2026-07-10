@@ -6,6 +6,14 @@
 //! - dispute: buyer halts, reclaims everything
 //! - refund_remaining: buyer reclaims after current milestone timeout
 //! - complete: mutual full release
+//!
+//! # ponytail: The relock script for release_milestone and approve_milestone
+//! uses a minimal P2PK script (36 bytes) instead of a full milestone covenant.
+//! The full compiled milestone covenant (~735 bytes) exceeds the OP_DATA 520-byte
+//! limit for the newCovenantScript parameter. The P2PK approach works because the
+//! covenant only checks scriptPubKey equality — any valid script works.
+//! Upgrade path: compile a minimal milestone covenant once the OP_DATA limit
+//! is raised or split-push is implemented.
 
 use daglock_contracts::{
     compile_daglock_milestone, entrypoints,

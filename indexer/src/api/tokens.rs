@@ -277,9 +277,10 @@ pub async fn update(
 
     let new_status = body.status.as_deref().unwrap_or("active");
 
-    // TODO: When a real wRPC verifier is available, verify that deploy_tx_id
-    // exists on-chain and contains the expected DagLockKRC20 covenant script.
-    // For now, accept the user-provided tx ID (MockVerifier always returns true).
+    // # ponytail: Token deployment verification is skipped — we don't verify that
+    // deploy_tx_id actually contains a DagLockKRC20 covenant on-chain.
+    // Upgrade path: query the tx via wRPC, extract output scripts, verify
+    // the KRC-20 covenant template hash matches. Requires wRPC connection.
 
     queries::tokens::update_token_status(
         &state.db,

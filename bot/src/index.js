@@ -1077,10 +1077,9 @@ bot.command("msg", async (ctx) => {
 	}
 });
 
-// TODO: Messages may now be E2E encrypted (content_enc + nonce fields).
-// The bot cannot decrypt them. Consider showing:
-//   "View encrypted messages on the web dashboard: https://daglock.com/escrows/{id}"
-// when content_enc is present instead of raw content.
+// # ponytail: The bot can't decrypt E2E encrypted messages (content_enc + nonce).
+// Upgrade path: integrate NaCl secretbox decryption with the chat keypair
+// stored in the user's session. For now, redirect users to the web dashboard.
 bot.command("messages", async (ctx) => {
 	const [id] = (ctx.match || "").trim().split(/\s+/);
 	if (!id) return await ctx.reply("Usage: /messages <escrow-id>");
