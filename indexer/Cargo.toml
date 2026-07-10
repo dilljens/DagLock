@@ -59,3 +59,6 @@ tokio = { version = "1", features = ["full", "test-util"] }
 axum-test = "16"
 tokio-tungstenite = "0.21"
 futures-util = "0.3"
+insta = { version = "1", features = ["json", "redactions"] }
+proptest = "1"
+proptest-state-machine = "0.1"

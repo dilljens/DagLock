@@ -1,0 +1,10 @@
+---
+source: indexer/tests/snapshot_tests.rs
+expression: err
+---
+{
+  "error": {
+    "code": "not_found",
+    "message": "Escrow not found"
+  }
+}

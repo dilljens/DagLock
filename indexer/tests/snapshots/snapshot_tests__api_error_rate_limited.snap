@@ -1,0 +1,10 @@
+---
+source: indexer/tests/snapshot_tests.rs
+expression: err
+---
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "Max 50 requests per 60 seconds"
+  }
+}
