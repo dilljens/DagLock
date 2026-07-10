@@ -26,7 +26,8 @@ export default defineConfig({
 		},
 		{
 			name: "kasware-wallet",
-			testMatch: "**/kasware-wallet.spec.ts",
+			testMatch: ["**/kasware-wallet.spec.ts", "**/offer-lifecycle.spec.ts", "**/wallet-errors.spec.ts", "**/escrow-actions.spec.ts"],
+			// @ts-expect-error: kaswareMock is a custom fixture defined in fixtures.ts
 			use: {
 				...devices["Desktop Chrome"],
 				kaswareMock: {},

@@ -39,17 +39,21 @@ export async function mockKasware(page: Page, _overrides?: Partial<KaswareProvid
 	const addr = TEST_ADDRESS;
 	const pubkey = TEST_PUBKEY;
 	await page.addInitScript(`(() => {
+		const handlers = {};
 		window.kasware = {
 			requestAccounts: async () => ["${addr}"],
 			getAccounts: async () => ["${addr}"],
 			getPublicKey: async () => "${pubkey}",
 			getBalance: async () => ({ confirmed: 500000000, pending: 0 }),
-		getNetwork: async () => "testnet-10",
+			getNetwork: async () => "testnet-10",
 			sendKaspa: async (_to, _sompi, _opts) => "mock_tx_id_abcdef1234567890",
 			signMessage: async (_msg, _type) => "ff" + "a".repeat(126),
 			getVersion: async () => "1.0.0",
-			on: () => {},
-			removeListener: () => {},
+			on: (event, handler) => { handlers[event] = handler; },
+			removeListener: (event) => { delete handlers[event]; },
+			// Expose handlers so tests can trigger events
+			_handlers: handlers,
+			_fireEvent: (event, data) => { if (handlers[event]) handlers[event](data); },
 		};
 		window.dispatchEvent(new Event("kasware#initialized"));
 	})();`);

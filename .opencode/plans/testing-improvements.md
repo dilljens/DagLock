@@ -1,88 +1,123 @@
 # Testing & Debugging Improvement Plan
 
-**Goal:** Make DagLock's testing suite production-grade — catch regressions before they ship, automate what's manual, and make debugging fast.
+**Goal:** Add comprehensive E2E tests for the three core user flows — wallet, offers, escrows.
 
-**Current:** 376 tests (293 Rust + 44 Web + 39 Bot). Good foundation, major gaps in integration and E2E.
-
----
-
-## Priority Order
-
-| Pri | Area | What | Why Now | Effort |
-|-----|------|------|---------|--------|
-| **P0** | Rust API tests | axum HTTP integration tests (currently only SQL-level) | No handler tests exist | 2-3d |
-| **P0** | Time-paused tests | Start paused for expiry/auto-settle tests | Blockchain time bugs are common | 1d |
-| **P0** | Insta snapshots | Snapshot API responses for regression | Cheap safety net for refactors | 1d |
-| **P1** | State machine tests | proptest-state-machine for escrow lifecycle | Catches state transition bugs | 2-3d |
-| **P1** | MSW frontend | Replace mockApi() with MSW handlers | Tests would exercise real fetch | 2-3d |
-| **P1** | Tracing/OTLP | Structured logging + span hygiene | Debugging production issues | 1-2d |
-| **P1** | Covenant fuzz | proptest-based covenant parameter fuzzing | Finds edge cases in contracts | 2-3d |
-| **P2** | E2E wallet flow | Playwright + wallet harness | Manual KasWare test is slow | 2-3d |
-| **P2** | Prometheus metrics | Business counters + histograms | Capacity planning | 1d |
-| **P3** | cargo-nextest | Parallel test runner | Faster CI | 0.5d |
-| **P3** | Benchmarks | Criterion for auth/verify/encrypt | Performance regression catch | 1d |
+**Current E2E state:** 8 wallet tests, 5 escrow-create tests, 3 error-state tests = 16 tests. Good foundation, major gaps in offer lifecycle and wallet error handling.
 
 ---
 
-## Track A: Rust Backend Testing `[in-progress]`
+## Pre-resolved Decisions
 
-### Phase A1: HTTP API Integration Tests `[ ]`
-- [ ] Add `axum-test` based tests for key endpoints: escrows CRUD, offers CRUD, health
-- [ ] Test error responses: 400, 401, 403, 404, 429, 500
-- [ ] Test auth flow: valid sig, invalid sig, missing headers
-- ✅ Checkpoint: `cargo test -p daglock-indexer -- api_tests` covers HTTP layer
-- Depends on: nothing
+- **Wallet:** Mock via `page.addInitScript` (no real KasWare extension) — already implemented in `e2e/helpers/kasware.ts`
+- **API:** Route-level mocks via `page.route()` — already implemented in `e2e/helpers/api.ts`
+- **Runner:** Playwright v1.61 — already configured in `playwright.config.ts`
+- **CI:** GitHub Actions job `e2e` — needs to be added to `.github/workflows/ci.yml`
+- **Data:** Use `fixtures.ts` auto-setup (dismisses onboarding, applies mocks)
 
-### Phase A2: Insta Snapshot Tests `[ ]`
-- [ ] Add `insta` dev-dependency
-- [ ] Snapshot happy-path responses for 5 key endpoints
-- [ ] Add redactions for timestamps/IDs
-- ✅ Checkpoint: `cargo insta review` shows clean diffs
+---
+
+## Track A: Wallet Error Handling `[ ]`
+
+**Description:** Test wallet connection error states that the user actually hits — KasWare rejection, network mismatch, account switch, signing failure.
+
+📏 **Scope:** 1 new file (`e2e/wallet-errors.spec.ts`), ~80 lines
+
+### Phase A1: Connection Errors `[ ]`
+- [ ] KasWare `requestAccounts` returns empty array → shows error message
+- [ ] KasWare `requestAccounts` throws → shows error message
+- [ ] KasWare `getNetwork` throws → still connects (graceful degradation)
+- [ ] KasWare `getBalance` throws → still connects (graceful degradation)
+- [ ] Multiple rapid connect clicks → only one connect attempt
+- 📏 Scope: 1 file, ~40 lines
+- ✅ Checkpoint: `npx playwright test e2e/wallet-errors.spec.ts --project=kasware-wallet`
+- 📋 Verifies: Wallet error states are handled without crashing the UI
+- ⚙ Fallback: If selectors differ, use text-based selectors (getByText, getByRole)
+
+### Phase A2: Runtime Errors `[ ]`
+- [ ] User rejects KasWare signMessage prompt → shows "User rejected" error
+- [ ] KasWare disconnects mid-session → UI shows disconnected state
+- [ ] Account change (different address selected) → address updates
+- [ ] Network change → network badge updates
+- 📏 Scope: 1 file, ~40 lines
+- ✅ Checkpoint: All wallet error tests pass
+- 📋 Verifies: Runtime wallet events don't crash the app
+- ⚙ Fallback: Use `page.evaluate` to manually fire KasWare events from test
 - Depends on: A1
 
-### Phase A3: Time-Paused Tests `[ ]`
-- [ ] Add time-paused tests for escrow expiry, mediation timeout, auto-settle
-- [ ] Add concurrent-access test (two simultaneous settle attempts)
-- ✅ Checkpoint: Expiry tests complete in milliseconds, not seconds
-- Depends on: nothing
+---
 
-### Phase A4: State Machine Tests `[ ]`
-- [ ] Add `proptest` + `proptest-state-machine` dev-deps
-- [ ] Model escrow lifecycle as state machine (7 states, legal transitions)
-- [ ] Generate random transition sequences and verify invariants
-- ✅ Checkpoint: 1000+ random state sequences tested
-- Depends on: nothing
+## Track B: Offer Lifecycle E2E `[ ]`
 
-## Track B: Frontend Testing `[]`
+**Description:** Test the full offer lifecycle from the user's perspective — browse, create, accept, cancel. This is the flow that's been broken.
 
-### Phase B1: MSW Migration `[ ]`
-- [ ] Create `src/mocks/handlers.ts` covering all 20+ endpoints
-- [ ] Set up MSW server in test setup
-- [ ] Migrate existing tests from `mockApi()` to MSW
-- 🚩 Checkpoint: All existing tests pass with MSW
-- Depends on: nothing
+📏 **Scope:** 1 new file (`e2e/offer-lifecycle.spec.ts`), ~120 lines
 
-## Track C: Monitoring `[]`
+### Phase B1: Browse & Create `[ ]`
+- [ ] Offers page shows "No open offers" when empty (mock empty response)
+- [ ] Create offer form renders all fields (side, asset, amount, memo)
+- [ ] Creating an offer triggers KasWare signMessage → offer appears in list
+- [ ] Invalid address shows validation error
+- 📏 Scope: ~60 lines
+- ✅ Checkpoint: `npx playwright test e2e/offer-lifecycle.spec.ts --project=kasware-wallet`
+- 📋 Verifies: Offer creation flow works end-to-end with KasWare signing
+- ⚙ Fallback: Use `page.route` to override API responses per test
+- Depends on: A1 (wallet mock infrastructure)
 
-### Phase C1: Structured Logging `[ ]`
-- [ ] Add `tracing` spans to all axum handlers
-- [ ] Add JSON log output with `--log-format json` flag
-- [ ] Add `TraceLayer` for auto-request instrumentation
-- ✅ Checkpoint: `journalctl -u daglock-indexer --output=json` shows structured logs
-- Depends on: nothing
+### Phase B2: Accept & Cancel `[ ]`
+- [ ] Browse offers shows mock offers from API
+- [ ] Accept button calls `api.acceptOffer` with auth headers
+- [ ] Accepting an offer shows success notification
+- [ ] Cancelling own offer calls `api.cancelOffer` with auth headers
+- [ ] Cancelling shows success notification
+- 📏 Scope: ~60 lines
+- ✅ Checkpoint: All offer lifecycle tests pass
+- 📋 Verifies: Offer accept/cancel flow works with KasWare signing
+- ⚙ Fallback: Mock the notification component if toast assertions are flaky
+- Depends on: B1
 
-### Phase C2: Prometheus Metrics `[ ]`
-- [ ] Add business metric counters (escrows_created, settled, etc.)
-- [ ] Add API latency histogram
-- [ ] Expose `/metrics` endpoint
-- ✅ Checkpoint: `curl /metrics` returns prometheus-formatted output
-- Depends on: nothing
+---
 
-## Track D: Contract Testing `[]`
+## Track C: Escrow Settle/Refund/Dispute E2E `[ ]`
 
-### Phase D1: Covenant Fuzz `[ ]`
-- [ ] Add `proptest` to contract tests
-- [ ] Add property-based tests for covenant invariants
-- [ ] Fuzz constructor parameters (amounts, keys, timeouts)
-- ✅ Checkpoint: Property tests pass with 10K+ random inputs
-- Depends on: nothing
+**Description:** Test escrow lifecycle actions that require KasWare signing (settle, refund, dispute).
+
+📏 **Scope:** 1 new file (`e2e/escrow-actions.spec.ts`), ~100 lines
+
+### Phase C1: Settle & Refund `[ ]`
+- [ ] Escrow detail page shows settle/refund buttons for active escrow
+- [ ] Settle triggers KasWare signMessage → shows success
+- [ ] Refund triggers KasWare signMessage → shows success
+- [ ] Settle without wallet shows connect prompt
+- 📏 Scope: ~50 lines
+- ✅ Checkpoint: `npx playwright test e2e/escrow-actions.spec.ts --project=kasware-wallet`
+- 📋 Verifies: Escrow settle/refund works with KasWare signing
+- ⚙ Fallback: Ensure API mock for settle/refund returns 200
+
+### Phase C2: Dispute & Swap `[ ]`
+- [ ] Dispute shows reason input form
+- [ ] Submitting dispute triggers KasWare signMessage → shows success
+- [ ] Swap page generates preimage and shows swap details
+- 📏 Scope: ~50 lines
+- ✅ Checkpoint: All escrow action tests pass
+- 📋 Verifies: Dispute and swap flows work with KasWare signing
+- ⚙ Fallback: Use `page.route` to return custom mock data for each test scenario
+- Depends on: C1
+
+---
+
+## Track D: CI Integration `[ ]`
+
+**Description:** Add E2E tests to GitHub Actions CI workflow.
+
+📏 **Scope:** 1 file (`.github/workflows/ci.yml`), ~20 lines added
+
+### Phase D1: CI Job `[ ]`
+- [ ] Add `e2e` job to `.github/workflows/ci.yml`
+- [ ] Install Playwright browsers in CI
+- [ ] Start dev server, run E2E tests
+- [ ] Upload Playwright traces on failure
+- 📏 Scope: ~20 lines added to ci.yml
+- ✅ Checkpoint: `gh workflow run CI` succeeds with E2E job passing
+- 📋 Verifies: E2E tests run automatically on every push to main
+- ⚙ Fallback: Run E2E as a separate workflow that triggers only on web/ changes
+- Depends on: A, B, C (all E2E tests written and passing locally first)

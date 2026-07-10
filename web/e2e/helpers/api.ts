@@ -59,28 +59,42 @@ export async function setupApiMocks(page: Page): Promise<void> {
 		});
 	});
 
+	// Offer routes — handle POST (create/accept/cancel) separately from GET (list)
 	await page.route("**/v1/offers*", async (route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({
-				offers: [
-					{
-						id: "offer_test_1",
-						creator_address: "kaspa:testcreatoraddress1234567890abcdef",
-						side: "buy",
-						base_asset: "KAS",
-						quote_asset: "KAS",
-						amount_sompi: 100_000_000,
-						status: "proposed",
-						created_at: Date.now() / 1000 - 3600,
-						price_type: "market",
-						price_currency: "USD",
-					},
-				],
-				total: 1,
-			}),
-		});
+		const url = route.request().url();
+		const method = route.request().method();
+
+		if (method === "POST" && url.includes("/accept")) {
+			await route.fulfill({ status: 200, contentType: "application/json",
+				body: JSON.stringify({ status: "accepted", offer_id: "offer_test_1" }) });
+		} else if (method === "POST" && url.includes("/cancel")) {
+			await route.fulfill({ status: 200, contentType: "application/json",
+				body: JSON.stringify({ status: "cancelled", offer_id: "offer_test_1" }) });
+		} else if (method === "POST") {
+			await route.fulfill({ status: 201, contentType: "application/json",
+				body: JSON.stringify({ id: "offer_new", status: "proposed", amount_sompi: 100_000_000 }) });
+		} else {
+			await route.fulfill({
+				status: 200, contentType: "application/json",
+				body: JSON.stringify({
+					offers: [
+						{
+							id: "offer_test_1",
+							creator_address: "kaspa:testcreatoraddress1234567890abcdef",
+							side: "buy",
+							base_asset: "KAS",
+							quote_asset: "KAS",
+							amount_sompi: 100_000_000,
+							status: "proposed",
+							created_at: Date.now() / 1000 - 3600,
+							price_type: "market",
+							price_currency: "USD",
+						},
+					],
+					total: 1,
+				}),
+			});
+		}
 	});
 
 	await page.route("**/v1/compile", async (route) => {
