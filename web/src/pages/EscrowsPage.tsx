@@ -762,9 +762,10 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 						}
 						setLoading("forfeit");
 						try {
+							const jurySig = await sign(`forfeit:${escrow.id}:${forfeitTo}`);
 							await api.forfeitDeposit(escrow.id, {
 								forfeited_to: forfeitTo,
-								jury_signature: "placeholder",
+								jury_signature: jurySig,
 							});
 							notify("success", "Deposit forfeited");
 							onMutated();

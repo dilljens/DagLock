@@ -13,6 +13,8 @@ import { FormField, SkeletonTable } from "../ui";
 import { Helmet } from "react-helmet-async";
 import { EmptyState } from "../components/empty-state";
 import { MediationPanel } from "../components/MediationPanel";
+import { loadKeypair } from "../crypto/chat-store";
+import { encodeBase64 } from "tweetnacl-util";
 
 type Tab = "my-cases" | "register" | "candidates";
 
@@ -464,12 +466,19 @@ function EvidenceSection({
 	async function handleReveal() {
 		setRevealing(true);
 		try {
+			const kp = loadKeypair(escrowId);
+			if (!kp) {
+				notify("error", "No chat key found", "Open this escrow in the Escrows page first to generate a chat keypair.");
+				setRevealing(false);
+				return;
+			}
 			const auth: AuthHeaders = {
 				address: address!,
 				signature: await sign(`reveal:${escrowId}`),
 				message: `reveal:${escrowId}`,
 			};
-			const result = await api.revealChatKey(escrowId, "placeholder_chat_key", auth);
+			const encryptedKey = encodeBase64(kp.secret);
+			const result = await api.revealChatKey(escrowId, encryptedKey, auth);
 			notify("success", `Chat revealed! ${result.evidence_count} messages decrypted.`);
 			setShowRevealModal(false);
 			loadEvidence();

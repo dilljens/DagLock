@@ -16,6 +16,12 @@ use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
 
+/// Request body for submitting a chat pubkey.
+#[derive(serde::Deserialize)]
+pub struct ChatPubkeyRequest {
+    pub chat_pubkey: String,
+}
+
 use crate::websocket::WsEvent;
 // Preimage verification uses SHA-256 via the covenant's trade_hash
 
@@ -784,6 +790,66 @@ pub async fn auto_settle(
             Json(json!({ "status": "settled", "escrow_id": id, "method": "auto_settle" }))
         })
         .map_err(service_error)
+}
+
+/// POST /v1/escrows/:id/chat-pubkey
+/// Submit or update the caller's chat encryption public key for an escrow.
+/// The caller must be a party (buyer or seller) to the escrow.
+pub async fn submit_chat_pubkey(
+    State(state): State<AppState>,
+    Path(escrow_id): Path<String>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<ChatPubkeyRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if body.chat_pubkey.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new(
+            "invalid_pubkey", "chat_pubkey must be non-empty"
+        )))));
+    }
+
+    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+        (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new(
+            "unauthorized", "X-Daglock-* headers required"
+        ))))
+    })?;
+
+    let expected_message = format!("chat_pubkey:{}", escrow_id);
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new(
+            "forbidden", format!("Signature verification failed: {e}")
+        )))))?
+    {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new(
+            "forbidden", "Invalid signature"
+        )))));
+    }
+
+    // Verify the escrow exists and the caller is a party
+    let escrow = queries::get_escrow(&state.db, &escrow_id)
+        .await
+        .map_err(|_e| crate::types::internal_error())?
+        .ok_or_else(|| {
+            (StatusCode::NOT_FOUND, Json(json!(ApiError::new(
+                "escrow_not_found", format!("No escrow found with id '{escrow_id}'")
+            ))))
+        })?;
+
+    if auth.address != escrow.buyer_address
+        && escrow.seller_address.as_deref() != Some(&auth.address)
+    {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new(
+            "forbidden", "Only escrow parties can submit chat pubkeys"
+        )))));
+    }
+
+    queries::update_chat_pubkey(&state.db, &escrow_id, &auth.address, &body.chat_pubkey)
+        .await
+        .map_err(|_e| crate::types::internal_error())?;
+
+    Ok(Json(json!({
+        "status": "ok",
+        "escrow_id": escrow_id
+    })))
 }
 
 /// Convert a service error to an HTTP error response.

@@ -72,6 +72,10 @@ describe("SwapPage", () => {
 		const counterpartyInput = screen.getByPlaceholderText("kaspa:...");
 		await user.type(counterpartyInput, "kaspa:test1234567890");
 
+		// Fill in seller's public key
+		const pubkeyInput = screen.getByPlaceholderText(/deadbeef/);
+		await user.type(pubkeyInput, "a".repeat(64));
+
 		await user.click(screen.getByRole("button", { name: /next: generate secret/i }));
 
 		// Should see the generate secret screen — use getAllByText since step indicator also shows it
@@ -102,6 +106,10 @@ describe("SwapPage", () => {
 
 		const counterpartyInput = screen.getByPlaceholderText("kaspa:...");
 		await user.type(counterpartyInput, "kaspa:test1234567890");
+
+		// Fill in seller's public key
+		const pubkeyInput = screen.getByPlaceholderText(/deadbeef/);
+		await user.type(pubkeyInput, "a".repeat(64));
 
 		await user.click(screen.getByRole("button", { name: /next: generate secret/i }));
 

@@ -3,8 +3,9 @@ use axum::{
     extract::{Path, State},
     Json,
 };
+use ed25519_dalek::VerifyingKey;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha512};
 use uuid::Uuid;
 
 use crate::api::AppState;
@@ -33,9 +34,18 @@ pub async fn send(
         return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_nonce", "nonce must be 24 hex chars (12 bytes)")))));
     }
 
-    if body.chat_sig.len() != 128 || hex::decode(&body.chat_sig).is_err() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_chat_sig", "chat_sig must be 128 hex chars (64 bytes)")))));
-    }
+    // chat_sig is base64-encoded Ed25519 signature (88 chars for 64 bytes)
+    let chat_sig_bytes: [u8; 64] = if body.chat_sig.len() == 88 {
+        use base64::Engine as _;
+        let decoded = base64::engine::general_purpose::STANDARD.decode(&body.chat_sig).map_err(|_| {
+            (StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_chat_sig", "chat_sig must be valid base64"))))
+        })?;
+        <[u8; 64]>::try_from(decoded.as_slice()).map_err(|_| {
+            (StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_chat_sig", "chat_sig must decode to exactly 64 bytes"))))
+        })?
+    } else {
+        return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new("invalid_chat_sig", "chat_sig must be 88 base64 chars (64 bytes)")))));
+    };
 
     let auth = AuthContext::from_headers(&headers).map_err(|_e| {
         (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", "X-Daglock-* headers required"))))
@@ -66,15 +76,50 @@ pub async fn send(
         .unwrap_or(0)
         + 1;
 
-    let mut hasher = Sha256::new();
-    hasher.update(body.content_enc.as_bytes());
-    hasher.update(body.nonce.as_bytes());
-    hasher.update(escrow_id.as_bytes());
-    hasher.update(seq.to_string().as_bytes());
-    let _signed_hash = hasher.finalize();
-
+    // Verify Ed25519 chat signature: the client signs SHA-512(contentEnc:nonce:escrowId:seq)
+    // using their chat private key. We verify against their registered chat pubkey.
     if !state.mock_chat_sig {
-        tracing::warn!("chat_sig verification not yet implemented — accepting with --mock-chat-sig={}", state.mock_chat_sig);
+        // Get the sender's chat pubkey from the escrow record
+        let sender_pubkey_b64 = if auth.address == escrow.buyer_address {
+            escrow.chat_pubkey_buyer.clone()
+        } else {
+            escrow.chat_pubkey_seller.clone()
+        };
+
+        match sender_pubkey_b64 {
+            Some(pubkey_b64) => {
+                let pubkey_bytes = {
+                    use base64::Engine as _;
+                    base64::engine::general_purpose::STANDARD.decode(&pubkey_b64).map_err(|_| {
+                        (StatusCode::FORBIDDEN, Json(json!(ApiError::new("invalid_chat_key", "Sender's chat pubkey is not valid base64"))))
+                    })?
+                };
+                let pubkey = VerifyingKey::from_bytes(&pubkey_bytes.try_into().map_err(|_| {
+                    (StatusCode::FORBIDDEN, Json(json!(ApiError::new("invalid_chat_key", "Sender's chat pubkey is not 32 bytes"))))
+                })?).map_err(|_| {
+                    (StatusCode::FORBIDDEN, Json(json!(ApiError::new("invalid_chat_key", "Sender's chat pubkey is not a valid Ed25519 key"))))
+                })?;
+
+                // Hash the signed message with SHA-512 (matching nacl.hash in the client)
+                let mut hasher = Sha512::new();
+                hasher.update(body.content_enc.as_bytes());
+                hasher.update(b":");
+                hasher.update(body.nonce.as_bytes());
+                hasher.update(b":");
+                hasher.update(escrow_id.as_bytes());
+                hasher.update(b":");
+                hasher.update(seq.to_string().as_bytes());
+
+                // Verify the Ed25519 signature via verify_prehashed (takes the digest state)
+                let sig = ed25519_dalek::Signature::from_bytes(&chat_sig_bytes);
+                pubkey.verify_prehashed(hasher, None, &sig).map_err(|_| {
+                    (StatusCode::FORBIDDEN, Json(json!(ApiError::new("invalid_chat_sig", "Chat signature does not match the sender's registered pubkey"))))
+                })?;
+            }
+            None => {
+                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("no_chat_key", "Sender has not registered a chat pubkey — submit one via POST /v1/escrows/:id/chat-pubkey first")))));
+            }
+        }
     }
 
     let now = chrono::Utc::now().timestamp();

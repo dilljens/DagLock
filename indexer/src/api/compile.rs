@@ -6,8 +6,11 @@
 
 use axum::http::StatusCode;
 use axum::{extract::State, Json};
+use kaspa_addresses::{Address, Prefix, Version};
+use kaspa_hashes::Hash;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 
 use crate::api::AppState;
 use crate::types::*;
@@ -154,13 +157,27 @@ fn optional_or_enforced_treasury(
 
 fn compile_result(
     compiled: &daglock_contracts::silverscript_lang::compiler::CompiledContract,
+    network: &str,
 ) -> Json<Value> {
-    let (prefix, suffix, template_hash) = daglock_contracts::template_parts_and_hash(compiled);
+    let (template_prefix, template_suffix, template_hash) = daglock_contracts::template_parts_and_hash(compiled);
+
+    // Derive the covenant address (P2SH) from the script
+    let script_hash = Sha256::digest(&compiled.script);
+    let net_prefix = match network {
+        "mainnet" => Prefix::Mainnet,
+        n if n.starts_with("testnet-") => Prefix::Testnet,
+        n if n.starts_with("simnet-") => Prefix::Simnet,
+        n if n.starts_with("devnet-") => Prefix::Devnet,
+        _ => Prefix::Testnet, // default to testnet for unknown
+    };
+    let covenant_address = Address::new(net_prefix, Version::ScriptHash, &script_hash);
+
     Json(json!({
         "script": hex::encode(&compiled.script),
         "template_hash": hex::encode(&template_hash),
-        "template_prefix": hex::encode(&prefix),
-        "template_suffix": hex::encode(&suffix),
+        "template_prefix": hex::encode(&template_prefix),
+        "template_suffix": hex::encode(&template_suffix),
+        "covenant_address": covenant_address.to_string(),
         "abi": compiled.abi.iter().map(|e| {
             json!({
                 "name": e.name,
@@ -192,7 +209,7 @@ fn compile_daglock_template(
 
     let compiled =
         daglock_contracts::compile_daglock(&buyer, &seller, &trade_hash, timeout, &treasury);
-    Ok(compile_result(&compiled))
+    Ok(compile_result(&compiled, &state.network))
 }
 
 fn compile_arbiter_template(
@@ -237,7 +254,7 @@ fn compile_arbiter_template(
         &treasury,
         &arbiter,
     );
-    Ok(compile_result(&compiled))
+    Ok(compile_result(&compiled, &state.network))
 }
 
 fn compile_vault_template(
@@ -267,7 +284,7 @@ fn compile_vault_template(
     let compiled = daglock_contracts::compile_daglock_vault(
         &owner, lock_duration, &treasury, &heir, inherit_lock_duration,
     );
-    Ok(compile_result(&compiled))
+    Ok(compile_result(&compiled, &state.network))
 }
 
 fn compile_vault_softlock_template(
@@ -299,7 +316,7 @@ fn compile_vault_softlock_template(
         lock_duration,
         &treasury,
     );
-    Ok(compile_result(&compiled))
+    Ok(compile_result(&compiled, &state.network))
 }
 
 fn compile_vault_multisig_template(
@@ -344,7 +361,7 @@ fn compile_vault_multisig_template(
     }
     let compiled =
         daglock_contracts::compile_daglock_vault_multisig(&key1, &key2, &key3, lock_duration, &treasury);
-    Ok(compile_result(&compiled))
+    Ok(compile_result(&compiled, &state.network))
 }
 
 fn compile_krc20_template(
@@ -423,7 +440,7 @@ fn compile_krc20_template(
         &kcc20_expected_hash, &kcc20_prefix, &kcc20_suffix,
         &kcc20_covenant_id,
     );
-    Ok(compile_result(&compiled))
+    Ok(compile_result(&compiled, &state.network))
 }
 
 fn compile_subscription_template(
@@ -462,5 +479,5 @@ fn compile_subscription_template(
         &payer_key, &recipient_key, total_amount, installment_amount,
         interval_seconds, start_time, current_period, &treasury,
     );
-    Ok(compile_result(&compiled))
+    Ok(compile_result(&compiled, &state.network))
 }

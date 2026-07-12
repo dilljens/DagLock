@@ -140,6 +140,7 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/escrows/:id/cancel", post(escrows::cancel))
         .route("/v1/escrows/:id/swap", post(escrows::atomic_swap))
         .route("/v1/escrows/:id/auto-settle", post(escrows::auto_settle))
+        .route("/v1/escrows/:id/chat-pubkey", post(escrows::submit_chat_pubkey))
         .route(
             "/v1/escrows/:id/evidence",
             post(evidence::submit_evidence).get(evidence::list_evidence),

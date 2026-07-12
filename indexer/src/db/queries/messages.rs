@@ -138,6 +138,43 @@ pub async fn get_anchor_summary(
         .collect())
 }
 
+/// Update the chat pubkey for a party in an escrow.
+/// Determines which column to update based on the caller's address.
+pub async fn update_chat_pubkey(
+    pool: &Pool<Sqlite>,
+    escrow_id: &str,
+    address: &str,
+    pubkey: &str,
+) -> Result<(), sqlx::Error> {
+    // First determine if the caller is buyer or seller
+    let row = sqlx::query("SELECT buyer_address, seller_address FROM escrows WHERE id = ?1")
+        .bind(escrow_id)
+        .fetch_optional(pool)
+        .await?;
+
+    match row {
+        Some(r) => {
+            let buyer_addr: String = r.try_get("buyer_address").unwrap_or_default();
+            let seller_addr: Option<String> = r.try_get("seller_address").ok().flatten();
+            if address == buyer_addr {
+                sqlx::query("UPDATE escrows SET chat_pubkey_buyer = ?1 WHERE id = ?2")
+                    .bind(pubkey)
+                    .bind(escrow_id)
+                    .execute(pool)
+                    .await?;
+            } else if seller_addr.as_deref() == Some(address) {
+                sqlx::query("UPDATE escrows SET chat_pubkey_seller = ?1 WHERE id = ?2")
+                    .bind(pubkey)
+                    .bind(escrow_id)
+                    .execute(pool)
+                    .await?;
+            }
+            Ok(())
+        }
+        None => Ok(()),
+    }
+}
+
 /// Get the chat pubkey for a party in an escrow.
 /// Returns `None` if the address is not a party or no pubkey was registered.
 pub async fn get_chat_pubkey(
@@ -146,7 +183,7 @@ pub async fn get_chat_pubkey(
     address: &str,
 ) -> Result<Option<String>, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT chat_pubkey_buyer, chat_pubkey_seller FROM escrows WHERE id = ?1"
+        "SELECT chat_pubkey_buyer, chat_pubkey_seller, buyer_address, seller_address FROM escrows WHERE id = ?1"
     )
     .bind(escrow_id)
     .fetch_optional(pool)

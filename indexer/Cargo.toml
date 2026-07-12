@@ -21,6 +21,8 @@ clap.workspace = true
 prometheus.workspace = true
 blake2b_simd.workspace = true
 sha2 = "0.10"
+base64 = "0.22"
+ed25519-dalek = { version = "2", features = ["digest"] }
 
 sqlx = { version = "0.7", features = [
   "sqlite",

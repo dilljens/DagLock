@@ -13,6 +13,7 @@ interface SwapState {
 	amount: string;
 	assetType: string;
 	counterpartyAddress: string;
+	sellerPubkey: string;
 	secret: string;
 	tradeHash: string;
 	escrowId: string | null;
@@ -77,6 +78,7 @@ export function AtomicSwapWizard() {
 		amount: "",
 		assetType: "KAS",
 		counterpartyAddress: "",
+		sellerPubkey: "",
 		secret: "",
 		tradeHash: "",
 		escrowId: null,
@@ -102,6 +104,10 @@ export function AtomicSwapWizard() {
 		}
 		if (!s.counterpartyAddress.startsWith("kaspa:")) {
 			setError("Enter a valid counterparty Kaspa address");
+			return;
+		}
+		if (!s.sellerPubkey || !/^[0-9a-fA-F]{64}$/.test(s.sellerPubkey)) {
+			setError("Enter a valid seller public key (64 hex characters)");
 			return;
 		}
 		setError("");
@@ -134,9 +140,33 @@ export function AtomicSwapWizard() {
 		setError("");
 		try {
 			let lockTxId = "";
-			if (window.kasware?.sendKaspa) {
+
+			if (window.kasware?.getPublicKey && window.kasware?.sendKaspa) {
+				// Get buyer's public key from KasWare
+				const buyerPubkey = await window.kasware.getPublicKey();
+
+				// Compute timeout as Unix timestamp
+				const timeoutTs = Math.floor(Date.now() / 1000) + s.timeout;
+
+				// Treasury key: try to use default zero key (indexer will enforce canonical if configured)
+				const treasuryKey = "0000000000000000000000000000000000000000000000000000000000000000";
+
+				// Compile the covenant via API
+				const compileResult = await api.compile("daglock", {
+					buyer_key: buyerPubkey,
+					seller_key: s.sellerPubkey,
+					trade_hash: s.tradeHash,
+					timeout: timeoutTs.toString(),
+					treasury_key: treasuryKey,
+				});
+
+				if (!compileResult.covenant_address) {
+					throw new Error("Compilation succeeded but no covenant address returned");
+				}
+
+				// Send KAS to the covenant address (NOT the counterparty directly)
 				lockTxId = await window.kasware.sendKaspa(
-					s.counterpartyAddress,
+					compileResult.covenant_address,
 					sompi(Number.parseFloat(s.amount)),
 				);
 			} else {
@@ -315,6 +345,17 @@ export function AtomicSwapWizard() {
 								onChange={(e) => updateField("counterpartyAddress", e.target.value)}
 								placeholder="kaspa:..."
 							/>
+						</FormField>
+
+						<FormField label="Seller public key (64 hex chars)">
+							<input
+								value={s.sellerPubkey}
+								onChange={(e) => updateField("sellerPubkey", e.target.value)}
+								placeholder="deadbeef... (ask your counterparty for their public key)"
+							/>
+							<small className="muted">
+								Required. Your counterparty can get this from KasWare by selecting "Copy Public Key"
+							</small>
 						</FormField>
 
 						<FormField label="Timeout">
@@ -746,6 +787,7 @@ export function AtomicSwapWizard() {
 									amount: "",
 									assetType: "KAS",
 									counterpartyAddress: "",
+									sellerPubkey: "",
 									secret: "",
 									tradeHash: "",
 									escrowId: null,

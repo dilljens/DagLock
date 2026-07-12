@@ -666,6 +666,7 @@ async function postEmpty<T>(path: string, auth?: AuthHeaders): Promise<T> {
 export type CompileResponse = {
 	script: string;
 	template_hash: string;
+	covenant_address: string;
 	abi: { name: string }[];
 };
 
