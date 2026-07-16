@@ -12,4 +12,4 @@ Browser/JavaScript SDK for assembling DagLock transactions in the web UI. Compil
   - Status: ✅ Fixed | Domain: wasm-sdk
 
 ---
-*Confidence: 0.95 · Last updated: 6/17/2026*
+*Confidence: 0.95 · Last updated: 7/13/2026*

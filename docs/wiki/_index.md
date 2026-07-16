@@ -63,4 +63,6 @@
 | 2026-06-23 | **S3 ICC fix**: KCC-20 input ownership validated |
 | 2026-06-18 | **SDK migration**: rusty-kaspa tn12 → v2.0.1 |
 
-> Knowledge graph last synced: 7/8/2026
+> Knowledge graph last synced: 7/13/2026
+
+**Memory refresh:** 7/13/2026 — Full memory refresh across all 3 systems. Re-indexed codebase memory (5412 nodes, 13949 edges). Compressed knowledge store (149 entities, 0 pruned, 0 deduped, avg confidence 0.9085). Wiki metadata updated — 3 AGING feature pages refreshed (cli, wasm-sdk, simulation).

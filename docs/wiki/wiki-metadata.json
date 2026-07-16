@@ -1,7 +1,7 @@
 {
-  "lastRender": "2026-07-07T00:00:00.000Z",
-  "lastCheck": "2026-07-07",
-  "entityCount": 250,
+  "lastRender": "2026-07-13T00:00:00.000Z",
+  "lastCheck": "2026-07-13",
+  "entityCount": 149,
   "domains": [
     "contracts",
     "indexer",
@@ -16,8 +16,17 @@
     "broken": 0
   },
   "health": {
-    "avgStaleness": 0,
-    "freshestDomain": "contracts",
+    "avgStaleness": 13,
+    "freshestDomain": "indexer",
     "mostStaleDomain": "simulation"
+  },
+  "domainStaleness": {
+    "contracts": {"days": 5, "status": "FRESH", "lastUpdated": "2026-07-08"},
+    "indexer": {"days": 3, "status": "FRESH", "lastUpdated": "2026-07-10"},
+    "web": {"days": 3, "status": "FRESH", "lastUpdated": "2026-07-10"},
+    "bot": {"days": 6, "status": "FRESH", "lastUpdated": "2026-07-07"},
+    "cli": {"days": 26, "status": "AGING", "lastUpdated": "2026-06-17"},
+    "wasm-sdk": {"days": 26, "status": "AGING", "lastUpdated": "2026-06-17"},
+    "simulation": {"days": 26, "status": "AGING", "lastUpdated": "2026-06-17"}
   }
 }

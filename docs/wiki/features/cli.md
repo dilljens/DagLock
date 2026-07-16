@@ -16,4 +16,4 @@ Command-line power-user tool for DagLock escrow operations. Connects to the inde
   - Status: ✅ Fixed | Domain: cli
 
 ---
-*Confidence: 0.95 · Last updated: 6/17/2026*
+*Confidence: 0.95 · Last updated: 7/13/2026*

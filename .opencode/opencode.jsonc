@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "lsp": {
+      "type": "local",
+      "command": ["python3", "/home/dillon/.config/oh-my-agent/mcp/lsp-mcp/server.py"],
+      "enabled": true
+    }
+  },
+  "instructions": [
+    "/home/dillon/_code/DagLock/.opencode/AGENTS.md"
+  ]
+}

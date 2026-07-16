@@ -26,8 +26,12 @@
   - Dust protection constant (1000 sompi) enforced on all covenant outputs | Context: All `*.sil` files
 - **MockVerifier**
   - UTXO verification stub that always succeeds. Used when no wRPC node is available. | Context: `indexer/src/verification.rs`
+- **RestVerifier**
+  - UTXO verification via Kaspa community REST API (`api.kaspa.org` / `api-tn11.kaspa.org`). Alternative to wRPC-based `WrpcVerifier` that doesn't need a direct node connection. | Context: `indexer/src/verification.rs`
 - **On-chain anchoring**
   - Batch Merkle root of message hashes committed as Kaspa transaction payload. Tamper-proof evidence for dispute resolution. | Context: `indexer/src/services/anchor.rs`
+- **PNN (Public Node Network)**
+  - Kaspa's public resolver network for auto-discovering an active node without manual endpoint config. Used by the indexer to connect wRPC at startup. | Context: `indexer/src/listener.rs::try_connect_resolver()`
 - **Recovery sheet**
   - Downloadable `.txt` file with chat private key for offline backup and recovery | Context: `web/src/crypto/recovery-sheet.ts`
 - **SilverScript**
