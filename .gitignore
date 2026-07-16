@@ -18,6 +18,8 @@ pkg/
 # Environment
 .env
 .env.local
+.env.production
+bot/.env
 
 # IDE
 .idea/
