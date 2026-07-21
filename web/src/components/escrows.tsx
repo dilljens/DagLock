@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { api, type AuthHeaders, type CreateEscrowRequest, type Escrow } from "../api";
-import { money, sompi, time, relativeTime, badge } from "../helpers";
+import { money, sompi, time, relativeTime, badge, generateAuthMessage } from "../helpers";
 import type { LoadState } from "../helpers";
 import { Panel, LookupResult, FormField, ConfirmDialog } from "../ui";
 import { SignWithWallet } from "./wallet";
@@ -299,6 +299,7 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 	const [disputeReason, setDisputeReason] = useState("");
 	const [authAddress, setAuthAddress] = useState("");
 	const [authSignature, setAuthSignature] = useState("");
+	const authMessageRef = useRef("");
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 	const [error, setError] = useState("");
 	const [result, setResult] = useState<{
@@ -307,7 +308,7 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 	} | null>(null);
 	const [showConfirm, setShowConfirm] = useState(false);
 
-	const needsAuth = action === "settle" || action === "refund";
+	const needsAuth = action === "settle" || action === "refund" || action === "dispute" || action === "cancel";
 	const verb =
 		action === "settle"
 			? "Settle"
@@ -340,10 +341,13 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 					);
 					return;
 				}
+				if (!authMessageRef.current) {
+					authMessageRef.current = generateAuthMessage(action, escrowId);
+				}
 				auth = {
 					address: authAddress,
 					signature: authSignature,
-					message: `${action}:${escrowId}`,
+					message: authMessageRef.current,
 				};
 			}
 
@@ -368,17 +372,21 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 					setError("Authentication required. Please provide your Kaspa address and signature.");
 					return;
 				}
+				// Generate auth message if not already stored from SignWithWallet
+				if (!authMessageRef.current) {
+					authMessageRef.current = generateAuthMessage(action, escrowId);
+				}
 				auth = {
 					address: authAddress,
 					signature: authSignature,
-					message: `${action}:${escrowId}`,
+					message: authMessageRef.current,
 				};
 			}
 			let res: { status: string; escrow_id: string };
 			if (action === "settle") res = await api.settleEscrow(escrowId, auth as AuthHeaders);
 			else if (action === "refund") res = await api.refundEscrow(escrowId, auth as AuthHeaders);
-			else if (action === "dispute") res = await api.disputeEscrow(escrowId, disputeReason);
-			else res = await api.cancelEscrow(escrowId);
+			else if (action === "dispute") res = await api.disputeEscrow(escrowId, disputeReason, undefined, auth);
+			else res = await api.cancelEscrow(escrowId, auth);
 			setResult(res);
 			setStatus("done");
 		} catch (err) {
@@ -434,8 +442,13 @@ function EscrowActionForm({ action }: { action: EscrowAction }) {
 										style={{ flex: 1 }}
 									/>
 									<SignWithWallet
-										message={`${action}:${escrowId}`}
-										onSignature={(sig) => setAuthSignature(sig)}
+										message={authMessageRef.current || generateAuthMessage(action, escrowId)}
+										onSignature={(sig) => {
+											if (!authMessageRef.current) {
+												authMessageRef.current = generateAuthMessage(action, escrowId);
+											}
+											setAuthSignature(sig);
+										}}
 										walletAddress={authAddress}
 									/>
 								</div>

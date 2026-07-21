@@ -7,8 +7,55 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::api::AppState;
+use crate::auth::{parse_message, verify_nonce, AuthContext};
 use crate::db::queries;
 use crate::types::*;
+
+/// Verify that the caller is a party to a multi-party escrow.
+async fn verify_multi_escrow_auth(
+    state: &AppState,
+    headers: &axum::http::HeaderMap,
+    escrow: &MultiEscrow,
+    action: &str,
+) -> Result<(), (StatusCode, Json<Value>)> {
+    let auth = AuthContext::from_headers(headers).map_err(|e| {
+        (StatusCode::UNAUTHORIZED, Json(json!(crate::types::ApiError::new("unauthorized", e.to_string()))))
+    })?;
+
+    // Must be a party to the escrow
+    if !escrow.parties.contains(&auth.address) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(crate::types::ApiError::new("forbidden", "Only escrow parties can perform this action"))),
+        ));
+    }
+
+    let parsed = parse_message(&auth.message).map_err(|e| {
+        (StatusCode::BAD_REQUEST, Json(json!(crate::types::ApiError::new("invalid_message", e.to_string()))))
+    })?;
+
+    if parsed.action != action {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(crate::types::ApiError::new("forbidden", format!("Message must be '{action}:{{id}}:ts:nonce'")))),
+        ));
+    }
+
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message)
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(crate::types::ApiError::new("forbidden", "Invalid signature"))),
+        ));
+    }
+
+    verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
+        (StatusCode::FORBIDDEN, Json(json!(crate::types::ApiError::new("forbidden", e.to_string()))))
+    })?;
+
+    Ok(())
+}
 
 #[derive(Deserialize)]
 pub struct CreateMultiRequest {
@@ -218,9 +265,15 @@ pub async fn sign(
 }
 
 /// POST /v1/multi-escrows/:id/refund
+///
+/// Requires authentication as a party to the escrow:
+/// - X-Daglock-Address: Party's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "refund:{id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn refund(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_multi_escrow(&state.db, &id)
         .await
@@ -243,6 +296,9 @@ pub async fn refund(
             Json(json!({"error": "invalid_status", "message": format!("Escrow is '{}', not 'active'", escrow.status)})),
         ));
     }
+
+    // Verify caller is authorized
+    verify_multi_escrow_auth(&state, &headers, &escrow, "refund").await?;
 
     queries::refund_multi_escrow(&state.db, &id)
         .await
@@ -261,9 +317,15 @@ pub async fn refund(
 }
 
 /// POST /v1/multi-escrows/:id/swap
+///
+/// Requires authentication as a party to the escrow:
+/// - X-Daglock-Address: Party's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "swap:{id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn swap(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_multi_escrow(&state.db, &id)
         .await
@@ -286,6 +348,9 @@ pub async fn swap(
             Json(json!({"error": "invalid_status", "message": format!("Escrow is '{}', not 'active'", escrow.status)})),
         ));
     }
+
+    // Verify caller is authorized
+    verify_multi_escrow_auth(&state, &headers, &escrow, "swap").await?;
 
     let all_signed = escrow.signatures.len() == escrow.parties.len();
     if !all_signed {

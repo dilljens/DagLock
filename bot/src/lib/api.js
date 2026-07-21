@@ -139,11 +139,11 @@ export class ApiClient {
 		}, auth);
 	}
 
-	swapEscrow(id, preimage) {
+	swapEscrow(id, preimage, auth) {
 		return this.request(`/escrows/${encodeURIComponent(id)}/swap`, {
 			method: "POST",
 			body: JSON.stringify({ preimage }),
-		});
+		}, auth);
 	}
 
 	// ── Offer endpoints ───────────────────────────────────────────────
@@ -323,10 +323,10 @@ export class ApiClient {
 		});
 	}
 
-	releaseMilestone(id) {
+	releaseMilestone(id, auth) {
 		return this.request(`/milestones/${encodeURIComponent(id)}/release`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
 	listFeedback(escrowId) {
@@ -350,23 +350,23 @@ export class ApiClient {
 		});
 	}
 
-	signMultiEscrow(id, address) {
+	signMultiEscrow(id, address, auth) {
 		return this.request(`/multi-escrows/${encodeURIComponent(id)}/sign`, {
 			method: "POST",
 			body: JSON.stringify({ address }),
-		});
+		}, auth);
 	}
 
-	refundMultiEscrow(id) {
+	refundMultiEscrow(id, auth) {
 		return this.request(`/multi-escrows/${encodeURIComponent(id)}/refund`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
-	swapMultiEscrow(id) {
+	swapMultiEscrow(id, auth) {
 		return this.request(`/multi-escrows/${encodeURIComponent(id)}/swap`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
 	// ── AI Mediation ──────────────────────────────────────────────────
@@ -484,10 +484,10 @@ export class ApiClient {
 		return this.request(`/subscriptions?address=${encodeURIComponent(address)}`);
 	}
 
-	drawSubscription(id) {
+	drawSubscription(id, auth) {
 		return this.request(`/subscriptions/${encodeURIComponent(id)}/draw`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
 	cancelSubscription(id, auth) {
@@ -498,48 +498,48 @@ export class ApiClient {
 
 	// ── Security Deposits ────────────────────────────────────────────
 
-	createDeposit(escrowId, data) {
+	createDeposit(escrowId, data, auth) {
 		return this.request(`/escrows/${encodeURIComponent(escrowId)}/deposit`, {
 			method: "POST",
 			body: JSON.stringify(data),
-		});
+		}, auth);
 	}
 
 	getDeposit(escrowId) {
 		return this.request(`/escrows/${encodeURIComponent(escrowId)}/deposit`);
 	}
 
-	releaseDeposit(escrowId, data) {
+	releaseDeposit(escrowId, data, auth) {
 		return this.request(`/escrows/${encodeURIComponent(escrowId)}/deposit/release`, {
 			method: "POST",
 			body: JSON.stringify(data),
-		});
+		}, auth);
 	}
 
 	// ── Milestone Actions ────────────────────────────────────────────
 
-	approveMilestone(id) {
+	approveMilestone(id, auth) {
 		return this.request(`/milestones/${encodeURIComponent(id)}/approve`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
-	disputeMilestone(id) {
+	disputeMilestone(id, auth) {
 		return this.request(`/milestones/${encodeURIComponent(id)}/dispute`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
-	refundMilestone(id) {
+	refundMilestone(id, auth) {
 		return this.request(`/milestones/${encodeURIComponent(id)}/refund`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
-	completeMilestone(id) {
+	completeMilestone(id, auth) {
 		return this.request(`/milestones/${encodeURIComponent(id)}/complete`, {
 			method: "POST",
-		});
+		}, auth);
 	}
 
 	// ── On-chain Anchors ─────────────────────────────────────────────

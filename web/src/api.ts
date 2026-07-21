@@ -764,23 +764,26 @@ export const api = {
 			`/v1/escrows/${encodeURIComponent(id)}/refund`,
 			auth,
 		),
-	disputeEscrow: (id: string, reason: string, mode?: string) =>
+	disputeEscrow: (id: string, reason: string, mode?: string, auth?: AuthHeaders) =>
 		postJson<{ status: string; escrow_id: string; jury_case_id?: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/dispute`,
 			{ reason, mode },
+			auth,
 		),
-	cancelEscrow: (id: string) =>
+	cancelEscrow: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/cancel`,
+			auth,
 		),
 	autoSettleEscrow: (id: string) =>
 		postEmpty<{ status: string; escrow_id: string; method: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/auto-settle`,
 		),
-	swapEscrow: (id: string, preimage: string) =>
+	swapEscrow: (id: string, preimage: string, auth: AuthHeaders) =>
 		postJson<{ status: string; escrow_id: string; method: string; preimage_hash: string }>(
 			`/v1/escrows/${encodeURIComponent(id)}/swap`,
 			{ preimage },
+			auth,
 		),
 	generateSwap: () => loadJson<{ secret: string; hash: string }>("/v1/swap/generate"),
 
@@ -944,25 +947,30 @@ export const api = {
 	milestone: (id: string) => loadJson<MilestoneEscrow>(`/v1/milestones/${encodeURIComponent(id)}`),
 	createMilestone: (req: CreateMilestoneRequest) =>
 		postJson<MilestoneEscrow>("/v1/milestones", req),
-	releaseMilestone: (id: string) =>
+	releaseMilestone: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/milestones/${encodeURIComponent(id)}/release`,
+			auth,
 		),
-	approveMilestone: (id: string) =>
+	approveMilestone: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/milestones/${encodeURIComponent(id)}/approve`,
+			auth,
 		),
-	disputeMilestone: (id: string) =>
+	disputeMilestone: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/milestones/${encodeURIComponent(id)}/dispute`,
+			auth,
 		),
-	refundMilestone: (id: string) =>
+	refundMilestone: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/milestones/${encodeURIComponent(id)}/refund`,
+			auth,
 		),
-	completeMilestone: (id: string) =>
+	completeMilestone: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/milestones/${encodeURIComponent(id)}/complete`,
+			auth,
 		),
 
 	// Multi-party escrows
@@ -980,11 +988,12 @@ export const api = {
 			parties_count: number;
 			all_signed: boolean;
 		}>(`/v1/multi-escrows/${encodeURIComponent(id)}/sign`, { address }),
-	refundMultiEscrow: (id: string) =>
+	refundMultiEscrow: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string }>(
 			`/v1/multi-escrows/${encodeURIComponent(id)}/refund`,
+			auth,
 		),
-	swapMultiEscrow: (id: string) =>
+	swapMultiEscrow: (id: string, auth?: AuthHeaders) =>
 		postEmpty<{ status: string; escrow_id: string; method: string }>(
 			`/v1/multi-escrows/${encodeURIComponent(id)}/swap`,
 		),

@@ -52,6 +52,10 @@ impl From<&str> for ApiTier {
 }
 
 /// Thread-safe per-IP rate limiter with tier support.
+/// Maximum number of tracked IP windows to prevent unbounded memory growth.
+/// At ~72 bytes per entry, this caps at ~14 MB for the window map.
+const MAX_WINDOW_ENTRIES: usize = 200_000;
+
 pub struct RateLimiter {
     inner: Mutex<RateLimiterInner>,
 }
@@ -60,6 +64,8 @@ struct RateLimiterInner {
     windows: HashMap<IpAddr, WindowState>,
     /// key_hash → (tier, cached_at) with 60s TTL
     tier_cache: HashMap<Vec<u8>, (ApiTier, Instant)>,
+    /// Insertion order for LRU eviction when map exceeds MAX_WINDOW_ENTRIES
+    insertion_order: std::collections::VecDeque<IpAddr>,
 }
 
 struct WindowState {
@@ -74,6 +80,7 @@ impl RateLimiter {
             inner: Mutex::new(RateLimiterInner {
                 windows: HashMap::new(),
                 tier_cache: HashMap::new(),
+                insertion_order: std::collections::VecDeque::new(),
             }),
         }
     }
@@ -100,6 +107,14 @@ impl RateLimiter {
         let now = Instant::now();
 
         let max_requests = tier.unwrap_or(ApiTier::Free).max_requests();
+
+        // Promote IP to back of insertion order (recently active) — before mutable borrow
+        if inner.windows.contains_key(&ip) {
+            if let Some(pos) = inner.insertion_order.iter().position(|x| *x == ip) {
+                inner.insertion_order.remove(pos);
+                inner.insertion_order.push_back(ip);
+            }
+        }
 
         if let Some(entry) = inner.windows.get_mut(&ip) {
             if now >= entry.reset_at {
@@ -138,6 +153,19 @@ impl RateLimiter {
                     max_requests,
                 },
             );
+            inner.insertion_order.push_back(ip);
+
+            // Evict oldest entries if over capacity
+            while inner.windows.len() > MAX_WINDOW_ENTRIES {
+                if let Some(oldest) = inner.insertion_order.pop_front() {
+                    if inner.windows.get(&oldest).map_or(false, |w| w.reset_at <= now) {
+                        inner.windows.remove(&oldest);
+                    }
+                } else {
+                    break;
+                }
+            }
+
             Ok(())
         }
     }
@@ -187,12 +215,23 @@ pub async fn rate_limit_mw(
     req: Request<axum::body::Body>,
     next: Next,
 ) -> Response {
+    // Resolve the real client IP:
+    // 1. Use the actual TCP connection IP (most trustworthy)
+    // 2. Fall back to X-Forwarded-For's RIGHTMOST IP (the one added by the outermost
+    //    trusted proxy in a well-configured reverse proxy chain — leftmost is
+    //    client-supplied and can be spoofed)
     let ip = req
-        .headers()
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.split(',').next())
-        .and_then(|v| v.trim().parse::<IpAddr>().ok())
+        .extensions()
+        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        .map(|ci| ci.ip())
+        .or_else(|| {
+            req.headers()
+                .get("x-forwarded-for")
+                .and_then(|v| v.to_str().ok())
+                // Take the RIGHTMOST IP (trusted proxy), not the leftmost (client-spoofable)
+                .and_then(|v| v.rsplit(',').next())
+                .and_then(|v| v.trim().parse::<IpAddr>().ok())
+        })
         .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)));
 
     let api_key = req

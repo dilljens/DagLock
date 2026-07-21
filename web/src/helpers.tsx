@@ -64,3 +64,24 @@ export function errMsg(err: unknown): string {
 export function badge(status: string): string {
 	return `pill pill-${status.replace(/_/g, "-")}`;
 }
+
+/** Generate a V2 replay-protected auth message in format: action:id:timestamp:nonce_hex
+ *  The nonce is 16 random bytes, hex-encoded (32 hex chars).
+ *  Use this for all authenticated API calls — V1 messages (action:id) are rejected.
+ *  Falls back to Math.random for environments where crypto.getRandomValues is unavailable (jsdom). */
+export function generateAuthMessage(action: string, id: string): string {
+	const timestamp = Math.floor(Date.now() / 1000);
+	const bytes = new Uint8Array(16);
+	if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+		crypto.getRandomValues(bytes);
+	} else {
+		// Fallback for test environments (jsdom)
+		for (let i = 0; i < 16; i++) {
+			bytes[i] = Math.floor(Math.random() * 256);
+		}
+	}
+	const nonce = Array.from(bytes)
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
+	return `${action}:${id}:${timestamp}:${nonce}`;
+}

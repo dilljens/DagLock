@@ -690,15 +690,31 @@ bot.command("dispute", async (ctx) => {
 		return await ctx.reply("Usage: /dispute <escrow-id> <reason>");
 
 	try {
-		const result = await api.disputeEscrow(id, reason);
-		const caseId = result.jury_case_id ? `\nCase: \`${result.jury_case_id}\`` : "";
+		const address = getUserAddress(ctx.from.id);
+		if (!address) {
+			return await ctx.reply("Set your address first: /setaddress <kaspa:...>");
+		}
+
+		const nonce = Math.random().toString(36).slice(2, 10);
+		const message = `dispute:${id}:${Math.floor(Date.now() / 1000)}:${nonce}`;
+
+		// Store pending sig for /submit_sig to pick up
+		pendingSigs.set(`${ctx.from.id}:${id}`, {
+			message,
+			action: "dispute",
+			reason,
+			createdAt: Date.now(),
+		});
+
 		await ctx.reply(
-			`⚠️ *Escrow Disputed*\n\n` +
-				`ID: \`${result.escrow_id}\`\n` +
+			`⚠️ *Dispute Escrow*\n\n` +
+				`ID: \`${id}\`\n` +
 				`Reason: ${reason}\n\n` +
-				`*Escalation Tiers:*\n` +
-				`Mediation (2 days) → Jury Vote (5 days) → Admin Override (10 days)\n` +
-				`Use /my_escalations to check status.${caseId}`,
+				"To dispute, sign this message with your Kaspa wallet and paste the signature:\n\n" +
+				`Message: \`${message}\`\n\n` +
+				"_In Kaspium: Tools → Sign Message_\n" +
+				"_In KasWare: Use the signing feature in settings_\n\n" +
+				"After signing, reply with:\n`/submit_sig ${id} <your-signature>`",
 			{ parse_mode: "Markdown" },
 		);
 	} catch (err) {
@@ -3043,9 +3059,29 @@ async function handleRefundConfirm(ctx, escrowId) {
 
 async function handleCancelEscrow(ctx, escrowId) {
 	try {
-		const result = await api.cancelEscrow(escrowId);
+		const address = getUserAddress(ctx.from.id);
+		if (!address) {
+			return await ctx.reply("Set your address first: /setaddress <kaspa:...>");
+		}
+
+		const nonce = Math.random().toString(36).slice(2, 10);
+		const message = `cancel:${escrowId}:${Math.floor(Date.now() / 1000)}:${nonce}`;
+
+		// Store pending sig for /submit_sig to pick up
+		pendingSigs.set(`${ctx.from.id}:${escrowId}`, {
+			message,
+			action: "cancel",
+			createdAt: Date.now(),
+		});
+
 		await ctx.reply(
-			`🛑 *Escrow Cancelled*\n\n` + `ID: \`${result.escrow_id}\``,
+			`🛑 *Cancel Escrow*\n\n` +
+				`ID: \`${escrowId}\`\n\n` +
+				"To cancel, sign this message with your Kaspa wallet and paste the signature:\n\n" +
+				`Message: \`${message}\`\n\n` +
+				"_In Kaspium: Tools → Sign Message_\n" +
+				"_In KasWare: Use the signing feature in settings_\n\n" +
+				"After signing, reply with:\n`/submit_sig ${escrowId} <your-signature>`",
 			{ parse_mode: "Markdown" },
 		);
 	} catch (err) {
@@ -3172,6 +3208,14 @@ bot.command("submit_sig", async (ctx) => {
 			result = await api.refundEscrow(itemId, {
 				address, signature, message: pending.message,
 			});
+		} else if (pending.action === "cancel") {
+			result = await api.cancelEscrow(itemId, {
+				address, signature, message: pending.message,
+			});
+		} else if (pending.action === "dispute") {
+			result = await api.disputeEscrow(itemId, pending.reason, undefined, {
+				address, signature, message: pending.message,
+			});
 		} else if (pending.action === "accept") {
 			result = await api.acceptOffer(itemId, address, {
 				address, signature, message: pending.message,
@@ -3186,6 +3230,26 @@ bot.command("submit_sig", async (ctx) => {
 					`ID: \`${itemId}\`\n` +
 					`Status: \`${result.status || "accepted"}\`\n\n` +
 					`Now create an escrow to lock funds. Use /create to start.`,
+				{ parse_mode: "Markdown" },
+			);
+		} else if (pending.action === "cancel") {
+			await ctx.reply(
+				`🛑 *Escrow Cancelled!*\n\n` +
+					`ID: \`${result.escrow_id}\`\n` +
+					`Status: \`${result.status}\``,
+				{ parse_mode: "Markdown" },
+			);
+		} else if (pending.action === "dispute") {
+			const caseId = result.jury_case_id ? `\nCase: \`${result.jury_case_id}\`` : "";
+			await ctx.reply(
+				`⚠️ *Escrow Disputed!*\n\n` +
+					`ID: \`${result.escrow_id}\`\n` +
+					`Reason: ${pending.reason}\n` +
+					`Status: \`${result.status}\`` +
+					caseId +
+					`\n\n*Escalation Tiers:*\n` +
+					`Mediation (2 days) → Jury Vote (5 days) → Admin Override (10 days)\n` +
+					`Use /my_escalations to check status.`,
 				{ parse_mode: "Markdown" },
 			);
 		} else {

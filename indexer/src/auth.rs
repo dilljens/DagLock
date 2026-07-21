@@ -16,7 +16,7 @@
 //!   `{action}:{escrow_id}`
 //!
 //! Version 2 messages include a Unix timestamp (±5 min window) and a
-//! 20-byte BLAKE2b-160 nonce (40 hex chars). Nonces are stored in the
+//! 32-byte BLAKE2b-256 nonce (64 hex chars). Nonces are stored in the
 //! database to prevent replay. Version 1 messages skip replay checks.
 
 use crate::types::Escrow;
@@ -30,11 +30,12 @@ use tracing::warn;
 /// Max clock drift for nonce timestamps in seconds (5 minutes).
 const MAX_CLOCK_DRIFT_SECONDS: i64 = 300;
 
-/// Length of nonce in bytes (BLAKE2b-160 = 20 bytes).
-const NONCE_LENGTH: usize = 20;
+/// Length of nonce in bytes (BLAKE2b-256 = 32 bytes).
+/// Increased from 20 to 32 for 256-bit security level.
+const NONCE_LENGTH: usize = 32;
 
-/// Length of nonce hex string (40 chars).
-const NONCE_HEX_LENGTH: usize = 40;
+/// Length of nonce hex string (64 chars).
+const NONCE_HEX_LENGTH: usize = 64;
 
 /// Errors that can occur during authentication.
 #[derive(Debug, thiserror::Error)]
@@ -74,14 +75,17 @@ pub struct ParsedMessage {
     pub escrow_id: String,
     /// The original message string
     pub full_message: String,
-    /// Replay protection nonce (20 bytes) — None if using legacy format
+    /// Replay protection nonce (32 bytes) — None if using legacy format
     pub nonce: Option<Vec<u8>>,
     /// Unix timestamp from message — None if using legacy format
     pub timestamp: Option<i64>,
 }
 
 /// Try to parse a version 2 message: `action:id:ts:nonce_hex`
-/// or fall back to version 1: `action:id`
+///
+/// Version 1 (`action:id` — no replay protection) is deliberately NOT supported.
+/// Only version 2 messages with timestamp (±5 min window) and BLAKE2b-160 nonce
+/// are accepted. This prevents signature replay attacks.
 pub(crate) fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
     let parts: Vec<&str> = message.split(':').collect();
 
@@ -93,7 +97,8 @@ pub(crate) fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
         // Validate action
         match action.as_str() {
             "settle" | "refund" | "dispute" | "cancel" | "evidence" | "vote" | "vouch"
-            | "messages" => {}
+            | "messages" | "swap" | "create" | "accept" | "chat_pubkey" | "mediation"
+            | "register" | "unregister" | "withdraw" | "sign" | "release" | "approve" => {}
             _ => {
                 return Err(AuthError::InvalidMessage {
                     detail: format!("Unknown action: {action}"),
@@ -117,7 +122,7 @@ pub(crate) fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
             });
         }
 
-        // Validate nonce hex (must be 40 hex chars = 20 bytes)
+        // Validate nonce hex (must be 64 hex chars = 32 bytes)
         let nonce_hex = parts[3];
         if nonce_hex.len() != NONCE_HEX_LENGTH {
             return Err(AuthError::InvalidMessage {
@@ -139,21 +144,12 @@ pub(crate) fn parse_message(message: &str) -> AuthResult<ParsedMessage> {
             nonce: Some(nonce),
             timestamp: Some(timestamp),
         })
-    } else if parts.len() == 2 {
-        // Version 1 (legacy): action:id
-        let action = parts[0].to_string();
-        let escrow_id = parts[1].to_string();
-        Ok(ParsedMessage {
-            action,
-            escrow_id,
-            full_message: message.to_string(),
-            nonce: None,
-            timestamp: None,
-        })
     } else {
         Err(AuthError::InvalidMessage {
             detail: format!(
-                "Expected format 'action:id' or 'action:id:timestamp:nonce', got '{}' with {} parts",
+                "Expected format 'action:id:timestamp:nonce_hex' (4 colon-separated parts), \
+                 got '{}' with {} parts. Version 1 (action:id) messages are not accepted — \
+                 they lack replay protection.",
                 message,
                 parts.len()
             ),
@@ -711,18 +707,17 @@ mod tests {
     }
 
     #[test]
-    fn parse_message_v1_legacy_format() {
-        let parsed = parse_message("settle:esc_123").unwrap();
-        assert_eq!(parsed.action, "settle");
-        assert_eq!(parsed.escrow_id, "esc_123");
-        assert!(parsed.nonce.is_none());
-        assert!(parsed.timestamp.is_none());
+    fn parse_message_v1_legacy_format_rejected() {
+        // V1 messages (no nonce/timestamp) are rejected — they lack replay protection
+        let result = parse_message("settle:esc_123");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("4 colon-separated parts"));
     }
 
     #[test]
     fn parse_message_v2_with_replay_protection() {
         let nonce_hex = generate_nonce();
-        assert_eq!(nonce_hex.len(), 40);
+        assert_eq!(nonce_hex.len(), 64);
         let msg = format!(
             "settle:esc_123:{}:{}",
             chrono::Utc::now().timestamp(),
@@ -732,7 +727,7 @@ mod tests {
         assert_eq!(parsed.action, "settle");
         assert_eq!(parsed.escrow_id, "esc_123");
         assert!(parsed.nonce.is_some());
-        assert_eq!(parsed.nonce.as_ref().unwrap().len(), 20);
+        assert_eq!(parsed.nonce.as_ref().unwrap().len(), 32);
         assert!(parsed.timestamp.is_some());
     }
 
@@ -779,11 +774,12 @@ mod tests {
     async fn verify_settle_buyer_authorized() {
         let verifier = MockVerifier::new();
         let escrow = test_escrow();
+        let msg = generate_replay_protected_message("settle", "esc_test");
         let auth = AuthContext {
             address: "kaspatest:qyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpk58a75"
                 .to_string(),
             signature: "any_hex".to_string(),
-            message: "settle:esc_test".to_string(),
+            message: msg,
         };
         assert!(
             verify_settle_authorization(&escrow, &auth, &verifier, &test_pool().await)
@@ -796,11 +792,12 @@ mod tests {
     async fn verify_settle_seller_authorized() {
         let verifier = MockVerifier::new();
         let escrow = test_escrow();
+        let msg = generate_replay_protected_message("settle", "esc_test");
         let auth = AuthContext {
             address: "kaspatest:qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhqrxplya"
                 .to_string(),
             signature: "sig123".to_string(),
-            message: "settle:esc_test".to_string(),
+            message: msg,
         };
         assert!(
             verify_settle_authorization(&escrow, &auth, &verifier, &test_pool().await)
@@ -813,10 +810,11 @@ mod tests {
     async fn verify_settle_unauthorized_address() {
         let verifier = MockVerifier::new();
         let escrow = test_escrow();
+        let msg = generate_replay_protected_message("settle", "esc_test");
         let auth = AuthContext {
             address: "kaspa:outsider".to_string(),
             signature: "sig123".to_string(),
-            message: "settle:esc_test".to_string(),
+            message: msg,
         };
         assert!(
             verify_settle_authorization(&escrow, &auth, &verifier, &test_pool().await)
@@ -831,11 +829,12 @@ mod tests {
         let escrow = test_escrow();
 
         // Buyer can refund
+        let buyer_msg = generate_replay_protected_message("refund", "esc_test");
         let buyer_auth = AuthContext {
             address: "kaspatest:qyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpk58a75"
                 .to_string(),
             signature: "sig123".to_string(),
-            message: "refund:esc_test".to_string(),
+            message: buyer_msg,
         };
         assert!(
             verify_refund_authorization(&escrow, &buyer_auth, &verifier, &test_pool().await)
@@ -844,11 +843,12 @@ mod tests {
         );
 
         // Seller cannot refund
+        let seller_msg = generate_replay_protected_message("refund", "esc_test");
         let seller_auth = AuthContext {
             address: "kaspatest:qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhqrxplya"
                 .to_string(),
             signature: "sig123".to_string(),
-            message: "refund:esc_test".to_string(),
+            message: seller_msg,
         };
         assert!(
             verify_refund_authorization(&escrow, &seller_auth, &verifier, &test_pool().await)
@@ -923,9 +923,9 @@ mod tests {
     }
 
     #[test]
-    fn generate_nonce_produces_20_bytes_hex() {
+    fn generate_nonce_produces_32_bytes_hex() {
         let nonce = generate_nonce();
-        assert_eq!(nonce.len(), 40); // 20 bytes = 40 hex chars
+        assert_eq!(nonce.len(), 64); // 32 bytes = 64 hex chars
         assert!(hex::decode(&nonce).is_ok());
     }
 }

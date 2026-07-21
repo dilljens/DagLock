@@ -15,6 +15,7 @@ use crate::auth::{parse_message, verify_nonce, AuthContext};
 use crate::db::queries;
 use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
+use rand::Rng;
 
 /// Request body for submitting a chat pubkey.
 #[derive(serde::Deserialize)]
@@ -124,7 +125,7 @@ pub async fn export_csv(
         )
     })?;
 
-    // Build CSV
+    // Build CSV with proper RFC 4180 escaping
     let mut csv = String::from(
         "ID,Status,Asset,Amount,Amount(KAS),Fee,Fee(KAS),Buyer,Seller,Created,Settled,Memo,TX ID,Dispute Mode,Dispute Reason\n"
     );
@@ -132,21 +133,21 @@ pub async fn export_csv(
     for e in &escrows {
         csv.push_str(&format!(
             "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
-            e.id,
-            e.status.as_str(),
-            e.asset_type,
+            csv_escape(&e.id),
+            csv_escape(e.status.as_str()),
+            csv_escape(&e.asset_type),
             e.amount_sompi,
             e.amount_sompi as f64 / 100_000_000.0,
             e.fee_sompi,
             e.fee_sompi as f64 / 100_000_000.0,
-            e.buyer_address,
-            e.seller_address.as_deref().unwrap_or(""),
+            csv_escape(&e.buyer_address),
+            csv_escape(e.seller_address.as_deref().unwrap_or("")),
             e.created_at,
-            e.settled_at.map_or("".to_string(), |t| t.to_string()),
-            e.memo.as_deref().unwrap_or(""),
-            e.lock_tx_id,
-            e.dispute_mode.as_deref().unwrap_or(""),
-            e.dispute_reason.as_deref().unwrap_or(""),
+            csv_escape(&e.settled_at.map_or("".to_string(), |t| t.to_string())),
+            csv_escape(e.memo.as_deref().unwrap_or("")),
+            csv_escape(&e.lock_tx_id),
+            csv_escape(e.dispute_mode.as_deref().unwrap_or("")),
+            csv_escape(e.dispute_reason.as_deref().unwrap_or("")),
         ));
     }
 
@@ -226,9 +227,15 @@ pub async fn lock_status(
 
 /// POST /v1/escrows/{id}/swap
 /// Atomic swap: submit a preimage to settle the escrow.
+///
+/// Requires authentication as the seller (counterparty):
+/// - X-Daglock-Address: Seller's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "swap:{escrow_id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn atomic_swap(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<AtomicSwapRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let svc = crate::services::escrow_service::EscrowService::new(
@@ -238,10 +245,37 @@ pub async fn atomic_swap(
         state.verifier.clone(),
         state.email_service.clone(),
     );
-    svc.atomic_swap(&id, &body.preimage)
+    svc.atomic_swap(&id, &body.preimage, &headers)
         .await
         .map(|_| Json(json!({"status": "settled", "escrow_id": id, "method": "atomic_swap"})))
         .map_err(service_error)
+}
+
+/// Escape a value for RFC 4180 CSV.
+/// - Fields containing commas, double quotes, or newlines are wrapped in quotes
+/// - Embedded quotes are doubled
+/// - Leading `=` `+` `-` `@` are prefixed with a tab to prevent Excel formula injection
+fn csv_escape(s: &str) -> String {
+    // Prevent CSV formula injection by prefixing dangerous leading chars
+    let sanitized = if s.starts_with('=')
+        || s.starts_with('+')
+        || s.starts_with('-')
+        || s.starts_with('@')
+    {
+        format!("\t{}", s)
+    } else {
+        s.to_string()
+    };
+
+    if sanitized.contains(',')
+        || sanitized.contains('"')
+        || sanitized.contains('\n')
+        || sanitized.contains('\r')
+    {
+        format!("\"{}\"", sanitized.replace('"', "\"\""))
+    } else {
+        sanitized
+    }
 }
 
 pub fn validate_kaspa_address(address: &str) -> bool {
@@ -428,6 +462,12 @@ async fn validate_create_request(
         }
     }
 
+    if let Some(ref memo) = body.memo {
+        if memo.len() > 500 {
+            return Err(bad_request("invalid_memo", "Memo must be 500 characters or less"));
+        }
+    }
+
     if let Some(ref med) = body.mediator_key {
         if !med.is_empty() && !validate_kaspa_address(med) {
             return Err(bad_request("invalid_address", "Invalid mediator Kaspa address"));
@@ -558,6 +598,11 @@ pub async fn dispute(
     headers: axum::http::HeaderMap,
     Json(body): Json<DisputeRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    // Validate reason length
+    if body.reason.len() > 2000 {
+        return Err(bad_request("reason_too_long", "Dispute reason must be 2000 characters or less"));
+    }
+
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -697,7 +742,7 @@ pub async fn dispute(
                 let needed = (juror_count as usize).min(pool_size);
                 let mut indices: Vec<usize> = (0..pool_size).collect();
                 for i in (pool_size - needed..pool_size).rev() {
-                    let j = rand::random::<usize>() % (i + 1);
+                    let j = rand::thread_rng().gen_range(0..=i);
                     indices.swap(i, j);
                 }
                 let selected: Vec<String> = indices[pool_size - needed..]
@@ -807,14 +852,26 @@ pub async fn submit_chat_pubkey(
         )))));
     }
 
-    let auth = AuthContext::from_headers(&headers).map_err(|_e| {
+    let auth = AuthContext::from_headers(&headers).map_err(|e| {
         (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new(
-            "unauthorized", "X-Daglock-* headers required"
+            "unauthorized", e.to_string()
         ))))
     })?;
 
-    let expected_message = format!("chat_pubkey:{}", escrow_id);
-    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
+    // Verify message is V2 format with nonce (action:escrow_id:timestamp:nonce)
+    let parsed = parse_message(&auth.message).map_err(|e| {
+        (StatusCode::BAD_REQUEST, Json(json!(ApiError::new(
+            "invalid_message", e.to_string()
+        ))))
+    })?;
+
+    if parsed.action != "chat_pubkey" || parsed.escrow_id != escrow_id {
+        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new(
+            "forbidden", "Message must be 'chat_pubkey:{escrow_id}:timestamp:nonce'"
+        )))));
+    }
+
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message)
         .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new(
             "forbidden", format!("Signature verification failed: {e}")
         )))))?
@@ -823,6 +880,13 @@ pub async fn submit_chat_pubkey(
             "forbidden", "Invalid signature"
         )))));
     }
+
+    // Replay protection via nonce
+    verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
+        (StatusCode::FORBIDDEN, Json(json!(ApiError::new(
+            "forbidden", e.to_string()
+        ))))
+    })?;
 
     // Verify the escrow exists and the caller is a party
     let escrow = queries::get_escrow(&state.db, &escrow_id)

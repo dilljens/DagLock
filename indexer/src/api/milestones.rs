@@ -7,8 +7,59 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::api::AppState;
+use crate::auth::{parse_message, verify_nonce, AuthContext};
 use crate::db::queries;
 use crate::types::*;
+
+/// Verify that the caller is authorized to act on a milestone escrow.
+/// The caller must be either the buyer or seller, and must provide a valid
+/// Schnorr signature for the action.
+async fn verify_milestone_auth(
+    state: &AppState,
+    headers: &axum::http::HeaderMap,
+    escrow: &MilestoneEscrow,
+    action: &str,
+) -> Result<(), (StatusCode, Json<Value>)> {
+    let auth = AuthContext::from_headers(headers).map_err(|e| {
+        (StatusCode::UNAUTHORIZED, Json(json!(crate::types::ApiError::new("unauthorized", e.to_string()))))
+    })?;
+
+    // Check caller is buyer or seller
+    let is_buyer = auth.address == escrow.buyer_address;
+    let is_seller = auth.address == escrow.seller_address;
+    if !is_buyer && !is_seller {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(crate::types::ApiError::new("forbidden", "Only escrow parties can perform this action"))),
+        ));
+    }
+
+    let parsed = parse_message(&auth.message).map_err(|e| {
+        (StatusCode::BAD_REQUEST, Json(json!(crate::types::ApiError::new("invalid_message", e.to_string()))))
+    })?;
+
+    if parsed.action != action {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(crate::types::ApiError::new("forbidden", format!("Message must be '{action}:{{id}}:ts:nonce'")))),
+        ));
+    }
+
+    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message)
+        .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(crate::types::ApiError::new("forbidden", "Invalid signature"))),
+        ));
+    }
+
+    verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
+        (StatusCode::FORBIDDEN, Json(json!(crate::types::ApiError::new("forbidden", e.to_string()))))
+    })?;
+
+    Ok(())
+}
 
 #[derive(Deserialize)]
 pub struct ListQuery {
@@ -147,9 +198,15 @@ pub async fn get_by_id(
 }
 
 /// POST /v1/milestones/:id/release
+///
+/// Requires authentication as the seller:
+/// - X-Daglock-Address: Seller's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "release:{id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn release_milestone(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let mut escrow = queries::get_milestone_escrow(&state.db, &id)
         .await
@@ -172,6 +229,9 @@ pub async fn release_milestone(
             Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)})),
         ));
     }
+
+    // Verify caller is authorized (seller only for release)
+    verify_milestone_auth(&state, &headers, &escrow, "release").await?;
 
     let idx = escrow.current_milestone as usize;
     if idx >= escrow.milestone_amounts.len() {
@@ -228,9 +288,15 @@ pub async fn release_milestone(
 }
 
 /// POST /v1/milestones/:id/approve
+///
+/// Requires authentication as the buyer:
+/// - X-Daglock-Address: Buyer's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "approve:{id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn approve_milestone(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let mut escrow = queries::get_milestone_escrow(&state.db, &id)
         .await
@@ -253,6 +319,9 @@ pub async fn approve_milestone(
             Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)})),
         ));
     }
+
+    // Verify caller is authorized (buyer for approval)
+    verify_milestone_auth(&state, &headers, &escrow, "approve").await?;
 
     let idx = escrow.current_milestone as usize;
     if idx >= escrow.milestone_amounts.len() {
@@ -308,9 +377,15 @@ pub async fn approve_milestone(
 }
 
 /// POST /v1/milestones/:id/dispute
+///
+/// Requires authentication as buyer or seller:
+/// - X-Daglock-Address: Party's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "dispute:{id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn dispute(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_milestone_escrow(&state.db, &id)
         .await
@@ -334,6 +409,9 @@ pub async fn dispute(
         ));
     }
 
+    // Verify caller is authorized
+    verify_milestone_auth(&state, &headers, &escrow, "dispute").await?;
+
     queries::update_milestone_status(&state.db, &id, escrow.current_milestone, &escrow.milestone_statuses)
         .await
         .map_err(|_e| {
@@ -351,9 +429,15 @@ pub async fn dispute(
 }
 
 /// POST /v1/milestones/:id/refund
+///
+/// Requires authentication as the buyer:
+/// - X-Daglock-Address: Buyer's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "refund:{id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn refund(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_milestone_escrow(&state.db, &id)
         .await
@@ -377,6 +461,9 @@ pub async fn refund(
         ));
     }
 
+    // Verify caller is authorized (buyer for refund)
+    verify_milestone_auth(&state, &headers, &escrow, "refund").await?;
+
     queries::refund_milestone_escrow(&state.db, &id)
         .await
         .map_err(|_e| {
@@ -394,9 +481,15 @@ pub async fn refund(
 }
 
 /// POST /v1/milestones/:id/complete
+///
+/// Requires authentication as buyer or seller (mutual):
+/// - X-Daglock-Address: Party's Kaspa address
+/// - X-Daglock-Signature: Schnorr signature of "complete:{id}:{timestamp}:{nonce}"
+/// - X-Daglock-Message: The signed message
 pub async fn complete(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_milestone_escrow(&state.db, &id)
         .await
@@ -419,6 +512,9 @@ pub async fn complete(
             Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)})),
         ));
     }
+
+    // Verify caller is authorized
+    verify_milestone_auth(&state, &headers, &escrow, "complete").await?;
 
     queries::complete_milestone_escrow(&state.db, &id)
         .await

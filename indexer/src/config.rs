@@ -1,4 +1,5 @@
 use clap::Parser;
+use tracing::warn;
 
 #[derive(Parser, Debug, Clone)]
 #[command(name = "daglock-indexer", version = "0.1.0")]
@@ -102,7 +103,10 @@ pub struct Args {
     /// If set, the service tries to construct and broadcast Kaspa self-pay
     /// transactions carrying the anchor payload.  Without this flag, payloads
     /// are logged for manual broadcast.
-    #[arg(long)]
+    ///
+    /// WARNING: This is a private key — prefer setting DAGLOCK_ANCHOR_WALLET_KEY
+    /// env var instead of passing on the command line (visible in `ps`).
+    #[arg(long, env = "DAGLOCK_ANCHOR_WALLET_KEY")]
     pub anchor_wallet_key: Option<String>,
 
     /// Hours after case resolution to auto-wipe revealed chat evidence.
@@ -111,7 +115,8 @@ pub struct Args {
 
     /// Admin auth token for privileged endpoints (e.g. tier management).
     /// When not set, admin endpoints return 403.
-    #[arg(long)]
+    /// Prefer setting DAGLOCK_ADMIN_TOKEN env var over --admin-token CLI arg.
+    #[arg(long, env = "DAGLOCK_ADMIN_TOKEN")]
     pub admin_token: Option<String>,
 
     /// Interval between daily stats computation runs (seconds).
@@ -165,6 +170,16 @@ impl Args {
             }
         }
 
+        // Treasury pubkey is required on mainnet to prevent fee theft
+        if self.network == "mainnet" && self.treasury_pubkey.is_none() {
+            panic!(
+                "REFUSING TO START: --treasury-pubkey is required on mainnet. \
+                 Set the canonical DagLock treasury public key to ensure protocol fees \
+                 are sent to the correct address. Generate with: \
+                 `cargo test -p daglock-contracts -- print_template_hashes --nocapture`."
+            );
+        }
+
         // Mock auth on mainnet is forbidden
         if self.mock_auth && self.network == "mainnet" {
             panic!(
@@ -187,6 +202,23 @@ impl Args {
                 "DAGLOCK_MESSAGE_KEY environment variable must be set on mainnet. \
                  Generate one with: openssl rand -hex 32"
             );
+        }
+
+        // --no-wrpc on mainnet or testnet with real value is dangerous
+        if self.no_wrpc {
+            match self.network.as_str() {
+                "mainnet" => panic!(
+                    "REFUSING TO START: --no-wrpc is set on mainnet. \
+                     Real UTXO verification is required for mainnet. \
+                     Remove --no-wrpc or connect via --kaspa-api-url or --wrpc-url."
+                ),
+                _ => warn!(
+                    "--no-wrpc: UTXO verification is DISABLED. \
+                     Escrows will not be verified on-chain. \
+                     This should only be used for local development. \
+                     Use --kaspa-api-url for real verification."
+                ),
+            }
         }
     }
 }
@@ -297,10 +329,40 @@ mod tests {
         let mut args = valid_args();
         args.network = "mainnet".into();
         args.allow_mainnet = true;
+        args.no_wrpc = false; // --no-wrpc is now rejected on mainnet
+        args.kaspa_api_url = "https://api.kaspa.org".into();
+        args.database_url = "sqlite::memory:".into();
+        args.treasury_pubkey = Some("abababababababababababababababababababababababababababababababab".into());
+        std::env::set_var("DAGLOCK_MESSAGE_KEY", "ab".repeat(32));
+        args.validate();
+        std::env::remove_var("DAGLOCK_MESSAGE_KEY");
+    }
+
+    #[test]
+    fn mainnet_requires_treasury_pubkey() {
+        let mut args = valid_args();
+        args.network = "mainnet".into();
+        args.allow_mainnet = true;
+        args.no_wrpc = false;
+        args.kaspa_api_url = "https://api.kaspa.org".into();
+        args.database_url = "sqlite::memory:".into();
+        args.treasury_pubkey = None;
+        std::env::set_var("DAGLOCK_MESSAGE_KEY", "ab".repeat(32));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
+        std::env::remove_var("DAGLOCK_MESSAGE_KEY");
+    }
+
+    #[test]
+    fn no_wrpc_on_mainnet_panics() {
+        let mut args = valid_args();
+        args.network = "mainnet".into();
+        args.allow_mainnet = true;
         args.no_wrpc = true;
         args.database_url = "sqlite::memory:".into();
         std::env::set_var("DAGLOCK_MESSAGE_KEY", "ab".repeat(32));
-        args.validate();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| args.validate()));
+        assert!(result.is_err());
         std::env::remove_var("DAGLOCK_MESSAGE_KEY");
     }
 }

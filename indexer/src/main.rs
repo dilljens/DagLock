@@ -15,6 +15,7 @@ mod types;
 mod verification;
 mod websocket;
 
+use rand::Rng;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::broadcast;
@@ -180,10 +181,13 @@ async fn main() {
         .await
         .expect("Failed to bind TCP listener");
 
-    axum::serve(listener_tcp, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .expect("Failed to start HTTP server");
+    axum::serve(
+        listener_tcp,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .expect("Failed to start HTTP server");
 }
 
 /// Spawn all background task loops. Delegates to focused sub-functions for each domain.
@@ -290,7 +294,7 @@ fn spawn_mediation_escalator(db: sqlx::Pool<sqlx::Sqlite>) {
                     let needed = (juror_count as usize).min(pool.len());
                     let mut indices: Vec<usize> = (0..pool.len()).collect();
                     for i in (pool.len() - needed..pool.len()).rev() {
-                        let j = rand::random::<usize>() % (i + 1);
+                        let j = rand::thread_rng().gen_range(0..=i);
                         indices.swap(i, j);
                     }
                     let selected: Vec<String> = indices[pool.len() - needed..].iter().map(|&i| pool[i].address.clone()).collect();

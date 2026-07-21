@@ -465,3 +465,25 @@ pub async fn resolve_dispute_with_split(
     .await?;
     Ok(result.rows_affected() > 0)
 }
+
+/// Count recent state changes (settle/refund/dispute/cancel) for an address
+/// within the last `window_secs` seconds. Used for per-address rate limiting
+/// on state-changing operations.
+pub async fn count_recent_state_changes(
+    pool: &Pool<Sqlite>,
+    address: &str,
+    window_secs: i64,
+) -> Result<i64, sqlx::Error> {
+    let cutoff = chrono::Utc::now().timestamp() - window_secs;
+    let row = sqlx::query(
+        "SELECT COUNT(*) as cnt FROM escrows WHERE \
+         (buyer_address = ?1 OR seller_address = ?1) \
+         AND (settled_at >= ?2 OR refunded_at >= ?2 OR disputed_at >= ?2 OR cancelled_at >= ?2)"
+    )
+    .bind(address)
+    .bind(cutoff)
+    .fetch_one(pool)
+    .await?;
+    let count: i64 = row.try_get("cnt").unwrap_or(0);
+    Ok(count)
+}

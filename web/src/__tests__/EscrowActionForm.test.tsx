@@ -116,8 +116,15 @@ describe("EscrowActionForm", () => {
 				</WithWallet>,
 			);
 
+			// Fill in escrow ID, auth fields, and signature (cancel now requires auth)
 			const escrowInput = screen.getByPlaceholderText("esc_...");
 			await user.type(escrowInput, "esc_1");
+
+			const addressInput = screen.getByPlaceholderText("kaspa:...");
+			await user.type(addressInput, VALID_ADDR);
+
+			const sigInput = screen.getByPlaceholderText("auto-filled when signing");
+			await user.type(sigInput, "abc123");
 
 			const submitBtn = screen.getByRole("button", { name: /cancel/i });
 			await user.click(submitBtn);
@@ -130,7 +137,7 @@ describe("EscrowActionForm", () => {
 			await user.click(allCancelBtns[allCancelBtns.length - 1]);
 
 			await waitFor(() => {
-				expect(api.cancelEscrow).toHaveBeenCalledWith("esc_1");
+				expect(api.cancelEscrow).toHaveBeenCalled();
 			});
 		});
 

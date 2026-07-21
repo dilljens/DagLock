@@ -8,7 +8,7 @@ import {
 	type Deposit,
 } from "../api";
 import { useRouter } from "../router";
-import { money, badge, time, moneyCompact } from "../helpers";
+import { money, badge, time, moneyCompact, generateAuthMessage } from "../helpers";
 import type { LoadState } from "../helpers";
 import { useWallet, useAddress } from "../context/WalletContext";
 import { useToast } from "../layout/Toast";
@@ -655,14 +655,15 @@ function EscrowActions({ escrow, onMutated }: { escrow: Escrow; onMutated: () =>
 				await api.autoSettleEscrow(escrow.id);
 				notify("success", "Escrow auto-settled");
 			} else {
-				const auth: AuthHeaders = {
+				const msg = generateAuthMessage(action, escrow.id);
+			const auth: AuthHeaders = {
 					address: escrow.buyer_address,
-					signature: await sign(`${action}:${escrow.id}`),
-					message: `${action}:${escrow.id}`,
+					signature: await sign(msg),
+					message: msg,
 				};
 				if (action === "settle") await api.settleEscrow(escrow.id, auth);
 				else if (action === "refund") await api.refundEscrow(escrow.id, auth);
-				else await api.cancelEscrow(escrow.id);
+				else await api.cancelEscrow(escrow.id, auth);
 				notify("success", `Escrow ${action}ed`);
 			}
 			onMutated();

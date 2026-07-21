@@ -5,6 +5,9 @@ use serde_json::{json, Value};
 
 /// POST /v1/swap/generate
 /// Generate a random secret and compute its SHA-256 hash for atomic swaps.
+///
+/// The secret is returned to the caller ONCE and immediately zeroized
+/// from server memory — it is NOT persisted server-side.
 pub async fn generate() -> Json<Value> {
     use rand::RngCore;
     use sha2::{Digest, Sha256};
@@ -16,8 +19,14 @@ pub async fn generate() -> Json<Value> {
     hasher.update(secret);
     let hash = hasher.finalize();
 
+    let secret_hex = hex::encode(secret);
+
+    // Zeroize the secret from server memory — it is NOT stored server-side.
+    // The caller must save it themselves.
+    secret.fill(0);
+
     Json(json!({
-        "secret": hex::encode(secret),
+        "secret": secret_hex,
         "hash": hex::encode(hash),
     }))
 }

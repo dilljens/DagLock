@@ -1,5 +1,6 @@
 //! REST API routes for the DagLock indexer.
 
+pub mod admin;
 pub mod apps;
 pub mod blocks;
 pub mod compile;
@@ -38,14 +39,18 @@ use crate::auth::SignatureVerifier;
 use crate::ratelimit::RateLimiter;
 use crate::verification::EscrowVerifier;
 use crate::websocket;
+use axum::extract::Query;
 use axum::routing::{delete, get, patch, post};
 use axum::{Json, Router};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use sqlx::{Pool, Sqlite};
+use std::collections::HashSet;
 use std::sync::Arc;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tracing::warn;
 
 /// Shared application state.
 #[derive(Clone)]
@@ -257,6 +262,11 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/tokens/:ticker", patch(tokens::update))
         .route("/v1/tokens/:ticker/chart", get(tokens::chart))
         .route("/v1/ws", get(websocket_handler))
+        // Admin moderation endpoints (require X-Daglock-Admin header)
+        .route("/v1/admin/reports", get(admin::list_reports))
+        .route("/v1/admin/blocks", get(admin::list_blocks))
+        .route("/v1/admin/blocks/:id", delete(admin::delete_block))
+        .route("/v1/admin/flags", post(admin::set_flags))
         // Tier management (admin only)
         .route(
             "/v1/apps/:id/keys/:key_id/tier",
@@ -279,13 +289,50 @@ async fn openapi_spec() -> Json<serde_json::Value> {
     Json(serde_json::from_str(spec).unwrap_or_default())
 }
 
+/// Query parameters for WebSocket auth.
+#[derive(Deserialize)]
+struct WsAuthParams {
+    address: Option<String>,
+    signature: Option<String>,
+    message: Option<String>,
+}
+
 /// WebSocket upgrade handler.
+///
+/// Optional authentication via query parameters:
+///   ?address=kaspa:...&signature=hex&message=action:id:ts:nonce
+///
+/// Without auth, the WebSocket connects but receives no events (privacy).
+/// With auth, only events for escrows the caller is a participant in are delivered.
 async fn websocket_handler(
     ws: axum::extract::WebSocketUpgrade,
     axum::extract::State(state): axum::extract::State<AppState>,
+    Query(params): Query<WsAuthParams>,
 ) -> axum::response::Response {
     let rx = state.ws_tx.subscribe();
-    ws.on_upgrade(move |socket| websocket::handle_socket(socket, state.db, rx))
+
+    // Attempt to authenticate from query params
+    let auth_addresses = if let (Some(addr), Some(sig), Some(msg)) =
+        (&params.address, &params.signature, &params.message)
+    {
+        if state
+            .sig_verifier
+            .verify_signature(addr, sig, msg)
+            .unwrap_or(false)
+        {
+            let mut addrs = HashSet::new();
+            addrs.insert(addr.clone());
+            Some(addrs)
+        } else {
+            // Invalid signature — connect but no events
+            warn!("WebSocket: invalid auth signature for {}", addr);
+            None
+        }
+    } else {
+        None
+    };
+
+    ws.on_upgrade(move |socket| websocket::handle_socket(socket, state.db, rx, auth_addresses))
 }
 
 async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> Json<Value> {

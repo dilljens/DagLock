@@ -49,18 +49,12 @@ fn load_key() -> [u8; 32] {
     match load_key_optional() {
         Some(k) => k,
         None => {
-            // Generate a deterministic dev key (hashed from a known string)
-            // This prevents message loss on restart during development.
-            // In production, always set DAGLOCK_MESSAGE_KEY env var.
-            warn!("DAGLOCK_MESSAGE_KEY not set — using deterministic dev key. Set DAGLOCK_MESSAGE_KEY=64_hex_chars for production!");
-            let key = blake2b_simd::Params::new()
-                .hash_length(32)
-                .to_state()
-                .update(b"daglock-dev-message-key-2026")
-                .finalize();
-            let mut k = [0u8; 32];
-            k.copy_from_slice(key.as_bytes());
-            k
+            panic!(
+                "DAGLOCK_MESSAGE_KEY is not set or invalid. \
+                 Encrypted messages CANNOT be stored or read.\n\
+                 Generate a key with: openssl rand -hex 32\n\
+                 Then set: export DAGLOCK_MESSAGE_KEY=<64-hex-chars>"
+            );
         }
     }
 }
@@ -136,16 +130,15 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_succeeds_without_env_key() {
-        // Encryption uses load_key() which falls back to dev key.
-        // Decryption uses load_key_optional() which returns None -> decrypt returns None.
-        // This is by design: you can always encrypt, but decrypt needs DAGLOCK_MESSAGE_KEY.
+    fn encrypt_panics_without_env_key() {
+        // Encryption uses load_key() which panics if DAGLOCK_MESSAGE_KEY is not set.
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let prev = env::var("DAGLOCK_MESSAGE_KEY").ok();
         env::remove_var("DAGLOCK_MESSAGE_KEY");
-        let (ct, nonce) = encrypt_message("dev mode test").unwrap();
-        assert!(!ct.is_empty());
-        assert!(!nonce.is_empty());
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            encrypt_message("dev mode test").unwrap()
+        }));
+        assert!(result.is_err(), "Expected panic when DAGLOCK_MESSAGE_KEY is not set");
         match prev {
             Some(k) => env::set_var("DAGLOCK_MESSAGE_KEY", k),
             None => {}
@@ -154,9 +147,29 @@ mod tests {
 }
 
 fn load_key_optional() -> Option<[u8; 32]> {
-    let hex_key = env::var("DAGLOCK_MESSAGE_KEY").ok()?;
-    let bytes = hex::decode(hex_key).ok()?;
+    let hex_key = match env::var("DAGLOCK_MESSAGE_KEY") {
+        Ok(k) => k,
+        Err(_) => {
+            warn!("DAGLOCK_MESSAGE_KEY not set — messages cannot be decrypted (encryption uses dev key)");
+            return None;
+        }
+    };
+    let bytes = match hex::decode(&hex_key) {
+        Ok(b) => b,
+        Err(e) => {
+            warn!(
+                "DAGLOCK_MESSAGE_KEY is set but is not valid hex: {e}. \
+                 Generate a proper key with: openssl rand -hex 32"
+            );
+            return None;
+        }
+    };
     if bytes.len() != 32 {
+        warn!(
+            "DAGLOCK_MESSAGE_KEY must decode to exactly 32 bytes, but got {} bytes. \
+             Generate a proper key with: openssl rand -hex 32",
+            bytes.len()
+        );
         return None;
     }
     let mut key = [0u8; 32];

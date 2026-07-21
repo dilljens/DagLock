@@ -13,9 +13,16 @@ use crate::services::webhooks::{self, WebhookEvent};
 use crate::types::*;
 use crate::verification::verify_escrow_active;
 use crate::websocket::WsEvent;
+use rand::Rng;
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
+use tracing::warn;
+
+/// Max state changes per address per window before rate limiting kicks in.
+const MAX_STATE_CHANGES_PER_ADDRESS: u32 = 20;
+/// Rate limit window in seconds (5 minutes).
+const STATE_CHANGE_WINDOW_SECS: i64 = 300;
 
 /// Error type returned by service methods.
 /// Maps directly to HTTP status codes in handlers.
@@ -229,6 +236,9 @@ impl<'a> EscrowService<'a> {
             .await
             .map_err(|e| ServiceError::VerificationFailed(e.to_string()))?;
 
+        // Per-address rate limiting
+        self.check_rate_limit(&auth.address).await?;
+
         let settled = queries::settle_escrow_atomic(&self.db, id)
             .await
             .map_err(|_| ServiceError::Internal("Failed to settle escrow".into()))?;
@@ -264,6 +274,9 @@ impl<'a> EscrowService<'a> {
         verify_escrow_active(&current, self.verifier.as_ref())
             .await
             .map_err(|e| ServiceError::VerificationFailed(e.to_string()))?;
+
+        // Per-address rate limiting
+        self.check_rate_limit(&auth.address).await?;
 
         let refunded = queries::refund_escrow_atomic(&self.db, id)
             .await
@@ -321,6 +334,9 @@ impl<'a> EscrowService<'a> {
             .await
             .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
 
+        // Per-address rate limiting
+        self.check_rate_limit(&auth.address).await?;
+
         queries::mark_escrow_disputed(&self.db, id, reason)
             .await
             .map_err(|_| ServiceError::Internal("Failed to mark escrow as disputed".into()))?;
@@ -348,7 +364,7 @@ impl<'a> EscrowService<'a> {
             let needed = (juror_count as usize).min(pool_size);
             let mut indices: Vec<usize> = (0..pool_size).collect();
             for i in (pool_size - needed..pool_size).rev() {
-                let j = rand::random::<usize>() % (i + 1);
+                let j = rand::thread_rng().gen_range(0..=i);
                 indices.swap(i, j);
             }
             let selected: Vec<String> = indices[pool_size - needed..]
@@ -388,6 +404,9 @@ impl<'a> EscrowService<'a> {
             .await
             .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
 
+        // Per-address rate limiting
+        self.check_rate_limit(&auth.address).await?;
+
         queries::mark_escrow_cancelled(&self.db, id)
             .await
             .map_err(|_| ServiceError::Internal("Failed to cancel escrow".into()))?;
@@ -400,8 +419,45 @@ impl<'a> EscrowService<'a> {
     // ── Atomic Swap ─────────────────────────────────────────────
 
     /// Settle an escrow via atomic swap (preimage verification).
-    pub async fn atomic_swap(&self, id: &str, preimage_hex: &str) -> Result<(), ServiceError> {
+    ///
+    /// Requires the caller to authenticate as the counterparty (seller) via
+    /// Schnorr signature — prevents third-party preimage theft.
+    pub async fn atomic_swap(
+        &self,
+        id: &str,
+        preimage_hex: &str,
+        headers: &axum::http::HeaderMap,     // NEW: auth headers
+    ) -> Result<(), ServiceError> {
         let current = self.get_settleable_escrow(id).await?;
+
+        // Verify caller is the seller/counterparty
+        let auth = AuthContext::from_headers(headers)
+            .map_err(|e| ServiceError::Unauthorized(e.to_string()))?;
+
+        let is_seller = current.seller_address.as_deref() == Some(&auth.address);
+        if !is_seller {
+            return Err(ServiceError::Forbidden(
+                "Only the seller can claim an atomic swap".into(),
+            ));
+        }
+
+        let parsed = parse_message(&auth.message)
+            .map_err(|e| ServiceError::InvalidInput(e.to_string()))?;
+        if parsed.action != "swap" || parsed.escrow_id != id {
+            return Err(ServiceError::Forbidden(
+                "Message must be 'swap:{id}:ts:nonce'".into(),
+            ));
+        }
+        if !self
+            .sig_verifier
+            .verify_signature(&auth.address, &auth.signature, &auth.message)
+            .unwrap_or(false)
+        {
+            return Err(ServiceError::Forbidden("Invalid signature".into()));
+        }
+        verify_nonce(&self.db, &parsed, &auth.address)
+            .await
+            .map_err(|e| ServiceError::Forbidden(e.to_string()))?;
 
         let preimage_bytes = hex::decode(preimage_hex)
             .map_err(|_| ServiceError::InvalidInput("Preimage must be valid hex".into()))?;
@@ -509,6 +565,28 @@ impl<'a> EscrowService<'a> {
         }
         let _ = self.ws_tx.send(WsEvent::escrow_refunded(id));
         webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowRefunded(id));
+        Ok(())
+    }
+
+    /// Check per-address rate limit for state-changing operations.
+    /// Limits to MAX_STATE_CHANGES per address per window to prevent abuse.
+    async fn check_rate_limit(&self, address: &str) -> Result<(), ServiceError> {
+        let recent = queries::count_recent_state_changes(
+            &self.db, address, STATE_CHANGE_WINDOW_SECS,
+        )
+        .await
+        .map_err(|e| {
+            warn!("Rate limit check failed: {e}");
+            ServiceError::Internal("Rate limit check failed".into())
+        })?;
+
+        if recent >= MAX_STATE_CHANGES_PER_ADDRESS as i64 {
+            return Err(ServiceError::Forbidden(format!(
+                "Rate limit: max {MAX_STATE_CHANGES_PER_ADDRESS} state changes per \
+                 {STATE_CHANGE_WINDOW_SECS}s per address"
+            )));
+        }
+
         Ok(())
     }
 
