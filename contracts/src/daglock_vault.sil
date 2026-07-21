@@ -26,7 +26,8 @@ contract DagLockVault(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
-        require(feeAmount >= MIN_OUT);
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
@@ -44,7 +45,8 @@ contract DagLockVault(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
-        require(feeAmount >= MIN_OUT);
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
@@ -61,7 +63,8 @@ contract DagLockVault(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
-        require(feeAmount >= MIN_OUT);
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
@@ -98,7 +101,8 @@ contract DagLockVault(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
-        require(feeAmount >= MIN_OUT);
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }

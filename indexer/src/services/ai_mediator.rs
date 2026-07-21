@@ -53,9 +53,7 @@ impl AiMediator {
             .json(&body)
             .send()
             .await
-            .map_err(|e| {
-                ServiceError::Internal(format!("AI mediator API request failed: {e}"))
-            })?;
+            .map_err(|e| ServiceError::Internal(format!("AI mediator API request failed: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -71,9 +69,7 @@ impl AiMediator {
 
         let content = response_body["choices"][0]["message"]["content"]
             .as_str()
-            .ok_or_else(|| {
-                ServiceError::Internal("AI mediator response missing content".into())
-            })?;
+            .ok_or_else(|| ServiceError::Internal("AI mediator response missing content".into()))?;
 
         let result: MediationResult = serde_json::from_str(content).map_err(|e| {
             ServiceError::Internal(format!(
@@ -101,9 +97,7 @@ impl AiMediator {
         escrow_amount: i64,
     ) -> String {
         let amount_kas = escrow_amount as f64 / 100_000_000.0;
-        let mut prompt = format!(
-            "## Dispute Details\n\nEscrow amount: {amount_kas} KAS\n\n"
-        );
+        let mut prompt = format!("## Dispute Details\n\nEscrow amount: {amount_kas} KAS\n\n");
 
         prompt.push_str("## Buyer's Claim\n\n");
         prompt.push_str(buyer_claim);

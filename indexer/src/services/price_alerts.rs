@@ -3,9 +3,9 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
 
+use crate::services::email::EmailService;
 use crate::types::PriceAlert;
 use crate::websocket::WsEvent;
-use crate::services::email::EmailService;
 
 /// Check all active (non-triggered) price alerts against the current price.
 /// Marks triggered alerts and sends email + WebSocket notifications.
@@ -42,7 +42,10 @@ pub async fn check_alerts(
 
         // Mark alert as triggered
         if let Err(e) = mark_triggered(pool, &alert.id, now).await {
-            warn!("Price alerts: failed to mark alert {} triggered: {e}", alert.id);
+            warn!(
+                "Price alerts: failed to mark alert {} triggered: {e}",
+                alert.id
+            );
             continue;
         }
 
@@ -67,7 +70,11 @@ pub async fn check_alerts(
             if svc.is_configured() {
                 let subject = format!(
                     "[DagLock] Price Alert: KAS is {} ${:.4}",
-                    if alert.direction == "above" { "above" } else { "below" },
+                    if alert.direction == "above" {
+                        "above"
+                    } else {
+                        "below"
+                    },
                     alert.target_price
                 );
                 let body = format!(
@@ -81,7 +88,10 @@ pub async fn check_alerts(
                     current_price, alert.direction, alert.target_price
                 );
                 if let Err(e) = svc.send_notification(&alert.address, &subject, &body).await {
-                    warn!("Price alerts: failed to send email for alert {}: {e}", alert.id);
+                    warn!(
+                        "Price alerts: failed to send email for alert {}: {e}",
+                        alert.id
+                    );
                 }
             }
         }
@@ -91,24 +101,26 @@ pub async fn check_alerts(
 async fn get_active_alerts(pool: &Pool<Sqlite>) -> Result<Vec<PriceAlert>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (String, String, f64, String, i32, i64, Option<i64>)>(
         "SELECT id, address, target_price, direction, triggered, created_at, triggered_at \
-         FROM price_alerts WHERE triggered = 0"
+         FROM price_alerts WHERE triggered = 0",
     )
     .fetch_all(pool)
     .await?;
 
     let alerts = rows
         .into_iter()
-        .map(|(id, address, target_price, direction, triggered, created_at, triggered_at)| {
-            PriceAlert {
-                id,
-                address,
-                target_price,
-                direction,
-                triggered: triggered != 0,
-                created_at,
-                triggered_at,
-            }
-        })
+        .map(
+            |(id, address, target_price, direction, triggered, created_at, triggered_at)| {
+                PriceAlert {
+                    id,
+                    address,
+                    target_price,
+                    direction,
+                    triggered: triggered != 0,
+                    created_at,
+                    triggered_at,
+                }
+            },
+        )
         .collect();
 
     Ok(alerts)

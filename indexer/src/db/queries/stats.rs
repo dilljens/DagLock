@@ -15,52 +15,46 @@ pub async fn compute_and_store_daily_stats(pool: &Pool<Sqlite>) -> Result<(), sq
         .unwrap_or(0);
 
     // Escrows created today
-    let escrows_created: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE created_at >= ?1",
-    )
-    .bind(day_start)
-    .fetch_one(pool)
-    .await?;
+    let escrows_created: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM escrows WHERE created_at >= ?1")
+            .bind(day_start)
+            .fetch_one(pool)
+            .await?;
 
     // Escrows settled today
-    let escrows_settled: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM escrows WHERE settled_at >= ?1",
-    )
-    .bind(day_start)
-    .fetch_one(pool)
-    .await?;
+    let escrows_settled: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM escrows WHERE settled_at >= ?1")
+            .bind(day_start)
+            .fetch_one(pool)
+            .await?;
 
     // Milestones completed today
-    let milestones_completed: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM milestone_escrows WHERE completed_at >= ?1",
-    )
-    .bind(day_start)
-    .fetch_one(pool)
-    .await?;
+    let milestones_completed: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM milestone_escrows WHERE completed_at >= ?1")
+            .bind(day_start)
+            .fetch_one(pool)
+            .await?;
 
     // Subscriptions completed today
-    let subscriptions_completed: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM subscriptions WHERE completed_at >= ?1",
-    )
-    .bind(day_start)
-    .fetch_one(pool)
-    .await?;
+    let subscriptions_completed: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM subscriptions WHERE completed_at >= ?1")
+            .bind(day_start)
+            .fetch_one(pool)
+            .await?;
 
     // Volume (settled escrows today)
-    let volume: (Option<i64>,) = sqlx::query_as(
-        "SELECT SUM(amount_sompi) FROM escrows WHERE settled_at >= ?1",
-    )
-    .bind(day_start)
-    .fetch_one(pool)
-    .await?;
+    let volume: (Option<i64>,) =
+        sqlx::query_as("SELECT SUM(amount_sompi) FROM escrows WHERE settled_at >= ?1")
+            .bind(day_start)
+            .fetch_one(pool)
+            .await?;
 
     // Fees (settled escrows today)
-    let fees: (Option<i64>,) = sqlx::query_as(
-        "SELECT SUM(fee_sompi) FROM escrows WHERE settled_at >= ?1",
-    )
-    .bind(day_start)
-    .fetch_one(pool)
-    .await?;
+    let fees: (Option<i64>,) =
+        sqlx::query_as("SELECT SUM(fee_sompi) FROM escrows WHERE settled_at >= ?1")
+            .bind(day_start)
+            .fetch_one(pool)
+            .await?;
 
     // Active escrows (overall)
     let active_escrows: (i64,) = sqlx::query_as(
@@ -70,11 +64,10 @@ pub async fn compute_and_store_daily_stats(pool: &Pool<Sqlite>) -> Result<(), sq
     .await?;
 
     // Open offers (overall)
-    let open_offers: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM offers WHERE status = 'proposed'",
-    )
-    .fetch_one(pool)
-    .await?;
+    let open_offers: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM offers WHERE status = 'proposed'")
+            .fetch_one(pool)
+            .await?;
 
     // KAS/USD price from the in-memory cache
     let kas_usd_price = crate::types::fetch_kas_usd_price().await;
@@ -159,17 +152,15 @@ pub async fn get_live_summary(pool: &Pool<Sqlite>) -> Result<LiveSummary, sqlx::
         .fetch_one(pool)
         .await?;
 
-    let volume: (Option<i64>,) = sqlx::query_as(
-        "SELECT SUM(amount_sompi) FROM escrows WHERE status = 'settled'",
-    )
-    .fetch_one(pool)
-    .await?;
+    let volume: (Option<i64>,) =
+        sqlx::query_as("SELECT SUM(amount_sompi) FROM escrows WHERE status = 'settled'")
+            .fetch_one(pool)
+            .await?;
 
-    let fees: (Option<i64>,) = sqlx::query_as(
-        "SELECT SUM(fee_sompi) FROM escrows WHERE status = 'settled'",
-    )
-    .fetch_one(pool)
-    .await?;
+    let fees: (Option<i64>,) =
+        sqlx::query_as("SELECT SUM(fee_sompi) FROM escrows WHERE status = 'settled'")
+            .fetch_one(pool)
+            .await?;
 
     let active_escrows: (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM escrows WHERE status IN ('active', 'pending_confirmation')",
@@ -177,17 +168,14 @@ pub async fn get_live_summary(pool: &Pool<Sqlite>) -> Result<LiveSummary, sqlx::
     .fetch_one(pool)
     .await?;
 
-    let total_users: (i64,) = sqlx::query_as(
-        "SELECT COUNT(DISTINCT buyer_address) FROM escrows",
-    )
-    .fetch_one(pool)
-    .await?;
+    let total_users: (i64,) = sqlx::query_as("SELECT COUNT(DISTINCT buyer_address) FROM escrows")
+        .fetch_one(pool)
+        .await?;
 
-    let open_offers: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM offers WHERE status = 'proposed'",
-    )
-    .fetch_one(pool)
-    .await?;
+    let open_offers: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM offers WHERE status = 'proposed'")
+            .fetch_one(pool)
+            .await?;
 
     Ok(LiveSummary {
         total_escrows: total_escrows.0,

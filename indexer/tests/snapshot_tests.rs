@@ -5,7 +5,7 @@
 //!
 //! Also includes time-paused tests for expiry/auto-settle logic.
 
-use daglock_indexer::types::{Escrow, EscrowStatus, ApiError};
+use daglock_indexer::types::{ApiError, Escrow, EscrowStatus};
 use insta::assert_json_snapshot;
 use sqlx::SqlitePool;
 use std::time::Duration;
@@ -124,19 +124,29 @@ async fn test_concurrent_settle_atomic() {
 
     // Execute two sequential updates with atomic WHERE clause
     // (same pattern as a concurrent update would use)
-    let r1 = sqlx::query("UPDATE escrows SET status = 'settled' WHERE id = ?1 AND status = 'active'")
-        .bind("esc_atomic_001")
-        .execute(&pool)
-        .await;
+    let r1 =
+        sqlx::query("UPDATE escrows SET status = 'settled' WHERE id = ?1 AND status = 'active'")
+            .bind("esc_atomic_001")
+            .execute(&pool)
+            .await;
 
-    let r2 = sqlx::query("UPDATE escrows SET status = 'settled' WHERE id = ?1 AND status = 'active'")
-        .bind("esc_atomic_001")
-        .execute(&pool)
-        .await;
+    let r2 =
+        sqlx::query("UPDATE escrows SET status = 'settled' WHERE id = ?1 AND status = 'active'")
+            .bind("esc_atomic_001")
+            .execute(&pool)
+            .await;
 
     // Only the first should have succeeded
-    assert_eq!(r1.unwrap().rows_affected(), 1, "First settle should succeed");
-    assert_eq!(r2.unwrap().rows_affected(), 0, "Second settle should be a no-op");
+    assert_eq!(
+        r1.unwrap().rows_affected(),
+        1,
+        "First settle should succeed"
+    );
+    assert_eq!(
+        r2.unwrap().rows_affected(),
+        0,
+        "Second settle should be a no-op"
+    );
 }
 
 // ── Property-Based Test: Escrow JSON Round-Trip ─────────────────

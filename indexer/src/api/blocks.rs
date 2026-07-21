@@ -36,6 +36,17 @@ pub async fn create(
         )
     })?;
 
+    if let Some(ref reason) = body.reason {
+        if reason.len() > 500 {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(
+                    json!({"error": "reason_too_long", "message": "Block reason must be 500 characters or less"}),
+                ),
+            ));
+        }
+    }
+
     if auth.address == body.blocked_address {
         return Err((
             StatusCode::BAD_REQUEST,

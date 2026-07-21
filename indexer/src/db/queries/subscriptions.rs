@@ -71,10 +71,7 @@ pub async fn list_subscriptions_by_address(
     Ok((subscriptions, count.0))
 }
 
-pub async fn mark_subscription_cancelled(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn mark_subscription_cancelled(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE subscriptions SET status = 'cancelled', cancelled_at = ?1 WHERE id = ?2 AND status = 'active'",
     )
@@ -85,10 +82,7 @@ pub async fn mark_subscription_cancelled(
     Ok(())
 }
 
-pub async fn mark_subscription_completed(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn mark_subscription_completed(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE subscriptions SET status = 'completed', completed_at = ?1 WHERE id = ?2 AND status = 'active'",
     )

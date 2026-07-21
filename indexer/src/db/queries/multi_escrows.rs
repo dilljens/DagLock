@@ -2,10 +2,7 @@ use sqlx::{Pool, Row, Sqlite};
 
 use crate::types::*;
 
-pub async fn insert_multi_escrow(
-    pool: &Pool<Sqlite>,
-    m: &MultiEscrow,
-) -> Result<(), sqlx::Error> {
+pub async fn insert_multi_escrow(pool: &Pool<Sqlite>, m: &MultiEscrow) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO multi_escrows (id, lock_tx_id, parties, shares, total_amount, status, created_at, settled_at, refunded_at, signatures)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -42,12 +39,10 @@ pub async fn list_multi_by_address(
     limit: i64,
     offset: i64,
 ) -> Result<(Vec<MultiEscrow>, i64), sqlx::Error> {
-    let total: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM multi_escrows WHERE parties LIKE ?1",
-    )
-    .bind(format!("%{}%", address))
-    .fetch_one(pool)
-    .await?;
+    let total: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM multi_escrows WHERE parties LIKE ?1")
+        .bind(format!("%{}%", address))
+        .fetch_one(pool)
+        .await?;
 
     let rows = sqlx::query(
         "SELECT * FROM multi_escrows WHERE parties LIKE ?1 ORDER BY created_at DESC LIMIT ?2 OFFSET ?3",
@@ -72,10 +67,9 @@ pub async fn record_signature(
         .fetch_optional(pool)
         .await?;
     if let Some(r) = row {
-        let mut sigs: Vec<String> = serde_json::from_str(
-            &r.try_get::<String, _>("signatures").unwrap_or_default(),
-        )
-        .unwrap_or_default();
+        let mut sigs: Vec<String> =
+            serde_json::from_str(&r.try_get::<String, _>("signatures").unwrap_or_default())
+                .unwrap_or_default();
         if !sigs.contains(&address.to_string()) {
             sigs.push(address.to_string());
         }
@@ -88,33 +82,23 @@ pub async fn record_signature(
     Ok(())
 }
 
-pub async fn settle_multi_escrow(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn settle_multi_escrow(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
-    sqlx::query(
-        "UPDATE multi_escrows SET status = 'settled', settled_at = ?1 WHERE id = ?2",
-    )
-    .bind(now)
-    .bind(id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE multi_escrows SET status = 'settled', settled_at = ?1 WHERE id = ?2")
+        .bind(now)
+        .bind(id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
-pub async fn refund_multi_escrow(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn refund_multi_escrow(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
-    sqlx::query(
-        "UPDATE multi_escrows SET status = 'refunded', refunded_at = ?1 WHERE id = ?2",
-    )
-    .bind(now)
-    .bind(id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE multi_escrows SET status = 'refunded', refunded_at = ?1 WHERE id = ?2")
+        .bind(now)
+        .bind(id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 

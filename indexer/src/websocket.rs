@@ -98,7 +98,10 @@ pub async fn handle_socket(
     mut rx: broadcast::Receiver<WsEvent>,
     auth_addresses: Option<HashSet<String>>,
 ) {
-    info!("WebSocket client connected (authenticated: {})", auth_addresses.is_some());
+    info!(
+        "WebSocket client connected (authenticated: {})",
+        auth_addresses.is_some()
+    );
 
     // Send initial connection message
     let msg = WsEvent {
@@ -211,5 +214,3 @@ pub fn create_event_channel() -> broadcast::Sender<WsEvent> {
     let (tx, _) = broadcast::channel(4096);
     tx
 }
-
-

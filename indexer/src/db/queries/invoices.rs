@@ -3,10 +3,7 @@ use sqlx::{Pool, Row, Sqlite};
 use crate::types::Invoice;
 
 /// Insert a new invoice.
-pub async fn insert_invoice(
-    pool: &Pool<Sqlite>,
-    invoice: &Invoice,
-) -> Result<(), sqlx::Error> {
+pub async fn insert_invoice(pool: &Pool<Sqlite>, invoice: &Invoice) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO invoices (id, freelancer_address, client_address, escrow_id, description, amount_sompi, due_date, status, created_at, paid_at, settled_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
@@ -28,10 +25,7 @@ pub async fn insert_invoice(
 }
 
 /// Get an invoice by ID (public).
-pub async fn get_invoice(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<Option<Invoice>, sqlx::Error> {
+pub async fn get_invoice(pool: &Pool<Sqlite>, id: &str) -> Result<Option<Invoice>, sqlx::Error> {
     let row = sqlx::query("SELECT id, freelancer_address, client_address, escrow_id, description, amount_sompi, due_date, status, created_at, paid_at, settled_at FROM invoices WHERE id = ?1")
         .bind(id)
         .fetch_optional(pool)

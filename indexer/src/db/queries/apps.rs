@@ -10,10 +10,7 @@ pub async fn register_app(
     callback_url: Option<&str>,
     owner_address: &str,
 ) -> Result<(crate::types::App, String), sqlx::Error> {
-    let app_id = format!(
-        "app_{}",
-        uuid::Uuid::new_v4().to_string().replace('-', "")
-    );
+    let app_id = format!("app_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
     let now = chrono::Utc::now().timestamp();
 
     // Generate a secure API key and hash it
@@ -41,10 +38,7 @@ pub async fn register_app(
     .await?;
 
     // Insert API key hash
-    let key_id = format!(
-        "k_{}",
-        uuid::Uuid::new_v4().to_string().replace('-', "")
-    );
+    let key_id = format!("k_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
     sqlx::query(
         "INSERT INTO api_keys (id, key_hash, app_id, label, created_at, is_active, tier)
          VALUES (?1, ?2, ?3, 'default', ?4, 1, 'free')",
@@ -164,14 +158,15 @@ pub async fn get_key_tier(
     key_hash: &[u8],
 ) -> Result<Option<(String, bool)>, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT tier, webhooks_enabled FROM api_keys WHERE key_hash = ?1 AND is_active = 1"
+        "SELECT tier, webhooks_enabled FROM api_keys WHERE key_hash = ?1 AND is_active = 1",
     )
     .bind(key_hash)
     .fetch_optional(pool)
     .await?;
     Ok(row.map(|r| {
         (
-            r.try_get::<String, _>("tier").unwrap_or_else(|_| "free".to_string()),
+            r.try_get::<String, _>("tier")
+                .unwrap_or_else(|_| "free".to_string()),
             r.try_get::<i64, _>("webhooks_enabled").unwrap_or(0) != 0,
         )
     }))
@@ -189,7 +184,7 @@ pub async fn update_key_tier(
         _ => 0,
     };
     let result = sqlx::query(
-        "UPDATE api_keys SET tier = ?1, webhooks_enabled = ?2 WHERE id = ?3 AND app_id = ?4"
+        "UPDATE api_keys SET tier = ?1, webhooks_enabled = ?2 WHERE id = ?3 AND app_id = ?4",
     )
     .bind(tier)
     .bind(webhooks_enabled)

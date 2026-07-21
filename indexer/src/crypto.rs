@@ -95,7 +95,8 @@ mod tests {
     fn encrypt_decrypt_long_message() {
         with_test_key(|| {
             let plaintext = "A".repeat(10_000);
-            let (ct, nonce) = encrypt_message(&plaintext).expect("encrypt should work with test key");
+            let (ct, nonce) =
+                encrypt_message(&plaintext).expect("encrypt should work with test key");
             let decrypted = decrypt_message(&ct, &nonce).expect("decrypt should work");
             assert_eq!(decrypted, plaintext);
         });
@@ -122,7 +123,9 @@ mod tests {
         with_test_key(|| {
             let (mut ct, nonce) = encrypt_message("secret").unwrap();
             let bytes = hex::decode(&ct).unwrap();
-            let tampered = std::iter::once(bytes[0] ^ 1).chain(bytes[1..].iter().copied()).collect::<Vec<_>>();
+            let tampered = std::iter::once(bytes[0] ^ 1)
+                .chain(bytes[1..].iter().copied())
+                .collect::<Vec<_>>();
             ct = hex::encode(tampered);
             let result = decrypt_message(&ct, &nonce);
             assert!(result.is_none());
@@ -138,7 +141,10 @@ mod tests {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             encrypt_message("dev mode test").unwrap()
         }));
-        assert!(result.is_err(), "Expected panic when DAGLOCK_MESSAGE_KEY is not set");
+        assert!(
+            result.is_err(),
+            "Expected panic when DAGLOCK_MESSAGE_KEY is not set"
+        );
         match prev {
             Some(k) => env::set_var("DAGLOCK_MESSAGE_KEY", k),
             None => {}

@@ -43,10 +43,25 @@ See C2 above. The subscription contract needs timing enforcement before mainnet.
 
 ### H2: No minimum fee check on tiny escrows
 **Files:** All escrow covenants
+**Status:** ✅ FIXED
 
 If `inputValue < 200`, `inputValue / 200 = 0`, so no fee is paid. Combined with MIN_OUT = 1000, this means any input less than ~200,200 sompi (0.002 KAS) pays zero fee. This is a small amount but could be used to spam the treasury.
 
-**Fix:** Add `require(feeAmount > 0 || inputValue < MIN_OUT)` or just accept as is (dust-level amounts).
+**Fix applied (July 16):** Added `require(feeAmount >= MIN_OUT || feeAmount == 0)` to all fee-paying entrypoints across all 12 covenant `.sil` files:
+- `daglock.sil` (release, split, swap, auto_settle)
+- `daglock_krc20.sil` (auto_settle)
+- `daglock_advanced.sil` (release, swap, swap_partial, extendTimeout, auto_settle)
+- `daglock_multi.sil` (release, swap)
+- `daglock_milestone.sil` (release_milestone, approve_milestone, complete)
+- `daglock_subscription.sil` (claim, cancel, release)
+- `daglock_vault.sil` (withdraw, sweep, relock, early_exit, heir_withdraw)
+- `daglock_vault_softlock.sil` (withdrawPassword, withdrawTimeout)
+- `daglock_vault_multisig.sil` (withdraw, sweep)
+- `daglock_arbiter.sil` (already had the fix)
+
+Also added missing `int constant MIN_OUT = 1000;` to 4 files that lacked it (`daglock_multi`, `daglock_milestone`, `daglock_vault_multisig`, `daglock_vault_softlock`).
+
+Template hashes changed for all affected covenants — see `AGENTS.md` for updated values.
 
 ### H3: Integer division truncation in split paths
 **Files:** `daglock.sil`, `daglock_advanced.sil`, `daglock_arbiter.sil`, `daglock_multi.sil`
@@ -66,6 +81,13 @@ Escrow IDs use the first segment of a UUID (`format!("esc_{}", Uuid::new_v4().to
 **File:** `indexer/src/api/messages.rs` — client-side encrypts, server stores ciphertext
 
 The server validates `content_enc` is non-empty hex but doesn't limit the size of ciphertext. A user could POST a 1GB encrypted blob. This is mitigated by the 1MB body limit in `api/mod.rs:170` (`RequestBodyLimitLayer::new(1024 * 1024)`).
+
+## USABILITY (1 issue — fix before mainnet)
+
+### U1: Web onboarding modal
+**Status:** ✅ FIXED (July 16, 2026)
+
+First-visit modal with 3 slides explaining DagLock, how it works, and CTA to connect wallet or try testnet. Modal is dismissed after viewing or on wallet connection. Persisted via localStorage.
 
 ## LOW (4 issues)
 

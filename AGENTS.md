@@ -136,17 +136,17 @@
 
 | Covenant | Hash |
 |----------|------|
-| KAS | `3502219e8c85ff1f4eb3c1f20ff1049518302d2c` |
-| KRC-20 | `da57b7b66dd2f9a35dcb83a7fea3c05d1300c28e` |
+| KAS | `92c6ea59d541d615a5d861aa8bd1ea500b1fa824` |
+| KRC-20 | `ed243da3a0ed815a6f39bdafc0a7d5bd8504c508` |
 | Reputation | `65c54102c64a331414b602760cbd76efac3d69df` |
-| Vault (standard) | `23734973784f8d47adf0c0a43744955817258d1d` |
-| Vault (softlock) | `9777c9eb9e6271a32fac75d3533bc27d25b20d39` |
-| Vault (multisig) | `b0cddcd4dc716532fd86d1809a05f8ea7e74113d` |
+| Vault (standard) | `cf36871699747ce7a3409d7410b86cdf1deb9c61` |
+| Vault (softlock) | `f4baa1962d34eb48d4d9550d8726a68adcad9471` |
+| Vault (multisig) | `23ef5baf2477545cb9c01cd305104d61ba9ea309` |
 | Arbiter | `69440eb964bbf7cb508c1f403549f00e88e67af8` |
-| Advanced | `35985a7853c2caef3db2484874a4658e097f2411` |
-| Subscription | `accde148ae0b399a6d7759f00004c45234fb0b1f` |
-| Milestone | `b4d8869885be21331f886409d92dc318e02db784` |
-| Multi | `58ac654b7d5b64aa4c05dfd728b95b35c3e4010f` |
+| Advanced | `88fa162d61282a2486ac7795f5510f76234cd5d1` |
+| Subscription | `bc8dcf24da72b3042101d7956bbe1816a41f512a` |
+| Milestone | `28a8f26ff58ace3b508272f4d18c1c8da49aa525` |
+| Multi | `429d12c05a8689eb55b555e83ab195ac00e78218` |
 | Deposit | `8c338fdef7650b3b4b2e9d3143e1e94e7eed209c` |
 
 > Template hashes are deterministic — they depend only on the SilverScript source code and compiler version, not the network. The same hashes work for testnet-10, testnet-11, and mainnet.
@@ -230,7 +230,7 @@ daglock/
 ## Current Phase
 
 **Testnet Launch:** Live at `@DagLock_bot` and `daglock.com` since June 17 on testnet-11.
-**Audit: 28/30 items complete.** All 7 critical security items fixed (S3 closed via ICC pattern in covenant). 7 usability items fixed. 7/8 structural items. 5/6 code quality items.
+**Audit: 30/30 items complete.** All 7 critical security items fixed (S3 closed via ICC pattern in covenant). All 7 usability items fixed (U7 onboarding modal added July 16). All 8 structural items. All 6 code quality items. Last two items closed: H2 (dust protection via covenant `feeAmount >= MIN_OUT` checks) and U7 (web onboarding modal).
 **Mainnet target: June 30, 2026** (Toccata hard fork activation).
 
 ---
@@ -288,6 +288,10 @@ AI-optimized codebase map at `docs/wiki/`.
 - [x] **S6** Bot encrypt user addresses at rest (AES-256-GCM)
 - [x] **S7** Dockerfile + VPS non-root user (daglock user)
 
+### High Security (Fixed)
+- [x] **H1** Subscription covenant timing enforcement
+- [x] **H2** Dust protection — `feeAmount >= MIN_OUT` checks on all fee paths
+
 ### Usability (High Priority)
 - [x] **U1** CLI create with real wallet keys (`kaspawallet sign`)
 - [x] **U2** Web real `lock_tx_id` flow (WASM → KasWare → broadcast → submit)
@@ -295,7 +299,7 @@ AI-optimized codebase map at `docs/wiki/`.
 - [x] **U4** Bot native `/create` wizard (grammY conversations)
 - [x] **U5** Structured API errors (`ApiErrorCode` enum)
 - [x] **U6** CoinGecko fallback + caching (TTL 15min)
-- [ ] **U7** Web onboarding modal (first-visit) — low priority
+- [x] **U7** Web onboarding modal (first-visit)
 
 ### Structural
 - [x] **A1** Async verifier trait

@@ -316,11 +316,14 @@ pub(crate) fn row_to_escrow(row: sqlx::sqlite::SqliteRow) -> Escrow {
     let auto_settle_timeout: Option<i64> = row.try_get("auto_settle_timeout").ok().flatten();
     let mediation_status: Option<String> = row.try_get("mediation_status").ok().flatten();
     let mediation_buyer_claim: Option<String> = row.try_get("mediation_buyer_claim").ok().flatten();
-    let mediation_seller_claim: Option<String> = row.try_get("mediation_seller_claim").ok().flatten();
+    let mediation_seller_claim: Option<String> =
+        row.try_get("mediation_seller_claim").ok().flatten();
     let mediation_result: Option<String> = row.try_get("mediation_result").ok().flatten();
     let mediation_expires_at: Option<i64> = row.try_get("mediation_expires_at").ok().flatten();
-    let mediation_buyer_accepted: Option<bool> = row.try_get("mediation_buyer_accepted").ok().flatten();
-    let mediation_seller_accepted: Option<bool> = row.try_get("mediation_seller_accepted").ok().flatten();
+    let mediation_buyer_accepted: Option<bool> =
+        row.try_get("mediation_buyer_accepted").ok().flatten();
+    let mediation_seller_accepted: Option<bool> =
+        row.try_get("mediation_seller_accepted").ok().flatten();
     let chat_pubkey_buyer: Option<String> = row.try_get("chat_pubkey_buyer").ok().flatten();
     let chat_pubkey_seller: Option<String> = row.try_get("chat_pubkey_seller").ok().flatten();
 
@@ -405,9 +408,7 @@ pub async fn auto_settle_escrow_atomic(pool: &Pool<Sqlite>, id: &str) -> Result<
 }
 
 /// Find all escrows eligible for auto-settlement.
-pub async fn find_auto_settleable_escrows(
-    pool: &Pool<Sqlite>,
-) -> Result<Vec<Escrow>, sqlx::Error> {
+pub async fn find_auto_settleable_escrows(pool: &Pool<Sqlite>) -> Result<Vec<Escrow>, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let rows = sqlx::query(
         "SELECT * FROM escrows WHERE status = 'active' AND auto_settle_timeout IS NOT NULL AND auto_settle_timeout <= ?1",
@@ -478,7 +479,7 @@ pub async fn count_recent_state_changes(
     let row = sqlx::query(
         "SELECT COUNT(*) as cnt FROM escrows WHERE \
          (buyer_address = ?1 OR seller_address = ?1) \
-         AND (settled_at >= ?2 OR refunded_at >= ?2 OR disputed_at >= ?2 OR cancelled_at >= ?2)"
+         AND (settled_at >= ?2 OR refunded_at >= ?2 OR disputed_at >= ?2 OR cancelled_at >= ?2)",
     )
     .bind(address)
     .bind(cutoff)

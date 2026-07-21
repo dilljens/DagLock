@@ -57,7 +57,7 @@ pub async fn price_history(
 
     let rows = match sqlx::query_as::<_, (i64, f64)>(
         "SELECT timestamp, price_usd FROM price_history \
-         WHERE timestamp >= ?1 ORDER BY timestamp ASC"
+         WHERE timestamp >= ?1 ORDER BY timestamp ASC",
     )
     .bind(cutoff)
     .fetch_all(&state.db)

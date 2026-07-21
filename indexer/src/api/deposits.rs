@@ -161,7 +161,9 @@ pub async fn release(
         .await
         .map_err(|_e| crate::types::internal_error())?;
 
-    Ok(Json(json!({"status": "released", "deposit_id": deposit.id, "escrow_id": escrow_id})))
+    Ok(Json(
+        json!({"status": "released", "deposit_id": deposit.id, "escrow_id": escrow_id}),
+    ))
 }
 
 /// POST /v1/escrows/:id/deposit/forfeit — jury forfeit ruling on a deposit

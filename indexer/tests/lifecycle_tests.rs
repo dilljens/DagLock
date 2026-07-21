@@ -50,18 +50,18 @@ fn make_escrow(id: &str, status: EscrowStatus) -> Escrow {
         price_type: None,
         invoice_id: None,
         memo: None,
-            auto_settle_timeout: None,
-            mediation_status: None,
-            mediation_buyer_claim: None,
-            mediation_seller_claim: None,
-            mediation_result: None,
-            mediation_expires_at: None,
-            mediation_buyer_accepted: None,
-            mediation_seller_accepted: None,
-            chat_pubkey_buyer: None,
-            chat_pubkey_seller: None,
-        }
+        auto_settle_timeout: None,
+        mediation_status: None,
+        mediation_buyer_claim: None,
+        mediation_seller_claim: None,
+        mediation_result: None,
+        mediation_expires_at: None,
+        mediation_buyer_accepted: None,
+        mediation_seller_accepted: None,
+        chat_pubkey_buyer: None,
+        chat_pubkey_seller: None,
     }
+}
 
 // ─── Create → Settle → Receipt ──────────────────────────────────
 

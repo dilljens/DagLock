@@ -35,10 +35,12 @@ pub async fn get_account_flags(
     pool: &Pool<Sqlite>,
     address: &str,
 ) -> Result<Option<AccountFlags>, sqlx::Error> {
-    let row = sqlx::query("SELECT address, is_bot, label, updated_at FROM account_flags WHERE address = ?1")
-        .bind(address)
-        .fetch_optional(pool)
-        .await?;
+    let row = sqlx::query(
+        "SELECT address, is_bot, label, updated_at FROM account_flags WHERE address = ?1",
+    )
+    .bind(address)
+    .fetch_optional(pool)
+    .await?;
 
     match row {
         Some(r) => Ok(Some(AccountFlags {

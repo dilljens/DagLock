@@ -62,12 +62,20 @@ impl EmailService {
         body: &str,
     ) -> Result<Response, String> {
         let host = self.smtp_host.as_ref().ok_or("SMTP not configured")?;
-        let from = self.from_addr.as_ref().ok_or("From address not configured")?;
+        let from = self
+            .from_addr
+            .as_ref()
+            .ok_or("From address not configured")?;
         let port = self.smtp_port.unwrap_or(587);
 
         let email = Message::builder()
-            .from(from.parse().map_err(|e| format!("Invalid from address: {e}"))?)
-            .to(to_email.parse().map_err(|e| format!("Invalid to address: {e}"))?)
+            .from(
+                from.parse()
+                    .map_err(|e| format!("Invalid from address: {e}"))?,
+            )
+            .to(to_email
+                .parse()
+                .map_err(|e| format!("Invalid to address: {e}"))?)
             .subject(subject)
             .header(ContentType::TEXT_PLAIN)
             .body(body.to_string())
@@ -84,7 +92,10 @@ impl EmailService {
             .credentials(creds.unwrap_or_else(|| Credentials::new("".to_string(), "".to_string())))
             .build();
 
-        transport.send(email).await.map_err(|e| format!("SMTP send error: {e}"))
+        transport
+            .send(email)
+            .await
+            .map_err(|e| format!("SMTP send error: {e}"))
     }
 
     /// Build and send an escrow event notification.

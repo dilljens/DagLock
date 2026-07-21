@@ -60,7 +60,9 @@ pub async fn create(
     if !matches!(escrow.status, EscrowStatus::Settled) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "not_settled", "message": "Can only leave feedback on settled escrows"})),
+            Json(
+                json!({"error": "not_settled", "message": "Can only leave feedback on settled escrows"}),
+            ),
         ));
     }
 
@@ -70,7 +72,9 @@ pub async fn create(
     if auth.address != buyer && Some(&auth.address) != seller.as_ref() {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!({"error": "not_participant", "message": "Only buyer or seller can leave feedback"})),
+            Json(
+                json!({"error": "not_participant", "message": "Only buyer or seller can leave feedback"}),
+            ),
         ));
     }
 
@@ -99,10 +103,7 @@ pub async fn create(
 }
 
 /// GET /v1/escrows/:id/feedback
-pub async fn list(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Json<Value> {
+pub async fn list(State(state): State<AppState>, Path(id): Path<String>) -> Json<Value> {
     let feedback = queries::feedback::get_feedback_for_escrow(&state.db, &id)
         .await
         .unwrap_or_default();

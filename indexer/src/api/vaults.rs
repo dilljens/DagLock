@@ -483,7 +483,9 @@ pub async fn relock_vault(
     if body.new_timeout <= now {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_timeout", "message": "New timeout must be in the future"})),
+            Json(
+                json!({"error": "invalid_timeout", "message": "New timeout must be in the future"}),
+            ),
         ));
     }
 
@@ -634,7 +636,9 @@ pub async fn heir_withdraw(
     if vault.beneficiary_address.as_deref() != Some(&auth.address) {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!({"error": "forbidden", "message": "Only the beneficiary/heir can withdraw"})),
+            Json(
+                json!({"error": "forbidden", "message": "Only the beneficiary/heir can withdraw"}),
+            ),
         ));
     }
 
@@ -649,7 +653,9 @@ pub async fn heir_withdraw(
     if now < vault.timeout {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "timeout_not_reached", "message": "Cannot withdraw before timeout"})),
+            Json(
+                json!({"error": "timeout_not_reached", "message": "Cannot withdraw before timeout"}),
+            ),
         ));
     }
 

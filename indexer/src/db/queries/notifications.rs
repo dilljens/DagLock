@@ -1,5 +1,5 @@
-use sqlx::{Pool, Sqlite, Row};
 use serde::Serialize;
+use sqlx::{Pool, Row, Sqlite};
 
 #[derive(Debug, Serialize)]
 pub struct EmailSubscription {
@@ -42,7 +42,7 @@ pub async fn verify_email(
     let now = chrono::Utc::now().timestamp();
     let result = sqlx::query(
         "UPDATE email_subscriptions SET email_verified = 1, verified_at = ?1, updated_at = ?1 \
-         WHERE address = ?2 AND verification_code = ?3"
+         WHERE address = ?2 AND verification_code = ?3",
     )
     .bind(now)
     .bind(address)
@@ -59,7 +59,7 @@ pub async fn get_subscription(
     let row = sqlx::query(
         "SELECT address, email, email_verified, notify_created, notify_settled, \
          notify_disputed, notify_refunded, notify_expired \
-         FROM email_subscriptions WHERE address = ?1"
+         FROM email_subscriptions WHERE address = ?1",
     )
     .bind(address)
     .fetch_optional(pool)
@@ -81,27 +81,28 @@ pub async fn get_verified_subscribers_for_event(
     pool: &Pool<Sqlite>,
     event_column: &str,
 ) -> Result<Vec<EmailSubscription>, sqlx::Error> {
-    let rows = sqlx::query(
-        &format!(
-            "SELECT address, email, email_verified, notify_created, notify_settled, \
+    let rows = sqlx::query(&format!(
+        "SELECT address, email, email_verified, notify_created, notify_settled, \
              notify_disputed, notify_refunded, notify_expired \
              FROM email_subscriptions WHERE email_verified = 1 AND {} = 1",
-            event_column
-        )
-    )
+        event_column
+    ))
     .fetch_all(pool)
     .await?;
 
-    let subs = rows.into_iter().map(|r| EmailSubscription {
-        address: r.get("address"),
-        email: r.get("email"),
-        email_verified: r.get::<i64, _>("email_verified") != 0,
-        notify_created: r.get::<i64, _>("notify_created") != 0,
-        notify_settled: r.get::<i64, _>("notify_settled") != 0,
-        notify_disputed: r.get::<i64, _>("notify_disputed") != 0,
-        notify_refunded: r.get::<i64, _>("notify_refunded") != 0,
-        notify_expired: r.get::<i64, _>("notify_expired") != 0,
-    }).collect();
+    let subs = rows
+        .into_iter()
+        .map(|r| EmailSubscription {
+            address: r.get("address"),
+            email: r.get("email"),
+            email_verified: r.get::<i64, _>("email_verified") != 0,
+            notify_created: r.get::<i64, _>("notify_created") != 0,
+            notify_settled: r.get::<i64, _>("notify_settled") != 0,
+            notify_disputed: r.get::<i64, _>("notify_disputed") != 0,
+            notify_refunded: r.get::<i64, _>("notify_refunded") != 0,
+            notify_expired: r.get::<i64, _>("notify_expired") != 0,
+        })
+        .collect();
 
     Ok(subs)
 }
@@ -123,7 +124,7 @@ pub async fn update_preferences(
          notify_disputed = COALESCE(?3, notify_disputed), \
          notify_refunded = COALESCE(?4, notify_refunded), \
          notify_expired = COALESCE(?5, notify_expired), \
-         updated_at = ?6 WHERE address = ?7"
+         updated_at = ?6 WHERE address = ?7",
     )
     .bind(notify_created.map(|v| v as i64))
     .bind(notify_settled.map(|v| v as i64))

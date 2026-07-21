@@ -29,7 +29,7 @@ pub async fn create(
 
     if let Err(e) = sqlx::query(
         "INSERT INTO price_alerts (id, address, target_price, direction, triggered, created_at) \
-         VALUES (?1, ?2, ?3, ?4, 0, ?5)"
+         VALUES (?1, ?2, ?3, ?4, 0, ?5)",
     )
     .bind(&id)
     .bind(&req.address)
@@ -71,7 +71,7 @@ pub async fn list(
 
     let rows = match sqlx::query_as::<_, (String, String, f64, String, i32, i64, Option<i64>)>(
         "SELECT id, address, target_price, direction, triggered, created_at, triggered_at \
-         FROM price_alerts WHERE address = ?1 ORDER BY created_at DESC"
+         FROM price_alerts WHERE address = ?1 ORDER BY created_at DESC",
     )
     .bind(address)
     .fetch_all(&state.db)
@@ -87,8 +87,8 @@ pub async fn list(
 
     let alerts: Vec<PriceAlert> = rows
         .into_iter()
-        .map(|(id, addr, target_price, direction, triggered, created_at, triggered_at)| {
-            PriceAlert {
+        .map(
+            |(id, addr, target_price, direction, triggered, created_at, triggered_at)| PriceAlert {
                 id,
                 address: addr,
                 target_price,
@@ -96,48 +96,36 @@ pub async fn list(
                 triggered: triggered != 0,
                 created_at,
                 triggered_at,
-            }
-        })
+            },
+        )
         .collect();
 
     Json(json!({ "alerts": alerts, "total": alerts.len() }))
 }
 
 /// DELETE /v1/price-alerts/:id — delete a price alert
-pub async fn delete(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Json<Value> {
+pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> Json<Value> {
     let result = sqlx::query("DELETE FROM price_alerts WHERE id = ?1")
         .bind(&id)
         .execute(&state.db)
         .await;
 
     match result {
-        Ok(r) if r.rows_affected() > 0 => {
-            Json(json!({ "status": "deleted", "alert_id": id }))
-        }
-        Ok(_) => {
-            Json(json!({
-                "error": { "code": "not_found", "message": format!("No alert found with id '{id}'") }
-            }))
-        }
-        Err(e) => {
-            Json(json!({
-                "error": { "code": "internal_error", "message": format!("{e}") }
-            }))
-        }
+        Ok(r) if r.rows_affected() > 0 => Json(json!({ "status": "deleted", "alert_id": id })),
+        Ok(_) => Json(json!({
+            "error": { "code": "not_found", "message": format!("No alert found with id '{id}'") }
+        })),
+        Err(e) => Json(json!({
+            "error": { "code": "internal_error", "message": format!("{e}") }
+        })),
     }
 }
 
 /// PATCH /v1/price-alerts/:id/trigger — mock/force-trigger an alert (admin)
-pub async fn trigger(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Json<Value> {
+pub async fn trigger(State(state): State<AppState>, Path(id): Path<String>) -> Json<Value> {
     let now = chrono::Utc::now().timestamp();
     let result = sqlx::query(
-        "UPDATE price_alerts SET triggered = 1, triggered_at = ?1 WHERE id = ?2 AND triggered = 0"
+        "UPDATE price_alerts SET triggered = 1, triggered_at = ?1 WHERE id = ?2 AND triggered = 0",
     )
     .bind(now)
     .bind(&id)
@@ -148,15 +136,11 @@ pub async fn trigger(
         Ok(r) if r.rows_affected() > 0 => {
             Json(json!({ "status": "triggered", "alert_id": id, "triggered_at": now }))
         }
-        Ok(_) => {
-            Json(json!({
-                "error": { "code": "not_found", "message": format!("Alert '{id}' not found or already triggered") }
-            }))
-        }
-        Err(e) => {
-            Json(json!({
-                "error": { "code": "internal_error", "message": format!("{e}") }
-            }))
-        }
+        Ok(_) => Json(json!({
+            "error": { "code": "not_found", "message": format!("Alert '{id}' not found or already triggered") }
+        })),
+        Err(e) => Json(json!({
+            "error": { "code": "internal_error", "message": format!("{e}") }
+        })),
     }
 }

@@ -15,10 +15,7 @@
 //! Upgrade path: compile a minimal milestone covenant once the OP_DATA limit
 //! is raised or split-push is implemented.
 
-use daglock_contracts::{
-    compile_daglock_milestone, entrypoints,
-    silverscript_lang::ast::Expr,
-};
+use daglock_contracts::{compile_daglock_milestone, entrypoints, silverscript_lang::ast::Expr};
 use kaspa_consensus_core::hashing::sighash::{
     calc_schnorr_signature_hash, SigHashReusedValuesUnsync,
 };
@@ -75,9 +72,9 @@ fn p2pk_script(pubkey: &[u8]) -> ScriptPublicKey {
 fn relock_full_bytes(pubkey: &[u8]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(36);
     bytes.extend_from_slice(&0u16.to_be_bytes()); // version
-    bytes.push(OpData32);                          // push 32 bytes
-    bytes.extend_from_slice(&pubkey[..32]);        // pubkey
-    bytes.push(OpCheckSig);                        // OP_CHECKSIG
+    bytes.push(OpData32); // push 32 bytes
+    bytes.extend_from_slice(&pubkey[..32]); // pubkey
+    bytes.push(OpCheckSig); // OP_CHECKSIG
     bytes
 }
 
@@ -95,8 +92,12 @@ fn relock_inner_bytes(pubkey: &[u8]) -> Vec<u8> {
 const TOTAL: i64 = 10_000_000_000;
 const FEE_DENOM: u64 = 200;
 
-fn make_amounts() -> Vec<i64> { vec![2_000_000_000, 3_000_000_000, 5_000_000_000, 0, 0] }
-fn make_timeouts() -> Vec<i64> { vec![100_000, 200_000, 300_000, 0, 0] }
+fn make_amounts() -> Vec<i64> {
+    vec![2_000_000_000, 3_000_000_000, 5_000_000_000, 0, 0]
+}
+fn make_timeouts() -> Vec<i64> {
+    vec![100_000, 200_000, 300_000, 0, 0]
+}
 
 // ── Tests ────────────────────────────────────────────────────────────
 
@@ -104,16 +105,18 @@ fn make_timeouts() -> Vec<i64> { vec![100_000, 200_000, 300_000, 0, 0] }
 /// Uses a minimal P2PK script as the re-lock output — this is safe because
 /// the covenant only checks `tx.outputs[2].scriptPubKey == byte[](newCovenantScript)`.
 /// The P2PK bytes are constructed to match SpkEncoding::to_bytes() format exactly.
-fn test_milestone_release(
-    use_buyer_sig: bool,
-) -> Result<(), kaspa_txscript_errors::TxScriptError> {
+fn test_milestone_release(use_buyer_sig: bool) -> Result<(), kaspa_txscript_errors::TxScriptError> {
     let buyer = random_keypair();
     let seller = random_keypair();
     let treasury = random_keypair();
 
     let covenant = compile_daglock_milestone(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller),
-        TOTAL, make_amounts(), make_timeouts(), 0,
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        TOTAL,
+        make_amounts(),
+        make_timeouts(),
+        0,
         &pubkey_bytes(&treasury),
     );
 
@@ -134,12 +137,20 @@ fn test_milestone_release(
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([10u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     // Set lock_time past the milestone timeout so `tx.time >= milestoneTimeouts[0]` passes
     let now: u64 = 100_001;
     let tx = Transaction::new(1, vec![input], outputs, now, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -155,22 +166,33 @@ fn test_milestone_release(
         buf
     };
 
-    let entrypoint = if use_buyer_sig { entrypoints::APPROVE_MILESTONE } else { entrypoints::RELEASE_MILESTONE };
+    let entrypoint = if use_buyer_sig {
+        entrypoints::APPROVE_MILESTONE
+    } else {
+        entrypoints::RELEASE_MILESTONE
+    };
     let sigscript = covenant
-        .build_sig_script(entrypoint, vec![
-            Expr::bytes(sig),
-            Expr::int(0),
-            Expr::bytes(relock),  // full version+script bytes matching to_bytes()
-        ])
+        .build_sig_script(
+            entrypoint,
+            vec![
+                Expr::bytes(sig),
+                Expr::int(0),
+                Expr::bytes(relock), // full version+script bytes matching to_bytes()
+            ],
+        )
         .expect("build_sig_script");
 
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     vm.execute()
 }
 
@@ -194,8 +216,12 @@ fn milestone_release_before_timeout_fails() {
     let future_timeouts = vec![9_999_999_999i64, 9_999_999_999, 9_999_999_999, 0, 0];
 
     let covenant = compile_daglock_milestone(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller),
-        TOTAL, make_amounts(), future_timeouts, 0,
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        TOTAL,
+        make_amounts(),
+        future_timeouts,
+        0,
         &pubkey_bytes(&treasury),
     );
 
@@ -212,10 +238,18 @@ fn milestone_release_before_timeout_fails() {
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([11u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -230,20 +264,23 @@ fn milestone_release_before_timeout_fails() {
     };
 
     let sigscript = covenant
-        .build_sig_script(entrypoints::RELEASE_MILESTONE, vec![
-            Expr::bytes(seller_sig),
-            Expr::int(0),
-            Expr::bytes(vec![]),
-        ])
+        .build_sig_script(
+            entrypoints::RELEASE_MILESTONE,
+            vec![Expr::bytes(seller_sig), Expr::int(0), Expr::bytes(vec![])],
+        )
         .expect("build_sig_script");
 
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_err(), "release before timeout should fail");
 }
@@ -255,22 +292,35 @@ fn milestone_dispute_returns_all_to_buyer() {
     let treasury = random_keypair();
 
     let covenant = compile_daglock_milestone(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller),
-        TOTAL, make_amounts(), make_timeouts(), 1,
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        TOTAL,
+        make_amounts(),
+        make_timeouts(),
+        1,
         &pubkey_bytes(&treasury),
     );
 
     let input_value: u64 = TOTAL as u64;
-    let outputs = vec![
-        TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&buyer))),
-    ];
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&buyer)),
+    )];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([13u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -292,9 +342,13 @@ fn milestone_dispute_returns_all_to_buyer() {
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_ok(), "dispute: {:?}", result.err());
 }
@@ -306,23 +360,36 @@ fn milestone_refund_remaining_after_timeout_succeeds() {
     let treasury = random_keypair();
 
     let covenant = compile_daglock_milestone(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller),
-        TOTAL, make_amounts(), make_timeouts(), 0,
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        TOTAL,
+        make_amounts(),
+        make_timeouts(),
+        0,
         &pubkey_bytes(&treasury),
     );
 
     let input_value: u64 = TOTAL as u64;
-    let outputs = vec![
-        TransactionOutput::new(input_value, p2pk_script(&pubkey_bytes(&buyer))),
-    ];
+    let outputs = vec![TransactionOutput::new(
+        input_value,
+        p2pk_script(&pubkey_bytes(&buyer)),
+    )];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([14u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let now: u64 = 100_001;
     let tx = Transaction::new(1, vec![input], outputs, now, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -344,9 +411,13 @@ fn milestone_refund_remaining_after_timeout_succeeds() {
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_ok(), "refund_remaining: {:?}", result.err());
 }
@@ -358,8 +429,12 @@ fn milestone_complete_mutual_release_succeeds() {
     let treasury = random_keypair();
 
     let covenant = compile_daglock_milestone(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller),
-        TOTAL, make_amounts(), make_timeouts(), 2,
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        TOTAL,
+        make_amounts(),
+        make_timeouts(),
+        2,
         &pubkey_bytes(&treasury),
     );
 
@@ -374,10 +449,18 @@ fn milestone_complete_mutual_release_succeeds() {
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([15u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -399,19 +482,23 @@ fn milestone_complete_mutual_release_succeeds() {
     };
 
     let sigscript = covenant
-        .build_sig_script(entrypoints::COMPLETE, vec![
-            Expr::bytes(buyer_sig),
-            Expr::bytes(seller_sig),
-        ])
+        .build_sig_script(
+            entrypoints::COMPLETE,
+            vec![Expr::bytes(buyer_sig), Expr::bytes(seller_sig)],
+        )
         .expect("build_sig_script");
 
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_ok(), "complete: {:?}", result.err());
 }
@@ -423,8 +510,12 @@ fn milestone_abi_has_correct_entrypoints() {
     let treasury = random_keypair();
 
     let covenant = compile_daglock_milestone(
-        &pubkey_bytes(&buyer), &pubkey_bytes(&seller),
-        TOTAL, make_amounts(), make_timeouts(), 0,
+        &pubkey_bytes(&buyer),
+        &pubkey_bytes(&seller),
+        TOTAL,
+        make_amounts(),
+        make_timeouts(),
+        0,
         &pubkey_bytes(&treasury),
     );
 

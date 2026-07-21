@@ -711,7 +711,10 @@ mod tests {
         // V1 messages (no nonce/timestamp) are rejected — they lack replay protection
         let result = parse_message("settle:esc_123");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("4 colon-separated parts"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("4 colon-separated parts"));
     }
 
     #[test]

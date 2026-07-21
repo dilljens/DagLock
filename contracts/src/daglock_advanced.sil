@@ -35,6 +35,8 @@ contract DagLockAdvanced(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
@@ -51,6 +53,8 @@ contract DagLockAdvanced(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
@@ -71,6 +75,8 @@ contract DagLockAdvanced(
         require(tx.outputs[0].value == netToSeller);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
 
@@ -92,6 +98,8 @@ contract DagLockAdvanced(
         require(tx.outputs[0].value == relockAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }
@@ -120,6 +128,8 @@ contract DagLockAdvanced(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }

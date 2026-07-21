@@ -98,9 +98,18 @@ pub async fn list_offers(
 
     let mut query = sqlx::query(&sql);
     bind_index = 1;
-    if has_asset { query = query.bind(asset); bind_index += 1; }
-    if has_side { query = query.bind(side); bind_index += 1; }
-    if has_status { query = query.bind(status); bind_index += 1; }
+    if has_asset {
+        query = query.bind(asset);
+        bind_index += 1;
+    }
+    if has_side {
+        query = query.bind(side);
+        bind_index += 1;
+    }
+    if has_status {
+        query = query.bind(status);
+        bind_index += 1;
+    }
     query = query.bind(limit);
     query = query.bind(offset);
     let rows = query.fetch_all(pool).await?;
@@ -136,9 +145,15 @@ pub async fn list_offers(
 
     let mut count_query = sqlx::query_as::<_, (i64,)>(&count_sql);
     bind_index = 1;
-    if has_asset { count_query = count_query.bind(asset); }
-    if has_side { count_query = count_query.bind(side); }
-    if has_status { count_query = count_query.bind(status); }
+    if has_asset {
+        count_query = count_query.bind(asset);
+    }
+    if has_side {
+        count_query = count_query.bind(side);
+    }
+    if has_status {
+        count_query = count_query.bind(status);
+    }
     let (count,) = count_query.fetch_one(pool).await?;
 
     let offers: Vec<Offer> = rows.into_iter().map(row_to_offer).collect();
@@ -172,12 +187,10 @@ pub async fn list_offers_by_creator(
     .bind(offset)
     .fetch_all(pool)
     .await?;
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM offers WHERE creator_address = ?1",
-    )
-    .bind(creator)
-    .fetch_one(pool)
-    .await?;
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM offers WHERE creator_address = ?1")
+        .bind(creator)
+        .fetch_one(pool)
+        .await?;
     let offers: Vec<Offer> = rows.into_iter().map(row_to_offer).collect();
     Ok((offers, count))
 }

@@ -1,9 +1,9 @@
 //! KRC-20 token aggregation queries.
 //! Data is derived from existing offers and escrows — no separate token tracking needed.
 
-use sqlx::{Pool, Sqlite, Row};
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use sqlx::{Pool, Row, Sqlite};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenRegistryEntry {
@@ -160,7 +160,7 @@ pub async fn get_token(
         WHERE asset_type = ?1
         ORDER BY created_at DESC
         LIMIT 20
-        "#
+        "#,
     )
     .bind(&asset)
     .fetch_all(pool)
@@ -171,7 +171,7 @@ pub async fn get_token(
         .map(|row| TokenTrade {
             escrow_id: row.get("id"),
             amount_sompi: row.get("amount_sompi"),
-            price_sompi: None, // Price discovery from offers
+            price_sompi: None,         // Price discovery from offers
             side: "trade".to_string(), // side depends on viewer's role — mark as generic
             status: row.get("status"),
             created_at: row.get("created_at"),
@@ -210,7 +210,7 @@ pub async fn get_token_chart(
         FROM escrows
         WHERE asset_type = ?1 AND created_at >= ?2 AND status = 'settled'
         ORDER BY created_at ASC
-        "#
+        "#,
     )
     .bind(&asset)
     .bind(since)
@@ -243,7 +243,7 @@ pub async fn register_token(
     sqlx::query(
         "INSERT INTO token_registry \
          (id, ticker, name, total_supply, decimals, mint_mode, owner_address, status, created_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', ?8)"
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', ?8)",
     )
     .bind(id)
     .bind(ticker.to_uppercase())
@@ -335,22 +335,25 @@ pub async fn list_registered_tokens(
         .await?
     };
 
-    let entries = rows.into_iter().map(|r| TokenRegistryEntry {
-        id: r.get("id"),
-        ticker: r.get("ticker"),
-        name: r.get("name"),
-        total_supply: r.get("total_supply"),
-        decimals: r.get("decimals"),
-        mint_mode: r.get("mint_mode"),
-        owner_address: r.get("owner_address"),
-        covenant_address: r.get("covenant_address"),
-        template_hash: r.get("template_hash"),
-        metadata_json: r.get("metadata_json"),
-        deploy_tx_id: r.get("deploy_tx_id"),
-        status: r.get("status"),
-        created_at: r.get("created_at"),
-        deployed_at: r.get("deployed_at"),
-    }).collect();
+    let entries = rows
+        .into_iter()
+        .map(|r| TokenRegistryEntry {
+            id: r.get("id"),
+            ticker: r.get("ticker"),
+            name: r.get("name"),
+            total_supply: r.get("total_supply"),
+            decimals: r.get("decimals"),
+            mint_mode: r.get("mint_mode"),
+            owner_address: r.get("owner_address"),
+            covenant_address: r.get("covenant_address"),
+            template_hash: r.get("template_hash"),
+            metadata_json: r.get("metadata_json"),
+            deploy_tx_id: r.get("deploy_tx_id"),
+            status: r.get("status"),
+            created_at: r.get("created_at"),
+            deployed_at: r.get("deployed_at"),
+        })
+        .collect();
 
     Ok(entries)
 }

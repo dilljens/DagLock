@@ -2,7 +2,10 @@ use sqlx::{Pool, Row, Sqlite};
 
 use crate::types::PaymentSession;
 
-pub async fn insert_session(pool: &Pool<Sqlite>, session: &PaymentSession) -> Result<(), sqlx::Error> {
+pub async fn insert_session(
+    pool: &Pool<Sqlite>,
+    session: &PaymentSession,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO payment_sessions (id, app_id, escrow_id, amount_sompi, asset_type, seller_address, memo, status, buyer_address, created_at, expires_at, webhook_url, redirect_url)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
@@ -25,7 +28,10 @@ pub async fn insert_session(pool: &Pool<Sqlite>, session: &PaymentSession) -> Re
     Ok(())
 }
 
-pub async fn get_session(pool: &Pool<Sqlite>, id: &str) -> Result<Option<PaymentSession>, sqlx::Error> {
+pub async fn get_session(
+    pool: &Pool<Sqlite>,
+    id: &str,
+) -> Result<Option<PaymentSession>, sqlx::Error> {
     let row = sqlx::query(
         "SELECT id, app_id, escrow_id, amount_sompi, asset_type, seller_address, memo, status, buyer_address, created_at, expires_at, webhook_url, redirect_url
          FROM payment_sessions WHERE id = ?1",

@@ -211,7 +211,14 @@ impl<'a> EscrowService<'a> {
 
         let _ = self.ws_tx.send(WsEvent::escrow_created(&escrow.id));
         webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowCreated(&escrow.id));
-        dispatch_email_notifications(&self.db, &self.email_service, &escrow, "created", "pending_confirmation").await;
+        dispatch_email_notifications(
+            &self.db,
+            &self.email_service,
+            &escrow,
+            "created",
+            "pending_confirmation",
+        )
+        .await;
 
         Ok(escrow)
     }
@@ -251,7 +258,14 @@ impl<'a> EscrowService<'a> {
 
         let _ = self.ws_tx.send(WsEvent::escrow_settled(id));
         webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowSettled(id));
-        dispatch_email_notifications(&self.db, &self.email_service, &current, "settled", "settled").await;
+        dispatch_email_notifications(
+            &self.db,
+            &self.email_service,
+            &current,
+            "settled",
+            "settled",
+        )
+        .await;
         Ok(())
     }
 
@@ -290,7 +304,14 @@ impl<'a> EscrowService<'a> {
 
         let _ = self.ws_tx.send(WsEvent::escrow_refunded(id));
         webhooks::dispatch(self.db.clone(), WebhookEvent::EscrowRefunded(id));
-        dispatch_email_notifications(&self.db, &self.email_service, &current, "refunded", "refunded").await;
+        dispatch_email_notifications(
+            &self.db,
+            &self.email_service,
+            &current,
+            "refunded",
+            "refunded",
+        )
+        .await;
         Ok(())
     }
 
@@ -426,7 +447,7 @@ impl<'a> EscrowService<'a> {
         &self,
         id: &str,
         preimage_hex: &str,
-        headers: &axum::http::HeaderMap,     // NEW: auth headers
+        headers: &axum::http::HeaderMap, // NEW: auth headers
     ) -> Result<(), ServiceError> {
         let current = self.get_settleable_escrow(id).await?;
 
@@ -441,8 +462,8 @@ impl<'a> EscrowService<'a> {
             ));
         }
 
-        let parsed = parse_message(&auth.message)
-            .map_err(|e| ServiceError::InvalidInput(e.to_string()))?;
+        let parsed =
+            parse_message(&auth.message).map_err(|e| ServiceError::InvalidInput(e.to_string()))?;
         if parsed.action != "swap" || parsed.escrow_id != id {
             return Err(ServiceError::Forbidden(
                 "Message must be 'swap:{id}:ts:nonce'".into(),
@@ -503,9 +524,9 @@ impl<'a> EscrowService<'a> {
         let current = self.get_settleable_escrow(id).await?;
 
         let now = chrono::Utc::now().timestamp();
-        let timeout = current
-            .auto_settle_timeout
-            .ok_or_else(|| ServiceError::InvalidInput("Escrow has no auto-settle timeout".into()))?;
+        let timeout = current.auto_settle_timeout.ok_or_else(|| {
+            ServiceError::InvalidInput("Escrow has no auto-settle timeout".into())
+        })?;
 
         if now < timeout {
             return Err(ServiceError::Forbidden(
@@ -571,14 +592,13 @@ impl<'a> EscrowService<'a> {
     /// Check per-address rate limit for state-changing operations.
     /// Limits to MAX_STATE_CHANGES per address per window to prevent abuse.
     async fn check_rate_limit(&self, address: &str) -> Result<(), ServiceError> {
-        let recent = queries::count_recent_state_changes(
-            &self.db, address, STATE_CHANGE_WINDOW_SECS,
-        )
-        .await
-        .map_err(|e| {
-            warn!("Rate limit check failed: {e}");
-            ServiceError::Internal("Rate limit check failed".into())
-        })?;
+        let recent =
+            queries::count_recent_state_changes(&self.db, address, STATE_CHANGE_WINDOW_SECS)
+                .await
+                .map_err(|e| {
+                    warn!("Rate limit check failed: {e}");
+                    ServiceError::Internal("Rate limit check failed".into())
+                })?;
 
         if recent >= MAX_STATE_CHANGES_PER_ADDRESS as i64 {
             return Err(ServiceError::Forbidden(format!(

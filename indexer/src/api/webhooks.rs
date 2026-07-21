@@ -51,10 +51,7 @@ pub async fn create(
         ));
     }
 
-    let id = format!(
-        "wh_{}",
-        Uuid::new_v4().to_string().replace('-', "")
-    );
+    let id = format!("wh_{}", Uuid::new_v4().to_string().replace('-', ""));
     let now = chrono::Utc::now().timestamp();
 
     sqlx::query(

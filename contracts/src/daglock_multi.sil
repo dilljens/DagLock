@@ -22,6 +22,8 @@ contract DagLockMulti(
     int timeout,
     byte[32] treasuryKey
 ) {
+    int constant MIN_OUT = 1000;
+
     // ── Path A: Mutual Release ──────────────────────────────────
     // Requires all active (non-zero-share) parties to sign.
     // Output layout: [party1] [party2] ... [partyN] [treasury]
@@ -69,6 +71,8 @@ contract DagLockMulti(
             outIdx = outIdx + 1;
         }
 
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[outIdx].value == feeAmount);
         require(tx.outputs[outIdx].scriptPubKey == byte[](treasuryScript));
     }
@@ -86,6 +90,8 @@ contract DagLockMulti(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }

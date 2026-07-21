@@ -327,15 +327,15 @@ pub async fn update_key_tier(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     verify_admin(&state, &headers)?;
 
-    let tier = body
-        .get("tier")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(json!(ApiError::new("invalid_tier", "Field 'tier' is required (free, pro, whale)."))),
-            )
-        })?;
+    let tier = body.get("tier").and_then(|v| v.as_str()).ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_tier",
+                "Field 'tier' is required (free, pro, whale)."
+            ))),
+        )
+    })?;
 
     match tier {
         "free" | "pro" | "whale" => {}
@@ -350,15 +350,17 @@ pub async fn update_key_tier(
         }
     }
 
-    let updated = queries::update_key_tier(&state.db, &key_id, &app_id, tier).await.map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!(ApiError::new(
-                "internal_error",
-                "Failed to update key tier."
-            ))),
-        )
-    })?;
+    let updated = queries::update_key_tier(&state.db, &key_id, &app_id, tier)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(ApiError::new(
+                    "internal_error",
+                    "Failed to update key tier."
+                ))),
+            )
+        })?;
 
     if !updated {
         return Err((

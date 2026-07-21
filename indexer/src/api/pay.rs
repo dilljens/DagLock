@@ -95,7 +95,12 @@ pub async fn create_session(
         .get("amount")
         .and_then(|v| v.as_i64())
         .filter(|v| *v > 0)
-        .ok_or_else(|| bad_request("invalid_amount", "Amount must be a positive integer (sompi)"))?;
+        .ok_or_else(|| {
+            bad_request(
+                "invalid_amount",
+                "Amount must be a positive integer (sompi)",
+            )
+        })?;
 
     let seller_address = body
         .get("seller_address")
@@ -174,10 +179,7 @@ pub async fn get_session(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "internal_error",
-                    format!("{e}")
-                ))),
+                Json(json!(ApiError::new("internal_error", format!("{e}")))),
             )
         })?
         .ok_or_else(|| {
@@ -238,7 +240,10 @@ pub async fn fund_session(
     if session.status != "pending" {
         return Err(bad_request(
             "session_not_pending",
-            &format!("Session is in '{}' state, expected 'pending'", session.status),
+            &format!(
+                "Session is in '{}' state, expected 'pending'",
+                session.status
+            ),
         ));
     }
 

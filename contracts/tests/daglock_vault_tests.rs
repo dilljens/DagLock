@@ -482,15 +482,7 @@ fn softlock_timeout_withdraw_succeeds_after_timeout() {
         lock_duration as u64,
         0u8,
     );
-    let tx = Transaction::new(
-        1,
-        vec![input],
-        outputs,
-        0,
-        Default::default(),
-        0,
-        vec![],
-    );
+    let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
     let utxo = UtxoEntry::new(
         input_value,
         ScriptPublicKey::new(0, compiled.script.clone().into()),

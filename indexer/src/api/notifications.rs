@@ -4,9 +4,9 @@
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
+use rand::Rng;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use rand::Rng;
 
 use crate::api::AppState;
 use crate::auth::AuthContext;
@@ -72,7 +72,10 @@ pub async fn subscribe(
     // Send verification email if configured
     if let Some(email_service) = state.email_service.as_ref() {
         if email_service.is_configured() {
-            if let Err(e) = email_service.send_verification(&body.email, &auth.address, &code_upper).await {
+            if let Err(e) = email_service
+                .send_verification(&body.email, &auth.address, &code_upper)
+                .await
+            {
                 tracing::warn!("Failed to send verification email: {e}");
             }
         }

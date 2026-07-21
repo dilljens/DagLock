@@ -90,19 +90,24 @@ pub async fn mediate(
     }
 
     // Get AI mediator config
-    let api_key = state.ai_mediator_api_key.clone().or_else(|| {
-        std::env::var("AI_MEDIATOR_API_KEY").ok()
-    }).ok_or_else(|| {
-        (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!(ApiError::new(
-                "ai_mediator_unavailable",
-                "AI mediator is not configured"
-            ))),
-        )
-    })?;
+    let api_key = state
+        .ai_mediator_api_key
+        .clone()
+        .or_else(|| std::env::var("AI_MEDIATOR_API_KEY").ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!(ApiError::new(
+                    "ai_mediator_unavailable",
+                    "AI mediator is not configured"
+                ))),
+            )
+        })?;
 
-    let model = state.ai_mediator_model.clone().unwrap_or_else(|| "deepseek-chat".to_string());
+    let model = state
+        .ai_mediator_model
+        .clone()
+        .unwrap_or_else(|| "deepseek-chat".to_string());
     let mediator = AiMediator::new(api_key, model);
 
     // Fetch chat messages for context and decrypt them
@@ -128,14 +133,9 @@ pub async fn mediate(
         .collect();
 
     // Initiate mediation in DB
-    queries::initiate_mediation(
-        &state.db,
-        &escrow_id,
-        &body.buyer_claim,
-        &body.seller_claim,
-    )
-    .await
-    .map_err(|_e| crate::types::internal_error())?;
+    queries::initiate_mediation(&state.db, &escrow_id, &body.buyer_claim, &body.seller_claim)
+        .await
+        .map_err(|_e| crate::types::internal_error())?;
 
     // Run AI mediation
     let result = mediator
@@ -214,7 +214,11 @@ pub async fn accept(
     // Verify signature
     if !state
         .sig_verifier
-        .verify_signature(&auth.address, &auth.signature, &format!("mediation:accept:{escrow_id}"))
+        .verify_signature(
+            &auth.address,
+            &auth.signature,
+            &format!("mediation:accept:{escrow_id}"),
+        )
         .unwrap_or(false)
     {
         return Err((
@@ -263,11 +267,12 @@ pub async fn accept(
             .ok_or_else(|| crate::types::not_found("escrow", &escrow_id))?;
 
         let result_json = escrow.mediation_result.as_deref().unwrap_or("{}");
-        let result: MediationResult = serde_json::from_str(result_json).unwrap_or(MediationResult {
-            outcome: MediationOutcome::Refund,
-            buyer_share_basis: 10000,
-            reasoning: "Default: mediation outcome could not be parsed".to_string(),
-        });
+        let result: MediationResult =
+            serde_json::from_str(result_json).unwrap_or(MediationResult {
+                outcome: MediationOutcome::Refund,
+                buyer_share_basis: 10000,
+                reasoning: "Default: mediation outcome could not be parsed".to_string(),
+            });
 
         match result.outcome {
             MediationOutcome::Refund => {
@@ -303,9 +308,14 @@ pub async fn accept(
             MediationOutcome::Split => {
                 // For split, update escrow with split metadata
                 let buyer_share = result.buyer_share_basis;
-                queries::resolve_dispute_with_split(&state.db, &escrow_id, "mediation_split", buyer_share)
-                    .await
-                    .map_err(|_e| crate::types::internal_error())?;
+                queries::resolve_dispute_with_split(
+                    &state.db,
+                    &escrow_id,
+                    "mediation_split",
+                    buyer_share,
+                )
+                .await
+                .map_err(|_e| crate::types::internal_error())?;
             }
         }
 

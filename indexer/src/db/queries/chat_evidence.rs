@@ -9,14 +9,12 @@ pub async fn reveal_chat_key(
     encrypted_key: &str,
 ) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
-    sqlx::query(
-        "UPDATE jury_cases SET revealed_chat_key_enc = ?1, revealed_at = ?2 WHERE id = ?3",
-    )
-    .bind(encrypted_key)
-    .bind(now)
-    .bind(case_id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE jury_cases SET revealed_chat_key_enc = ?1, revealed_at = ?2 WHERE id = ?3")
+        .bind(encrypted_key)
+        .bind(now)
+        .bind(case_id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -73,7 +71,9 @@ pub async fn get_decrypted_evidence(
         .map(|r| EvidenceMessage {
             id: r.try_get::<String, _>("id").unwrap_or_default(),
             sender_address: r.try_get::<String, _>("sender_address").unwrap_or_default(),
-            decrypted_content: r.try_get::<String, _>("decrypted_content").unwrap_or_default(),
+            decrypted_content: r
+                .try_get::<String, _>("decrypted_content")
+                .unwrap_or_default(),
             created_at: r.try_get::<i64, _>("created_at").unwrap_or(0),
             anchor_tx_id: r.try_get("anchor_tx_id").ok().flatten(),
             anchor_daa_score: r.try_get("anchor_daa_score").ok().flatten(),

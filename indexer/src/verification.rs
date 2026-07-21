@@ -243,7 +243,10 @@ impl EscrowVerifier for RestVerifier {
         } else if let Some(ref seller) = escrow.seller_address {
             seller
         } else {
-            warn!("RestVerifier: no address available for escrow {}", escrow.id);
+            warn!(
+                "RestVerifier: no address available for escrow {}",
+                escrow.id
+            );
             return Ok(false);
         };
 
@@ -259,7 +262,10 @@ impl EscrowVerifier for RestVerifier {
                         let utxos = match data.as_array() {
                             Some(arr) => arr,
                             None => {
-                                warn!("RestVerifier: unexpected response format for escrow {}", escrow.id);
+                                warn!(
+                                    "RestVerifier: unexpected response format for escrow {}",
+                                    escrow.id
+                                );
                                 return Ok(false);
                             }
                         };
@@ -276,10 +282,12 @@ impl EscrowVerifier for RestVerifier {
                                 let utxo_index = outpoint
                                     .get("index")
                                     .and_then(|v| v.as_u64())
-                                    .unwrap_or(u64::MAX) as u32;
+                                    .unwrap_or(u64::MAX)
+                                    as u32;
 
                                 // Compare case-insensitively (API returns lowercase hex)
-                                if utxo_tx_id.eq_ignore_ascii_case(tx_id) && utxo_index == output_index
+                                if utxo_tx_id.eq_ignore_ascii_case(tx_id)
+                                    && utxo_index == output_index
                                 {
                                     let amount = utxo
                                         .get("utxoEntry")
@@ -302,7 +310,10 @@ impl EscrowVerifier for RestVerifier {
                         Ok(false)
                     }
                     Err(e) => {
-                        warn!("RestVerifier: failed to parse response for escrow {}: {}", escrow.id, e);
+                        warn!(
+                            "RestVerifier: failed to parse response for escrow {}: {}",
+                            escrow.id, e
+                        );
                         Err(VerificationError::Other(format!(
                             "REST API response parse failed: {e}"
                         )))
@@ -321,7 +332,10 @@ impl EscrowVerifier for RestVerifier {
                 )))
             }
             Err(e) => {
-                warn!("RestVerifier: request failed for escrow {}: {}", escrow.id, e);
+                warn!(
+                    "RestVerifier: request failed for escrow {}: {}",
+                    escrow.id, e
+                );
                 Err(VerificationError::Other(format!(
                     "REST API request failed: {e}"
                 )))

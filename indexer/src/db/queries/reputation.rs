@@ -173,12 +173,17 @@ async fn count_all_trades(
         )"
     ))
     .bind(address)
-    .fetch_one(pool).await?;
+    .fetch_one(pool)
+    .await?;
 
     Ok((
-        trade_count, settled_count, refunded_count,
-        recent_trade_count, recent_refunded_count,
-        volume.unwrap_or(0), first_trade_at,
+        trade_count,
+        settled_count,
+        refunded_count,
+        recent_trade_count,
+        recent_refunded_count,
+        volume.unwrap_or(0),
+        first_trade_at,
     ))
 }
 
@@ -186,9 +191,13 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
     let ninety_days_ago = chrono::Utc::now().timestamp() - 90 * 86_400;
 
     let (
-        trade_count, settled_count, refunded_count,
-        recent_trade_count, recent_refunded_count,
-        total_volume, first_trade_at,
+        trade_count,
+        settled_count,
+        refunded_count,
+        recent_trade_count,
+        recent_refunded_count,
+        total_volume,
+        first_trade_at,
     ) = count_all_trades(pool, address, ninety_days_ago).await?;
 
     let age_days = first_trade_at
@@ -277,19 +286,28 @@ pub async fn get_reputation(pool: &Pool<Sqlite>, address: &str) -> Result<Reputa
 
 pub async fn get_network_counts(pool: &Pool<Sqlite>) -> Result<(u64, u64, f64), sqlx::Error> {
     let (escrow_total,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM escrows")
-        .fetch_one(pool).await?;
+        .fetch_one(pool)
+        .await?;
     let (milestone_total,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM milestone_escrows")
-        .fetch_one(pool).await?;
+        .fetch_one(pool)
+        .await?;
     let (sub_total,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM subscriptions")
-        .fetch_one(pool).await?;
+        .fetch_one(pool)
+        .await?;
     let total = escrow_total.max(0) + milestone_total.max(0) + sub_total.max(0);
 
-    let (escrow_settled,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM escrows WHERE status = 'settled'")
-        .fetch_one(pool).await?;
-    let (milestone_completed,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM milestone_escrows WHERE status = 'completed'")
-        .fetch_one(pool).await?;
-    let (sub_completed,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM subscriptions WHERE status = 'completed'")
-        .fetch_one(pool).await?;
+    let (escrow_settled,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM escrows WHERE status = 'settled'")
+            .fetch_one(pool)
+            .await?;
+    let (milestone_completed,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM milestone_escrows WHERE status = 'completed'")
+            .fetch_one(pool)
+            .await?;
+    let (sub_completed,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM subscriptions WHERE status = 'completed'")
+            .fetch_one(pool)
+            .await?;
     let settled = escrow_settled.max(0) + milestone_completed.max(0) + sub_completed.max(0);
 
     let avg_fee: (Option<f64>,) =

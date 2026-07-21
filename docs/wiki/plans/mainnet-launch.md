@@ -66,14 +66,14 @@ Based on `docs/wiki/plans/production-hardening.md`.
 
 #### Security & Audit
 
-**Approach:** Internal audit (28/30 items complete) + open-source transparency at launch. Bug bounty and/or third-party audit funded from treasury revenue after mainnet generates fees.
+**Approach:** Internal audit (30/30 items complete) + open-source transparency at launch. Bug bounty and/or third-party audit funded from treasury revenue after mainnet generates fees.
 
 | Task | Effort | Priority |
 |------|--------|----------|
-| Publish audit report: `docs/security-audit.md` with all 28/30 items, the 7 fixed criticals, and the 2 remaining low-priority items | 1 hr | **P0** |
+| Publish audit report: `docs/security-audit.md` with all 30/30 items, the 7 fixed criticals | 1 hr | **P0** |
 | Open GitHub Security Advisories for responsible disclosure | 30 min | **P0** |
-| Verify all 28/30 audit items on mainnet | 1 day | P1 |
-| Close remaining 2 items (H2 dust check, U7 onboarding) | 2 days | P2 |
+| Verify all 30/30 audit items on mainnet | 1 day | P1 |
+| ~~Close remaining 2 items (H2 dust check, U7 onboarding)~~ | ✅ Done | — |
 | Penetration test on indexer API (self-run) | 2 days | P2 |
 | **Set up treasury-funded security reserve:** Allocate XX% of protocol fees to bug bounty / audit fund | 1 hr | P1 |
 | Launch bug bounty (Immunefi or custom) once treasury has meaningful funds | Ongoing | P3 |
@@ -98,15 +98,15 @@ Must recompute and register mainnet template hashes before launch:
 
 | Covenant | Testnet Hash | Mainnet Hash (TBD) |
 |----------|-------------|-------------------|
-| KAS | `3502219e8c85ff1f4eb3c1f20ff1049518302d2c` | — |
-| KRC-20 | `da57b7b66dd2f9a35dcb83a7fea3c05d1300c28e` | — |
+| KAS | `92c6ea59d541d615a5d861aa8bd1ea500b1fa824` | — |
+| KRC-20 | `ed243da3a0ed815a6f39bdafc0a7d5bd8504c508` | — |
 | Reputation | `65c54102c64a331414b602760cbd76efac3d69df` | — |
-| Vault (standard) | `23734973784f8d47adf0c0a43744955817258d1d` | — |
-| Vault (softlock) | `9777c9eb9e6271a32fac75d3533bc27d25b20d39` | — |
-| Vault (multisig) | `b0cddcd4dc716532fd86d1809a05f8ea7e74113d` | — |
-| Subscription | (new) | — |
-| Milestone | (new) | — |
-| Advanced | (new) | — |
+| Vault (standard) | `cf36871699747ce7a3409d7410b86cdf1deb9c61` | — |
+| Vault (softlock) | `f4baa1962d34eb48d4d9550d8726a68adcad9471` | — |
+| Vault (multisig) | `23ef5baf2477545cb9c01cd305104d61ba9ea309` | — |
+| Subscription | `bc8dcf24da72b3042101d7956bbe1816a41f512a` | — |
+| Milestone | `28a8f26ff58ace3b508272f4d18c1c8da49aa525` | — |
+| Advanced | `88fa162d61282a2486ac7795f5510f76234cd5d1` | — |
 
 ---
 

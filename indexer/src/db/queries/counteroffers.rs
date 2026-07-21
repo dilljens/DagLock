@@ -1,5 +1,5 @@
-use sqlx::{Pool, Sqlite, Row};
 use serde::Serialize;
+use sqlx::{Pool, Row, Sqlite};
 
 #[derive(Debug, Serialize)]
 pub struct CounterOffer {
@@ -83,18 +83,21 @@ pub async fn list_counteroffers(
     .fetch_all(pool)
     .await?;
 
-    let offers = rows.into_iter().map(|r| CounterOffer {
-        id: r.get("id"),
-        offer_id: r.get("offer_id"),
-        proposer_address: r.get("proposer_address"),
-        amount_sompi: r.get("amount_sompi"),
-        price_offset: r.get("price_offset"),
-        timeout: r.get("timeout"),
-        dispute_mode: r.get("dispute_mode"),
-        message: r.get("message"),
-        status: r.get("status"),
-        created_at: r.get("created_at"),
-    }).collect();
+    let offers = rows
+        .into_iter()
+        .map(|r| CounterOffer {
+            id: r.get("id"),
+            offer_id: r.get("offer_id"),
+            proposer_address: r.get("proposer_address"),
+            amount_sompi: r.get("amount_sompi"),
+            price_offset: r.get("price_offset"),
+            timeout: r.get("timeout"),
+            dispute_mode: r.get("dispute_mode"),
+            message: r.get("message"),
+            status: r.get("status"),
+            created_at: r.get("created_at"),
+        })
+        .collect();
 
     Ok(offers)
 }
@@ -118,7 +121,7 @@ pub async fn count_pending_for_offer(
     offer_id: &str,
 ) -> Result<i64, sqlx::Error> {
     let row: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM offer_counteroffers WHERE offer_id = ?1 AND status = 'pending'"
+        "SELECT COUNT(*) FROM offer_counteroffers WHERE offer_id = ?1 AND status = 'pending'",
     )
     .bind(offer_id)
     .fetch_one(pool)

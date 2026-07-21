@@ -1,5 +1,5 @@
-use sqlx::{Pool, Sqlite, Row};
 use serde::Serialize;
+use sqlx::{Pool, Row, Sqlite};
 
 #[derive(Serialize)]
 pub struct TradeFeedbackRow {
@@ -46,20 +46,23 @@ pub async fn get_feedback_for_escrow(
 ) -> Result<Vec<TradeFeedbackRow>, sqlx::Error> {
     let rows = sqlx::query(
         "SELECT id, escrow_id, reviewer_address, rating, comment, created_at \
-         FROM trade_feedback WHERE escrow_id = ?1 ORDER BY created_at DESC"
+         FROM trade_feedback WHERE escrow_id = ?1 ORDER BY created_at DESC",
     )
     .bind(escrow_id)
     .fetch_all(pool)
     .await?;
 
-    let feedback = rows.into_iter().map(|row| TradeFeedbackRow {
-        id: row.get("id"),
-        escrow_id: row.get("escrow_id"),
-        reviewer_address: row.get("reviewer_address"),
-        rating: row.get("rating"),
-        comment: row.get("comment"),
-        created_at: row.get("created_at"),
-    }).collect();
+    let feedback = rows
+        .into_iter()
+        .map(|row| TradeFeedbackRow {
+            id: row.get("id"),
+            escrow_id: row.get("escrow_id"),
+            reviewer_address: row.get("reviewer_address"),
+            rating: row.get("rating"),
+            comment: row.get("comment"),
+            created_at: row.get("created_at"),
+        })
+        .collect();
 
     Ok(feedback)
 }
@@ -73,7 +76,7 @@ pub async fn get_feedback_stats(
          COUNT(*) as total \
          FROM trade_feedback tf \
          JOIN escrows e ON tf.escrow_id = e.id \
-         WHERE (e.buyer_address = ?1 OR e.seller_address = ?1)"
+         WHERE (e.buyer_address = ?1 OR e.seller_address = ?1)",
     )
     .bind(address)
     .fetch_one(pool)

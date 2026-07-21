@@ -46,7 +46,10 @@ pub async fn create(
         .map_err(|e| {
             (
                 StatusCode::FORBIDDEN,
-                Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))
+                Json(json!(ApiError::new(
+                    "forbidden",
+                    format!("Signature verification failed: {e}")
+                ))),
             )
         })?
     {
@@ -77,10 +80,7 @@ pub async fn create(
     }
 
     let now = chrono::Utc::now().timestamp();
-    let invoice_id = format!(
-        "INV_{}",
-        uuid::Uuid::new_v4().to_string().replace('-', "")
-    );
+    let invoice_id = format!("INV_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
 
     let invoice = Invoice {
         id: invoice_id.clone(),
@@ -133,10 +133,7 @@ pub async fn get(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "database_error",
-                    format!("{e}")
-                ))),
+                Json(json!(ApiError::new("database_error", format!("{e}")))),
             )
         })?
         .ok_or_else(|| {
@@ -206,12 +203,11 @@ pub async fn list(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!(ApiError::new(
-                    "database_error",
-                    format!("{e}")
-                ))),
+                Json(json!(ApiError::new("database_error", format!("{e}")))),
             )
         })?;
 
-    Ok(Json(json!({ "invoices": invoices, "total": invoices.len() })))
+    Ok(Json(
+        json!({ "invoices": invoices, "total": invoices.len() }),
+    ))
 }

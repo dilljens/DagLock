@@ -32,10 +32,17 @@ pub async fn reveal(
 
     if !state
         .sig_verifier
-        .verify_signature(&auth.address, &auth.signature, &format!("reveal:{}", escrow_id))
+        .verify_signature(
+            &auth.address,
+            &auth.signature,
+            &format!("reveal:{}", escrow_id),
+        )
         .unwrap_or(false)
     {
-        return Err(forbidden("invalid_signature", "Signature does not match the claimed address"));
+        return Err(forbidden(
+            "invalid_signature",
+            "Signature does not match the claimed address",
+        ));
     }
 
     let escrow = queries::get_escrow(&state.db, &escrow_id)
@@ -56,7 +63,10 @@ pub async fn reveal(
     if auth.address != escrow.buyer_address
         && escrow.seller_address.as_deref() != Some(&auth.address)
     {
-        return Err(forbidden("not_party", "Only escrow parties can reveal chat key"));
+        return Err(forbidden(
+            "not_party",
+            "Only escrow parties can reveal chat key",
+        ));
     }
 
     let case = queries::get_jury_case_by_escrow(&state.db, &escrow_id)
@@ -125,10 +135,17 @@ pub async fn evidence(
 
     if !state
         .sig_verifier
-        .verify_signature(&auth.address, &auth.signature, &format!("evidence:{}", case_id))
+        .verify_signature(
+            &auth.address,
+            &auth.signature,
+            &format!("evidence:{}", case_id),
+        )
         .unwrap_or(false)
     {
-        return Err(forbidden("invalid_signature", "Signature does not match the claimed address"));
+        return Err(forbidden(
+            "invalid_signature",
+            "Signature does not match the claimed address",
+        ));
     }
 
     let case = queries::get_jury_case(&state.db, &case_id)
@@ -137,7 +154,10 @@ pub async fn evidence(
         .ok_or_else(|| not_found("jury case", &case_id))?;
 
     if !case.jurors.contains(&auth.address) {
-        return Err(forbidden("not_juror", "Only assigned jurors can view evidence"));
+        return Err(forbidden(
+            "not_juror",
+            "Only assigned jurors can view evidence",
+        ));
     }
 
     let evidence = queries::get_decrypted_evidence(&state.db, &case_id)
@@ -180,10 +200,17 @@ pub async fn clear_evidence(
 
     if !state
         .sig_verifier
-        .verify_signature(&auth.address, &auth.signature, &format!("clear_evidence:{}", case_id))
+        .verify_signature(
+            &auth.address,
+            &auth.signature,
+            &format!("clear_evidence:{}", case_id),
+        )
         .unwrap_or(false)
     {
-        return Err(forbidden("invalid_signature", "Signature does not match the claimed address"));
+        return Err(forbidden(
+            "invalid_signature",
+            "Signature does not match the claimed address",
+        ));
     }
 
     let case = queries::get_jury_case(&state.db, &case_id)
@@ -197,14 +224,19 @@ pub async fn clear_evidence(
         .map_err(|_e| internal_error())?;
 
     let is_admin = false;
-    let is_party = escrow.as_ref().map(|e| {
-        auth.address == e.buyer_address
-            || e.seller_address.as_deref() == Some(&auth.address)
-    }).unwrap_or(false);
+    let is_party = escrow
+        .as_ref()
+        .map(|e| {
+            auth.address == e.buyer_address || e.seller_address.as_deref() == Some(&auth.address)
+        })
+        .unwrap_or(false);
     let is_juror = case.jurors.contains(&auth.address);
 
     if !is_admin && !is_party && !is_juror {
-        return Err(forbidden("not_authorized", "Not authorized to clear evidence"));
+        return Err(forbidden(
+            "not_authorized",
+            "Not authorized to clear evidence",
+        ));
     }
 
     queries::clear_evidence(&state.db, &case_id)

@@ -5,10 +5,7 @@
 //! - cancel: payer cancels, remaining minus fee returned to payer
 //! - release: mutual release, all remaining to recipient minus fee
 
-use daglock_contracts::{
-    compile_daglock_subscription, entrypoints,
-    silverscript_lang::ast::Expr,
-};
+use daglock_contracts::{compile_daglock_subscription, entrypoints, silverscript_lang::ast::Expr};
 use kaspa_consensus_core::hashing::sighash::{
     calc_schnorr_signature_hash, SigHashReusedValuesUnsync,
 };
@@ -57,7 +54,11 @@ fn p2pk_script(pubkey: &[u8]) -> ScriptPublicKey {
 /// comparisons against tx.outputs[i].scriptPubKey in the covenant work.
 fn with_version(script: Vec<u8>) -> Vec<u8> {
     let version: u16 = 0;
-    version.to_be_bytes().into_iter().chain(script.into_iter()).collect()
+    version
+        .to_be_bytes()
+        .into_iter()
+        .chain(script.into_iter())
+        .collect()
 }
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -79,14 +80,22 @@ fn subscription_claim_first_installment_succeeds() {
     let covenant = compile_daglock_subscription(
         &pubkey_bytes(&payer),
         &pubkey_bytes(&recipient),
-        TOTAL, INSTALLMENT, INTERVAL, START_TIME, 0,
+        TOTAL,
+        INSTALLMENT,
+        INTERVAL,
+        START_TIME,
+        0,
         &pubkey_bytes(&treasury),
     );
 
     let next = compile_daglock_subscription(
         &pubkey_bytes(&payer),
         &pubkey_bytes(&recipient),
-        TOTAL, INSTALLMENT, INTERVAL, START_TIME, 1,
+        TOTAL,
+        INSTALLMENT,
+        INTERVAL,
+        START_TIME,
+        1,
         &pubkey_bytes(&treasury),
     );
 
@@ -98,16 +107,27 @@ fn subscription_claim_first_installment_succeeds() {
     let outputs = vec![
         TransactionOutput::new(net as u64, p2pk_script(&pubkey_bytes(&recipient))),
         TransactionOutput::new(fee as u64, p2pk_script(&pubkey_bytes(&treasury))),
-        TransactionOutput::new(remaining, ScriptPublicKey::new(0, next.script.clone().into())),
+        TransactionOutput::new(
+            remaining,
+            ScriptPublicKey::new(0, next.script.clone().into()),
+        ),
     ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([1u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let now = START_TIME as u64 + 1; // satisfy tx.time >= startTime + (currentPeriod * intervalSeconds)
     let tx = Transaction::new(1, vec![input], outputs, now, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -122,21 +142,32 @@ fn subscription_claim_first_installment_succeeds() {
     };
 
     let sigscript = covenant
-        .build_sig_script(entrypoints::CLAIM, vec![
-            Expr::bytes(recipient_sig),
-            Expr::bytes(with_version(next.script.clone())),
-        ])
+        .build_sig_script(
+            entrypoints::CLAIM,
+            vec![
+                Expr::bytes(recipient_sig),
+                Expr::bytes(with_version(next.script.clone())),
+            ],
+        )
         .expect("build_sig_script");
 
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
-    assert!(result.is_ok(), "claim first installment: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "claim first installment: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -147,14 +178,24 @@ fn subscription_claim_before_timeout_fails() {
     let future_start = 9_999_999_999i64;
 
     let covenant = compile_daglock_subscription(
-        &pubkey_bytes(&payer), &pubkey_bytes(&recipient),
-        TOTAL, INSTALLMENT, INTERVAL, future_start, 0,
+        &pubkey_bytes(&payer),
+        &pubkey_bytes(&recipient),
+        TOTAL,
+        INSTALLMENT,
+        INTERVAL,
+        future_start,
+        0,
         &pubkey_bytes(&treasury),
     );
 
     let next = compile_daglock_subscription(
-        &pubkey_bytes(&payer), &pubkey_bytes(&recipient),
-        TOTAL, INSTALLMENT, INTERVAL, future_start, 1,
+        &pubkey_bytes(&payer),
+        &pubkey_bytes(&recipient),
+        TOTAL,
+        INSTALLMENT,
+        INTERVAL,
+        future_start,
+        1,
         &pubkey_bytes(&treasury),
     );
 
@@ -166,15 +207,26 @@ fn subscription_claim_before_timeout_fails() {
     let outputs = vec![
         TransactionOutput::new(net as u64, p2pk_script(&pubkey_bytes(&recipient))),
         TransactionOutput::new(fee as u64, p2pk_script(&pubkey_bytes(&treasury))),
-        TransactionOutput::new(remaining, ScriptPublicKey::new(0, next.script.clone().into())),
+        TransactionOutput::new(
+            remaining,
+            ScriptPublicKey::new(0, next.script.clone().into()),
+        ),
     ];
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([2u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -189,19 +241,26 @@ fn subscription_claim_before_timeout_fails() {
     };
 
     let sigscript = covenant
-        .build_sig_script(entrypoints::CLAIM, vec![
-            Expr::bytes(recipient_sig),
-            Expr::bytes(with_version(next.script.clone())),
-        ])
+        .build_sig_script(
+            entrypoints::CLAIM,
+            vec![
+                Expr::bytes(recipient_sig),
+                Expr::bytes(with_version(next.script.clone())),
+            ],
+        )
         .expect("build_sig_script");
 
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_err(), "claim before start_time should fail");
 }
@@ -214,8 +273,13 @@ fn subscription_claim_last_installment_no_remainder() {
     let single = INSTALLMENT;
 
     let covenant = compile_daglock_subscription(
-        &pubkey_bytes(&payer), &pubkey_bytes(&recipient),
-        single, single, INTERVAL, START_TIME, 0,
+        &pubkey_bytes(&payer),
+        &pubkey_bytes(&recipient),
+        single,
+        single,
+        INTERVAL,
+        START_TIME,
+        0,
         &pubkey_bytes(&treasury),
     );
 
@@ -230,11 +294,19 @@ fn subscription_claim_last_installment_no_remainder() {
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([3u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let now = START_TIME as u64 + 1;
     let tx = Transaction::new(1, vec![input], outputs, now, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -249,19 +321,23 @@ fn subscription_claim_last_installment_no_remainder() {
     };
 
     let sigscript = covenant
-        .build_sig_script(entrypoints::CLAIM, vec![
-            Expr::bytes(recipient_sig),
-            Expr::bytes(vec![]),
-        ])
+        .build_sig_script(
+            entrypoints::CLAIM,
+            vec![Expr::bytes(recipient_sig), Expr::bytes(vec![])],
+        )
         .expect("build_sig_script");
 
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_ok(), "claim last installment: {:?}", result.err());
 }
@@ -273,8 +349,13 @@ fn subscription_cancel_succeeds() {
     let treasury = random_keypair();
 
     let covenant = compile_daglock_subscription(
-        &pubkey_bytes(&payer), &pubkey_bytes(&recipient),
-        TOTAL, INSTALLMENT, INTERVAL, START_TIME, 0,
+        &pubkey_bytes(&payer),
+        &pubkey_bytes(&recipient),
+        TOTAL,
+        INSTALLMENT,
+        INTERVAL,
+        START_TIME,
+        0,
         &pubkey_bytes(&treasury),
     );
 
@@ -289,10 +370,18 @@ fn subscription_cancel_succeeds() {
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([4u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -314,9 +403,13 @@ fn subscription_cancel_succeeds() {
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_ok(), "cancel: {:?}", result.err());
 }
@@ -328,8 +421,13 @@ fn subscription_release_succeeds() {
     let treasury = random_keypair();
 
     let covenant = compile_daglock_subscription(
-        &pubkey_bytes(&payer), &pubkey_bytes(&recipient),
-        TOTAL, INSTALLMENT, INTERVAL, START_TIME, 0,
+        &pubkey_bytes(&payer),
+        &pubkey_bytes(&recipient),
+        TOTAL,
+        INSTALLMENT,
+        INTERVAL,
+        START_TIME,
+        0,
         &pubkey_bytes(&treasury),
     );
 
@@ -344,10 +442,18 @@ fn subscription_release_succeeds() {
 
     let input = TransactionInput::new(
         TransactionOutpoint::new(TransactionId::from_bytes([5u8; 32]), 0),
-        vec![], 0, 0u8,
+        vec![],
+        0,
+        0u8,
     );
     let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
-    let utxo = UtxoEntry::new(input_value, ScriptPublicKey::new(0, covenant.script.clone().into()), 0, false, None);
+    let utxo = UtxoEntry::new(
+        input_value,
+        ScriptPublicKey::new(0, covenant.script.clone().into()),
+        0,
+        false,
+        None,
+    );
     let mut mtx = MutableTransaction::with_entries(tx, vec![utxo.clone()]);
 
     let reused = SigHashReusedValuesUnsync::new();
@@ -369,19 +475,23 @@ fn subscription_release_succeeds() {
     };
 
     let sigscript = covenant
-        .build_sig_script(entrypoints::RELEASE, vec![
-            Expr::bytes(payer_sig),
-            Expr::bytes(recipient_sig),
-        ])
+        .build_sig_script(
+            entrypoints::RELEASE,
+            vec![Expr::bytes(payer_sig), Expr::bytes(recipient_sig)],
+        )
         .expect("build_sig_script");
 
     mtx.tx.inputs[0].signature_script = sigscript;
 
     let sig_cache = Cache::new(10_000);
     let ctx = EngineCtx::new(&sig_cache).with_reused(&reused);
-    let flags = EngineFlags { covenants_enabled: true, sigop_script_units: 0.into() };
+    let flags = EngineFlags {
+        covenants_enabled: true,
+        sigop_script_units: 0.into(),
+    };
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_ok(), "release: {:?}", result.err());
 }
@@ -393,8 +503,13 @@ fn subscription_abi_has_correct_entrypoints() {
     let treasury = random_keypair();
 
     let covenant = compile_daglock_subscription(
-        &pubkey_bytes(&payer), &pubkey_bytes(&recipient),
-        TOTAL, INSTALLMENT, INTERVAL, START_TIME, 0,
+        &pubkey_bytes(&payer),
+        &pubkey_bytes(&recipient),
+        TOTAL,
+        INSTALLMENT,
+        INTERVAL,
+        START_TIME,
+        0,
         &pubkey_bytes(&treasury),
     );
 

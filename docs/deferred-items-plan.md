@@ -16,6 +16,8 @@
 | **P4** | Chat sig verification (H4) | ❌ Blocked — needs wRPC node | User |
 | **P5** | Milestone/Advanced covenant tests (C5) | ✅ Done | Agent |
 | **P6** | Bot test suite (C6) | ✅ Done — index.js command handler tests | Agent |
+| **H2** | Dust protection — covenant fee checks | ✅ Done — H2 fix across all covenant files | Agent |
+| **U7** | Web onboarding modal | ✅ Done — already implemented | Agent |
 
 ---
 

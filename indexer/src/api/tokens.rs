@@ -41,9 +41,7 @@ pub struct UpdateTokenRequest {
 }
 
 /// GET /v1/tokens
-pub async fn list(
-    State(state): State<AppState>,
-) -> Json<Value> {
+pub async fn list(State(state): State<AppState>) -> Json<Value> {
     match queries::tokens::list_tokens(&state.db).await {
         Ok(tokens) => Json(json!({
             "tokens": tokens,
@@ -59,10 +57,7 @@ pub async fn list(
 }
 
 /// GET /v1/tokens/:ticker
-pub async fn get(
-    State(state): State<AppState>,
-    Path(ticker): Path<String>,
-) -> Json<Value> {
+pub async fn get(State(state): State<AppState>, Path(ticker): Path<String>) -> Json<Value> {
     let upper = ticker.to_uppercase();
     // First check the registry, then fall back to aggregated data
     match queries::tokens::get_token(&state.db, &upper).await {
@@ -151,7 +146,9 @@ pub async fn deploy(
     if auth.address != body.owner_address {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!({"error": "address_mismatch", "message": "Owner address must match the signed address"})),
+            Json(
+                json!({"error": "address_mismatch", "message": "Owner address must match the signed address"}),
+            ),
         ));
     }
 
@@ -181,7 +178,9 @@ pub async fn deploy(
     if body.total_supply <= 0 || body.total_supply > 1_000_000_000_000 {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_supply", "message": "Supply must be between 1 and 1,000,000,000,000"})),
+            Json(
+                json!({"error": "invalid_supply", "message": "Supply must be between 1 and 1,000,000,000,000"}),
+            ),
         ));
     }
     let decimals = body.decimals.unwrap_or(8);
@@ -194,7 +193,9 @@ pub async fn deploy(
     if !["fixed", "mintable", "burnable"].contains(&mint_mode.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_mint_mode", "message": "Mint mode must be 'fixed', 'mintable', or 'burnable'"})),
+            Json(
+                json!({"error": "invalid_mint_mode", "message": "Mint mode must be 'fixed', 'mintable', or 'burnable'"}),
+            ),
         ));
     }
 
@@ -202,7 +203,9 @@ pub async fn deploy(
     if let Ok(Some(_)) = queries::tokens::get_registered_token(&state.db, &ticker).await {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "ticker_taken", "message": format!("'{ticker}' is already registered")})),
+            Json(
+                json!({"error": "ticker_taken", "message": format!("'{ticker}' is already registered")}),
+            ),
         ));
     }
 

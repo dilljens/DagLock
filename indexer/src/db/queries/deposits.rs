@@ -44,10 +44,7 @@ pub async fn get_deposit_by_escrow(
     Ok(row.map(row_to_deposit))
 }
 
-pub async fn release_deposit(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn release_deposit(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE deposits SET status = 'released', released_at = ?1 WHERE id = ?2 AND status = 'locked'",
     )
@@ -74,22 +71,15 @@ pub async fn forfeit_deposit(
     Ok(())
 }
 
-pub async fn sweep_deposit(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "UPDATE deposits SET status = 'swept' WHERE id = ?1 AND status = 'locked'",
-    )
-    .bind(id)
-    .execute(pool)
-    .await?;
+pub async fn sweep_deposit(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE deposits SET status = 'swept' WHERE id = ?1 AND status = 'locked'")
+        .bind(id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
-pub async fn find_stale_deposits(
-    pool: &Pool<Sqlite>,
-) -> Result<Vec<Deposit>, sqlx::Error> {
+pub async fn find_stale_deposits(pool: &Pool<Sqlite>) -> Result<Vec<Deposit>, sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     let rows = sqlx::query(
         "SELECT * FROM deposits WHERE status = 'locked' AND timeout > 0 AND timeout <= ?1",
@@ -107,7 +97,9 @@ fn row_to_deposit(row: sqlx::sqlite::SqliteRow) -> Deposit {
         party1_address: row.try_get("party1_address").unwrap_or_default(),
         party2_address: row.try_get("party2_address").unwrap_or_default(),
         deposit_amount: row.try_get("deposit_amount").unwrap_or(0),
-        status: row.try_get("status").unwrap_or_else(|_| "locked".to_string()),
+        status: row
+            .try_get("status")
+            .unwrap_or_else(|_| "locked".to_string()),
         deposit_tx_id: row.try_get("deposit_tx_id").ok().flatten(),
         timeout: row.try_get("timeout").unwrap_or(0),
         created_at: row.try_get("created_at").unwrap_or(0),

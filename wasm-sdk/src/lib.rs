@@ -221,7 +221,13 @@ pub fn compile_vault(
     let treasury = parse_hex32(treasury_key, "treasury_key")?;
     let heir = parse_hex32(heir_key, "heir_key")?;
     Ok(compile_result_json(
-        &daglock_contracts::compile_daglock_vault(&owner, lock_duration, &treasury, &heir, inherit_lock_duration),
+        &daglock_contracts::compile_daglock_vault(
+            &owner,
+            lock_duration,
+            &treasury,
+            &heir,
+            inherit_lock_duration,
+        ),
     ))
 }
 

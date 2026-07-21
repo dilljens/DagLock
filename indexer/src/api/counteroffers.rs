@@ -62,7 +62,9 @@ pub async fn create(
     if offer.status != "proposed" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "offer_not_available", "message": "This offer is no longer available"})),
+            Json(
+                json!({"error": "offer_not_available", "message": "This offer is no longer available"}),
+            ),
         ));
     }
 
@@ -73,7 +75,9 @@ pub async fn create(
     if pending_count >= 10 {
         return Err((
             StatusCode::TOO_MANY_REQUESTS,
-            Json(json!({"error": "too_many_counters", "message": "Max 10 pending counters per offer"})),
+            Json(
+                json!({"error": "too_many_counters", "message": "Max 10 pending counters per offer"}),
+            ),
         ));
     }
 
@@ -105,10 +109,7 @@ pub async fn create(
 }
 
 /// GET /v1/offers/:id/counters
-pub async fn list(
-    State(state): State<AppState>,
-    Path(offer_id): Path<String>,
-) -> Json<Value> {
+pub async fn list(State(state): State<AppState>, Path(offer_id): Path<String>) -> Json<Value> {
     match queries::counteroffers::list_counteroffers(&state.db, &offer_id).await {
         Ok(counters) => Json(json!({
             "counters": counters,
@@ -154,7 +155,9 @@ pub async fn accept(
     if counter.status != "pending" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "already_processed", "message": "This counter-offer has already been processed"})),
+            Json(
+                json!({"error": "already_processed", "message": "This counter-offer has already been processed"}),
+            ),
         ));
     }
 
@@ -177,14 +180,18 @@ pub async fn accept(
     if offer.creator_address != auth.address {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!({"error": "forbidden", "message": "Only the offer creator can accept counters"})),
+            Json(
+                json!({"error": "forbidden", "message": "Only the offer creator can accept counters"}),
+            ),
         ));
     }
 
     if offer.status != "proposed" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "offer_gone", "message": "This offer has already been accepted or cancelled"})),
+            Json(
+                json!({"error": "offer_gone", "message": "This offer has already been accepted or cancelled"}),
+            ),
         ));
     }
 
@@ -251,17 +258,14 @@ pub async fn decline(
                     Json(json!({"error": "db_error"})),
                 )
             })?
-            .ok_or_else(|| {
-                (
-                    StatusCode::NOT_FOUND,
-                    Json(json!({"error": "offer_gone"})),
-                )
-            })?;
+            .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": "offer_gone"}))))?;
 
         if offer.creator_address != auth.address {
             return Err((
                 StatusCode::FORBIDDEN,
-                Json(json!({"error": "forbidden", "message": "Only participants in this negotiation can decline"})),
+                Json(
+                    json!({"error": "forbidden", "message": "Only participants in this negotiation can decline"}),
+                ),
             ));
         }
     }

@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::api::AppState;
 use crate::auth::AuthContext;
 use crate::db::queries;
+use crate::types::ApiError;
 
 #[derive(Deserialize)]
 pub struct CreateReportRequest {
@@ -30,6 +31,16 @@ pub async fn create(
     headers: axum::http::HeaderMap,
     Json(body): Json<CreateReportRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if body.reason.len() > 2000 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "reason_too_long",
+                "Report reason must be 2000 characters or less"
+            ))),
+        ));
+    }
+
     let auth = AuthContext::from_headers(&headers).map_err(|e| {
         (
             StatusCode::UNAUTHORIZED,

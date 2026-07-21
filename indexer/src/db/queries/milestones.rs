@@ -81,10 +81,7 @@ pub async fn update_milestone_status(
     Ok(())
 }
 
-pub async fn complete_milestone_escrow(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn complete_milestone_escrow(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     sqlx::query(
         "UPDATE milestone_escrows SET status = 'completed', completed_at = ?1 WHERE id = ?2",
@@ -96,10 +93,7 @@ pub async fn complete_milestone_escrow(
     Ok(())
 }
 
-pub async fn refund_milestone_escrow(
-    pool: &Pool<Sqlite>,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn refund_milestone_escrow(pool: &Pool<Sqlite>, id: &str) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now().timestamp();
     sqlx::query(
         "UPDATE milestone_escrows SET status = 'refunded', completed_at = ?1 WHERE id = ?2",

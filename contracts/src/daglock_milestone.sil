@@ -25,6 +25,8 @@ contract DagLockMilestone(
     int currentMilestoneIndex,
     byte[32] treasuryKey
 ) {
+    int constant MIN_OUT = 1000;
+
     // ── Path A: Seller claims milestone after timeout ───────────
     entrypoint function release_milestone(
         sig sellerSig,
@@ -44,6 +46,8 @@ contract DagLockMilestone(
         require(tx.outputs[0].value == netAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
 
@@ -69,6 +73,8 @@ contract DagLockMilestone(
         require(tx.outputs[0].value == netAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
 
@@ -105,6 +111,8 @@ contract DagLockMilestone(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(pubkey(treasuryKey));
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }

@@ -153,7 +153,7 @@ pub async fn ensure_multi_escrows_table(pool: &Pool<Sqlite>) -> Result<(), sqlx:
                 settled_at INTEGER,
                 refunded_at INTEGER,
                 signatures TEXT NOT NULL DEFAULT '[]'
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -186,7 +186,7 @@ pub async fn ensure_milestone_escrows_table(pool: &Pool<Sqlite>) -> Result<(), s
                 status TEXT NOT NULL DEFAULT 'active',
                 created_at INTEGER NOT NULL,
                 completed_at INTEGER
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -231,7 +231,7 @@ pub async fn ensure_daily_stats_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::E
                 kas_usd_price REAL,
                 daa_score INTEGER,
                 created_at INTEGER
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -561,22 +561,18 @@ pub async fn ensure_deposits_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Erro
                 released_at INTEGER,
                 forfeited_at INTEGER,
                 forfeited_to TEXT
-            )"
+            )",
         )
         .execute(pool)
         .await?;
 
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_deposits_escrow_id ON deposits(escrow_id)"
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_deposits_escrow_id ON deposits(escrow_id)")
+            .execute(pool)
+            .await?;
 
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status)"
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status)")
+            .execute(pool)
+            .await?;
     }
 
     Ok(())
@@ -751,7 +747,7 @@ pub async fn ensure_chat_reveal_columns(pool: &Pool<Sqlite>) -> Result<(), sqlx:
                 created_at INTEGER NOT NULL,
                 anchor_tx_id TEXT,
                 anchor_daa_score INTEGER
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -785,19 +781,17 @@ pub async fn ensure_price_alerts_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::
                 triggered INTEGER DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 triggered_at INTEGER
-            )"
+            )",
         )
         .execute(pool)
         .await?;
 
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_price_alerts_address ON price_alerts(address)"
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_price_alerts_address ON price_alerts(address)")
+            .execute(pool)
+            .await?;
 
         sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_price_alerts_triggered ON price_alerts(triggered)"
+            "CREATE INDEX IF NOT EXISTS idx_price_alerts_triggered ON price_alerts(triggered)",
         )
         .execute(pool)
         .await?;
@@ -821,7 +815,7 @@ pub async fn ensure_price_history_table(pool: &Pool<Sqlite>) -> Result<(), sqlx:
                 timestamp INTEGER PRIMARY KEY,
                 price_usd REAL,
                 source TEXT DEFAULT 'coingecko'
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -911,32 +905,42 @@ pub async fn ensure_extra_indexes(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error
     // Composite index for the default offers query: status + creation order
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_offers_status_created
-         ON offers(status, created_at DESC)"
-    ).execute(pool).await?;
+         ON offers(status, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
 
     // Index for asset-based filtering on offers
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_offers_base_asset
-         ON offers(base_asset)"
-    ).execute(pool).await?;
+         ON offers(base_asset)",
+    )
+    .execute(pool)
+    .await?;
 
     // Index for escrow listing by buyer
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_escrows_buyer_status_created
-         ON escrows(buyer_address, status, created_at DESC)"
-    ).execute(pool).await?;
+         ON escrows(buyer_address, status, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
 
     // Index for escrow listing by seller
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_escrows_seller_status_created
-         ON escrows(seller_address, status, created_at DESC)"
-    ).execute(pool).await?;
+         ON escrows(seller_address, status, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
 
     // Index for asset type queries on escrows (tokens page)
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_escrows_asset_type
-         ON escrows(asset_type)"
-    ).execute(pool).await?;
+         ON escrows(asset_type)",
+    )
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

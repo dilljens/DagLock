@@ -362,12 +362,13 @@ pub async fn update_escalation_level(
     deadline: i64,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE jury_cases SET escalation_level = ?1, escalation_deadline = ?2 WHERE id = ?3"
+        "UPDATE jury_cases SET escalation_level = ?1, escalation_deadline = ?2 WHERE id = ?3",
     )
     .bind(level)
     .bind(deadline)
     .bind(case_id)
-    .execute(pool).await?;
+    .execute(pool)
+    .await?;
     Ok(())
 }
 
@@ -396,15 +397,19 @@ pub async fn find_escalatable_cases(
          WHERE escalation_deadline IS NOT NULL
            AND escalation_deadline <= ?1
            AND status IN ('voting', 'mediation')
-           AND escalation_level < 2"
+           AND escalation_level < 2",
     )
     .bind(now)
-    .fetch_all(pool).await?;
+    .fetch_all(pool)
+    .await?;
 
-    Ok(rows.into_iter().filter_map(|row| {
-        let id: String = row.try_get("id").ok()?;
-        let level: i64 = row.try_get("escalation_level").ok()?;
-        let status: String = row.try_get("status").ok()?;
-        Some((id, level, status))
-    }).collect())
+    Ok(rows
+        .into_iter()
+        .filter_map(|row| {
+            let id: String = row.try_get("id").ok()?;
+            let level: i64 = row.try_get("escalation_level").ok()?;
+            let status: String = row.try_get("status").ok()?;
+            Some((id, level, status))
+        })
+        .collect())
 }

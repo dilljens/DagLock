@@ -332,7 +332,8 @@ mod tests {
         args.no_wrpc = false; // --no-wrpc is now rejected on mainnet
         args.kaspa_api_url = "https://api.kaspa.org".into();
         args.database_url = "sqlite::memory:".into();
-        args.treasury_pubkey = Some("abababababababababababababababababababababababababababababababab".into());
+        args.treasury_pubkey =
+            Some("abababababababababababababababababababababababababababababababab".into());
         std::env::set_var("DAGLOCK_MESSAGE_KEY", "ab".repeat(32));
         args.validate();
         std::env::remove_var("DAGLOCK_MESSAGE_KEY");

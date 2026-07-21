@@ -198,8 +198,8 @@ pub fn compile_daglock_milestone(
         Expr::bytes(buyer_pk.to_vec()),
         Expr::bytes(seller_pk.to_vec()),
         Expr::int(total_amount),
-        milestone_amounts.into(),       // Vec<i64> → Expr::Array of ints
-        milestone_timeouts.into(),      // Vec<i64> → Expr::Array of ints
+        milestone_amounts.into(),  // Vec<i64> → Expr::Array of ints
+        milestone_timeouts.into(), // Vec<i64> → Expr::Array of ints
         Expr::int(current_milestone_index),
         Expr::bytes(treasury_pk.to_vec()),
     ];
@@ -230,7 +230,7 @@ pub fn compile_daglock_multi(
         Expr::bytes(party2_pk.to_vec()),
         Expr::bytes(party3_pk.to_vec()),
         Expr::bytes(party4_pk.to_vec()),
-        shares.into(),                  // Vec<i64> → Expr::Array of ints
+        shares.into(), // Vec<i64> → Expr::Array of ints
         Expr::bytes(trade_hash.to_vec()),
         Expr::int(timeout),
         Expr::bytes(treasury_pk.to_vec()),
@@ -403,9 +403,7 @@ pub fn daglock_reputation_source() -> &'static str {
 ///
 /// Arguments:
 /// - `treasury_key`: 32-byte compressed public key for fee collection
-pub fn compile_daglock_reputation(
-    treasury_key: &[u8],
-) -> CompiledContract<'static> {
+pub fn compile_daglock_reputation(treasury_key: &[u8]) -> CompiledContract<'static> {
     let source = daglock_reputation_source();
     let args = vec![Expr::bytes(treasury_key.to_vec())];
     compile_contract(source, &args, CompileOptions::default())
@@ -667,8 +665,7 @@ mod tests {
         let krc20_hex: String = krc20_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_krc20_template_hash={}", krc20_hex);
 
-        let softlock =
-            compile_daglock_vault_softlock(&zero, &[0u8; 32], &[0u8; 32], 500, &zero);
+        let softlock = compile_daglock_vault_softlock(&zero, &[0u8; 32], &[0u8; 32], 500, &zero);
         let (_, _, softlock_hash) = template_parts_and_hash(&softlock);
         let softlock_hex: String = softlock_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_vault_softlock_template_hash={}", softlock_hex);
@@ -694,23 +691,41 @@ mod tests {
         println!("daglock_advanced_template_hash={}", adv_hex);
 
         let sub = compile_daglock_subscription(
-            &zero, &zero, 1_000_000_000, 100_000_000, 86400, 1_700_000_000, 0, &zero,
+            &zero,
+            &zero,
+            1_000_000_000,
+            100_000_000,
+            86400,
+            1_700_000_000,
+            0,
+            &zero,
         );
         let (_, _, sub_hash) = template_parts_and_hash(&sub);
         let sub_hex: String = sub_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_subscription_template_hash={}", sub_hex);
 
         let milestone = compile_daglock_milestone(
-            &zero, &zero, 100_000, vec![100_000, 0, 0, 0, 0],
-            vec![1_700_000_000, 0, 0, 0, 0], 0, &zero,
+            &zero,
+            &zero,
+            100_000,
+            vec![100_000, 0, 0, 0, 0],
+            vec![1_700_000_000, 0, 0, 0, 0],
+            0,
+            &zero,
         );
         let (_, _, m_hash) = template_parts_and_hash(&milestone);
         let m_hex: String = m_hash.iter().map(|b| format!("{:02x}", b)).collect();
         println!("daglock_milestone_template_hash={}", m_hex);
 
         let multi = compile_daglock_multi(
-            &zero, &zero, &zero, &zero, vec![2500, 2500, 2500, 2500],
-            &zero_hash, 1_700_000_000, &zero,
+            &zero,
+            &zero,
+            &zero,
+            &zero,
+            vec![2500, 2500, 2500, 2500],
+            &zero_hash,
+            1_700_000_000,
+            &zero,
         );
         let (_, _, multi_hash) = template_parts_and_hash(&multi);
         let multi_hex: String = multi_hash.iter().map(|b| format!("{:02x}", b)).collect();
@@ -775,9 +790,7 @@ mod tests {
         let pk = [0u8; 32];
         let amounts = vec![1_000_000, 2_000_000, 0i64, 0, 0];
         let timeouts = vec![1_800_000_000, 1_900_000_000, 0i64, 0, 0];
-        let compiled = compile_daglock_milestone(
-            &pk, &pk, 3_000_000, amounts, timeouts, 0, &pk,
-        );
+        let compiled = compile_daglock_milestone(&pk, &pk, 3_000_000, amounts, timeouts, 0, &pk);
         assert_eq!(compiled.abi.len(), 5);
         let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"release_milestone"));
@@ -793,7 +806,15 @@ mod tests {
         let pk = [0u8; 32];
         let amounts = vec![1_000_000, 2_000_000, 0i64, 0, 0];
         let timeouts = vec![1_800_000_000, 1_900_000_000, 0i64, 0, 0];
-        let c1 = compile_daglock_milestone(&pk, &pk, 3_000_000, amounts.clone(), timeouts.clone(), 0, &pk);
+        let c1 = compile_daglock_milestone(
+            &pk,
+            &pk,
+            3_000_000,
+            amounts.clone(),
+            timeouts.clone(),
+            0,
+            &pk,
+        );
         let c2 = compile_daglock_milestone(&pk, &pk, 3_000_000, amounts, timeouts, 0, &pk);
         let (_, _, h1) = template_parts_and_hash(&c1);
         let (_, _, h2) = template_parts_and_hash(&c2);
@@ -815,7 +836,8 @@ mod tests {
     fn compiles_daglock_multi_with_valid_params() {
         let pk = [0u8; 32];
         let shares = vec![5_000i64, 3_000, 1_500, 500];
-        let compiled = compile_daglock_multi(&pk, &pk, &pk, &pk, shares, &[0u8; 32], 1_700_000_000, &pk);
+        let compiled =
+            compile_daglock_multi(&pk, &pk, &pk, &pk, shares, &[0u8; 32], 1_700_000_000, &pk);
         assert_eq!(compiled.abi.len(), 3);
         let names: Vec<&str> = compiled.abi.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"release"));
@@ -828,7 +850,16 @@ mod tests {
     fn multi_template_hash_is_deterministic() {
         let pk = [0u8; 32];
         let shares = vec![5_000i64, 3_000, 1_500, 500];
-        let c1 = compile_daglock_multi(&pk, &pk, &pk, &pk, shares.clone(), &[0u8; 32], 1_700_000_000, &pk);
+        let c1 = compile_daglock_multi(
+            &pk,
+            &pk,
+            &pk,
+            &pk,
+            shares.clone(),
+            &[0u8; 32],
+            1_700_000_000,
+            &pk,
+        );
         let c2 = compile_daglock_multi(&pk, &pk, &pk, &pk, shares, &[0u8; 32], 1_700_000_000, &pk);
         let (_, _, h1) = template_parts_and_hash(&c1);
         let (_, _, h2) = template_parts_and_hash(&c2);

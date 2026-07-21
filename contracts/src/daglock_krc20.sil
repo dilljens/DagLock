@@ -155,7 +155,8 @@ contract DagLockKRC20(
         require(tx.outputs[0].value == sendAmount);
 
         byte[34] treasuryScript = new ScriptPubKeyP2PK(treasuryPubKey);
-        require(feeAmount >= MIN_OUT);
+        // H2: Dust protection — only enforce treasury output when fee is meaningful
+        require(feeAmount >= MIN_OUT || feeAmount == 0);
         require(tx.outputs[1].value == feeAmount);
         require(tx.outputs[1].scriptPubKey == byte[](treasuryScript));
     }

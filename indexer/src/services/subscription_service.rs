@@ -54,10 +54,7 @@ pub struct SubscriptionService {
 
 #[allow(dead_code)]
 impl SubscriptionService {
-    pub fn new(
-        db: Pool<Sqlite>,
-        sig_verifier: Arc<dyn SignatureVerifier>,
-    ) -> Self {
+    pub fn new(db: Pool<Sqlite>, sig_verifier: Arc<dyn SignatureVerifier>) -> Self {
         Self { db, sig_verifier }
     }
 
@@ -68,10 +65,14 @@ impl SubscriptionService {
         auth_headers: Option<&axum::http::HeaderMap>,
     ) -> Result<Subscription, ServiceError> {
         if body.total_amount <= 0 {
-            return Err(ServiceError::InvalidInput("total_amount must be positive".into()));
+            return Err(ServiceError::InvalidInput(
+                "total_amount must be positive".into(),
+            ));
         }
         if body.installment_amount <= 0 {
-            return Err(ServiceError::InvalidInput("installment_amount must be positive".into()));
+            return Err(ServiceError::InvalidInput(
+                "installment_amount must be positive".into(),
+            ));
         }
         if body.installment_amount > body.total_amount {
             return Err(ServiceError::InvalidInput(
@@ -79,10 +80,14 @@ impl SubscriptionService {
             ));
         }
         if body.interval_seconds <= 0 {
-            return Err(ServiceError::InvalidInput("interval_seconds must be positive".into()));
+            return Err(ServiceError::InvalidInput(
+                "interval_seconds must be positive".into(),
+            ));
         }
         if body.max_periods <= 0 {
-            return Err(ServiceError::InvalidInput("max_periods must be positive".into()));
+            return Err(ServiceError::InvalidInput(
+                "max_periods must be positive".into(),
+            ));
         }
 
         let valid_addr = |a: &str| crate::api::escrows::validate_kaspa_address(a);
@@ -90,10 +95,14 @@ impl SubscriptionService {
             return Err(ServiceError::InvalidInput("invalid payer_address".into()));
         }
         if !valid_addr(&body.recipient_address) {
-            return Err(ServiceError::InvalidInput("invalid recipient_address".into()));
+            return Err(ServiceError::InvalidInput(
+                "invalid recipient_address".into(),
+            ));
         }
         if body.payer_address == body.recipient_address {
-            return Err(ServiceError::InvalidInput("payer and recipient cannot be the same".into()));
+            return Err(ServiceError::InvalidInput(
+                "payer and recipient cannot be the same".into(),
+            ));
         }
 
         if let Some(headers) = auth_headers {
@@ -109,9 +118,10 @@ impl SubscriptionService {
         }
 
         let sub = Subscription {
-            id: body.id.clone().unwrap_or_else(|| {
-                format!("sub_{}", uuid::Uuid::new_v4())
-            }),
+            id: body
+                .id
+                .clone()
+                .unwrap_or_else(|| format!("sub_{}", uuid::Uuid::new_v4())),
             payer_address: body.payer_address.clone(),
             recipient_address: body.recipient_address.clone(),
             total_amount: body.total_amount,
@@ -179,7 +189,9 @@ impl SubscriptionService {
         }
 
         if sub.current_period >= sub.max_periods {
-            return Err(ServiceError::Conflict("All installments have been drawn".into()));
+            return Err(ServiceError::Conflict(
+                "All installments have been drawn".into(),
+            ));
         }
 
         let advanced = queries::subscriptions::advance_subscription_period(&self.db, id)
@@ -187,7 +199,9 @@ impl SubscriptionService {
             .map_err(|_| ServiceError::Internal("Failed to advance subscription period".into()))?;
 
         if !advanced {
-            return Err(ServiceError::Conflict("Subscription could not be advanced".into()));
+            return Err(ServiceError::Conflict(
+                "Subscription could not be advanced".into(),
+            ));
         }
 
         let updated = queries::subscriptions::get_subscription(&self.db, id)
@@ -208,7 +222,9 @@ impl SubscriptionService {
         let sub = queries::subscriptions::get_subscription(&self.db, id)
             .await
             .map_err(|_| ServiceError::Internal("Failed to query subscription".into()))?
-            .ok_or_else(|| ServiceError::NotFound(format!("No subscription found with id '{id}'")))?;
+            .ok_or_else(|| {
+                ServiceError::NotFound(format!("No subscription found with id '{id}'"))
+            })?;
 
         if sub.status != "active" {
             return Err(ServiceError::Conflict(format!(

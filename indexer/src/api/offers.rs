@@ -31,10 +31,23 @@ pub async fn create(
     })?;
     // Verify signature
     let expected_message = format!("create:offer:{}", body.creator_address);
-    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
-        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!(ApiError::new(
+                    "forbidden",
+                    format!("Signature verification failed: {e}")
+                ))),
+            )
+        })?
     {
-        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new("forbidden", "Invalid signature"))),
+        ));
     }
     if auth.address != body.creator_address {
         return Err((
@@ -120,16 +133,16 @@ pub async fn create(
         if memo.len() > 500 {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(json!(ApiError::new("invalid_memo", "Memo must be 500 characters or less"))),
+                Json(json!(ApiError::new(
+                    "invalid_memo",
+                    "Memo must be 500 characters or less"
+                ))),
             ));
         }
     }
 
     let offer = Offer {
-        id: format!(
-            "off_{}",
-            Uuid::new_v4().to_string().replace('-', "")
-        ),
+        id: format!("off_{}", Uuid::new_v4().to_string().replace('-', "")),
         creator_address: creator_address.clone(),
         side: body.side,
         base_asset: body.base_asset,
@@ -225,10 +238,23 @@ pub async fn accept(
     })?;
     // Verify signature
     let expected_message = format!("accept:offer:{}", id);
-    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
-        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &expected_message)
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!(ApiError::new(
+                    "forbidden",
+                    format!("Signature verification failed: {e}")
+                ))),
+            )
+        })?
     {
-        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new("forbidden", "Invalid signature"))),
+        ));
     }
     if auth.address != body.counterparty_address {
         return Err((
@@ -325,10 +351,23 @@ pub async fn cancel(
             })?;
             // Verify signature
             let expected_message = format!("cancel:offer:{}", id);
-            if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &expected_message)
-                .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", format!("Signature verification failed: {e}"))))))?
+            if !state
+                .sig_verifier
+                .verify_signature(&auth.address, &auth.signature, &expected_message)
+                .map_err(|e| {
+                    (
+                        StatusCode::FORBIDDEN,
+                        Json(json!(ApiError::new(
+                            "forbidden",
+                            format!("Signature verification failed: {e}")
+                        ))),
+                    )
+                })?
             {
-                return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new("forbidden", "Invalid signature")))));
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(json!(ApiError::new("forbidden", "Invalid signature"))),
+                ));
             }
             if auth.address != o.creator_address {
                 return Err((

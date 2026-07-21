@@ -1,0 +1,16 @@
+{
+  "project": "DagLock",
+  "description": "Trustless escrow and atomic swaps on Kaspa",
+  "services": {
+    "vite-dev": {
+      "port": 5174,
+      "protocol": "http",
+      "description": "Vite dev server"
+    },
+    "sim-indexer": {
+      "port": 8543,
+      "protocol": "http",
+      "description": "Kaspa testnet indexer"
+    }
+  }
+}

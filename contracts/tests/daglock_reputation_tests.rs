@@ -1,7 +1,7 @@
 //! Execution tests for DagLock Reputation covenant.
 
-use daglock_contracts::{compile_daglock_reputation, entrypoints};
 use daglock_contracts::silverscript_lang::ast::Expr;
+use daglock_contracts::{compile_daglock_reputation, entrypoints};
 use kaspa_consensus_core::hashing::sighash::{
     calc_schnorr_signature_hash, SigHashReusedValuesUnsync,
 };
@@ -47,11 +47,17 @@ fn find_entrypoint(
     compiled: &daglock_contracts::silverscript_lang::compiler::CompiledContract,
     name: &str,
 ) -> u16 {
-    compiled.abi.iter().position(|e| e.name == name).map(|i| i as u16)
+    compiled
+        .abi
+        .iter()
+        .position(|e| e.name == name)
+        .map(|i| i as u16)
         .expect(format!("Entrypoint '{name}' not found").as_str())
 }
 
-fn compile_reputation_with_key(treasury: &Keypair) -> daglock_contracts::silverscript_lang::compiler::CompiledContract<'static> {
+fn compile_reputation_with_key(
+    treasury: &Keypair,
+) -> daglock_contracts::silverscript_lang::compiler::CompiledContract<'static> {
     compile_daglock_reputation(&pubkey_bytes(treasury))
 }
 
@@ -80,15 +86,7 @@ fn record_trade_with_both_signatures_succeeds() {
         TransactionOutput::new(input_value - 1000, p2pk_script(&pubkey_bytes(&treasury))),
     ];
 
-    let tx = Transaction::new(
-        1,
-        vec![input],
-        outputs,
-        0,
-        Default::default(),
-        0,
-        vec![],
-    );
+    let tx = Transaction::new(1, vec![input], outputs, 0, Default::default(), 0, vec![]);
 
     let utxo = UtxoEntry::new(
         input_value,
@@ -102,24 +100,14 @@ fn record_trade_with_both_signatures_succeeds() {
 
     // Generate both signatures (Schnorr + SIGHASH_ALL)
     let reused_sig = SigHashReusedValuesUnsync::new();
-    let sighash = calc_schnorr_signature_hash(
-        &mtx.as_verifiable(),
-        0,
-        SIG_HASH_ALL,
-        &reused_sig,
-    );
+    let sighash = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused_sig);
     let msg = secp256k1::Message::from_digest_slice(sighash.as_bytes().as_slice()).unwrap();
     let sig_raw_buyer = buyer.sign_schnorr(msg);
     let mut sig_buyer = Vec::with_capacity(65);
     sig_buyer.extend_from_slice(sig_raw_buyer.as_ref().as_slice());
     sig_buyer.push(SIG_HASH_ALL.to_u8());
 
-    let sighash2 = calc_schnorr_signature_hash(
-        &mtx.as_verifiable(),
-        0,
-        SIG_HASH_ALL,
-        &reused_sig,
-    );
+    let sighash2 = calc_schnorr_signature_hash(&mtx.as_verifiable(), 0, SIG_HASH_ALL, &reused_sig);
     let msg2 = secp256k1::Message::from_digest_slice(sighash2.as_bytes().as_slice()).unwrap();
     let sig_raw_seller = seller.sign_schnorr(msg2);
     let mut sig_seller = Vec::with_capacity(65);
@@ -133,9 +121,9 @@ fn record_trade_with_both_signatures_succeeds() {
             vec![
                 Expr::bytes(buyer_pk),
                 Expr::bytes(seller_pk),
-                Expr::int(100_000_000),    // amount (1 KAS)
-                Expr::int(0),               // outcome (settled)
-                Expr::int(1_700_000_000),   // timestamp
+                Expr::int(100_000_000),   // amount (1 KAS)
+                Expr::int(0),             // outcome (settled)
+                Expr::int(1_700_000_000), // timestamp
                 Expr::bytes(vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]), // nonce
                 Expr::bytes(sig_buyer),
                 Expr::bytes(sig_seller),
@@ -155,14 +143,8 @@ fn record_trade_with_both_signatures_succeeds() {
     };
 
     let ver_tx = mtx.as_verifiable();
-    let mut vm = TxScriptEngine::from_transaction_input(
-        &ver_tx,
-        &ver_tx.inputs()[0],
-        0,
-        &utxo,
-        ctx,
-        flags,
-    );
+    let mut vm =
+        TxScriptEngine::from_transaction_input(&ver_tx, &ver_tx.inputs()[0], 0, &utxo, ctx, flags);
     let result = vm.execute();
     assert!(result.is_ok(), "recordTrade should succeed: {:?}", result);
 }
