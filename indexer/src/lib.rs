@@ -9,6 +9,7 @@ pub mod config;
 pub mod crypto;
 pub mod db;
 pub mod listener;
+pub mod metrics;
 pub mod ratelimit;
 pub mod services;
 pub mod types;

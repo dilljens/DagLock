@@ -9,6 +9,7 @@ mod config;
 mod crypto;
 mod db;
 mod listener;
+mod metrics;
 mod ratelimit;
 mod services;
 mod types;

@@ -230,6 +230,9 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             post(reveal::clear_evidence),
         )
         .route("/v1/jury/candidates", get(jury::list_candidates))
+        // Metrics
+        .route("/v1/metrics", get(crate::metrics::metrics_handler))
+        .route("/v1/metrics/json", get(crate::metrics::metrics_json))
         // Blocklist & reports
         .route("/v1/blocks", get(blocks::list).post(blocks::create))
         .route("/v1/blocks/:id", post(blocks::delete))
