@@ -303,3 +303,109 @@ pub async fn list_candidates(
         json!({"candidates": jurors, "total": jurors.len() as i64}),
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::Rng;
+
+    #[test]
+    fn juror_count_small_escrow() {
+        let (count, threshold) = juror_count_and_threshold(500_000_000_000); // 5_000 KAS
+        assert_eq!(count, 3, "Under 10K KAS -> 3 jurors");
+        assert_eq!(threshold, 2, "Under 10K KAS -> threshold 2");
+    }
+
+    #[test]
+    fn juror_count_medium_escrow() {
+        let (count, threshold) = juror_count_and_threshold(5_000_000_000_000); // 50_000 KAS
+        assert_eq!(count, 5, "10K-100K KAS -> 5 jurors");
+        assert_eq!(threshold, 3, "10K-100K KAS -> threshold 3");
+    }
+
+    #[test]
+    fn juror_count_large_escrow() {
+        let (count, threshold) = juror_count_and_threshold(50_000_000_000_000); // 500_000 KAS
+        assert_eq!(count, 9, "Over 100K KAS -> 9 jurors");
+        assert_eq!(threshold, 5, "Over 100K KAS -> threshold 5");
+    }
+
+    #[test]
+    fn juror_count_boundary_just_below_10k() {
+        let (count, _) = juror_count_and_threshold(999_999_999_999); // 9_999.99 KAS
+        assert_eq!(count, 3, "Just below 10K KAS -> 3 jurors");
+    }
+
+    #[test]
+    fn juror_count_boundary_at_10k() {
+        let (count, _) = juror_count_and_threshold(1_000_000_000_000); // 10_000 KAS
+        assert_eq!(count, 5, "At 10K KAS -> 5 jurors");
+    }
+
+    #[test]
+    fn juror_count_boundary_at_100k() {
+        let (count, _) = juror_count_and_threshold(10_000_000_000_000); // 100_000 KAS
+        assert_eq!(count, 9, "At 100K KAS -> 9 jurors");
+    }
+
+    #[test]
+    fn jury_selection_distribution_is_reasonably_uniform() {
+        use std::collections::HashMap;
+
+        let pool: Vec<usize> = (0..100).collect();
+        let mut counts: HashMap<usize, usize> = HashMap::new();
+
+        // Run selection 10_000 times and track which indices get picked
+        let needed = 20;
+        for _ in 0..10_000 {
+            let mut indices: Vec<usize> = (0..pool.len()).collect();
+            for i in (pool.len() - needed..pool.len()).rev() {
+                let j = rand::thread_rng().gen_range(0..=i);
+                indices.swap(i, j);
+            }
+            let selected: Vec<&usize> = indices[pool.len() - needed..].iter().collect();
+            for &idx in selected {
+                *counts.entry(idx).or_default() += 1;
+            }
+        }
+
+        // Every index should have been selected roughly equally
+        let total_selections: usize = counts.values().sum();
+        let expected_per_index = total_selections / pool.len();
+        let tolerance = (expected_per_index as f64 * 0.25) as usize; // 25% tolerance
+
+        for &count in counts.values() {
+            assert!(
+                count.abs_diff(expected_per_index) <= tolerance,
+                "Selection count {count} for an index outside expected range \
+                 ({expected_per_index} ± {tolerance})"
+            );
+        }
+    }
+
+    #[test]
+    fn jury_selection_picks_correct_number() {
+        let pool: Vec<i32> = (0..50).collect();
+        let needed = 10;
+        let mut indices: Vec<usize> = (0..pool.len()).collect();
+        for i in (pool.len() - needed..pool.len()).rev() {
+            let j = rand::thread_rng().gen_range(0..=i);
+            indices.swap(i, j);
+        }
+        let selected: Vec<i32> = indices[pool.len() - needed..]
+            .iter()
+            .map(|&i| pool[i])
+            .collect();
+
+        assert_eq!(
+            selected.len(),
+            needed,
+            "Should select exactly {needed} jurors"
+        );
+        // All selected should be unique
+        let mut unique = selected.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), needed, "All selected jurors should be unique");
+    }
+}

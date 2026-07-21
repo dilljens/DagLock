@@ -21,7 +21,13 @@ async fn verify_milestone_auth(
     action: &str,
 ) -> Result<(), (StatusCode, Json<Value>)> {
     let auth = AuthContext::from_headers(headers).map_err(|e| {
-        (StatusCode::UNAUTHORIZED, Json(json!(crate::types::ApiError::new("unauthorized", e.to_string()))))
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!(crate::types::ApiError::new(
+                "unauthorized",
+                e.to_string()
+            ))),
+        )
     })?;
 
     // Check caller is buyer or seller
@@ -30,33 +36,58 @@ async fn verify_milestone_auth(
     if !is_buyer && !is_seller {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!(crate::types::ApiError::new("forbidden", "Only escrow parties can perform this action"))),
+            Json(json!(crate::types::ApiError::new(
+                "forbidden",
+                "Only escrow parties can perform this action"
+            ))),
         ));
     }
 
     let parsed = parse_message(&auth.message).map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(json!(crate::types::ApiError::new("invalid_message", e.to_string()))))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!(crate::types::ApiError::new(
+                "invalid_message",
+                e.to_string()
+            ))),
+        )
     })?;
 
     if parsed.action != action {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!(crate::types::ApiError::new("forbidden", format!("Message must be '{action}:{{id}}:ts:nonce'")))),
+            Json(json!(crate::types::ApiError::new(
+                "forbidden",
+                format!("Message must be '{action}:{{id}}:ts:nonce'")
+            ))),
         ));
     }
 
-    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message)
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &auth.message)
         .unwrap_or(false)
     {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!(crate::types::ApiError::new("forbidden", "Invalid signature"))),
+            Json(json!(crate::types::ApiError::new(
+                "forbidden",
+                "Invalid signature"
+            ))),
         ));
     }
 
-    verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
-        (StatusCode::FORBIDDEN, Json(json!(crate::types::ApiError::new("forbidden", e.to_string()))))
-    })?;
+    verify_nonce(&state.db, &parsed, &auth.address)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!(crate::types::ApiError::new(
+                    "forbidden",
+                    e.to_string()
+                ))),
+            )
+        })?;
 
     Ok(())
 }
@@ -76,7 +107,9 @@ pub async fn create(
     if body.buyer_address == body.seller_address {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "self_referential", "message": "Buyer and seller must be different"})),
+            Json(
+                json!({"error": "self_referential", "message": "Buyer and seller must be different"}),
+            ),
         ));
     }
     if body.total_amount <= 0 {
@@ -94,14 +127,18 @@ pub async fn create(
     if body.milestone_amounts.len() != body.milestone_timeouts.len() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_milestones", "message": "Milestone amounts and timeouts must match"})),
+            Json(
+                json!({"error": "invalid_milestones", "message": "Milestone amounts and timeouts must match"}),
+            ),
         ));
     }
     let total: i64 = body.milestone_amounts.iter().sum();
     if total != body.total_amount {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_milestones", "message": "Milestone amounts must sum to total_amount"})),
+            Json(
+                json!({"error": "invalid_milestones", "message": "Milestone amounts must sum to total_amount"}),
+            ),
         ));
     }
 
@@ -150,21 +187,25 @@ pub async fn list(
     if address.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_address", "message": "address query parameter is required"})),
+            Json(
+                json!({"error": "invalid_address", "message": "address query parameter is required"}),
+            ),
         ));
     }
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
 
-    let (milestones, total) = queries::list_milestones_by_address(&state.db, address, limit, offset)
-        .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
-            )
-        })?;
+    let (milestones, total) = queries::list_milestones_by_address(
+        &state.db, address, limit, offset,
+    )
+    .await
+    .map_err(|_e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
+        )
+    })?;
 
     Ok(Json(json!({
         "milestones": milestones,
@@ -226,7 +267,9 @@ pub async fn release_milestone(
     if escrow.status != "active" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)})),
+            Json(
+                json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)}),
+            ),
         ));
     }
 
@@ -244,7 +287,9 @@ pub async fn release_milestone(
     if escrow.milestone_statuses[idx] != "pending" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "already_released", "message": "Current milestone is not pending"})),
+            Json(
+                json!({"error": "already_released", "message": "Current milestone is not pending"}),
+            ),
         ));
     }
 
@@ -316,7 +361,9 @@ pub async fn approve_milestone(
     if escrow.status != "active" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)})),
+            Json(
+                json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)}),
+            ),
         ));
     }
 
@@ -334,7 +381,9 @@ pub async fn approve_milestone(
     if escrow.milestone_statuses[idx] != "pending" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "already_processed", "message": "Current milestone is not pending"})),
+            Json(
+                json!({"error": "already_processed", "message": "Current milestone is not pending"}),
+            ),
         ));
     }
 
@@ -405,21 +454,30 @@ pub async fn dispute(
     if escrow.status != "active" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)})),
+            Json(
+                json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)}),
+            ),
         ));
     }
 
     // Verify caller is authorized
     verify_milestone_auth(&state, &headers, &escrow, "dispute").await?;
 
-    queries::update_milestone_status(&state.db, &id, escrow.current_milestone, &escrow.milestone_statuses)
-        .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "database_error", "message": "Failed to update milestone escrow"})),
-            )
-        })?;
+    queries::update_milestone_status(
+        &state.db,
+        &id,
+        escrow.current_milestone,
+        &escrow.milestone_statuses,
+    )
+    .await
+    .map_err(|_e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(
+                json!({"error": "database_error", "message": "Failed to update milestone escrow"}),
+            ),
+        )
+    })?;
 
     Ok(Json(json!({
         "status": "disputed",
@@ -457,7 +515,9 @@ pub async fn refund(
     if escrow.status != "active" && escrow.status != "disputed" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', cannot refund", escrow.status)})),
+            Json(
+                json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', cannot refund", escrow.status)}),
+            ),
         ));
     }
 
@@ -509,7 +569,9 @@ pub async fn complete(
     if escrow.status != "active" {
         return Err((
             StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)})),
+            Json(
+                json!({"error": "invalid_status", "message": format!("Milestone escrow is '{}', not 'active'", escrow.status)}),
+            ),
         ));
     }
 
@@ -530,4 +592,128 @@ pub async fn complete(
         "escrow_id": id,
         "message": "Milestone escrow completed. All funds released."
     })))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::auth::MockVerifier;
+    use axum::http::HeaderMap;
+
+    fn test_escrow() -> MilestoneEscrow {
+        MilestoneEscrow {
+            id: "ms_001".to_string(),
+            lock_tx_id: "tx123".to_string(),
+            buyer_address:
+                "kaspatest:qyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpk58a75"
+                    .to_string(),
+            seller_address:
+                "kaspatest:qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhqrxplya"
+                    .to_string(),
+            total_amount: 1_000_000_000,
+            milestone_amounts: vec![500_000_000, 500_000_000],
+            milestone_timeouts: vec![1000, 2000],
+            current_milestone: 0,
+            milestone_statuses: vec!["pending".to_string(), "pending".to_string()],
+            status: "active".to_string(),
+            created_at: 1_700_000_000,
+            completed_at: None,
+        }
+    }
+
+    async fn test_state() -> AppState {
+        use crate::db::init_pool;
+        let pool = init_pool("sqlite::memory:").await.unwrap();
+        let (ws_tx, _) = tokio::sync::broadcast::channel(4096);
+        let pool_clone = pool.clone();
+        AppState {
+            db: pool_clone,
+            started_at: std::time::Instant::now(),
+            network: "testnet-11".to_string(),
+            wrpc_url: None,
+            daglock_kas_template: None,
+            daglock_krc20_template: None,
+            daglock_vault_softlock_template: None,
+            daglock_vault_multisig_template: None,
+            verifier: std::sync::Arc::new(crate::verification::MockVerifier),
+            sig_verifier: std::sync::Arc::new(MockVerifier::new()),
+            ws_tx,
+            treasury_pubkey: None,
+            explorer_base_url: "https://kas.fyi".to_string(),
+            email_service: None,
+            ai_mediator_api_key: None,
+            ai_mediator_model: None,
+            mock_chat_sig: false,
+            anchor_service: std::sync::Arc::new(crate::services::anchor::AnchorService::new(
+                pool.clone(),
+                None,
+                None,
+            )),
+            rate_limiter: std::sync::Arc::new(crate::ratelimit::RateLimiter::new()),
+            admin_token: None,
+        }
+    }
+
+    fn auth_headers(address: &str, action: &str, escrow_id: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-daglock-address", address.parse().unwrap());
+        headers.insert("x-daglock-signature", "ff".repeat(32).parse().unwrap());
+        headers.insert(
+            "x-daglock-message",
+            format!(
+                "{action}:{escrow_id}:{}:{}",
+                chrono::Utc::now().timestamp(),
+                crate::auth::generate_nonce()
+            )
+            .parse()
+            .unwrap(),
+        );
+        headers
+    }
+
+    #[tokio::test]
+    async fn verify_milestone_auth_buyer_allowed() {
+        let state = test_state().await;
+        let escrow = test_escrow();
+        let headers = auth_headers(&escrow.buyer_address, "release", &escrow.id);
+        let result = verify_milestone_auth(&state, &headers, &escrow, "release").await;
+        assert!(result.is_ok(), "Buyer should be authorized");
+    }
+
+    #[tokio::test]
+    async fn verify_milestone_auth_seller_allowed() {
+        let state = test_state().await;
+        let escrow = test_escrow();
+        let headers = auth_headers(&escrow.seller_address, "release", &escrow.id);
+        let result = verify_milestone_auth(&state, &headers, &escrow, "release").await;
+        assert!(result.is_ok(), "Seller should be authorized");
+    }
+
+    #[tokio::test]
+    async fn verify_milestone_auth_unauthorized_address_rejected() {
+        let state = test_state().await;
+        let escrow = test_escrow();
+        let headers = auth_headers("kaspa:outsider", "release", &escrow.id);
+        let result = verify_milestone_auth(&state, &headers, &escrow, "release").await;
+        assert!(result.is_err(), "Outsider should be rejected");
+    }
+
+    #[tokio::test]
+    async fn verify_milestone_auth_wrong_action_rejected() {
+        let state = test_state().await;
+        let escrow = test_escrow();
+        let headers = auth_headers(&escrow.buyer_address, "release", &escrow.id);
+        // Call with "approve" action but message says "release"
+        let result = verify_milestone_auth(&state, &headers, &escrow, "approve").await;
+        assert!(result.is_err(), "Wrong action mismatch should be rejected");
+    }
+
+    #[tokio::test]
+    async fn verify_milestone_auth_missing_headers_rejected() {
+        let state = test_state().await;
+        let escrow = test_escrow();
+        let headers = HeaderMap::new(); // empty headers
+        let result = verify_milestone_auth(&state, &headers, &escrow, "release").await;
+        assert!(result.is_err(), "Missing headers should be rejected");
+    }
 }

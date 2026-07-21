@@ -257,15 +257,12 @@ pub async fn atomic_swap(
 /// - Leading `=` `+` `-` `@` are prefixed with a tab to prevent Excel formula injection
 fn csv_escape(s: &str) -> String {
     // Prevent CSV formula injection by prefixing dangerous leading chars
-    let sanitized = if s.starts_with('=')
-        || s.starts_with('+')
-        || s.starts_with('-')
-        || s.starts_with('@')
-    {
-        format!("\t{}", s)
-    } else {
-        s.to_string()
-    };
+    let sanitized =
+        if s.starts_with('=') || s.starts_with('+') || s.starts_with('-') || s.starts_with('@') {
+            format!("\t{}", s)
+        } else {
+            s.to_string()
+        };
 
     if sanitized.contains(',')
         || sanitized.contains('"')
@@ -388,18 +385,18 @@ pub async fn create(
         },
         price_type: body.price_type.clone(),
         invoice_id: body.invoice_id.clone(),
-            memo: body.memo.clone(),
-            auto_settle_timeout: body.auto_settle_timeout,
-            mediation_status: None,
-            mediation_buyer_claim: None,
-            mediation_seller_claim: None,
-            mediation_result: None,
-            mediation_expires_at: None,
-            mediation_buyer_accepted: None,
-            mediation_seller_accepted: None,
-            chat_pubkey_buyer: body.chat_pubkey.clone(),
-            chat_pubkey_seller: None,
-        };
+        memo: body.memo.clone(),
+        auto_settle_timeout: body.auto_settle_timeout,
+        mediation_status: None,
+        mediation_buyer_claim: None,
+        mediation_seller_claim: None,
+        mediation_result: None,
+        mediation_expires_at: None,
+        mediation_buyer_accepted: None,
+        mediation_seller_accepted: None,
+        chat_pubkey_buyer: body.chat_pubkey.clone(),
+        chat_pubkey_seller: None,
+    };
 
     queries::insert_escrow(&state.db, &escrow)
         .await
@@ -407,13 +404,8 @@ pub async fn create(
 
     // If this escrow is linked to an invoice, update invoice status
     if let Some(ref inv_id) = body.invoice_id {
-        let _ = queries::link_invoice_to_escrow(
-            &state.db,
-            inv_id,
-            &escrow.id,
-            &body.buyer_address,
-        )
-        .await;
+        let _ = queries::link_invoice_to_escrow(&state.db, inv_id, &escrow.id, &body.buyer_address)
+            .await;
     }
 
     let _ = state.ws_tx.send(WsEvent::escrow_created(&escrow.id));
@@ -436,15 +428,24 @@ async fn validate_create_request(
     // Optional auth: verify buyer address if auth headers present
     if headers.contains_key("x-daglock-address") {
         let auth = AuthContext::from_headers(headers).map_err(|e| {
-            (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new("unauthorized", e.to_string()))))
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(json!(ApiError::new("unauthorized", e.to_string()))),
+            )
         })?;
         if auth.address != body.buyer_address {
-            return Err(forbidden("forbidden", "Signed address must match buyer_address"));
+            return Err(forbidden(
+                "forbidden",
+                "Signed address must match buyer_address",
+            ));
         }
     }
 
     if !validate_kaspa_address(&body.buyer_address) {
-        return Err(bad_request("invalid_address", "Invalid buyer Kaspa address"));
+        return Err(bad_request(
+            "invalid_address",
+            "Invalid buyer Kaspa address",
+        ));
     }
     if body.buyer_address.len() > 100 {
         return Err(bad_request("invalid_address", "Buyer address too long"));
@@ -452,10 +453,16 @@ async fn validate_create_request(
 
     if let Some(ref seller) = body.seller_address {
         if seller == &body.buyer_address {
-            return Err(bad_request("self_referential", "Buyer and seller cannot be the same address"));
+            return Err(bad_request(
+                "self_referential",
+                "Buyer and seller cannot be the same address",
+            ));
         }
         if !validate_kaspa_address(seller) {
-            return Err(bad_request("invalid_address", "Invalid seller Kaspa address"));
+            return Err(bad_request(
+                "invalid_address",
+                "Invalid seller Kaspa address",
+            ));
         }
         if seller.len() > 100 {
             return Err(bad_request("invalid_address", "Seller address too long"));
@@ -464,13 +471,19 @@ async fn validate_create_request(
 
     if let Some(ref memo) = body.memo {
         if memo.len() > 500 {
-            return Err(bad_request("invalid_memo", "Memo must be 500 characters or less"));
+            return Err(bad_request(
+                "invalid_memo",
+                "Memo must be 500 characters or less",
+            ));
         }
     }
 
     if let Some(ref med) = body.mediator_key {
         if !med.is_empty() && !validate_kaspa_address(med) {
-            return Err(bad_request("invalid_address", "Invalid mediator Kaspa address"));
+            return Err(bad_request(
+                "invalid_address",
+                "Invalid mediator Kaspa address",
+            ));
         }
     }
 
@@ -488,21 +501,27 @@ async fn validate_create_request(
                 None => false,
             });
             if !is_known {
-                return Err(bad_request("unknown_template",
-                    "Template hash does not match any known DagLock covenant."));
+                return Err(bad_request(
+                    "unknown_template",
+                    "Template hash does not match any known DagLock covenant.",
+                ));
             }
         }
     }
 
     if let Some(ref trade_hash) = body.trade_hash {
         if !trade_hash.is_empty() {
-            daglock_shared::validate_trade_hash(trade_hash)
-                .map_err(|e| bad_request("invalid_trade_hash", format!("Invalid trade hash: {e}")))?;
+            daglock_shared::validate_trade_hash(trade_hash).map_err(|e| {
+                bad_request("invalid_trade_hash", format!("Invalid trade hash: {e}"))
+            })?;
         }
     }
 
     if body.amount_sompi > 100_000_000_000_000 {
-        return Err(bad_request("invalid_amount", "Amount exceeds maximum (1M KAS)"));
+        return Err(bad_request(
+            "invalid_amount",
+            "Amount exceeds maximum (1M KAS)",
+        ));
     }
 
     if let Ok((existing, _)) =
@@ -511,7 +530,10 @@ async fn validate_create_request(
         if existing.iter().any(|e| {
             e.lock_tx_id == body.lock_tx_id && e.lock_tx_output_index == body.lock_tx_output_index
         }) {
-            return Err(conflict("duplicate_lock", "An escrow already exists for this UTXO"));
+            return Err(conflict(
+                "duplicate_lock",
+                "An escrow already exists for this UTXO",
+            ));
         }
     }
 
@@ -521,15 +543,24 @@ async fn validate_create_request(
 // ── Error helpers for validation ────────────────────────────────────
 
 fn bad_request(code: &'static str, msg: impl std::fmt::Display) -> (StatusCode, Json<Value>) {
-    (StatusCode::BAD_REQUEST, Json(json!(ApiError::new(code, msg.to_string()))))
+    (
+        StatusCode::BAD_REQUEST,
+        Json(json!(ApiError::new(code, msg.to_string()))),
+    )
 }
 
 fn forbidden(code: &'static str, msg: impl std::fmt::Display) -> (StatusCode, Json<Value>) {
-    (StatusCode::FORBIDDEN, Json(json!(ApiError::new(code, msg.to_string()))))
+    (
+        StatusCode::FORBIDDEN,
+        Json(json!(ApiError::new(code, msg.to_string()))),
+    )
 }
 
 fn conflict(code: &'static str, msg: impl std::fmt::Display) -> (StatusCode, Json<Value>) {
-    (StatusCode::CONFLICT, Json(json!(ApiError::new(code, msg.to_string()))))
+    (
+        StatusCode::CONFLICT,
+        Json(json!(ApiError::new(code, msg.to_string()))),
+    )
 }
 
 /// GET /v1/stats
@@ -600,7 +631,10 @@ pub async fn dispute(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // Validate reason length
     if body.reason.len() > 2000 {
-        return Err(bad_request("reason_too_long", "Dispute reason must be 2000 characters or less"));
+        return Err(bad_request(
+            "reason_too_long",
+            "Dispute reason must be 2000 characters or less",
+        ));
     }
 
     let escrow = queries::get_escrow(&state.db, &id).await.map_err(|_e| {
@@ -831,9 +865,7 @@ pub async fn auto_settle(
     );
     svc.auto_settle(&id)
         .await
-        .map(|_| {
-            Json(json!({ "status": "settled", "escrow_id": id, "method": "auto_settle" }))
-        })
+        .map(|_| Json(json!({ "status": "settled", "escrow_id": id, "method": "auto_settle" })))
         .map_err(service_error)
 }
 
@@ -847,63 +879,93 @@ pub async fn submit_chat_pubkey(
     Json(body): Json<ChatPubkeyRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     if body.chat_pubkey.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!(ApiError::new(
-            "invalid_pubkey", "chat_pubkey must be non-empty"
-        )))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new(
+                "invalid_pubkey",
+                "chat_pubkey must be non-empty"
+            ))),
+        ));
     }
 
     let auth = AuthContext::from_headers(&headers).map_err(|e| {
-        (StatusCode::UNAUTHORIZED, Json(json!(ApiError::new(
-            "unauthorized", e.to_string()
-        ))))
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!(ApiError::new("unauthorized", e.to_string()))),
+        )
     })?;
 
     // Verify message is V2 format with nonce (action:escrow_id:timestamp:nonce)
     let parsed = parse_message(&auth.message).map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(json!(ApiError::new(
-            "invalid_message", e.to_string()
-        ))))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!(ApiError::new("invalid_message", e.to_string()))),
+        )
     })?;
 
     if parsed.action != "chat_pubkey" || parsed.escrow_id != escrow_id {
-        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new(
-            "forbidden", "Message must be 'chat_pubkey:{escrow_id}:timestamp:nonce'"
-        )))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "Message must be 'chat_pubkey:{escrow_id}:timestamp:nonce'"
+            ))),
+        ));
     }
 
-    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message)
-        .map_err(|e| (StatusCode::FORBIDDEN, Json(json!(ApiError::new(
-            "forbidden", format!("Signature verification failed: {e}")
-        )))))?
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &auth.message)
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!(ApiError::new(
+                    "forbidden",
+                    format!("Signature verification failed: {e}")
+                ))),
+            )
+        })?
     {
-        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new(
-            "forbidden", "Invalid signature"
-        )))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new("forbidden", "Invalid signature"))),
+        ));
     }
 
     // Replay protection via nonce
-    verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
-        (StatusCode::FORBIDDEN, Json(json!(ApiError::new(
-            "forbidden", e.to_string()
-        ))))
-    })?;
+    verify_nonce(&state.db, &parsed, &auth.address)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!(ApiError::new("forbidden", e.to_string()))),
+            )
+        })?;
 
     // Verify the escrow exists and the caller is a party
     let escrow = queries::get_escrow(&state.db, &escrow_id)
         .await
         .map_err(|_e| crate::types::internal_error())?
         .ok_or_else(|| {
-            (StatusCode::NOT_FOUND, Json(json!(ApiError::new(
-                "escrow_not_found", format!("No escrow found with id '{escrow_id}'")
-            ))))
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!(ApiError::new(
+                    "escrow_not_found",
+                    format!("No escrow found with id '{escrow_id}'")
+                ))),
+            )
         })?;
 
     if auth.address != escrow.buyer_address
         && escrow.seller_address.as_deref() != Some(&auth.address)
     {
-        return Err((StatusCode::FORBIDDEN, Json(json!(ApiError::new(
-            "forbidden", "Only escrow parties can submit chat pubkeys"
-        )))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!(ApiError::new(
+                "forbidden",
+                "Only escrow parties can submit chat pubkeys"
+            ))),
+        ));
     }
 
     queries::update_chat_pubkey(&state.db, &escrow_id, &auth.address, &body.chat_pubkey)
@@ -929,4 +991,66 @@ fn service_error(e: crate::services::escrow_service::ServiceError) -> (StatusCod
         ServiceError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
     };
     (status, Json(json!(ApiError::new(e.error_code(), message))))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn csv_escape_plain_text_passes_through() {
+        assert_eq!(csv_escape("hello"), "hello");
+        assert_eq!(csv_escape("abc123"), "abc123");
+        assert_eq!(csv_escape(""), "");
+    }
+
+    #[test]
+    fn csv_escape_quotes_fields_with_commas() {
+        assert_eq!(csv_escape("a,b"), "\"a,b\"");
+        assert_eq!(csv_escape("hello,world"), "\"hello,world\"");
+    }
+
+    #[test]
+    fn csv_escape_quotes_fields_with_newlines() {
+        assert_eq!(csv_escape("line1\nline2"), "\"line1\nline2\"");
+        assert_eq!(csv_escape("a\r\nb"), "\"a\r\nb\"");
+    }
+
+    #[test]
+    fn csv_escape_quotes_fields_with_embedded_quotes() {
+        assert_eq!(csv_escape("say \"hello\""), "\"say \"\"hello\"\"\"");
+    }
+
+    #[test]
+    fn csv_escape_prevents_formula_injection() {
+        assert_eq!(csv_escape("=SUM(A1:A10)"), "\t=SUM(A1:A10)");
+        assert_eq!(csv_escape("+cmd|' /C calc'"), "\t+cmd|' /C calc'");
+        assert_eq!(csv_escape("-1+1"), "\t-1+1");
+        assert_eq!(csv_escape("@SUM"), "\t@SUM");
+    }
+
+    #[test]
+    fn csv_escape_handles_mixed_dangerous_chars() {
+        // Starts with dangerous char AND contains comma = quoted + prefixed
+        let result = csv_escape("=1,2");
+        assert_eq!(result, "\"\t=1,2\"");
+    }
+
+    #[test]
+    fn validate_kaspa_address_mainnet() {
+        assert!(validate_kaspa_address(
+            "kaspa:qyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpk58a75"
+        ));
+    }
+
+    #[test]
+    fn validate_kaspa_address_rejects_empty() {
+        assert!(!validate_kaspa_address(""));
+    }
+
+    #[test]
+    fn validate_kaspa_address_rejects_no_prefix() {
+        assert!(!validate_kaspa_address("kaspa:"));
+        assert!(!validate_kaspa_address("not_kaspa_address"));
+    }
 }

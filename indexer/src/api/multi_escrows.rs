@@ -331,3 +331,123 @@ pub async fn swap(
         "message": "Multi-party escrow settled via atomic swap."
     })))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::auth::MockVerifier;
+    use axum::http::HeaderMap;
+
+    fn test_multi_escrow() -> MultiEscrow {
+        MultiEscrow {
+            id: "multi_001".to_string(),
+            lock_tx_id: "tx123".to_string(),
+            parties: vec![
+                "kaspatest:qyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpk58a75"
+                    .to_string(),
+                "kaspatest:qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhqrxplya"
+                    .to_string(),
+            ],
+            shares: vec![5000, 5000],
+            total_amount: 1_000_000_000,
+            status: "active".to_string(),
+            created_at: 1_700_000_000,
+            settled_at: None,
+            refunded_at: None,
+            signatures: Vec::new(),
+        }
+    }
+
+    async fn test_state() -> AppState {
+        use crate::db::init_pool;
+        let pool = init_pool("sqlite::memory:").await.unwrap();
+        let (ws_tx, _) = tokio::sync::broadcast::channel(4096);
+        let pool_clone = pool.clone();
+        AppState {
+            db: pool_clone,
+            started_at: std::time::Instant::now(),
+            network: "testnet-11".to_string(),
+            wrpc_url: None,
+            daglock_kas_template: None,
+            daglock_krc20_template: None,
+            daglock_vault_softlock_template: None,
+            daglock_vault_multisig_template: None,
+            verifier: std::sync::Arc::new(crate::verification::MockVerifier),
+            sig_verifier: std::sync::Arc::new(MockVerifier::new()),
+            ws_tx,
+            treasury_pubkey: None,
+            explorer_base_url: "https://kas.fyi".to_string(),
+            email_service: None,
+            ai_mediator_api_key: None,
+            ai_mediator_model: None,
+            mock_chat_sig: false,
+            anchor_service: std::sync::Arc::new(crate::services::anchor::AnchorService::new(
+                pool, None, None,
+            )),
+            rate_limiter: std::sync::Arc::new(crate::ratelimit::RateLimiter::new()),
+            admin_token: None,
+        }
+    }
+
+    fn auth_headers(address: &str, action: &str, escrow_id: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-daglock-address", address.parse().unwrap());
+        headers.insert("x-daglock-signature", "ff".repeat(32).parse().unwrap());
+        headers.insert(
+            "x-daglock-message",
+            format!(
+                "{action}:{escrow_id}:{}:{}",
+                chrono::Utc::now().timestamp(),
+                crate::auth::generate_nonce()
+            )
+            .parse()
+            .unwrap(),
+        );
+        headers
+    }
+
+    #[tokio::test]
+    async fn verify_multi_auth_party_allowed() {
+        let state = test_state().await;
+        let escrow = test_multi_escrow();
+        let headers = auth_headers(&escrow.parties[0], "refund", &escrow.id);
+        let result = verify_multi_escrow_auth(&state, &headers, &escrow, "refund").await;
+        assert!(result.is_ok(), "Party should be authorized");
+    }
+
+    #[tokio::test]
+    async fn verify_multi_auth_other_party_allowed() {
+        let state = test_state().await;
+        let escrow = test_multi_escrow();
+        let headers = auth_headers(&escrow.parties[1], "refund", &escrow.id);
+        let result = verify_multi_escrow_auth(&state, &headers, &escrow, "refund").await;
+        assert!(result.is_ok(), "Other party should be authorized");
+    }
+
+    #[tokio::test]
+    async fn verify_multi_auth_outsider_rejected() {
+        let state = test_state().await;
+        let escrow = test_multi_escrow();
+        let headers = auth_headers("kaspa:outsider", "refund", &escrow.id);
+        let result = verify_multi_escrow_auth(&state, &headers, &escrow, "refund").await;
+        assert!(result.is_err(), "Outsider should be rejected");
+    }
+
+    #[tokio::test]
+    async fn verify_multi_auth_wrong_action_rejected() {
+        let state = test_state().await;
+        let escrow = test_multi_escrow();
+        let headers = auth_headers(&escrow.parties[0], "refund", &escrow.id);
+        let result = verify_multi_escrow_auth(&state, &headers, &escrow, "swap").await;
+        assert!(result.is_err(), "Wrong action mismatch should be rejected");
+    }
+
+    #[tokio::test]
+    async fn verify_multi_auth_missing_headers_rejected() {
+        let state = test_state().await;
+        let escrow = test_multi_escrow();
+        let headers = HeaderMap::new();
+        let result = verify_multi_escrow_auth(&state, &headers, &escrow, "refund").await;
+        assert!(result.is_err(), "Missing headers should be rejected");
+    }
+}
