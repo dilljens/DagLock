@@ -16,19 +16,19 @@ pub mod jury;
 pub mod mediator;
 pub mod messages;
 pub mod milestones;
-pub mod pay;
 pub mod multi_escrows;
 pub mod network;
 pub mod notifications;
-pub mod price_alerts;
 pub mod offers;
-pub mod reveal;
+pub mod pay;
+pub mod price_alerts;
 pub mod receipts;
 pub mod reports;
 pub mod reputation;
-pub mod subscriptions;
+pub mod reveal;
 pub mod stats;
 pub mod status;
+pub mod subscriptions;
 pub mod swap;
 pub mod tokens;
 pub mod vaults;
@@ -48,9 +48,16 @@ use sqlx::{Pool, Sqlite};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
-use tower_http::trace::TraceLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::trace::TraceLayer;
 use tracing::warn;
+
+/// Shared health tracker for background tasks.
+/// Maps task name → last heartbeat timestamp.
+/// Tasks call `heartbeat("task_name")` on each loop iteration.
+/// The health endpoint checks if heartbeats are recent (< 2x interval).
+pub type BackgroundHealth =
+    std::sync::Arc<std::sync::Mutex<std::collections::HashMap<&'static str, std::time::Instant>>>;
 
 /// Shared application state.
 #[derive(Clone)]
@@ -88,6 +95,8 @@ pub struct AppState {
     pub rate_limiter: Arc<RateLimiter>,
     /// Admin auth token for privileged endpoints.
     pub admin_token: Option<String>,
+    /// Background task heartbeat tracker for health endpoint.
+    pub background_health: BackgroundHealth,
 }
 
 /// Build the Axum router with all API routes.
@@ -106,19 +115,21 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             .filter(|s| !s.is_empty())
             .collect();
         CorsLayer::new()
-            .allow_origin(AllowOrigin::predicate(move |origin: &axum::http::HeaderValue, _| {
-                let origin_str = origin.to_str().unwrap_or("");
-                allowed_origins.iter().any(|allowed| {
-                    if allowed == origin_str {
-                        return true;
-                    }
-                    // Wildcard subdomain: *.example.com matches anything.example.com
-                    if let Some(suffix) = allowed.strip_prefix("*.") {
-                        return origin_str.ends_with(suffix) || origin_str == &suffix[2..];
-                    }
-                    false
-                })
-            }))
+            .allow_origin(AllowOrigin::predicate(
+                move |origin: &axum::http::HeaderValue, _| {
+                    let origin_str = origin.to_str().unwrap_or("");
+                    allowed_origins.iter().any(|allowed| {
+                        if allowed == origin_str {
+                            return true;
+                        }
+                        // Wildcard subdomain: *.example.com matches anything.example.com
+                        if let Some(suffix) = allowed.strip_prefix("*.") {
+                            return origin_str.ends_with(suffix) || origin_str == &suffix[2..];
+                        }
+                        false
+                    })
+                },
+            ))
             .allow_methods(Any)
             .allow_headers(Any)
     };
@@ -131,7 +142,10 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/network/price/history", get(network::price_history))
         .route("/v1/network/explorer", get(network::explorer))
         .route("/v1/fees/estimate", get(network::fees_estimate))
-        .route("/v1/price-alerts", post(price_alerts::create).get(price_alerts::list))
+        .route(
+            "/v1/price-alerts",
+            post(price_alerts::create).get(price_alerts::list),
+        )
         .route("/v1/price-alerts/:id", delete(price_alerts::delete))
         .route("/v1/price-alerts/:id/trigger", patch(price_alerts::trigger))
         .route("/v1/compile", post(compile::compile))
@@ -145,7 +159,10 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/escrows/:id/cancel", post(escrows::cancel))
         .route("/v1/escrows/:id/swap", post(escrows::atomic_swap))
         .route("/v1/escrows/:id/auto-settle", post(escrows::auto_settle))
-        .route("/v1/escrows/:id/chat-pubkey", post(escrows::submit_chat_pubkey))
+        .route(
+            "/v1/escrows/:id/chat-pubkey",
+            post(escrows::submit_chat_pubkey),
+        )
         .route(
             "/v1/escrows/:id/evidence",
             post(evidence::submit_evidence).get(evidence::list_evidence),
@@ -158,16 +175,13 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
             "/v1/escrows/:id/messages",
             post(messages::send).get(messages::list),
         )
-        .route(
-            "/v1/escrows/:id/messages/anchors",
-            get(messages::anchors),
-        )
-        .route(
-            "/v1/escrows/:id/messages/reveal",
-            post(reveal::reveal),
-        )
+        .route("/v1/escrows/:id/messages/anchors", get(messages::anchors))
+        .route("/v1/escrows/:id/messages/reveal", post(reveal::reveal))
         .route("/v1/openapi.json", get(openapi_spec))
-        .route("/v1/subscriptions", get(subscriptions::list).post(subscriptions::create))
+        .route(
+            "/v1/subscriptions",
+            get(subscriptions::list).post(subscriptions::create),
+        )
         .route("/v1/subscriptions/:id", get(subscriptions::get_by_id))
         .route("/v1/subscriptions/:id/cancel", post(subscriptions::cancel))
         .route("/v1/subscriptions/:id/draw", post(subscriptions::draw))
@@ -211,20 +225,35 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/jury/cases/:id", get(jury::get_case))
         .route("/v1/jury/cases/:id/vote", post(jury::cast_vote))
         .route("/v1/jury/cases/:id/evidence", get(reveal::evidence))
-        .route("/v1/jury/cases/:id/evidence/clear", post(reveal::clear_evidence))
+        .route(
+            "/v1/jury/cases/:id/evidence/clear",
+            post(reveal::clear_evidence),
+        )
         .route("/v1/jury/candidates", get(jury::list_candidates))
         // Blocklist & reports
         .route("/v1/blocks", get(blocks::list).post(blocks::create))
         .route("/v1/blocks/:id", post(blocks::delete))
         .route("/v1/reports", get(reports::list).post(reports::create))
         // Email notifications
-        .route("/v1/notifications", get(notifications::get).post(notifications::subscribe))
+        .route(
+            "/v1/notifications",
+            get(notifications::get).post(notifications::subscribe),
+        )
         .route("/v1/notifications/verify", post(notifications::verify))
-        .route("/v1/notifications/preferences", post(notifications::update_preferences))
+        .route(
+            "/v1/notifications/preferences",
+            post(notifications::update_preferences),
+        )
         // Trade feedback
-        .route("/v1/escrows/:id/feedback", get(feedback::list).post(feedback::create))
+        .route(
+            "/v1/escrows/:id/feedback",
+            get(feedback::list).post(feedback::create),
+        )
         // Security deposits
-        .route("/v1/escrows/:id/deposit", post(deposits::create).get(deposits::get_by_escrow))
+        .route(
+            "/v1/escrows/:id/deposit",
+            post(deposits::create).get(deposits::get_by_escrow),
+        )
         .route("/v1/escrows/:id/deposit/release", post(deposits::release))
         .route("/v1/escrows/:id/deposit/forfeit", post(deposits::forfeit))
         .route("/v1/deposits/sweep", post(deposits::sweep))
@@ -236,20 +265,41 @@ pub fn build_router(state: AppState, cors_origin: &str) -> Router {
         .route("/v1/offers/:id/counter", post(counteroffers::create))
         .route("/v1/offers/:id/counters", get(counteroffers::list))
         .route("/v1/counteroffers/:id/accept", post(counteroffers::accept))
-        .route("/v1/counteroffers/:id/decline", post(counteroffers::decline))
+        .route(
+            "/v1/counteroffers/:id/decline",
+            post(counteroffers::decline),
+        )
         // Milestone escrows
-        .route("/v1/milestones", get(milestones::list).post(milestones::create))
+        .route(
+            "/v1/milestones",
+            get(milestones::list).post(milestones::create),
+        )
         .route("/v1/milestones/:id", get(milestones::get_by_id))
-        .route("/v1/milestones/:id/release", post(milestones::release_milestone))
-        .route("/v1/milestones/:id/approve", post(milestones::approve_milestone))
+        .route(
+            "/v1/milestones/:id/release",
+            post(milestones::release_milestone),
+        )
+        .route(
+            "/v1/milestones/:id/approve",
+            post(milestones::approve_milestone),
+        )
         .route("/v1/milestones/:id/dispute", post(milestones::dispute))
         .route("/v1/milestones/:id/refund", post(milestones::refund))
         .route("/v1/milestones/:id/complete", post(milestones::complete))
         // AI Mediation
-        .route("/v1/escrows/:id/mediate", post(mediator::mediate).get(mediator::status))
-        .route("/v1/escrows/:id/mediate/:party/accept", post(mediator::accept))
+        .route(
+            "/v1/escrows/:id/mediate",
+            post(mediator::mediate).get(mediator::status),
+        )
+        .route(
+            "/v1/escrows/:id/mediate/:party/accept",
+            post(mediator::accept),
+        )
         // Multi-party escrows
-        .route("/v1/multi-escrows", get(multi_escrows::list).post(multi_escrows::create))
+        .route(
+            "/v1/multi-escrows",
+            get(multi_escrows::list).post(multi_escrows::create),
+        )
         .route("/v1/multi-escrows/:id", get(multi_escrows::get_by_id))
         .route("/v1/multi-escrows/:id/sign", post(multi_escrows::sign))
         .route("/v1/multi-escrows/:id/refund", post(multi_escrows::refund))
@@ -341,12 +391,31 @@ async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> 
     // Check database connectivity
     let db_ok = sqlx::query("SELECT 1").fetch_one(&state.db).await.is_ok();
 
+    // Check background task liveness from heartbeats
+    const TASK_TIMEOUT_SECS: u64 = 600; // 10 min without heartbeat = stale
+    let now = std::time::Instant::now();
+    let mut tasks = serde_json::Map::new();
+    if let Ok(health) = state.background_health.lock() {
+        for (&name, &last_beat) in health.iter() {
+            let elapsed = now.duration_since(last_beat).as_secs();
+            let alive = elapsed < TASK_TIMEOUT_SECS;
+            tasks.insert(
+                name.to_string(),
+                json!({
+                    "alive": alive,
+                    "last_heartbeat_secs_ago": elapsed,
+                }),
+            );
+        }
+    }
+
     Json(json!({
         "status": if db_ok { "ok" } else { "degraded" },
         "version": "0.1.0",
         "db_connected": db_ok,
         "node_synced": state.wrpc_url.is_some(),
-        "node_daa_score": 0,
+        "node_daa_score": serde_json::Value::Null,
+        "background_tasks": tasks,
         "uptime_seconds": uptime,
     }))
 }

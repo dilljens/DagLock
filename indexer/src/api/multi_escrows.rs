@@ -386,6 +386,9 @@ mod tests {
             )),
             rate_limiter: std::sync::Arc::new(crate::ratelimit::RateLimiter::new()),
             admin_token: None,
+            background_health: std::sync::Arc::new(std::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
         }
     }
 
