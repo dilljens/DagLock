@@ -1,0 +1,35 @@
+#!/bin/bash
+# DagLock pre-commit hook
+# Runs format checks and lint on staged files only.
+# Install: git config core.hooksPath .githooks
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# ── Rust formatting (staged files only) ──────────────────────────
+STAGED_RUST=$(git diff --cached --name-only -- '*.rs')
+if [ -n "$STAGED_RUST" ] && command -v cargo &>/dev/null; then
+    echo "  cargo fmt --check (staged: $(echo "$STAGED_RUST" | wc -l) files)..."
+    # Check formatting by running fmt and checking if it would change staged files
+    for f in $STAGED_RUST; do
+        if [ -f "$f" ]; then
+            rustfmt --check "$f" 2>/dev/null || {
+                echo "❌ $f has formatting issues. Run: cargo fmt -- $f"
+                exit 1
+            }
+        fi
+    done
+fi
+
+# ── Web linting (staged files only) ──────────────────────────────
+STAGED_WEB=$(git diff --cached --name-only -- 'web/src/*.ts' 'web/src/*.tsx')
+if [ -n "$STAGED_WEB" ] && [ -f "web/package.json" ] && command -v npm &>/dev/null; then
+    echo "  eslint (web) on staged files..."
+    (cd web && npx biome lint --no-errors-on-unmatched $STAGED_WEB 2>/dev/null) || {
+        echo "⚠️  Web lint found issues. Run: cd web && npm run lint"
+        exit 1
+    }
+fi
+
+echo "✅ Pre-commit checks passed"

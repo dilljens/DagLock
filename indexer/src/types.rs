@@ -1058,11 +1058,7 @@ use serde_json::{json, Value};
 
 /// Generate a short prefixed ID (e.g. "esc_abc123", "off_def456").
 pub fn generate_id(prefix: &str) -> String {
-    format!(
-        "{}_{}",
-        prefix,
-        Uuid::new_v4().to_string().replace('-', "")
-    )
+    format!("{}_{}", prefix, Uuid::new_v4().to_string().replace('-', ""))
 }
 
 /// Standard internal server error response.
@@ -1088,7 +1084,7 @@ pub fn not_found(entity: &str, id: &str) -> (StatusCode, Json<Value>) {
 }
 
 /// Standard bad request with custom code and message.
-pub fn bad_request(code: &str, message: &str) -> (StatusCode, Json<Value>) {
+pub fn bad_request(code: &str, message: impl Into<String>) -> (StatusCode, Json<Value>) {
     (
         StatusCode::BAD_REQUEST,
         Json(json!(ApiError::new(code, message))),
@@ -1096,7 +1092,7 @@ pub fn bad_request(code: &str, message: &str) -> (StatusCode, Json<Value>) {
 }
 
 /// Standard forbidden error.
-pub fn forbidden(code: &str, message: &str) -> (StatusCode, Json<Value>) {
+pub fn forbidden(code: &str, message: impl Into<String>) -> (StatusCode, Json<Value>) {
     (
         StatusCode::FORBIDDEN,
         Json(json!(ApiError::new(code, message))),
@@ -1104,7 +1100,7 @@ pub fn forbidden(code: &str, message: &str) -> (StatusCode, Json<Value>) {
 }
 
 /// Standard conflict error.
-pub fn conflict(code: &str, message: &str) -> (StatusCode, Json<Value>) {
+pub fn conflict(code: &str, message: impl Into<String>) -> (StatusCode, Json<Value>) {
     (
         StatusCode::CONFLICT,
         Json(json!(ApiError::new(code, message))),
@@ -1161,10 +1157,7 @@ pub async fn fetch_kas_usd_price() -> Option<f64> {
     let price = match price_json["kaspa"]["usd"].as_f64() {
         Some(p) => p,
         None => {
-            tracing::warn!(
-                "Price oracle: unexpected response format: {}",
-                price_json
-            );
+            tracing::warn!("Price oracle: unexpected response format: {}", price_json);
             return None;
         }
     };

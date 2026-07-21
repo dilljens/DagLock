@@ -19,40 +19,71 @@ async fn verify_multi_escrow_auth(
     action: &str,
 ) -> Result<(), (StatusCode, Json<Value>)> {
     let auth = AuthContext::from_headers(headers).map_err(|e| {
-        (StatusCode::UNAUTHORIZED, Json(json!(crate::types::ApiError::new("unauthorized", e.to_string()))))
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!(crate::types::ApiError::new(
+                "unauthorized",
+                e.to_string()
+            ))),
+        )
     })?;
 
     // Must be a party to the escrow
     if !escrow.parties.contains(&auth.address) {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!(crate::types::ApiError::new("forbidden", "Only escrow parties can perform this action"))),
+            Json(json!(crate::types::ApiError::new(
+                "forbidden",
+                "Only escrow parties can perform this action"
+            ))),
         ));
     }
 
     let parsed = parse_message(&auth.message).map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(json!(crate::types::ApiError::new("invalid_message", e.to_string()))))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!(crate::types::ApiError::new(
+                "invalid_message",
+                e.to_string()
+            ))),
+        )
     })?;
 
     if parsed.action != action {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!(crate::types::ApiError::new("forbidden", format!("Message must be '{action}:{{id}}:ts:nonce'")))),
+            Json(json!(crate::types::ApiError::new(
+                "forbidden",
+                format!("Message must be '{action}:{{id}}:ts:nonce'")
+            ))),
         ));
     }
 
-    if !state.sig_verifier.verify_signature(&auth.address, &auth.signature, &auth.message)
+    if !state
+        .sig_verifier
+        .verify_signature(&auth.address, &auth.signature, &auth.message)
         .unwrap_or(false)
     {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(json!(crate::types::ApiError::new("forbidden", "Invalid signature"))),
+            Json(json!(crate::types::ApiError::new(
+                "forbidden",
+                "Invalid signature"
+            ))),
         ));
     }
 
-    verify_nonce(&state.db, &parsed, &auth.address).await.map_err(|e| {
-        (StatusCode::FORBIDDEN, Json(json!(crate::types::ApiError::new("forbidden", e.to_string()))))
-    })?;
+    verify_nonce(&state.db, &parsed, &auth.address)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!(crate::types::ApiError::new(
+                    "forbidden",
+                    e.to_string()
+                ))),
+            )
+        })?;
 
     Ok(())
 }
@@ -83,28 +114,25 @@ pub async fn create(
     Json(body): Json<CreateMultiRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
     if body.parties.len() < 2 || body.parties.len() > 4 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_parties", "message": "Must have 2-4 parties"})),
-        ));
+        return Err(bad_request("invalid_parties", "Must have 2-4 parties"));
     }
     if body.parties.len() != body.shares.len() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_shares", "message": "Parties and shares must match"})),
+        return Err(bad_request(
+            "invalid_shares",
+            "Parties and shares must match",
         ));
     }
     if body.total_amount <= 0 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_amount", "message": "Total amount must be positive"})),
+        return Err(bad_request(
+            "invalid_amount",
+            "Total amount must be positive",
         ));
     }
     let total_shares: i64 = body.shares.iter().sum();
     if total_shares != 10000 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_shares", "message": "Shares must sum to 10000 (100%)"})),
+        return Err(bad_request(
+            "invalid_shares",
+            "Shares must sum to 10000 (100%)",
         ));
     }
 
@@ -126,12 +154,7 @@ pub async fn create(
 
     queries::insert_multi_escrow(&state.db, &escrow)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "database_error", "message": format!("{e}")})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?;
 
     Ok((StatusCode::CREATED, Json(json!(escrow))))
 }
@@ -143,9 +166,9 @@ pub async fn list(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let address = params.address.as_deref().unwrap_or("");
     if address.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "invalid_address", "message": "address query parameter is required"})),
+        return Err(bad_request(
+            "invalid_address",
+            "address query parameter is required",
         ));
     }
 
@@ -154,12 +177,7 @@ pub async fn list(
 
     let (escrows, total) = queries::list_multi_by_address(&state.db, address, limit, offset)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?;
 
     Ok(Json(json!({
         "multi_escrows": escrows,
@@ -176,18 +194,8 @@ pub async fn get_by_id(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_multi_escrow(&state.db, &id)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(json!({"error": "not_found", "message": format!("No multi-party escrow found with id '{}'", id)})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?
+        .ok_or_else(|| not_found("multi-party escrow", &id))?;
 
     Ok(Json(json!(escrow)))
 }
@@ -200,58 +208,35 @@ pub async fn sign(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_multi_escrow(&state.db, &id)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(json!({"error": "not_found", "message": format!("No multi-party escrow found with id '{}'", id)})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?
+        .ok_or_else(|| not_found("multi-party escrow", &id))?;
 
     if escrow.status != "active" {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Escrow is '{}', not 'active'", escrow.status)})),
+        return Err(conflict(
+            "invalid_status",
+            format!("Escrow is '{}', not 'active'", escrow.status),
         ));
     }
 
     if !escrow.parties.contains(&body.address) {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(json!({"error": "not_a_party", "message": "Address is not a party to this escrow"})),
+        return Err(forbidden(
+            "not_a_party",
+            "Address is not a party to this escrow",
         ));
     }
 
     if escrow.signatures.contains(&body.address) {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(json!({"error": "already_signed", "message": "Address has already signed"})),
-        ));
+        return Err(conflict("already_signed", "Address has already signed"));
     }
 
     queries::record_signature(&state.db, &id, &body.address)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "database_error", "message": "Failed to record signature"})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?;
 
     let updated = queries::get_multi_escrow(&state.db, &id)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
-            )
-        })?
-        .unwrap();
+        .map_err(|_e| internal_error())?
+        .ok_or_else(|| not_found("multi-party escrow", &id))?;
 
     let all_signed = updated.signatures.len() == updated.parties.len();
 
@@ -277,23 +262,13 @@ pub async fn refund(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_multi_escrow(&state.db, &id)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(json!({"error": "not_found", "message": format!("No multi-party escrow found with id '{}'", id)})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?
+        .ok_or_else(|| not_found("multi-party escrow", &id))?;
 
     if escrow.status != "active" {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Escrow is '{}', not 'active'", escrow.status)})),
+        return Err(conflict(
+            "invalid_status",
+            format!("Escrow is '{}', not 'active'", escrow.status),
         ));
     }
 
@@ -302,12 +277,7 @@ pub async fn refund(
 
     queries::refund_multi_escrow(&state.db, &id)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "database_error", "message": "Failed to refund multi-party escrow"})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?;
 
     Ok(Json(json!({
         "status": "refunded",
@@ -329,23 +299,13 @@ pub async fn swap(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let escrow = queries::get_multi_escrow(&state.db, &id)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "internal_error", "message": "An internal error occurred."})),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(json!({"error": "not_found", "message": format!("No multi-party escrow found with id '{}'", id)})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?
+        .ok_or_else(|| not_found("multi-party escrow", &id))?;
 
     if escrow.status != "active" {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(json!({"error": "invalid_status", "message": format!("Escrow is '{}', not 'active'", escrow.status)})),
+        return Err(conflict(
+            "invalid_status",
+            format!("Escrow is '{}', not 'active'", escrow.status),
         ));
     }
 
@@ -354,20 +314,15 @@ pub async fn swap(
 
     let all_signed = escrow.signatures.len() == escrow.parties.len();
     if !all_signed {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(json!({"error": "not_all_signed", "message": "Not all parties have signed yet"})),
+        return Err(conflict(
+            "not_all_signed",
+            "Not all parties have signed yet",
         ));
     }
 
     queries::settle_multi_escrow(&state.db, &id)
         .await
-        .map_err(|_e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "database_error", "message": "Failed to settle multi-party escrow"})),
-            )
-        })?;
+        .map_err(|_e| internal_error())?;
 
     Ok(Json(json!({
         "status": "settled",

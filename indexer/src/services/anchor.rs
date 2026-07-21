@@ -19,11 +19,7 @@ pub struct AnchorService {
 }
 
 impl AnchorService {
-    pub fn new(
-        db: Pool<Sqlite>,
-        wrpc_url: Option<String>,
-        wallet_key: Option<String>,
-    ) -> Self {
+    pub fn new(db: Pool<Sqlite>, wrpc_url: Option<String>, wallet_key: Option<String>) -> Self {
         Self {
             buffer: Arc::new(Mutex::new(HashMap::new())),
             db,
@@ -43,7 +39,7 @@ impl AnchorService {
         let mut arr = [0u8; 32];
         arr.copy_from_slice(hash.as_bytes());
 
-        let mut buf = self.buffer.lock().unwrap();
+        let mut buf = self.buffer.lock().expect("anchor buffer mutex poisoned");
         buf.entry(escrow_id.to_string())
             .or_default()
             .push((msg_id.to_string(), arr));
@@ -58,7 +54,7 @@ impl AnchorService {
     /// 4. Writes `anchor_batch_hash` / `anchor_daa_score` to every message row
     pub async fn flush_pending(&self) {
         let batch = {
-            let mut buf = self.buffer.lock().unwrap();
+            let mut buf = self.buffer.lock().expect("anchor buffer mutex poisoned");
             if buf.is_empty() {
                 return;
             }
@@ -140,9 +136,7 @@ impl AnchorService {
 ///
 /// Merkle root = blake2b(hash_1 || hash_2 || ... || hash_N)
 fn compute_merkle_root(hashes: &[&[u8; 32]]) -> [u8; 32] {
-    let mut state = blake2b_simd::Params::new()
-        .hash_length(32)
-        .to_state();
+    let mut state = blake2b_simd::Params::new().hash_length(32).to_state();
     for h in hashes {
         state.update(*h);
     }
