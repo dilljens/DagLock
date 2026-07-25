@@ -33,7 +33,7 @@
 | `docs/wiki/plans/roadmap.md` | Project roadmap and upcoming milestones |
 | `docs/wiki/plans/mainnet-launch.md` | Mainnet launch plan with phases, risks, and checklist |
 | `docs/deferred-items-plan.md` | Deferred audit items and their status |
-| `../VPS.md` | OVHcloud VPS infrastructure — connection, services, commands (all projects) |
+| `/home/dillon/MEGA/FerrumEng/VPS.md` | OVHcloud VPS infrastructure — connection, services, commands (all projects) |
 
 ## Audit Log
 

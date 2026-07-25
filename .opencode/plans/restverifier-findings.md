@@ -1,6 +1,6 @@
 # Findings: RestVerifier Testnet Test
 
-## VPS Info (from /home/dillon/_code/VPS.md)
+## VPS Info (from /home/dillon/MEGA/FerrumEng/VPS.md)
 
 | Field | Value |
 |-------|-------|

@@ -1,7 +1,7 @@
 # VPS — DagLock Deployment
 
 > DagLock runs on a shared OVHcloud VPS alongside other projects.
-> See `../VPS.md` for full infrastructure details (ports, systemd services, SSL, etc.)
+> See `/home/dillon/MEGA/FerrumEng/VPS.md` for full infrastructure details (ports, systemd services, SSL, etc.)
 
 ## Quick Reference
 
@@ -101,4 +101,4 @@ rsync -avz --exclude node_modules bot/ ubuntu@40.160.241.74:/opt/daglock-bot/
 
 ---
 
-*See `../VPS.md` for all projects on this server and full service map.*
+*See `/home/dillon/MEGA/FerrumEng/VPS.md` for all projects on this server and full service map.*

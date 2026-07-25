@@ -340,5 +340,5 @@ See `docs/local-testnet-node.md` for the plan to run a local `kaspad` testnet-11
 
 ## VPS
 
-Single OVH VPS running all projects. See `../VPS.md` for connection info, services, and commands.
+Single OVH VPS running all projects. See `VPS.md` in `/home/dillon/MEGA/FerrumEng/` for connection info, services, and commands.
 Note: SSH user is `ubuntu`, not `root`. Password: `raspi9000`.
