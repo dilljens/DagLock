@@ -46,3 +46,17 @@ Thumbs.db
 /docs/REDDIT-POST.md
 .env.testwallets
 .env.cloudflare
+
+# Local-only indexes, secrets, and caches
+.codegraph/
+.codebase-memory/
+.env.*
+!.env.example
+*.py[cod]
+.venv/
+venv/
+target/
+/dist/
+.venv*/
+.coverage
+.coverage.*
